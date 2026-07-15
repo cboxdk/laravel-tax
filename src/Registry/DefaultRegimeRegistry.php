@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Regime\CaGstRegime;
 use Cbox\Tax\Regime\EuVatRegime;
 use Cbox\Tax\Regime\IndiaGstRegime;
+use Cbox\Tax\Regime\MalaysiaSstRegime;
 use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Taxability\StaticProductTaxability;
@@ -54,6 +55,11 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'id-ppn' => $national,
             'vn-vat' => $national,
             'ph-vat' => $national,
+            'jp-ct' => $national,
+            'kr-vat' => $national,
+            'th-vat' => $national,
+            'ua-vat' => $national,
+            'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
             'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability),
             'ca-gst' => new CaGstRegime,

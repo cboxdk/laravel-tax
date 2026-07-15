@@ -135,11 +135,11 @@ it('handles a national (non-EU) regime — UK domestic VAT', function () {
 
 it('refuses an unmodelled jurisdiction rather than guessing', function () {
     $this->tax->assess(new TaxQuery(
-        amount: Money::of('100', 'JPY'),
+        amount: Money::of('100.00', 'CNY'),
         pricing: Pricing::Exclusive,
-        place: place('JP'), // no tax regime modelled for Japan
+        place: place('CN'), // China deliberately not modelled (not a clean single-rate VAT)
         customer: CustomerType::Consumer,
-        seller: seller('JP'),
+        seller: seller('CN'),
     ));
 })->throws(UnsupportedJurisdiction::class);
 

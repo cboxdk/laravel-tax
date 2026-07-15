@@ -56,8 +56,9 @@ calculation the billing engine supplies per invoice.
 | | Regime | Status |
 | --- | --- | --- |
 | **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge | ✅ |
-| **National VAT/GST** | UK, CH, NO, AU, NZ, MX, Singapore, Taiwan, UAE, Saudi Arabia, Bahrain, Oman, Türkiye, Chile, Indonesia, Vietnam, Philippines | ✅ |
+| **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
+| **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
 | **US sales tax** | `us-sales-tax` — nexus gate, per-state taxability, state/rooftop rate | ✅ |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 

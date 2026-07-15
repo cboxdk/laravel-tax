@@ -13,33 +13,35 @@ sources.
 
 ## Awaiting primary-source rate verification
 
-A round of primary-source verification moved Taiwan, UAE, Saudi Arabia, Bahrain,
-Oman, Türkiye, Chile, Indonesia, Vietnam and the Philippines into
-[supported](supported.md). The following remain omitted because their rates were
-**not** confirmed against a primary or dated authoritative source — the aggregator
-compilations were refuted in verification. They will be added per country as each
-rate is confirmed against the national tax authority:
+Successive primary-source verification rounds moved Taiwan, UAE, Saudi Arabia,
+Bahrain, Oman, Türkiye, Chile, Indonesia, Vietnam, the Philippines, **Japan, South
+Korea, Thailand, Ukraine and Malaysia** into [supported](supported.md). The
+following remain omitted:
 
-> China (genuinely multi-rate 13/9/6 — no single digital rate confirmed), Japan,
-> South Korea, Thailand, Israel, South Africa, Nigeria, Kenya, Egypt, Morocco,
-> Russia, Ukraine, Colombia, Argentina, Peru.
+**Rate known, destination-taxation mechanics not yet verified** — their standard
+rate is confirmed (dated Big-Four), but whether/how they tax *foreign digital
+suppliers at destination* (and the registration threshold) was not independently
+verified, so they are held until that mechanic is confirmed:
+
+> Israel (18%), South Africa (15%), Nigeria (7.5%), Kenya (16%), Egypt (14%),
+> Morocco (20%), Colombia (19%), Peru (18%).
+
+**Genuinely not a clean single-rate regime:**
+
+> **China** — VAT is tiered 13/9/6% (6% is the modern/e-services band) with no
+> single "digital services" rate; the unified VAT Law effective 1 Jan 2026 keeps
+> the tiered structure. Omitted rather than hard-code a judgment-call 6%.
+> **Argentina** — national IVA (21%) is entangled with sub-national *ingresos
+> brutos*, so it is not cleanly shippable as a single national rate.
 
 **Why omitted:** the engine models these regimes fine, but shipping an unverified
-rate would be worse than shipping nothing — a wrong tax amount is a real liability
-for the adopter.
+rate or mechanic would be worse than shipping nothing.
 
 ## Not implemented (no VAT)
 
 **Qatar** and **Kuwait** have not implemented VAT — there is no rate to charge.
 (Qatar is trending toward a possible ~2027 rollout.)
 
-## Malaysia — split SST, needs a dedicated regime
-
-Malaysia is **not** a clean VAT: it runs a Sales and Service Tax (SST) — 10% sales
-tax on goods, 8% service tax on prescribed services — and, unusually, foreign
-digital service providers charge **both B2C and B2B with no reverse-charge
-carve-out**. The generic national regime (which reverse-charges cross-border B2B)
-would be wrong here, so Malaysia is held until a dedicated SST regime is built.
 
 ## Pakistan — partial data
 

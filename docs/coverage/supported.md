@@ -45,6 +45,10 @@ reverse-charges.
 | Indonesia | `id-ppn` | 11% | DGT (effective via 11/12 base; **not** the 12% headline) | high |
 | Vietnam | `vn-vat` | 10% | GDT (**temporary 8% cut through 2026-12-31** — bind a date-aware source) | high |
 | Philippines | `ph-vat` | 12% | BIR (RA 12023) | high |
+| Japan | `jp-ct` | 10% | NTA (consumption tax; ¥10M threshold) | high |
+| South Korea | `kr-vat` | 10% | NTS | high |
+| Thailand | `th-vat` | 7% | Revenue Department (VES regime) | high |
+| Ukraine | `ua-vat` | 20% | STS | high |
 
 > **Time-sensitive rate notes.** Indonesia's headline PPN is 12% but the *effective*
 > rate on non-luxury supplies is **11%** (the 11/12 base mechanism) — the engine
@@ -62,6 +66,14 @@ Foreign B2C digital (OIDAR) is charged at destination (18% IGST); B2B to a
 GST-registered recipient reverse-charges. Source: **CBIC** (OIDAR guidance,
 IGST Act). Standard rate **18%** (post-22 Sep 2025 slab restructure). Confidence:
 **high**.
+
+## Malaysia — SST (`my-sst`)
+
+A dedicated regime, **not** a destination VAT. A registered foreign digital-service
+provider charges Malaysian **service tax on both B2C and B2B with no reverse
+charge** — so this regime never reverse-charges, unlike the national VAT regimes.
+Service tax **8%** (since 1 Mar 2024), RM 500,000 threshold. Source: **RMCD**.
+Confidence: **high**.
 
 ## United States — sales tax (`us-sales-tax`)
 
