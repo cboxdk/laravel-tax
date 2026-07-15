@@ -27,9 +27,16 @@ and their tax ID is **validated** (`customerTaxIdValidated: true`) — because
 zero-rating legally hinges on a valid customer VAT/registration number. Otherwise
 destination tax is charged.
 
-## Not yet shipped
+## Sub-federal regimes
 
-The sub-federal regimes (`us-sales-tax`, `ca-gst`) are intentionally absent until
-their rate/boundary data and (for the US) rooftop geocoding land. A jurisdiction
-whose regime is not registered raises `UnsupportedJurisdiction` — it is never
-guessed.
+- **`UsSalesTaxRegime`** (`us-sales-tax`) — destination sourcing with three gates:
+  the state must be resolved (rooftop via an `AddressGeocoder`), the seller must
+  have **nexus** in it (a registration), and the product must be **taxable** there
+  (`ProductTaxability`). Otherwise it returns `NotRegistered` or `Exempt` — never a
+  wrong charge. A jurisdiction with no resolved state raises `JurisdictionNotResolved`.
+- **`CaGstRegime`** (`ca-gst`) — Canada has no local sales tax, so a province
+  (subdivision) fully determines the combined GST/HST(/PST/QST) rate. A cross-border
+  non-resident B2B supply to a registered customer is self-assessed (reverse charge).
+
+A jurisdiction whose `regimeModule` is not registered at all still raises
+`UnsupportedJurisdiction` — never guessed.

@@ -18,6 +18,14 @@ enum TaxTreatment: string
     case ZeroRated = 'zero_rated';
     case Exempt = 'exempt';
 
+    /**
+     * The seller has no obligation to collect tax in the jurisdiction (e.g. no US
+     * economic/physical nexus in the buyer's state). Distinct from Exempt (the
+     * supply itself is out of scope): here the supply could be taxable, but this
+     * seller is not required to charge it.
+     */
+    case NotRegistered = 'not_registered';
+
     /** Whether the seller charges tax on the invoice for this treatment. */
     public function chargesTax(): bool
     {

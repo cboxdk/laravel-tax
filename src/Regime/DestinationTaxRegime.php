@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Regime;
 
-use Brick\Money\Money;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
-use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
+use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
@@ -22,6 +21,8 @@ use Cbox\Tax\ValueObjects\TaxRate;
  */
 abstract class DestinationTaxRegime implements TaxRegime
 {
+    use AppliesTaxRate;
+
     /** Short name of the regime, used in the assessment's human-readable reason. */
     abstract protected function label(): string;
 
@@ -42,12 +43,10 @@ abstract class DestinationTaxRegime implements TaxRegime
 
     private function reverseCharge(TaxQuery $query): TaxAssessment
     {
-        $zero = Money::zero($query->amount->getCurrency(), $query->amount->getContext());
-
         return new TaxAssessment(
             treatment: TaxTreatment::ReverseCharge,
             net: $query->amount,
-            tax: $zero,
+            tax: $this->zero($query),
             gross: $query->amount,
             placeOfSupply: $query->place,
             rate: null,
@@ -61,15 +60,7 @@ abstract class DestinationTaxRegime implements TaxRegime
 
     private function applyRate(TaxQuery $query, TaxRate $rate): TaxAssessment
     {
-        if ($query->pricing === Pricing::Exclusive) {
-            $net = $query->amount;
-            $tax = $rate->taxOnNet($net);
-            $gross = $net->plus($tax);
-        } else {
-            $gross = $query->amount;
-            $net = $rate->netFromGross($gross);
-            $tax = $gross->minus($net);
-        }
+        [$net, $tax, $gross] = $this->split($query, $rate);
 
         if ($rate->isZero()) {
             return new TaxAssessment(

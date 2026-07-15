@@ -39,7 +39,17 @@ readonly class StaticTaxRateSource implements TaxRateSource
         TaxCategory $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
-        $percentage = $this->rates[$jurisdiction->country->value] ?? null;
+        // Prefer a subdivision-level rate (US states, Canadian provinces), then
+        // fall back to the national rate.
+        $percentage = null;
+
+        if ($jurisdiction->subdivision !== null) {
+            $percentage = $this->rates[$jurisdiction->subdivision->value] ?? null;
+        }
+
+        if ($percentage === null) {
+            $percentage = $this->rates[$jurisdiction->country->value] ?? null;
+        }
 
         if ($percentage === null) {
             return null;
@@ -72,6 +82,13 @@ readonly class StaticTaxRateSource implements TaxRateSource
             // Non-EU national regimes.
             'GB' => '20', 'CH' => '8.1', 'NO' => '25', 'AU' => '10', 'NZ' => '15',
             'MX' => '16',
+            // US state base rates (local district rates stack on top via rooftop
+            // resolution — these are illustrative state-level defaults).
+            'US-CA' => '7.25', 'US-NY' => '4', 'US-TX' => '6.25', 'US-WA' => '6.5',
+            'US-CO' => '2.9', 'US-FL' => '6', 'US-IL' => '6.25', 'US-OH' => '5.75',
+            // Canadian provinces — combined GST/HST or GST+PST/QST (no local tax).
+            'CA-ON' => '13', 'CA-QC' => '14.975', 'CA-BC' => '12', 'CA-AB' => '5',
+            'CA-NS' => '14', 'CA-NB' => '15', 'CA-MB' => '12', 'CA-SK' => '11',
         ];
     }
 }

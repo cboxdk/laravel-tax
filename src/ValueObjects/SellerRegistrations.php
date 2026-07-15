@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 
 /**
  * The tax standing of the seller entity that is issuing the invoice: where it is
@@ -35,6 +36,22 @@ readonly class SellerRegistrations
 
         foreach ($this->registrations as $registration) {
             if ($registration->country->equals($country)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the seller holds a registration in a specific sub-federal
+     * jurisdiction (a US state permit, a Canadian province) — the nexus test for
+     * sub-federal regimes.
+     */
+    public function isRegisteredInSubdivision(SubdivisionCode $subdivision): bool
+    {
+        foreach ($this->registrations as $registration) {
+            if ($registration->subdivision !== null && $registration->subdivision->equals($subdivision)) {
                 return true;
             }
         }

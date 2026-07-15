@@ -57,11 +57,17 @@ calculation the billing engine supplies per invoice.
 | --- | --- | --- |
 | **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge | ✅ |
 | **National VAT/GST** | UK, Switzerland, Norway, Australia, New Zealand, Mexico | ✅ |
-| **Sub-federal** | US sales tax, Canada GST/HST/PST/QST | ⏳ next (needs rate/boundary data + geocoding) |
+| **US sales tax** | `us-sales-tax` — nexus gate, per-state taxability, state/rooftop rate | ✅ |
+| **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
-The **`AddressGeocoder`** seam (for US rooftop resolution) and the sub-federal
-regimes are contracts-first and land with their data adapters. Unmodelled
-jurisdictions are **refused, not guessed**.
+The **US** regime gates on three things before applying a rate — the state must be
+resolved (rooftop via the `AddressGeocoder`), the seller must have **nexus** in it,
+and the product must be **taxable** there — otherwise it returns `NotRegistered` or
+`Exempt`, never a wrong charge. **Canada** resolves at province level (no local
+tax). The shipped **`GeocodioGeocoder`** (`AddressGeocoder`) resolves US/Canada
+addresses; rate data (TEDB, SST, commercial) plugs in via `TaxRateSource`.
+
+Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 
 ## Design
 

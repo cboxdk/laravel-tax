@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace Cbox\Tax;
 
+use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Taxability\StaticProductTaxability;
+use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -25,7 +32,11 @@ class TaxServiceProvider extends ServiceProvider
 
         $this->app->singleton(TaxRateSource::class, static fn (): StaticTaxRateSource => new StaticTaxRateSource);
 
-        $this->app->singleton(RegimeRegistry::class, static fn (): DefaultRegimeRegistry => DefaultRegimeRegistry::withDefaults());
+        $this->app->singleton(ProductTaxability::class, static fn (): StaticProductTaxability => new StaticProductTaxability);
+
+        $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
+            return DefaultRegimeRegistry::withDefaults($app->make(ProductTaxability::class));
+        });
 
         $this->app->singleton(TaxCalculator::class, static function (Application $app): DefaultTaxCalculator {
             return new DefaultTaxCalculator(
@@ -33,6 +44,32 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(TaxRateSource::class),
             );
         });
+
+        $this->registerGeocoder();
+    }
+
+    /**
+     * Bind the Geocodio address geocoder only when an API key is configured.
+     * Without one the AddressGeocoder contract stays unbound — deny-by-default.
+     */
+    private function registerGeocoder(): void
+    {
+        $config = $this->app->make(Config::class);
+        $key = $config->get('tax.geocodio.key');
+
+        if (! is_string($key) || $key === '') {
+            return;
+        }
+
+        $baseUrl = $config->get('tax.geocodio.base_url');
+        $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v1.7';
+
+        $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(
+            $app->make(Factory::class),
+            $app->make(JurisdictionRepository::class),
+            $key,
+            $baseUrl,
+        ));
     }
 
     public function boot(): void

@@ -10,3 +10,4 @@ Everything resolves through contracts, so the rate data and the regimes are
 replaceable.
 
 - [Rate sources](rate-sources.md) — bind a live `TaxRateSource`.
+- [Address geocoding](geocoding.md) — resolve US/CA addresses with Geocodio or your own adapter.

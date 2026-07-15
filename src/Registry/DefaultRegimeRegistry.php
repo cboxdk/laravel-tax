@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Registry;
 
+use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRegime;
+use Cbox\Tax\Regime\CaGstRegime;
 use Cbox\Tax\Regime\EuVatRegime;
 use Cbox\Tax\Regime\NationalTaxRegime;
+use Cbox\Tax\Regime\UsSalesTaxRegime;
+use Cbox\Tax\Taxability\StaticProductTaxability;
 
 /**
  * Maps regime-module keys to regime instances. Keys with no entry return `null`,
@@ -22,11 +26,11 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
     public function __construct(private array $regimes) {}
 
     /**
-     * The regimes shipped with the package: EU VAT, plus the single-rate national
-     * VAT/GST regimes (UK, CH, NO, AU, NZ, MX). The sub-federal regimes
-     * (us-sales-tax, ca-gst) are intentionally absent until implemented.
+     * The regimes shipped with the package: EU VAT, the single-rate national
+     * VAT/GST regimes (UK, CH, NO, AU, NZ, MX), and the sub-federal regimes
+     * (US sales tax, Canadian GST/HST).
      */
-    public static function withDefaults(): self
+    public static function withDefaults(?ProductTaxability $taxability = null): self
     {
         $national = new NationalTaxRegime;
 
@@ -38,6 +42,8 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'au-gst' => $national,
             'nz-gst' => $national,
             'mx-iva' => $national,
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability),
+            'ca-gst' => new CaGstRegime,
         ]);
     }
 
