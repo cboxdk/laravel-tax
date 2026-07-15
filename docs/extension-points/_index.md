@@ -11,3 +11,4 @@ replaceable.
 
 - [Rate sources](rate-sources.md) — bind a live `TaxRateSource`.
 - [Address geocoding](geocoding.md) — resolve US/CA addresses with Geocodio or your own adapter.
+- [Tax-ID validation](vat-id-validation.md) — validate VAT/registration numbers (VIES, HMRC, ABN).

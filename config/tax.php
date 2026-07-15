@@ -35,4 +35,19 @@ return [
         'base_url' => env('GEOCODIO_BASE_URL', 'https://api.geocod.io/v1.7'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tax-ID validation
+    |--------------------------------------------------------------------------
+    |
+    | The VatIdValidator is bound to VIES (EU) + HMRC (UK) out of the box. To also
+    | validate Australian ABNs, set an ABN Lookup GUID; without it, AU lookups
+    | return inconclusive (and callers fall back to charging tax).
+    |
+    */
+
+    'vat_id' => [
+        'abn_guid' => env('ABN_LOOKUP_GUID'),
+    ],
+
 ];

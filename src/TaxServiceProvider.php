@@ -10,10 +10,15 @@ use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Validators\AbnLookupValidator;
+use Cbox\Tax\Validators\DispatchingVatIdValidator;
+use Cbox\Tax\Validators\HmrcVatValidator;
+use Cbox\Tax\Validators\ViesValidator;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
@@ -46,6 +51,28 @@ class TaxServiceProvider extends ServiceProvider
         });
 
         $this->registerGeocoder();
+        $this->registerVatIdValidator();
+    }
+
+    /**
+     * Bind the VAT-ID validator to VIES (EU) + HMRC (UK), adding ABN Lookup (AU)
+     * only when a GUID is configured.
+     */
+    private function registerVatIdValidator(): void
+    {
+        $this->app->singleton(VatIdValidator::class, static function (Application $app): DispatchingVatIdValidator {
+            $http = $app->make(Factory::class);
+
+            $validators = [new ViesValidator($http), new HmrcVatValidator($http)];
+
+            $guid = $app->make(Config::class)->get('tax.vat_id.abn_guid');
+
+            if (is_string($guid) && $guid !== '') {
+                $validators[] = new AbnLookupValidator($http, $guid);
+            }
+
+            return new DispatchingVatIdValidator($validators);
+        });
     }
 
     /**
