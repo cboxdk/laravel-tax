@@ -79,9 +79,9 @@ readonly class StaticTaxRateSource implements TaxRateSource
             'LV' => '21', 'LT' => '21', 'LU' => '17', 'MT' => '18', 'NL' => '21',
             'PL' => '23', 'PT' => '23', 'RO' => '19', 'SK' => '23', 'SI' => '22',
             'ES' => '21', 'SE' => '25',
-            // Non-EU national regimes.
+            // Non-EU national regimes (rates verified against primary sources).
             'GB' => '20', 'CH' => '8.1', 'NO' => '25', 'AU' => '10', 'NZ' => '15',
-            'MX' => '16',
+            'MX' => '16', 'SG' => '9', 'IN' => '18',
             // US state base rates (local district rates stack on top via rooftop
             // resolution — these are illustrative state-level defaults).
             'US-CA' => '7.25', 'US-NY' => '4', 'US-TX' => '6.25', 'US-WA' => '6.5',

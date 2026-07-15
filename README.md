@@ -56,9 +56,16 @@ calculation the billing engine supplies per invoice.
 | | Regime | Status |
 | --- | --- | --- |
 | **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge | ✅ |
-| **National VAT/GST** | UK, Switzerland, Norway, Australia, New Zealand, Mexico | ✅ |
+| **National VAT/GST** | UK, Switzerland, Norway, Australia, New Zealand, Mexico, Singapore | ✅ |
+| **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **US sales tax** | `us-sales-tax` — nexus gate, per-state taxability, state/rooftop rate | ✅ |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
+
+See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
+sources and confidence — and an honest list of jurisdictions we **omit** until
+their rate data is verified (a broad national-VAT batch pending primary-source
+confirmation, Pakistan's other provinces, and Brazil). We omit rather than ship a
+rate we cannot stand behind.
 
 The **US** regime gates on three things before applying a rate — the state must be
 resolved (rooftop via the `AddressGeocoder`), the seller must have **nexus** in it,

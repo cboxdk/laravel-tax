@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:be39cb39-a6a9-4eb7-9c80-00773b862a8f",
+    "serialNumber": "urn:uuid:acdfc0c0-f594-41be-947b-1e6c8c24be77",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-geo@v0.1.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-geo@v0.2.1",
             "group": "cboxdk",
             "name": "laravel-geo",
-            "version": "v0.1.0",
-            "purl": "pkg:composer/cboxdk/laravel-geo@v0.1.0",
+            "version": "v0.2.1",
+            "purl": "pkg:composer/cboxdk/laravel-geo@v0.2.1",
             "description": "Cbox Geo \u2014 a canonical ISO 3166 country/subdivision and ISO 4217 currency reference for Laravel: data-driven jurisdiction lookups and structured addresses bound to stable codes, carrying the tax-relevant attributes downstream billing and tax engines need.",
             "licenses": [
                 {
