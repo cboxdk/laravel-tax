@@ -34,7 +34,24 @@ reverse-charges.
 | Australia | `au-gst` | 10% | ATO | high |
 | New Zealand | `nz-gst` | 15% | IRD | high |
 | Mexico | `mx-iva` | 16% | SAT | high |
-| **Singapore** | `sg-gst` | 9% | IRAS | high |
+| Singapore | `sg-gst` | 9% | IRAS | high |
+| Taiwan | `tw-vat` | 5% | MOF (Business Tax Act) | high |
+| United Arab Emirates | `ae-vat` | 5% | FTA (federal, all emirates) | high |
+| Saudi Arabia | `sa-vat` | 15% | ZATCA | high |
+| Bahrain | `bh-vat` | 10% | NBR | high |
+| Oman | `om-vat` | 5% | OTA | high |
+| Türkiye | `tr-vat` | 20% | Gazette (Decree 7346, 2023) | high |
+| Chile | `cl-iva` | 19% | SII | high |
+| Indonesia | `id-ppn` | 11% | DGT (effective via 11/12 base; **not** the 12% headline) | high |
+| Vietnam | `vn-vat` | 10% | GDT (**temporary 8% cut through 2026-12-31** — bind a date-aware source) | high |
+| Philippines | `ph-vat` | 12% | BIR (RA 12023) | high |
+
+> **Time-sensitive rate notes.** Indonesia's headline PPN is 12% but the *effective*
+> rate on non-luxury supplies is **11%** (the 11/12 base mechanism) — the engine
+> encodes 11%. Vietnam's statutory standard is **10%**, currently reduced to 8% for
+> most supplies **through 31 Dec 2026**; the shipped default is the durable 10% —
+> bind a date-aware rate source to apply the temporary cut. Türkiye rose to 20% on
+> 10 Jul 2023; Saudi Arabia to 15% (Jul 2020); Bahrain to 10% (Jan 2022).
 
 ## India — dual GST (`in-gst`)
 

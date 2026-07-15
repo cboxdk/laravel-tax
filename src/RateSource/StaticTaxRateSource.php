@@ -82,6 +82,9 @@ readonly class StaticTaxRateSource implements TaxRateSource
             // Non-EU national regimes (rates verified against primary sources).
             'GB' => '20', 'CH' => '8.1', 'NO' => '25', 'AU' => '10', 'NZ' => '15',
             'MX' => '16', 'SG' => '9', 'IN' => '18',
+            // Round-5 primary-source-verified national VAT rates.
+            'TW' => '5', 'AE' => '5', 'SA' => '15', 'BH' => '10', 'OM' => '5',
+            'TR' => '20', 'CL' => '19', 'ID' => '11', 'VN' => '10', 'PH' => '12',
             // US state base rates (local district rates stack on top via rooftop
             // resolution — these are illustrative state-level defaults).
             'US-CA' => '7.25', 'US-NY' => '4', 'US-TX' => '6.25', 'US-WA' => '6.5',

@@ -13,20 +13,33 @@ sources.
 
 ## Awaiting primary-source rate verification
 
-A broad set of national VAT/GST economies almost certainly slot into the existing
-`NationalTaxRegime` (destination tax + B2B reverse charge), but the specific
-**rate figures** from secondary aggregator tables did **not** survive adversarial
-verification, so we have not written them in. They will be added once each rate is
-confirmed against the national tax authority:
+A round of primary-source verification moved Taiwan, UAE, Saudi Arabia, Bahrain,
+Oman, Türkiye, Chile, Indonesia, Vietnam and the Philippines into
+[supported](supported.md). The following remain omitted because their rates were
+**not** confirmed against a primary or dated authoritative source — the aggregator
+compilations were refuted in verification. They will be added per country as each
+rate is confirmed against the national tax authority:
 
-> China, Japan, South Korea, Taiwan, Indonesia, Vietnam, Thailand, Philippines,
-> Malaysia (note: SST, not a clean VAT), Saudi Arabia, United Arab Emirates,
-> Bahrain, Oman, Israel, Turkey, South Africa, Nigeria, Kenya, Egypt, Morocco,
-> Russia, Ukraine, Colombia, Chile, Argentina, Peru.
+> China (genuinely multi-rate 13/9/6 — no single digital rate confirmed), Japan,
+> South Korea, Thailand, Israel, South Africa, Nigeria, Kenya, Egypt, Morocco,
+> Russia, Ukraine, Colombia, Argentina, Peru.
 
 **Why omitted:** the engine models these regimes fine, but shipping an unverified
 rate would be worse than shipping nothing — a wrong tax amount is a real liability
-for the adopter. Coverage is added per country as its rate is confirmed.
+for the adopter.
+
+## Not implemented (no VAT)
+
+**Qatar** and **Kuwait** have not implemented VAT — there is no rate to charge.
+(Qatar is trending toward a possible ~2027 rollout.)
+
+## Malaysia — split SST, needs a dedicated regime
+
+Malaysia is **not** a clean VAT: it runs a Sales and Service Tax (SST) — 10% sales
+tax on goods, 8% service tax on prescribed services — and, unusually, foreign
+digital service providers charge **both B2C and B2B with no reverse-charge
+carve-out**. The generic national regime (which reverse-charges cross-border B2B)
+would be wrong here, so Malaysia is held until a dedicated SST regime is built.
 
 ## Pakistan — partial data
 
