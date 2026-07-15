@@ -8,12 +8,14 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
+use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Returns\DefaultReturnAggregator;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
@@ -49,6 +51,8 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(TaxRateSource::class),
             );
         });
+
+        $this->app->singleton(ReturnAggregator::class, static fn (): DefaultReturnAggregator => new DefaultReturnAggregator);
 
         $this->registerGeocoder();
         $this->registerVatIdValidator();

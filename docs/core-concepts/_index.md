@@ -9,3 +9,4 @@ description: The engine's architecture and the regimes it ships.
 - [Architecture](architecture.md) — how a query flows to an assessment, and the
   own-the-logic / source-the-data boundary.
 - [Regimes](regimes.md) — the tax regimes shipped and how they are selected.
+- [Return data](return-data.md) — aggregating assessments into per-jurisdiction totals.

@@ -80,7 +80,8 @@ Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 ## Design
 
 - **Contracts-first.** `TaxCalculator`, `TaxRegime`, `TaxRateSource`,
-  `RegimeRegistry`, `AddressGeocoder` — bind and override any of them.
+  `RegimeRegistry`, `AddressGeocoder`, `VatIdValidator`, `ReturnAggregator` — bind
+  and override any of them. Rate sources compose (static · remote · caching · chain).
 - **Deny-by-default.** No regime for a jurisdiction, or no rate, → an exception,
   never a silent zero.
 - **Money is exact.** Amounts are `brick/money`; rate maths rounds half-up once.
