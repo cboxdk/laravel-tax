@@ -98,7 +98,7 @@ Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 
 ## Requirements
 
-PHP `^8.4`; Laravel `^12 || ^13`. See `composer.json`.
+PHP `^8.4`; Laravel `^13`. See `composer.json`.
 
 ## Development
 
