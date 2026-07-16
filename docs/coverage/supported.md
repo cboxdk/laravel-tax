@@ -14,12 +14,42 @@ are illustrative starting points unless a live source is bound.
 
 All 27 member states. Destination VAT for B2C digital (Art. 58); intra-EU B2B to a
 VIES-validated customer reverse-charges (Art. 44). Authoritative rate source: the
-**EU Commission TEDB** feed (all 27 + Northern Ireland). Confidence: **high**
-(regime + threshold grounded from EU primary law; rates from the official EU feed).
+**EU Commission TEDB** feed (all 27 + Northern Ireland), via the
+[`TedbRateSource`](../extension-points/rate-sources.md) adapter. Confidence:
+**high** (regime + threshold grounded from EU primary law; rates from the official
+EU feed once bound).
+
+**€10,000 micro-business threshold (Art. 59c).** The regime is threshold-aware: a
+seller established in a single member state, **below** the €10,000 combined
+cross-border B2C threshold (current or preceding year) and **not** opted into OSS,
+charges its **own (origin)** VAT on cross-border B2C supplies; once it opts in or
+crosses the threshold, the general **destination** rule applies. The seller
+supplies these signals on `SellerRegistrations::$oss` (`OssStatus`) — the engine
+never guesses turnover, and absent an asserted status it applies the destination
+rule. B2B reverse-charge is unaffected.
 
 | Countries | Regime | Rate source |
 | --- | --- | --- |
-| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | EU TEDB |
+| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | EU TEDB (`TedbRateSource`, optional) → static fallback |
+
+### Reduced / zero rates
+
+The rate-source contract resolves rates by **taxability category**, so a supply
+that legally carries a reduced or zero band (e-books, food, etc.) resolves one
+**when the bound source supplies it**. The shipped static snapshot carries **no
+reduced-rate table** — the package will not fabricate national reduced bands.
+Supply bands to `StaticTaxRateSource`, or bind a TEDB export that carries a `bands`
+map, to resolve reduced/zero rates (see
+[rate sources](../extension-points/rate-sources.md)).
+
+### Tax-ID validation — live-response verification still needed
+
+The VAT-ID validators (VIES, HMRC, ABN Lookup) are **fail-safe by design**: an
+unreachable service returns *inconclusive*, and the engine then charges tax rather
+than granting reverse-charge relief it cannot prove — this design is correct and
+unchanged. Note, however, that treating a validation as *conclusive* still depends
+on the authority's **live response**; a stubbed or cached validation must not be
+mistaken for a real-time VIES/HMRC confirmation before relying on reverse-charge.
 
 ## National VAT/GST regimes (`NationalTaxRegime`)
 
@@ -75,20 +105,34 @@ charge** — so this regime never reverse-charges, unlike the national VAT regim
 Service tax **8%** (since 1 Mar 2024), RM 500,000 threshold. Source: **RMCD**.
 Confidence: **high**.
 
-## United States — sales tax (`us-sales-tax`)
+## United States — sales tax (`us-sales-tax`) — LOGIC ONLY, not production-ready
+
+> **The US regime is not production-ready for automatic tax.** The package ships
+> the *logic* (the three gates below), but the *datasets* those gates need are
+> **not shipped and must be bound before any US customer can be invoiced
+> correctly.** Do not rely on the shipped defaults for US sales tax.
 
 Sub-federal. Three gates before a rate applies: the **state** must be resolved
-(rooftop via an `AddressGeocoder`), the seller must have **nexus** in it, and the
-product must be **taxable** there — else `NotRegistered` / `Exempt`. Rate data:
-**SST Rate & Boundary files** (~24 member states), the **Colorado GIS API** and
-**Alabama** downloadable rate file for those home-rule states, and a commercial
-adapter for the rest (incl. Louisiana, which has no open feed). SaaS taxability is
-curated per state (the SST taxability matrix has no SaaS definition). Confidence:
-**high on logic; rate/taxability data is per-state and must be sourced**.
+(via an `AddressGeocoder`), the seller must have **nexus** in it, and the product
+must be **taxable** there — else `NotRegistered` / `Exempt`. What is modelled
+versus what you must supply:
+
+| Concern | Shipped | What is required for correctness |
+| --- | --- | --- |
+| Sourcing / nexus / taxability **logic** | ✅ the regime | — |
+| Per-state SaaS **taxability** | ❌ `StaticProductTaxability` **defaults everything to taxable** (no SaaS map) | a per-state taxability dataset; SaaS taxability varies by state and the SST matrix has no SaaS definition |
+| **Local (rooftop) rates** | ❌ only illustrative state base rates; the shipped `GeocodioGeocoder` resolves **state-level only** | a rooftop rate feed (e.g. SST Rate & Boundary files, home-rule feeds such as Colorado/Alabama, or a commercial adapter) — city/district rates stack on the state base and are not resolved without one |
+| **Economic-nexus thresholds** | ❌ not evaluated — nexus is asserted only by an explicit seller `SellerRegistration` | a per-state economic-nexus threshold dataset if you want nexus determined from turnover/transaction counts rather than asserted |
+
+Until a real taxability map, a rooftop rate feed, and (if needed) nexus-threshold
+data are bound, the US regime will under- or over-charge. Confidence: **high on
+logic; the required per-state datasets are NOT shipped.**
 
 ## Canada — GST/HST (`ca-gst`)
 
 Province-level (Canada has no local sales tax), so a province fully determines the
-combined rate. Cross-border non-resident B2B to a registered customer
-self-assesses. Source: **CRA open dataset** + provincial ministries (QST via
-Revenu Québec). Confidence: **high**.
+combined rate — a cleaner structure than the US. Cross-border non-resident B2B to
+a registered customer self-assesses. The shipped province rates are illustrative
+defaults; an authoritative source (**CRA** open dataset + provincial ministries,
+QST via Revenu Québec) should still be bound. Confidence: **high on logic; province
+rates are DATA to source.**

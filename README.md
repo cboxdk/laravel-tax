@@ -55,11 +55,11 @@ calculation the billing engine supplies per invoice.
 
 | | Regime | Status |
 | --- | --- | --- |
-| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge | ✅ |
+| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge, Art. 59c €10k micro-business origin/destination sourcing | ✅ |
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus gate, per-state taxability, state/rooftop rate | ✅ |
+| **US sales tax** | `us-sales-tax` — nexus/taxability/sourcing **logic**; per-state taxability, rooftop rates and nexus thresholds are **data you must bind** | ⚠️ logic only |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -68,12 +68,22 @@ their rate data is verified (a broad national-VAT batch pending primary-source
 confirmation, Pakistan's other provinces, and Brazil). We omit rather than ship a
 rate we cannot stand behind.
 
-The **US** regime gates on three things before applying a rate — the state must be
-resolved (rooftop via the `AddressGeocoder`), the seller must have **nexus** in it,
-and the product must be **taxable** there — otherwise it returns `NotRegistered` or
-`Exempt`, never a wrong charge. **Canada** resolves at province level (no local
-tax). The shipped **`GeocodioGeocoder`** (`AddressGeocoder`) resolves US/Canada
-addresses; rate data (TEDB, SST, commercial) plugs in via `TaxRateSource`.
+The **US** regime is **logic only, not production-ready**: it gates on three things
+before applying a rate — the state must be resolved (via the `AddressGeocoder`), the
+seller must have **nexus** in it, and the product must be **taxable** there —
+otherwise it returns `NotRegistered` or `Exempt`, never a wrong charge. But the
+per-state SaaS **taxability map**, **rooftop local rates** (the shipped
+`GeocodioGeocoder` resolves state-level only), and **economic-nexus thresholds** are
+DATA that is **not shipped and must be bound** before US customers can be invoiced
+correctly. **Canada** resolves at province level (no local tax). Rate data (TEDB via
+`TedbRateSource`, SST, commercial) plugs in via `TaxRateSource` —
+see [`docs/coverage`](docs/coverage/_index.md).
+
+**EU** additionally applies the **Art. 59c €10,000 micro-business threshold**: a
+below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
+charges destination (signals supplied on the seller). Rate sources resolve by
+**taxability category**, so reduced/zero bands apply when a bound source supplies
+them (none are fabricated by default).
 
 Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 

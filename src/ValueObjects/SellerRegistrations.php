@@ -9,9 +9,16 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 
 /**
  * The tax standing of the seller entity that is issuing the invoice: where it is
- * established, and every jurisdiction it is registered in. This is the seller
- * side of `tax = f(seller registrations, buyer location, product type)` — the
- * multi-entity routing input the billing engine supplies per invoice.
+ * established, every jurisdiction it is registered in, and its EU One-Stop-Shop
+ * standing. This is the seller side of `tax = f(seller registrations, buyer
+ * location, product type)` — the multi-entity routing input the billing engine
+ * supplies per invoice.
+ *
+ * `oss` carries the micro-business / OSS opt-in signals that decide whether
+ * cross-border EU B2C supplies source at origin or destination (Art. 59c). It is
+ * null when the seller has not asserted a status — the EU regime then applies the
+ * general destination rule rather than granting micro-business relief it cannot
+ * prove.
  */
 readonly class SellerRegistrations
 {
@@ -21,6 +28,7 @@ readonly class SellerRegistrations
     public function __construct(
         public CountryCode $establishment,
         public array $registrations = [],
+        public ?OssStatus $oss = null,
     ) {}
 
     public function isEstablishedIn(CountryCode $country): bool

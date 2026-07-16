@@ -1,0 +1,14 @@
+{
+    "version": "2026-07-01",
+    "source": "EU Commission TEDB (VatRetrievalService), normalised — FIXTURE DATA, not a live export",
+    "rates": {
+        "DK": { "standard": "25" },
+        "DE": { "standard": "19" },
+        "FR": {
+            "standard": "20",
+            "bands": {
+                "digital_service": { "rate": "5.5", "kind": "reduced" }
+            }
+        }
+    }
+}

@@ -19,6 +19,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | EU TEDB rate feed (optional)
+    |--------------------------------------------------------------------------
+    |
+    | Point this at a TEDB-derived dataset — the EU Commission's Taxes in Europe
+    | Database (VatRetrievalService), transformed to the JSON shape documented on
+    | Cbox\Tax\RateSource\TedbRateSource — as either an http(s) URL or a local file
+    | path. When set, the engine composes ChainTaxRateSource(TEDB -> static
+    | snapshot): TEDB is authoritative, the shipped static rates are the fallback.
+    | Leave it empty (the default) to run purely on the static snapshot. The
+    | package ships NO endpoint — you must supply a real TEDB export. For a URL
+    | source, wrap the binding in CachingTaxRateSource to avoid a request per lookup
+    | (see docs/extension-points/rate-sources.md).
+    |
+    */
+
+    'tedb' => [
+        'url' => env('TAX_TEDB_URL'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Address geocoder (Geocodio)
     |--------------------------------------------------------------------------
     |

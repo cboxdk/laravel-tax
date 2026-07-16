@@ -9,17 +9,24 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 
 /**
- * A rate source backed by a static map of jurisdiction → standard-rate percentage.
- * It ships representative national standard rates so the engine works out of the
- * box, but these are DATA that changes — production deployments should bind a live
- * source (an EU TEDB adapter, the SST files, a commercial adapter) instead.
+ * A rate source backed by a static map of jurisdiction → standard-rate percentage,
+ * with an optional per-(jurisdiction, category) map of reduced/zero bands. It ships
+ * representative national standard rates so the engine works out of the box, but
+ * these are DATA that changes — production deployments should bind a live source
+ * (an EU TEDB adapter, the SST files, a commercial adapter) instead.
  *
- * Lookups are country-level; a jurisdiction with no entry returns `null` so the
- * engine denies rather than assuming 0%.
+ * Reduced/zero bands are intentionally EMPTY by default: the package will not
+ * fabricate a national reduced-rate table. Supply your own bands (or bind a feed
+ * that carries them) to resolve a reduced rate for a category.
+ *
+ * Lookups prefer a subdivision-level entry (US states, Canadian provinces), then
+ * fall back to the national entry; a jurisdiction with no entry returns `null` so
+ * the engine denies rather than assuming 0%.
  */
 readonly class StaticTaxRateSource implements TaxRateSource
 {
@@ -27,9 +34,10 @@ readonly class StaticTaxRateSource implements TaxRateSource
     private array $rates;
 
     /**
-     * @param  array<string, string>|null  $rates  Country code → percentage; null uses the built-in defaults.
+     * @param  array<string, string>|null  $rates  Country/subdivision code → standard percentage; null uses the built-in defaults.
+     * @param  array<string, RateBand>  $bands  "<jurisdiction>:<category>" → reduced/zero band, e.g. "DK:ebook".
      */
-    public function __construct(?array $rates = null)
+    public function __construct(?array $rates = null, private array $bands = [])
     {
         $this->rates = $rates ?? self::defaults();
     }
@@ -39,6 +47,19 @@ readonly class StaticTaxRateSource implements TaxRateSource
         TaxCategory $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
+        // A supply may legally carry a reduced/zero band for its category; prefer
+        // that over the standard rate when the bound source supplies one.
+        $band = $this->bandFor($jurisdiction, $category);
+
+        if ($band !== null) {
+            return new TaxRate(
+                percentage: $band->percentage,
+                kind: $band->kind,
+                source: 'static',
+                confidence: Confidence::Derived,
+            );
+        }
+
         // Prefer a subdivision-level rate (US states, Canadian provinces), then
         // fall back to the national rate.
         $percentage = null;
@@ -61,6 +82,32 @@ readonly class StaticTaxRateSource implements TaxRateSource
             source: 'static',
             confidence: Confidence::Derived,
         );
+    }
+
+    /**
+     * Resolve a reduced/zero band for the (jurisdiction, category), preferring a
+     * subdivision-level entry over a national one. Returns `null` when no band is
+     * configured — the caller then applies the standard rate.
+     */
+    private function bandFor(Jurisdiction $jurisdiction, TaxCategory $category): ?RateBand
+    {
+        $scopes = [];
+
+        if ($jurisdiction->subdivision !== null) {
+            $scopes[] = $jurisdiction->subdivision->value;
+        }
+
+        $scopes[] = $jurisdiction->country->value;
+
+        foreach ($scopes as $scope) {
+            $band = $this->bands[$scope.':'.$category->value] ?? null;
+
+            if ($band !== null) {
+                return $band;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Registry;
 
+use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRegime;
@@ -31,13 +32,19 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
      * The regimes shipped with the package: EU VAT, the single-rate national
      * VAT/GST regimes (UK, CH, NO, AU, NZ, MX), and the sub-federal regimes
      * (US sales tax, Canadian GST/HST).
+     *
+     * The optional {@see JurisdictionRepository} lets the EU regime resolve the
+     * seller's origin jurisdiction for Art. 59c micro-business sourcing; without it
+     * the regime falls back to destination taxation.
      */
-    public static function withDefaults(?ProductTaxability $taxability = null): self
-    {
+    public static function withDefaults(
+        ?ProductTaxability $taxability = null,
+        ?JurisdictionRepository $jurisdictions = null,
+    ): self {
         $national = new NationalTaxRegime;
 
         return new self([
-            'eu-vat' => new EuVatRegime,
+            'eu-vat' => new EuVatRegime($jurisdictions),
             'uk-vat' => $national,
             'ch-vat' => $national,
             'no-vat' => $national,

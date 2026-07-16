@@ -13,7 +13,9 @@ use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
+use Cbox\Tax\RateSource\TedbRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
 use Cbox\Tax\Taxability\StaticProductTaxability;
@@ -37,12 +39,33 @@ class TaxServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/tax.php', 'tax');
 
-        $this->app->singleton(TaxRateSource::class, static fn (): StaticTaxRateSource => new StaticTaxRateSource);
+        $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
+            $static = new StaticTaxRateSource;
+
+            $location = $app->make(Config::class)->get('tax.tedb.url');
+
+            // The TEDB adapter only activates when an operator points it at a real
+            // TEDB export (URL or file path). Unconfigured, the static snapshot is
+            // the zero-config default. When configured, TEDB is tried first and the
+            // static snapshot is the fallback (deny-by-default is preserved: if
+            // neither has a rate, the source returns null and the engine denies).
+            if (! is_string($location) || $location === '') {
+                return $static;
+            }
+
+            return new ChainTaxRateSource([
+                new TedbRateSource($app->make(Factory::class), $location),
+                $static,
+            ]);
+        });
 
         $this->app->singleton(ProductTaxability::class, static fn (): StaticProductTaxability => new StaticProductTaxability);
 
         $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
-            return DefaultRegimeRegistry::withDefaults($app->make(ProductTaxability::class));
+            return DefaultRegimeRegistry::withDefaults(
+                $app->make(ProductTaxability::class),
+                $app->make(JurisdictionRepository::class),
+            );
         });
 
         $this->app->singleton(TaxCalculator::class, static function (Application $app): DefaultTaxCalculator {

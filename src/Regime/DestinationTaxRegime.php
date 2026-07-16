@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Regime;
 
+use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\TaxTreatment;
@@ -17,7 +18,8 @@ use Cbox\Tax\ValueObjects\TaxRate;
  * Shared logic for destination-based consumption taxes (VAT/GST): a cross-border
  * B2B supply to a tax-ID-validated customer reverse-charges (the customer
  * self-accounts, seller charges nothing); everything else is taxed at the place
- * of supply's rate. Concrete regimes differ only in labelling.
+ * of supply's rate. Concrete regimes differ in labelling and in how they source
+ * the place of supply (see {@see sourcingPlace()}).
  */
 abstract class DestinationTaxRegime implements TaxRegime
 {
@@ -32,13 +34,25 @@ abstract class DestinationTaxRegime implements TaxRegime
             return $this->reverseCharge($query);
         }
 
-        $rate = $rates->rateFor($query->place, $query->category);
+        $place = $this->sourcingPlace($query);
+
+        $rate = $rates->rateFor($place, $query->category);
 
         if ($rate === null) {
-            throw UnresolvedTaxRate::for($query->place);
+            throw UnresolvedTaxRate::for($place);
         }
 
-        return $this->applyRate($query, $rate);
+        return $this->applyRate($query, $place, $rate);
+    }
+
+    /**
+     * The jurisdiction whose rate applies and that is recorded as the place of
+     * supply. Defaults to the customer's location (destination taxation); regimes
+     * with an origin-sourcing exception (EU micro-business relief) override this.
+     */
+    protected function sourcingPlace(TaxQuery $query): Jurisdiction
+    {
+        return $query->place;
     }
 
     private function reverseCharge(TaxQuery $query): TaxAssessment
@@ -58,7 +72,7 @@ abstract class DestinationTaxRegime implements TaxRegime
         );
     }
 
-    private function applyRate(TaxQuery $query, TaxRate $rate): TaxAssessment
+    private function applyRate(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxAssessment
     {
         [$net, $tax, $gross] = $this->split($query, $rate);
 
@@ -68,27 +82,35 @@ abstract class DestinationTaxRegime implements TaxRegime
                 net: $net,
                 tax: $tax,
                 gross: $gross,
-                placeOfSupply: $query->place,
+                placeOfSupply: $place,
                 rate: $rate,
-                reason: sprintf('%s: zero-rated in %s.', $this->label(), $query->place->country->value),
+                reason: sprintf('%s: zero-rated in %s.', $this->label(), $place->country->value),
             );
         }
 
-        $scope = $query->isCrossBorder() ? 'destination' : 'domestic';
+        // Origin sourcing (EU micro-business relief) taxes at the seller's country
+        // rather than the customer's; distinguish it from destination/domestic.
+        if (! $place->country->equals($query->place->country)) {
+            $scope = 'origin';
+        } elseif ($query->isCrossBorder()) {
+            $scope = 'destination';
+        } else {
+            $scope = 'domestic';
+        }
 
         return new TaxAssessment(
             treatment: TaxTreatment::Standard,
             net: $net,
             tax: $tax,
             gross: $gross,
-            placeOfSupply: $query->place,
+            placeOfSupply: $place,
             rate: $rate,
             reason: sprintf(
                 '%s: %s tax at %s%% in %s.',
                 $this->label(),
                 $scope,
                 $rate->percentage,
-                $query->place->country->value,
+                $place->country->value,
             ),
         );
     }
