@@ -6,6 +6,7 @@ namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
@@ -13,7 +14,10 @@ use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\Nexus\StaticNexusThresholds;
+use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
+use Cbox\Tax\RateSource\IbericodeVatRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
@@ -23,6 +27,7 @@ use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
 use Cbox\Tax\Validators\HmrcVatValidator;
 use Cbox\Tax\Validators\ViesValidator;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
@@ -42,29 +47,43 @@ class TaxServiceProvider extends ServiceProvider
         $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
             $static = new StaticTaxRateSource;
 
-            $location = $app->make(Config::class)->get('tax.tedb.url');
+            // Authoritative live feeds, tried before the static snapshot. Each only
+            // activates when an operator configures it; unconfigured, the static
+            // snapshot stays the zero-config default. Deny-by-default is preserved:
+            // if no source has a rate, the composed source returns null and the
+            // engine denies rather than guessing.
+            $sources = [];
 
-            // The TEDB adapter only activates when an operator points it at a real
-            // TEDB export (URL or file path). Unconfigured, the static snapshot is
-            // the zero-config default. When configured, TEDB is tried first and the
-            // static snapshot is the fallback (deny-by-default is preserved: if
-            // neither has a rate, the source returns null and the engine denies).
-            if (! is_string($location) || $location === '') {
+            $euVatFeed = self::euVatFeedSource($app);
+
+            if ($euVatFeed !== null) {
+                $sources[] = $euVatFeed;
+            }
+
+            $tedb = $app->make(Config::class)->get('tax.tedb.url');
+
+            if (is_string($tedb) && $tedb !== '') {
+                $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);
+            }
+
+            if ($sources === []) {
                 return $static;
             }
 
-            return new ChainTaxRateSource([
-                new TedbRateSource($app->make(Factory::class), $location),
-                $static,
-            ]);
+            $sources[] = $static;
+
+            return new ChainTaxRateSource($sources);
         });
 
-        $this->app->singleton(ProductTaxability::class, static fn (): StaticProductTaxability => new StaticProductTaxability);
+        $this->app->singleton(ProductTaxability::class, static fn (): StaticProductTaxability => new StaticProductTaxability(StaticProductTaxability::unitedStatesSaas()));
+
+        $this->app->singleton(NexusThresholds::class, static fn (): StaticNexusThresholds => new StaticNexusThresholds);
 
         $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
             return DefaultRegimeRegistry::withDefaults(
                 $app->make(ProductTaxability::class),
                 $app->make(JurisdictionRepository::class),
+                $app->make(NexusThresholds::class),
             );
         });
 
@@ -79,6 +98,38 @@ class TaxServiceProvider extends ServiceProvider
 
         $this->registerGeocoder();
         $this->registerVatIdValidator();
+    }
+
+    /**
+     * Build the EU VAT live feed (the MIT-licensed ibericode/vat-rates dataset)
+     * when it is enabled, wrapped in the request cache. Returns `null` when the
+     * feed is disabled (the default) so the static snapshot stays the zero-config
+     * default. A URL source is cached to avoid a request per lookup; a local file
+     * path is read directly.
+     */
+    private static function euVatFeedSource(Application $app): ?TaxRateSource
+    {
+        $config = $app->make(Config::class);
+
+        if ($config->get('tax.eu_vat.enabled') !== true) {
+            return null;
+        }
+
+        $url = $config->get('tax.eu_vat.url');
+
+        if (! is_string($url) || $url === '') {
+            return null;
+        }
+
+        $feed = new IbericodeVatRateSource($app->make(Factory::class), $url);
+
+        $isRemote = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
+
+        if (! $isRemote) {
+            return $feed;
+        }
+
+        return new CachingTaxRateSource($feed, $app->make(Cache::class));
     }
 
     /**

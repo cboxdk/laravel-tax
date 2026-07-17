@@ -19,6 +19,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | EU VAT live rate feed (optional)
+    |--------------------------------------------------------------------------
+    |
+    | A real, public, MIT-licensed feed of EU member-state VAT rates: the
+    | community-maintained ibericode/vat-rates dataset. Enable it to compose
+    | ChainTaxRateSource(EU feed -> static snapshot): the feed is authoritative,
+    | the shipped static rates are the fallback. Disabled by default, so the static
+    | snapshot stays the zero-config default. The URL is config-driven (point it at
+    | a pinned/mirrored copy if you prefer); a URL source is wrapped in the cache
+    | automatically. See docs/coverage/eu-vat-feed.md for the source + license.
+    |
+    */
+
+    'eu_vat' => [
+        'enabled' => env('TAX_EU_VAT_FEED', false),
+        'url' => env('TAX_EU_VAT_URL', 'https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | EU TEDB rate feed (optional)
     |--------------------------------------------------------------------------
     |

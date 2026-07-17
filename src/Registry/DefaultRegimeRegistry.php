@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Registry;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRegime;
@@ -35,11 +36,14 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
      *
      * The optional {@see JurisdictionRepository} lets the EU regime resolve the
      * seller's origin jurisdiction for Art. 59c micro-business sourcing; without it
-     * the regime falls back to destination taxation.
+     * the regime falls back to destination taxation. The optional
+     * {@see NexusThresholds} lets the US regime annotate a `NotRegistered` outcome
+     * with the state's economic-nexus threshold.
      */
     public static function withDefaults(
         ?ProductTaxability $taxability = null,
         ?JurisdictionRepository $jurisdictions = null,
+        ?NexusThresholds $nexusThresholds = null,
     ): self {
         $national = new NationalTaxRegime;
 
@@ -68,7 +72,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds),
             'ca-gst' => new CaGstRegime,
         ]);
     }

@@ -13,11 +13,14 @@ are illustrative starting points unless a live source is bound.
 ## EU — VAT (`eu-vat`)
 
 All 27 member states. Destination VAT for B2C digital (Art. 58); intra-EU B2B to a
-VIES-validated customer reverse-charges (Art. 44). Authoritative rate source: the
-**EU Commission TEDB** feed (all 27 + Northern Ireland), via the
-[`TedbRateSource`](../extension-points/rate-sources.md) adapter. Confidence:
-**high** (regime + threshold grounded from EU primary law; rates from the official
-EU feed once bound).
+VIES-validated customer reverse-charges (Art. 44). Rate source: a **real, public,
+MIT-licensed EU VAT dataset** (`ibericode/vat-rates`), via the
+[`IbericodeVatRateSource`](eu-vat-feed.md) adapter — enable it to compose
+`ChainTaxRateSource(EU feed → static snapshot)`. For a primary-source feed, point
+the config URL at an EU Commission TEDB export instead (via the generic
+[`TedbRateSource`](../extension-points/rate-sources.md)). Confidence: **high**
+(regime + threshold grounded from EU primary law; rates from the bound community
+feed — a good default, re-verify against member-state guidance before filing).
 
 **€10,000 micro-business threshold (Art. 59c).** The regime is threshold-aware: a
 seller established in a single member state, **below** the €10,000 combined
@@ -107,10 +110,11 @@ Confidence: **high**.
 
 ## United States — sales tax (`us-sales-tax`) — LOGIC ONLY, not production-ready
 
-> **The US regime is not production-ready for automatic tax.** The package ships
-> the *logic* (the three gates below), but the *datasets* those gates need are
-> **not shipped and must be bound before any US customer can be invoiced
-> correctly.** Do not rely on the shipped defaults for US sales tax.
+> **The US regime is not production-ready for fully automatic tax.** The package
+> ships the *logic* (the three gates below) plus **cited SaaS-taxability and
+> economic-nexus data** — but the **local (rooftop) rate feed is still not
+> shipped**, and the SaaS/nexus data is a decision aid to verify with a tax
+> advisor. Do not rely on the shipped defaults alone for US sales tax.
 
 Sub-federal. Three gates before a rate applies: the **state** must be resolved
 (via an `AddressGeocoder`), the seller must have **nexus** in it, and the product
@@ -120,13 +124,15 @@ versus what you must supply:
 | Concern | Shipped | What is required for correctness |
 | --- | --- | --- |
 | Sourcing / nexus / taxability **logic** | ✅ the regime | — |
-| Per-state SaaS **taxability** | ❌ `StaticProductTaxability` **defaults everything to taxable** (no SaaS map) | a per-state taxability dataset; SaaS taxability varies by state and the SST matrix has no SaaS definition |
+| Per-state SaaS **taxability** | ⚠️ a **curated, cited** `digital_service` map for 40 states (18 taxable, 22 exempt) — [details](us-saas-taxability.md) | verify with a tax advisor; the 7 undetermined states (AL, MS, TX, IA, OH, MD, AK) and home-rule localities are **absent → you configure them** |
 | **Local (rooftop) rates** | ❌ only illustrative state base rates; the shipped `GeocodioGeocoder` resolves **state-level only** | a rooftop rate feed (e.g. SST Rate & Boundary files, home-rule feeds such as Colorado/Alabama, or a commercial adapter) — city/district rates stack on the state base and are not resolved without one |
-| **Economic-nexus thresholds** | ❌ not evaluated — nexus is asserted only by an explicit seller `SellerRegistration` | a per-state economic-nexus threshold dataset if you want nexus determined from turnover/transaction counts rather than asserted |
+| **Economic-nexus thresholds** | ⚠️ a **cited** per-state *Wayfair* threshold table flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the table advises, it does not auto-register or evaluate per invoice |
 
-Until a real taxability map, a rooftop rate feed, and (if needed) nexus-threshold
-data are bound, the US regime will under- or over-charge. Confidence: **high on
-logic; the required per-state datasets are NOT shipped.**
+The US regime now ships **cited SaaS-taxability and nexus-threshold data**, but the
+**local (rooftop) rate feed is still not shipped**, so a US assessment can still be
+under/over-charged on local rates. The shipped US data is a decision aid — Confidence:
+**high on logic; SaaS + nexus data cited but advisor-verify; rooftop rates NOT
+shipped.**
 
 ## Canada — GST/HST (`ca-gst`)
 

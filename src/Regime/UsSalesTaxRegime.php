@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Regime;
 
+use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
@@ -26,12 +28,22 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  *
  * Only then is the state (and, where resolved, local) rate applied. Nothing is
  * ever guessed: an unresolved state or a missing rate refuses.
+ *
+ * Nexus itself is asserted by an explicit seller registration; the regime never
+ * infers it from a single invoice (economic nexus turns on the seller's
+ * *cumulative* volume in the state, which one supply does not carry). When an
+ * optional {@see NexusThresholds} source is supplied, a `NotRegistered` outcome is
+ * annotated with the state's published economic-nexus threshold, so an operator is
+ * flagged to check whether a registration obligation has been triggered.
  */
 readonly class UsSalesTaxRegime implements TaxRegime
 {
     use AppliesTaxRate;
 
-    public function __construct(private ProductTaxability $taxability) {}
+    public function __construct(
+        private ProductTaxability $taxability,
+        private ?NexusThresholds $nexusThresholds = null,
+    ) {}
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
@@ -49,7 +61,11 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 gross: $query->amount,
                 placeOfSupply: $query->place,
                 rate: null,
-                reason: sprintf('US sales tax: seller has no nexus/registration in %s; no obligation to collect.', $subdivision->value),
+                reason: sprintf(
+                    'US sales tax: seller has no nexus/registration in %s; no obligation to collect.%s',
+                    $subdivision->value,
+                    $this->nexusHint($subdivision),
+                ),
             );
         }
 
@@ -81,6 +97,25 @@ readonly class UsSalesTaxRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf('US sales tax: %s%% in %s.', $rate->percentage, $subdivision->value),
+        );
+    }
+
+    /**
+     * An advisory suffix naming the state's economic-nexus threshold, so an
+     * unregistered seller is flagged to verify whether the *Wayfair* trigger has
+     * been crossed. Empty when no threshold source is bound or the state has none.
+     */
+    private function nexusHint(SubdivisionCode $subdivision): string
+    {
+        $threshold = $this->nexusThresholds?->for($subdivision);
+
+        if ($threshold === null) {
+            return '';
+        }
+
+        return sprintf(
+            ' Economic-nexus threshold there is %s — verify whether you have crossed it and must register.',
+            $threshold->describe(),
         );
     }
 }

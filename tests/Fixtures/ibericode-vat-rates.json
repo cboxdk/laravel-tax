@@ -1,0 +1,76 @@
+{
+    "details": "https://github.com/ibericode/vat-rates",
+    "version": 4,
+    "items": {
+        "DK": [
+            {
+                "effective_from": "0000-01-01",
+                "rates": {
+                    "standard": 25
+                }
+            }
+        ],
+        "DE": [
+            {
+                "effective_from": "2021-01-01",
+                "rates": {
+                    "reduced": 7,
+                    "standard": 19
+                },
+                "exceptions": [
+                    {
+                        "name": "Büsingen am Hochrhein",
+                        "postcode": "78266",
+                        "standard": 0
+                    },
+                    {
+                        "name": "Heligoland",
+                        "postcode": "27498",
+                        "standard": 0
+                    }
+                ]
+            },
+            {
+                "effective_from": "2020-07-01",
+                "rates": {
+                    "reduced": 5,
+                    "standard": 16
+                }
+            },
+            {
+                "effective_from": "0000-01-01",
+                "rates": {
+                    "reduced": 7,
+                    "standard": 19
+                }
+            }
+        ],
+        "FR": [
+            {
+                "effective_from": "2014-01-01",
+                "rates": {
+                    "super_reduced": 2.1,
+                    "reduced1": 5.5,
+                    "reduced2": 10,
+                    "standard": 20
+                },
+                "exceptions": [
+                    {
+                        "name": "Guadeloupe",
+                        "postcode": "971\\d{2,}",
+                        "standard": 8.5
+                    }
+                ]
+            },
+            {
+                "effective_from": "2012-01-01",
+                "rates": {
+                    "super_reduced": 2.1,
+                    "reduced1": 5.5,
+                    "reduced2": 7,
+                    "standard": 19.6
+                }
+            }
+        ]
+    }
+}

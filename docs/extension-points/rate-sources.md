@@ -23,7 +23,7 @@ Recommended defaults per region:
 
 | Region | Source |
 | --- | --- |
-| EU | the EU Commission's TEDB rate feed |
+| EU | the MIT-licensed `ibericode/vat-rates` dataset (shipped adapter), or an EU Commission TEDB export |
 | US (SST states) | the SST Rate & Boundary files |
 | US (non-SST / home-rule), Canada provinces | a commercial adapter |
 
@@ -54,6 +54,38 @@ new StaticTaxRateSource(rates: null, bands: [
 > that must come from an authoritative feed. Supply your own bands, or bind a TEDB
 > export whose entries carry a `bands` map. A category with no band resolves the
 > standard rate.
+
+## The EU VAT feed (`IbericodeVatRateSource`)
+
+`IbericodeVatRateSource` binds a **real, public, MIT-licensed** EU VAT-rate dataset
+— the community-maintained
+[`ibericode/vat-rates`](https://github.com/ibericode/vat-rates) feed
+(`https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json`). Its
+source, license, shape and honest-provenance notes are documented in
+[EU VAT rate feed](../coverage/eu-vat-feed.md).
+
+Enable it and the provider composes `ChainTaxRateSource(EU feed → static snapshot)`:
+
+```dotenv
+TAX_EU_VAT_FEED=true
+# Optional: pin to a mirror or a TEDB export.
+# TAX_EU_VAT_URL=https://your-mirror.example/vat-rates.json
+```
+
+It reads the real dataset shape (`items` keyed by country → date-effective rate
+periods) and selects the period **in force** at the assessment date. The dataset's
+reduced tiers are not category-labelled, so it resolves the **standard** rate by
+default; pass an authoritative `TaxCategory → tier` map to surface a reduced tier:
+
+```php
+use Cbox\Tax\RateSource\IbericodeVatRateSource;
+
+new IbericodeVatRateSource(
+    $app->make(\Illuminate\Http\Client\Factory::class),
+    config('tax.eu_vat.url'),
+    categoryTiers: ['digital_service' => 'reduced1'], // operator-asserted mapping
+);
+```
 
 ## The TEDB adapter
 
@@ -92,8 +124,11 @@ fallback:
 
 - **`StaticTaxRateSource`** — the built-in map (default binding); accepts optional
   reduced/zero `bands`.
-- **`TedbRateSource`** — reads a TEDB-derived dataset (URL or file); auto-wired to a
-  `ChainTaxRateSource` fallback when `tax.tedb.url` is set.
+- **`IbericodeVatRateSource`** — reads the real MIT-licensed `ibericode/vat-rates`
+  EU dataset (URL or file), date-effective; auto-wired to a `ChainTaxRateSource`
+  fallback when `tax.eu_vat.enabled` is true.
+- **`TedbRateSource`** — reads a normalised TEDB-derived dataset (URL or file);
+  auto-wired to a `ChainTaxRateSource` fallback when `tax.tedb.url` is set.
 - **`RemoteRateSource`** — fetches a generic JSON country→rate feed (number,
   `{standard}`, or `{standard, bands}`); one request per lookup, so wrap it in caching.
 - **`CachingTaxRateSource`** — caches the current rate from an inner source; a
