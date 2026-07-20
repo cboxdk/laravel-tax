@@ -87,6 +87,18 @@ them (none are fabricated by default).
 
 Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 
+## Buyer exemptions
+
+A query may carry a native buyer **exemption** (a resale / nonprofit / government
+certificate) on `TaxQuery::$exemption`. Applied deny-by-default over the regime's
+verdict, a valid exemption that covers the taxed jurisdiction rewrites a would-be
+`Standard` line to `Exempt` (net kept, tax 0, gross = net) with the certificate
+reference recorded on the assessment; reverse-charge, not-registered and zero-rated
+outcomes are left untouched, and an exemption for a different jurisdiction or an
+expired one does not exempt. The engine computes the assessment; **certificate
+capture and verification are the consumer's concern.** See
+[`docs/core-concepts/exemptions.md`](docs/core-concepts/exemptions.md).
+
 ## Design
 
 - **Contracts-first.** `TaxCalculator`, `TaxRegime`, `TaxRateSource`,

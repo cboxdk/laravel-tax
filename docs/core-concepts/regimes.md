@@ -57,3 +57,12 @@ destination tax is charged.
 
 A jurisdiction whose `regimeModule` is not registered at all still raises
 `UnsupportedJurisdiction` — never guessed.
+
+## Buyer exemptions
+
+Independently of the regime, a query may carry a buyer
+[exemption](exemptions.md) certificate. The calculator applies it *after* the
+regime's verdict, deny-by-default: a valid exemption covering the taxed
+jurisdiction rewrites a would-be `Standard` line to `Exempt`, and leaves
+reverse-charge, not-registered and zero-rated outcomes untouched. It works across
+every regime because it composes over the assessment, not inside each regime.

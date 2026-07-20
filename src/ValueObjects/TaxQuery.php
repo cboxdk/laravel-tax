@@ -20,6 +20,13 @@ use Cbox\Tax\Enums\TaxCategory;
  * `customerTaxIdValidated` records that the business customer's tax ID was
  * verified (e.g. via VIES for the EU) — reverse-charge zero-rating legally hinges
  * on it, so the engine only applies reverse-charge when it is true.
+ *
+ * `exemption` carries an optional buyer tax exemption ({@see TaxExemption}) the
+ * consumer has captured and verified — a resale/nonprofit/government certificate.
+ * The engine applies it deny-by-default: it only exempts a would-be standard-taxed
+ * supply, and only when the exemption is valid and covers the place of supply. The
+ * consumer owns certificate capture and verification; the engine owns the
+ * assessment.
  */
 readonly class TaxQuery
 {
@@ -31,6 +38,7 @@ readonly class TaxQuery
         public SellerRegistrations $seller,
         public TaxCategory $category = TaxCategory::Standard,
         public bool $customerTaxIdValidated = false,
+        public ?TaxExemption $exemption = null,
     ) {}
 
     public function isBusiness(): bool

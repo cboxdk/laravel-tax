@@ -18,5 +18,5 @@ Every supply is assessed against a jurisdiction resolved from
 ## Sections
 
 - [Getting started](getting-started/_index.md)
-- [Core concepts](core-concepts/_index.md) — architecture and regimes.
+- [Core concepts](core-concepts/_index.md) — architecture, regimes, and exemptions.
 - [Extension points](extension-points/_index.md) — rate sources and custom regimes.
