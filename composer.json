@@ -12,13 +12,6 @@
         "illuminate/http": "^13.0",
         "illuminate/support": "^13.0"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../laravel-geo",
-            "options": { "symlink": true }
-        }
-    ],
     "require-dev": {
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",
