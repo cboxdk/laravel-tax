@@ -7,13 +7,16 @@ namespace Cbox\Tax\Taxability;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
 
 /**
- * A taxability matrix backed by a static override map. Everything is taxable by
- * default; overrides mark specific jurisdiction/category combinations as exempt.
- * This is a safe, predictable default — production should bind a matrix sourced
- * from an authoritative feed (e.g. the SST taxability matrices) for per-state SaaS
- * taxability, which is DATA that changes.
+ * A taxability matrix backed by a static override map. Standard goods are taxable
+ * by default, but US digital services are explicit-only: SaaS taxability is too
+ * state-specific to infer from the standard goods rule.
+ *
+ * Production should bind a matrix sourced from an authoritative feed (e.g. the
+ * SST taxability matrices and state/local guidance), because taxability is DATA
+ * that changes.
  */
 readonly class StaticProductTaxability implements ProductTaxability
 {
@@ -29,7 +32,17 @@ readonly class StaticProductTaxability implements ProductTaxability
             ? $jurisdiction->subdivision->value
             : $jurisdiction->country->value;
 
-        return $this->overrides[$where.':'.$category->value] ?? true;
+        $key = $where.':'.$category->value;
+
+        if (array_key_exists($key, $this->overrides)) {
+            return $this->overrides[$key];
+        }
+
+        if ($jurisdiction->country->value === 'US' && $category === TaxCategory::DigitalService) {
+            throw UnresolvedProductTaxability::for($jurisdiction, $category);
+        }
+
+        return true;
     }
 
     /**
@@ -39,9 +52,9 @@ readonly class StaticProductTaxability implements ProductTaxability
      * retrieved 2026-07-17); only states where BOTH compilations agree on a clear
      * taxable/exempt determination are included. See
      * `docs/coverage/us-saas-taxability.md` for the per-state citations and the
-     * states left UNDETERMINED (conflicting sources, or B2B/B2C-conditional and
-     * partial regimes a boolean cannot represent) — those are deliberately ABSENT
-     * so an operator must configure them.
+     * states left UNDETERMINED (home-rule-only, conflicting sources, or
+     * B2B/B2C-conditional and partial regimes a boolean cannot represent) — those
+     * are deliberately ABSENT so an operator must configure them.
      *
      * The map covers the `digital_service` category only; tangible goods
      * (`standard`) remain taxable-by-default. State-level determinations do not
@@ -62,6 +75,8 @@ readonly class StaticProductTaxability implements ProductTaxability
             'US-AR', 'US-CA', 'US-CO', 'US-FL', 'US-GA', 'US-ID', 'US-IL', 'US-IN',
             'US-KS', 'US-ME', 'US-MI', 'US-MN', 'US-MO', 'US-NE', 'US-NV', 'US-NJ',
             'US-NC', 'US-ND', 'US-OK', 'US-VA', 'US-WI', 'US-WY',
+            // No general statewide sales tax.
+            'US-DE', 'US-MT', 'US-NH', 'US-OR',
         ];
 
         $overrides = [];

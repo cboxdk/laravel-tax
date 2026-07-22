@@ -77,6 +77,10 @@ it('falls back to the static snapshot when TEDB has no rate for the country', fu
 });
 
 it('activates the TEDB chain only when tax.tedb.url is configured', function () {
+    // Isolate from the US dataset (enabled by default): with no feeds configured,
+    // the bound source is the plain static snapshot.
+    config()->set('tax.us_tax_data.enabled', false);
+
     // Unconfigured (default): the bound source is the plain static snapshot.
     expect($this->app->make(TaxRateSource::class))->toBeInstanceOf(StaticTaxRateSource::class);
 

@@ -7,11 +7,18 @@
     "require": {
         "php": "^8.4",
         "brick/money": "^0.14",
-        "cboxdk/laravel-geo": "^0.4",
+        "cboxdk/laravel-geo": "^0.5",
         "illuminate/contracts": "^13.0",
         "illuminate/http": "^13.0",
         "illuminate/support": "^13.0"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../laravel-geo",
+            "options": { "symlink": true }
+        }
+    ],
     "require-dev": {
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",

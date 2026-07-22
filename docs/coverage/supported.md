@@ -124,8 +124,8 @@ versus what you must supply:
 | Concern | Shipped | What is required for correctness |
 | --- | --- | --- |
 | Sourcing / nexus / taxability **logic** | ✅ the regime | — |
-| Per-state SaaS **taxability** | ⚠️ a **curated, cited** `digital_service` map for 40 states (18 taxable, 22 exempt) — [details](us-saas-taxability.md) | verify with a tax advisor; the 7 undetermined states (AL, MS, TX, IA, OH, MD, AK) and home-rule localities are **absent → you configure them** |
-| **Local (rooftop) rates** | ❌ only illustrative state base rates; the shipped `GeocodioGeocoder` resolves **state-level only** | a rooftop rate feed (e.g. SST Rate & Boundary files, home-rule feeds such as Colorado/Alabama, or a commercial adapter) — city/district rates stack on the state base and are not resolved without one |
+| Per-state SaaS **taxability** | ⚠️ a **curated, cited** `digital_service` map for 44 jurisdictions (18 taxable, 26 exempt/no-general-sales-tax) — [details](us-saas-taxability.md) | verify with a tax advisor; the 7 undetermined jurisdictions (AL, MS, TX, IA, OH, MD, AK) and home-rule localities throw `UnresolvedProductTaxability` until you configure them |
+| **Local (rooftop) rates** | ❌ only illustrative state base rates for non-SaaS examples; the shipped `GeocodioGeocoder` resolves **state-level only**, and `StaticTaxRateSource` refuses US `digital_service` rates unless a category-specific rate is bound | a rooftop rate feed (e.g. SST Rate & Boundary files, home-rule feeds such as Colorado/Alabama, or a commercial adapter) — city/district rates stack on the state base and are not resolved without one |
 | **Economic-nexus thresholds** | ⚠️ a **cited** per-state *Wayfair* threshold table flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the table advises, it does not auto-register or evaluate per invoice |
 
 The US regime now ships **cited SaaS-taxability and nexus-threshold data**, but the

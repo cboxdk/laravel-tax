@@ -6,6 +6,11 @@ description: The cited per-state economic-nexus (Wayfair) threshold table the en
 
 # US economic-nexus thresholds
 
+> **Now dataset-backed.** The default `NexusThresholds` source is the
+> [us-tax-data dataset](us-tax-dataset.md); the cited static table below is the
+> fallback used when the dataset is disabled. The *Wayfair* model and the engine's
+> use of the thresholds are unchanged.
+
 After *South Dakota v. Wayfair* (2018), a remote seller with no physical presence
 can still owe sales tax once its sales into a state cross that state's **economic
 nexus** threshold. These thresholds are **published and largely stable**, so the

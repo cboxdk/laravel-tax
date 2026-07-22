@@ -93,6 +93,10 @@ it('falls back to the static snapshot when the feed has no rate for the country'
 });
 
 it('activates the EU VAT feed chain only when tax.eu_vat is enabled', function () {
+    // Isolate from the US dataset (enabled by default): with no feeds configured,
+    // the bound source is the plain static snapshot.
+    config()->set('tax.us_tax_data.enabled', false);
+
     // Unconfigured (default): the bound source is the plain static snapshot.
     expect($this->app->make(TaxRateSource::class))->toBeInstanceOf(StaticTaxRateSource::class);
 

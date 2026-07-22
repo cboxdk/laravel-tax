@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\DefaultTaxCalculator;
+use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxCategory;
@@ -16,6 +17,7 @@ use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -69,6 +71,31 @@ it('exempts a product that is not taxable in the state', function () {
 
     expect($a->treatment)->toBe(TaxTreatment::Exempt)
         ->and((string) $a->tax->getAmount())->toBe('0.00');
+});
+
+it('charges taxable US SaaS at the dataset state rate', function () {
+    // NY taxes SaaS (digital_service) and the dataset carries NY's 4% state rate,
+    // so a taxable digital service now resolves to the state rate instead of
+    // refusing for want of one.
+    $a = $this->tax->assess(usBuyer('US-NY', 'US-NY', TaxCategory::DigitalService));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $a->tax->getAmount())->toBe('4.00') // NY state rate 4%
+        ->and($a->rate->confidence)->toBe(Confidence::Derived); // state-level, not rooftop all-in
+});
+
+it('charges taxable US SaaS when an explicit SaaS category rate is bound', function () {
+    $registry = DefaultRegimeRegistry::withDefaults(
+        new StaticProductTaxability(['US-NY:digital_service' => true]),
+    );
+    $calc = new DefaultTaxCalculator($registry, new StaticTaxRateSource(null, [
+        'US-NY:digital_service' => new RateBand('8.875'),
+    ]));
+
+    $a = $calc->assess(usBuyer('US-NY', 'US-NY', TaxCategory::DigitalService));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $a->tax->getAmount())->toBe('8.88');
 });
 
 it('refuses US sales tax without a resolved state', function () {

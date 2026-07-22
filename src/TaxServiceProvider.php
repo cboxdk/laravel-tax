@@ -10,19 +10,25 @@ use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
+use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Nexus\StaticNexusThresholds;
+use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\IbericodeVatRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbRateSource;
+use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
+use Cbox\Tax\Sourcing\UsTaxDatasetSourcing;
 use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
 use Cbox\Tax\Validators\HmrcVatValidator;
@@ -32,6 +38,7 @@ use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 /**
  * Package entry point. Binds the engine, the shipped regime registry and a default
@@ -66,6 +73,14 @@ class TaxServiceProvider extends ServiceProvider
                 $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);
             }
 
+            // The US dataset owns US rates (the static snapshot carries none). It is
+            // US-only, so it returns null elsewhere and the chain falls through.
+            $dataset = self::usTaxDataset($app);
+
+            if ($dataset !== null) {
+                $sources[] = new UsTaxDatasetRateSource($dataset);
+            }
+
             if ($sources === []) {
                 return $static;
             }
@@ -75,9 +90,35 @@ class TaxServiceProvider extends ServiceProvider
             return new ChainTaxRateSource($sources);
         });
 
-        $this->app->singleton(ProductTaxability::class, static fn (): StaticProductTaxability => new StaticProductTaxability(StaticProductTaxability::unitedStatesSaas()));
+        // US taxability/nexus/sourcing come from the dataset when enabled (the
+        // default), replacing the hardcoded static US tables; the static matrix
+        // stays the fallback for non-US and for US pairs the dataset leaves
+        // undetermined. Disabled, the shipped static US snapshot is used.
+        $this->app->singleton(ProductTaxability::class, static function (Application $app): ProductTaxability {
+            $dataset = self::usTaxDataset($app);
 
-        $this->app->singleton(NexusThresholds::class, static fn (): StaticNexusThresholds => new StaticNexusThresholds);
+            return $dataset !== null
+                ? new UsTaxDatasetTaxability($dataset, new StaticProductTaxability)
+                : new StaticProductTaxability(StaticProductTaxability::unitedStatesSaas());
+        });
+
+        $this->app->singleton(NexusThresholds::class, static function (Application $app): NexusThresholds {
+            $dataset = self::usTaxDataset($app);
+
+            return $dataset !== null ? new UsTaxDatasetNexus($dataset) : new StaticNexusThresholds;
+        });
+
+        // Intrastate sourcing is a dataset-only plane (no static equivalent shipped):
+        // bound when the dataset is enabled, left unbound otherwise (deny-by-default).
+        $this->app->singleton(SourcingRules::class, static function (Application $app): SourcingRules {
+            $dataset = self::usTaxDataset($app);
+
+            if ($dataset === null) {
+                throw new RuntimeException('Intrastate sourcing requires the us-tax-data dataset (tax.us_tax_data.enabled).');
+            }
+
+            return new UsTaxDatasetSourcing($dataset);
+        });
 
         $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
             return DefaultRegimeRegistry::withDefaults(
@@ -98,6 +139,36 @@ class TaxServiceProvider extends ServiceProvider
 
         $this->registerGeocoder();
         $this->registerVatIdValidator();
+    }
+
+    /**
+     * Build the shared us-tax-data loader when enabled (the default), reading its
+     * config-driven location. The loader caches fetched sections itself, so it is
+     * shared across the rate/taxability/nexus/sourcing bindings. Returns null when
+     * the dataset is disabled, so those bindings fall back to the static snapshot.
+     */
+    private static function usTaxDataset(Application $app): ?UsTaxDataset
+    {
+        $config = $app->make(Config::class);
+
+        if ($config->get('tax.us_tax_data.enabled') !== true) {
+            return null;
+        }
+
+        $location = $config->get('tax.us_tax_data.location');
+
+        if (! is_string($location) || $location === '') {
+            return null;
+        }
+
+        $ttl = $config->get('tax.us_tax_data.ttl');
+
+        return new UsTaxDataset(
+            $app->make(Factory::class),
+            $app->make(Cache::class),
+            $location,
+            is_int($ttl) ? $ttl : 86400,
+        );
     }
 
     /**
@@ -169,11 +240,15 @@ class TaxServiceProvider extends ServiceProvider
         $baseUrl = $config->get('tax.geocodio.base_url');
         $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v1.7';
 
+        // Rooftop county-FIPS capture is opt-in (partial; see tax.us_tax_data.rooftop).
+        $rooftop = $config->get('tax.us_tax_data.rooftop') === true;
+
         $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(
             $app->make(Factory::class),
             $app->make(JurisdictionRepository::class),
             $key,
             $baseUrl,
+            $rooftop,
         ));
     }
 

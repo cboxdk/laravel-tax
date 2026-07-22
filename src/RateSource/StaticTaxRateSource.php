@@ -60,6 +60,10 @@ readonly class StaticTaxRateSource implements TaxRateSource
             );
         }
 
+        if ($jurisdiction->country->value === 'US' && $category === TaxCategory::DigitalService) {
+            return null;
+        }
+
         // Prefer a subdivision-level rate (US states, Canadian provinces), then
         // fall back to the national rate.
         $percentage = null;
@@ -134,10 +138,8 @@ readonly class StaticTaxRateSource implements TaxRateSource
             'TR' => '20', 'CL' => '19', 'ID' => '11', 'VN' => '10', 'PH' => '12',
             // Round-6 primary-source-verified rates (JP/KR/TH/UA national VAT; MY SST service tax).
             'JP' => '10', 'KR' => '10', 'TH' => '7', 'UA' => '20', 'MY' => '8',
-            // US state base rates (local district rates stack on top via rooftop
-            // resolution — these are illustrative state-level defaults).
-            'US-CA' => '7.25', 'US-NY' => '4', 'US-TX' => '6.25', 'US-WA' => '6.5',
-            'US-CO' => '2.9', 'US-FL' => '6', 'US-IL' => '6.25', 'US-OH' => '5.75',
+            // US state/local rates are owned by the us-tax-data dataset (bound via
+            // UsTaxDatasetRateSource) — not this snapshot. See config `us_tax_data`.
             // Canadian provinces — combined GST/HST or GST+PST/QST (no local tax).
             'CA-ON' => '13', 'CA-QC' => '14.975', 'CA-BC' => '12', 'CA-AB' => '5',
             'CA-NS' => '14', 'CA-NB' => '15', 'CA-MB' => '12', 'CA-SK' => '11',

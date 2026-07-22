@@ -7,6 +7,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 
 beforeEach(function () {
@@ -27,14 +28,17 @@ it('treats SaaS as exempt in states that clearly exempt it', function (string $s
     expect($this->taxability->isTaxable(usPlace($state), TaxCategory::DigitalService))->toBeFalse();
 })->with(['US-CA', 'US-FL', 'US-GA', 'US-VA', 'US-MN', 'US-NJ']);
 
-it('leaves undetermined states absent (falls through to the taxable default)', function (string $state) {
-    // AL, MS (source conflict) and TX, IA, OH, MD (conditional/partial) are NOT in
-    // the curated map: the boolean contract cannot represent "undetermined", so they
-    // fall through to the safe over-collection default (taxable). Operators MUST
-    // configure these — see docs/coverage/us-saas-taxability.md.
+it('leaves undetermined states absent and refuses to guess', function (string $state) {
     $overrides = StaticProductTaxability::unitedStatesSaas();
     expect($overrides)->not->toHaveKey($state.':'.TaxCategory::DigitalService->value);
-})->with(['US-AL', 'US-MS', 'US-TX', 'US-IA', 'US-OH', 'US-MD']);
+
+    $this->taxability->isTaxable(usPlace($state), TaxCategory::DigitalService);
+})->throws(UnresolvedProductTaxability::class)
+    ->with(['US-AL', 'US-MS', 'US-TX', 'US-IA', 'US-OH', 'US-MD', 'US-AK']);
+
+it('treats no-general-sales-tax states as exempt at state level', function (string $state) {
+    expect($this->taxability->isTaxable(usPlace($state), TaxCategory::DigitalService))->toBeFalse();
+})->with(['US-DE', 'US-MT', 'US-NH', 'US-OR']);
 
 it('does not touch tangible-goods (standard) taxability', function () {
     // The SaaS map only overrides digital_service; standard goods stay taxable.

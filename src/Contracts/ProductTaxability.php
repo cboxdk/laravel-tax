@@ -14,7 +14,9 @@ use Cbox\Tax\Enums\TaxCategory;
  * standard rate and do not consult it.
  *
  * Sourced DATA, like rates: bind a matrix backed by an authoritative source (e.g.
- * the SST taxability matrices) in production.
+ * the SST taxability matrices) in production. Implementations may throw when a
+ * category/jurisdiction is unknown; callers should treat that as a hard block,
+ * not as taxable or exempt.
  */
 interface ProductTaxability
 {

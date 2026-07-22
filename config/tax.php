@@ -19,6 +19,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | US tax dataset (us-tax-data)
+    |--------------------------------------------------------------------------
+    |
+    | The authoritative US source: the compiled us-tax-data dataset (schemaVersion
+    | 3) supplying all-51 state rates, product taxability (25 categories), economic
+    | nexus, and intrastate sourcing. Enabled by default — it REPLACES the hardcoded
+    | US entries in the static tables: the dataset-backed sources are bound for the
+    | US and composed ahead of the static snapshot (which now carries non-US only).
+    |
+    | `location` is an http(s) base URL (the public dataset mirror) or a local
+    | directory, under which the split files live at `by-section/<section>.json`.
+    | Only the small baseline/taxability/nexus/sourcing sections are fetched for the
+    | common state-level path; the bulky `rates` section is read lazily and only
+    | when a rooftop locality is resolved. Fetched sections are cached for `ttl`
+    | seconds. Point `location` at a pinned tag or a committed local copy for an
+    | offline/deterministic build; disable it to fall back to the static snapshot.
+    |
+    | `rooftop` (experimental, off by default) lets the Geocodio adapter capture a
+    | county FIPS as a locality so the rate source stacks a local rate. It is
+    | PARTIAL — the dataset's per-state local codes are heterogeneous and county
+    | FIPS cannot pick city/special-district records — so it is opt-in until a
+    | point→jurisdiction crosswalk lands. Absent a locality, the state rate applies.
+    |
+    */
+
+    'us_tax_data' => [
+        'enabled' => env('TAX_US_DATASET', true),
+        'location' => env('TAX_US_DATASET_LOCATION', 'https://raw.githubusercontent.com/cboxdk/us-tax-dataset/main'),
+        'ttl' => (int) env('TAX_US_DATASET_TTL', 86400),
+        'rooftop' => env('TAX_US_DATASET_ROOFTOP', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | EU VAT live rate feed (optional)
     |--------------------------------------------------------------------------
     |
