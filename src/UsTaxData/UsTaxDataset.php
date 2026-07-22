@@ -8,12 +8,13 @@ use Brick\Math\BigDecimal;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\ValueObjects\TaxRate;
+use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Http\Client\Factory;
 use Throwable;
 
 /**
- * Loads the compiled us-tax-data dataset (schemaVersion 3) and exposes typed,
+ * Loads the compiled us-tax-data dataset (schemaVersion 4) and exposes typed,
  * per-state access to its four planes: state rates, product taxability, economic
  * nexus, and intrastate sourcing. It reads the SPLIT `by-section` files, not the
  * multi-megabyte full artifact, so the common (state-level) path only ever
@@ -49,8 +50,7 @@ readonly class UsTaxDataset
      */
     public function stateRatePercent(string $state): ?string
     {
-        $entry = $this->stateEntry('baseline', $state);
-        $baseline = is_array($entry) && is_array($entry['baseline'] ?? null) ? $entry['baseline'] : null;
+        $baseline = $this->currentBaseline($state);
 
         if ($baseline === null || ($baseline['noSalesTax'] ?? null) === true) {
             return null;
@@ -62,10 +62,23 @@ readonly class UsTaxDataset
     /** Whether the state levies no general sales tax (DE, MT, NH, OR). */
     public function hasNoSalesTax(string $state): bool
     {
-        $entry = $this->stateEntry('baseline', $state);
-        $baseline = is_array($entry) && is_array($entry['baseline'] ?? null) ? $entry['baseline'] : null;
+        $baseline = $this->currentBaseline($state);
 
-        return is_array($baseline) && ($baseline['noSalesTax'] ?? null) === true;
+        return $baseline !== null && ($baseline['noSalesTax'] ?? null) === true;
+    }
+
+    /**
+     * The baseline window in effect now — the curated planes are dated-window
+     * lists (schemaVersion 4), so pick the one covering today.
+     *
+     * @return array<array-key, mixed>|null
+     */
+    private function currentBaseline(string $state): ?array
+    {
+        $entry = $this->stateEntry('baseline', $state);
+        $windows = is_array($entry) && is_array($entry['baseline'] ?? null) ? $entry['baseline'] : null;
+
+        return $windows === null ? null : $this->activeWindow($windows);
     }
 
     /**
@@ -120,24 +133,32 @@ readonly class UsTaxDataset
             return null;
         }
 
+        // Taxability is a dated-window list; a category may carry several windows.
+        // Take the window for this category in effect now.
+        $matching = [];
+
         foreach ($rules as $rule) {
-            if (! is_array($rule) || ($rule['category'] ?? null) !== $category) {
-                continue;
+            if (is_array($rule) && ($rule['category'] ?? null) === $category) {
+                $matching[] = $rule;
             }
-
-            $treatmentValue = $rule['treatment'] ?? null;
-            $treatment = is_string($treatmentValue) ? TaxabilityTreatment::tryFrom($treatmentValue) : null;
-
-            if ($treatment === null) {
-                return null;
-            }
-
-            $conditions = is_array($rule['conditions'] ?? null) ? $rule['conditions'] : null;
-
-            return new TaxabilityDetermination($treatment, $treatment->isTaxable(), $conditions);
         }
 
-        return null;
+        $rule = $this->activeWindow($matching);
+
+        if ($rule === null) {
+            return null;
+        }
+
+        $treatmentValue = $rule['treatment'] ?? null;
+        $treatment = is_string($treatmentValue) ? TaxabilityTreatment::tryFrom($treatmentValue) : null;
+
+        if ($treatment === null) {
+            return null;
+        }
+
+        $conditions = is_array($rule['conditions'] ?? null) ? $rule['conditions'] : null;
+
+        return new TaxabilityDetermination($treatment, $treatment->isTaxable(), $conditions);
     }
 
     /**
@@ -147,9 +168,10 @@ readonly class UsTaxDataset
      */
     public function nexus(string $state): ?array
     {
-        $nexus = $this->stateEntry('nexus', $state);
+        $windows = $this->stateEntry('nexus', $state);
+        $nexus = is_array($windows) ? $this->activeWindow($windows) : null;
 
-        if (! is_array($nexus)) {
+        if ($nexus === null) {
             return null;
         }
 
@@ -176,9 +198,10 @@ readonly class UsTaxDataset
      */
     public function sourcing(string $state): ?array
     {
-        $sourcing = $this->stateEntry('sourcing', $state);
+        $windows = $this->stateEntry('sourcing', $state);
+        $sourcing = is_array($windows) ? $this->activeWindow($windows) : null;
 
-        if (! is_array($sourcing)) {
+        if ($sourcing === null) {
             return null;
         }
 
@@ -191,6 +214,37 @@ readonly class UsTaxDataset
         $note = $sourcing['note'] ?? null;
 
         return ['mode' => $mode, 'note' => is_string($note) ? $note : null];
+    }
+
+    /**
+     * The window in effect on `$at` (default: today) from a dated-window list —
+     * the record whose [effectiveFrom, effectiveTo] covers the date, else the
+     * first. Null for an empty list.
+     *
+     * @param  array<array-key, mixed>  $windows
+     * @return array<array-key, mixed>|null
+     */
+    private function activeWindow(array $windows, ?DateTimeImmutable $at = null): ?array
+    {
+        $date = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $fallback = null;
+
+        foreach ($windows as $window) {
+            if (! is_array($window)) {
+                continue;
+            }
+
+            $fallback ??= $window;
+
+            $from = is_string($window['effectiveFrom'] ?? null) ? $window['effectiveFrom'] : null;
+            $to = is_string($window['effectiveTo'] ?? null) ? $window['effectiveTo'] : null;
+
+            if (($from === null || $from <= $date) && ($to === null || $date <= $to)) {
+                return $window;
+            }
+        }
+
+        return $fallback;
     }
 
     /**

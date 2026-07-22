@@ -164,3 +164,28 @@ it('denies (returns null) when the dataset location is unreadable', function () 
 
     expect($source->rateFor(datasetPlace('US-CA'), TaxCategory::Standard))->toBeNull();
 });
+
+it('selects the nexus window in effect now over a future-dated one', function () {
+    // A state with a current window and a pending (future-dated) threshold change.
+    $dir = sys_get_temp_dir().'/us-dataset-'.bin2hex(random_bytes(5)).'/by-section';
+    mkdir($dir, 0o755, true);
+    file_put_contents($dir.'/nexus.json', json_encode(['states' => [
+        'US-XX' => [
+            ['salesUsd' => 500000, 'transactions' => null, 'combinator' => 'sales_only', 'effectiveFrom' => null, 'effectiveTo' => null],
+            ['salesUsd' => 250000, 'transactions' => null, 'combinator' => 'sales_only', 'effectiveFrom' => '2099-01-01', 'effectiveTo' => null],
+        ],
+    ]]));
+
+    $dataset = new UsTaxDataset(
+        $this->app->make(Factory::class),
+        $this->app->make(Cache::class),
+        dirname($dir),
+    );
+
+    // The open-ended current window ($500k) wins; the 2099 window is ignored today.
+    expect($dataset->nexus('US-XX'))->toBe([
+        'salesUsd' => 500000,
+        'transactions' => null,
+        'combinator' => 'sales_only',
+    ]);
+});
