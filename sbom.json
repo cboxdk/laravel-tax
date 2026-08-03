@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:71ae3d68-8a51-4d8b-9fc0-5ca50d15a2eb",
+    "serialNumber": "urn:uuid:b8f7e788-1082-4932-bc4e-48a932975756",
     "version": 1,
     "metadata": {
         "tools": [
@@ -245,11 +245,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.1",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.2",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.15.1",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.1",
+            "version": "7.15.2",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.2",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
