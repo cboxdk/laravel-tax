@@ -189,3 +189,36 @@ it('selects the nexus window in effect now over a future-dated one', function ()
         'combinator' => 'sales_only',
     ]);
 });
+
+// ---- Curated notes (the "see … note" caveats) ----------------------------
+
+it('exposes a state rate note and returns null where none is carried', function () {
+    // California carries a rate note (records are combined all-in); Arkansas carries none.
+    expect($this->dataset->rateNote('US-CA'))->toContain('CDTFA')
+        ->and($this->dataset->rateNote('US-TX'))->toContain('Point-in-time snapshot')
+        ->and($this->dataset->rateNote('US-AR'))->toBeNull()
+        ->and($this->dataset->rateNote('US-ZZ'))->toBeNull(); // unknown state
+});
+
+it('exposes a baseline note (in the window in effect now) and null where none is carried', function () {
+    // Delaware's baseline note explains the gross-receipts tax; Arkansas carries none.
+    expect($this->dataset->baselineNote('US-DE'))->toContain('gross receipts')
+        ->and($this->dataset->baselineNote('US-VA'))->toContain('mandatory statewide 1% local levy')
+        ->and($this->dataset->baselineNote('US-AR'))->toBeNull()
+        ->and($this->dataset->baselineNote('US-ZZ'))->toBeNull();
+});
+
+it('resolves the dataset from the container so consumers can read notes', function () {
+    // The fixture location is wired by the base TestCase, so the binding resolves a real dataset.
+    $resolved = $this->app->make(UsTaxDataset::class);
+
+    expect($resolved)->toBeInstanceOf(UsTaxDataset::class)
+        ->and($resolved->baselineNote('US-DE'))->toContain('gross receipts');
+});
+
+it('resolves to null when the US dataset is disabled', function () {
+    config()->set('tax.us_tax_data.enabled', false);
+    $this->app->forgetInstance(UsTaxDataset::class);
+
+    expect($this->app->make(UsTaxDataset::class))->toBeNull();
+});

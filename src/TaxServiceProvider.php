@@ -51,6 +51,13 @@ class TaxServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/tax.php', 'tax');
 
+        // The typed US dataset accessor, resolvable for consumers that want dataset METADATA
+        // beyond the rate/taxability/nexus/sourcing contracts — notably the curated rate and
+        // baseline notes (rateNote()/baselineNote(), the "see … note" caveats in the coverage
+        // matrix). Null when the dataset is disabled or unconfigured, so callers null-check
+        // (deny-by-default), exactly as the adapters below do.
+        $this->app->singleton(UsTaxDataset::class, static fn (Application $app): ?UsTaxDataset => self::usTaxDataset($app));
+
         $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
             $static = new StaticTaxRateSource;
 

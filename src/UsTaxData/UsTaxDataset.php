@@ -68,6 +68,20 @@ readonly class UsTaxDataset
     }
 
     /**
+     * The curated caveat on a state's BASELINE (the "see baseline note" in the dataset's
+     * coverage matrix) — e.g. that a no-sales-tax state still levies a gross-receipts tax, or
+     * that the statewide rate already folds in a mandatory local share. Reads the baseline
+     * window in effect now. Null when the state carries no baseline note.
+     */
+    public function baselineNote(string $state): ?string
+    {
+        $baseline = $this->currentBaseline($state);
+        $note = $baseline === null ? null : ($baseline['note'] ?? null);
+
+        return is_string($note) && $note !== '' ? $note : null;
+    }
+
+    /**
      * The baseline window in effect now — the curated planes are dated-window
      * lists (schemaVersion 4), so pick the one covering today.
      *
@@ -91,6 +105,20 @@ readonly class UsTaxDataset
         $basis = is_array($rates) ? ($rates['rateBasis'] ?? null) : null;
 
         return is_string($basis) ? RateBasis::tryFrom($basis) : null;
+    }
+
+    /**
+     * The curated caveat on a state's RATE records (the "see state note" in the dataset's
+     * coverage matrix) — what the records include, what is not modeled, or a point-in-time
+     * snapshot warning. Reads the lazily-loaded `rates` section. Null when the state carries
+     * no rate note.
+     */
+    public function rateNote(string $state): ?string
+    {
+        $rates = $this->stateEntry('rates', $state);
+        $note = is_array($rates) ? ($rates['note'] ?? null) : null;
+
+        return is_string($note) && $note !== '' ? $note : null;
     }
 
     /**
