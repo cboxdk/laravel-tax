@@ -5,6 +5,39 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.3.0] - 2026-08-04
+
+### Added
+
+- **Curated rate & baseline notes from the US dataset.** `UsTaxDataset` now exposes
+  `rateNote(string $state): ?string` and `baselineNote(string $state): ?string` — the
+  human-readable caveats the compiled us-tax-data dataset carries per state (what the
+  rate records include, what is not modeled, a point-in-time snapshot, or why a
+  "no general sales tax" state still levies a gross-receipts tax). Previously only the
+  intrastate **sourcing** note was reachable; the rate and baseline notes (the
+  "see state note" / "see baseline note" caveats in the dataset's coverage matrix) were
+  loaded but not surfaced.
+- `UsTaxDataset` is now bound in the container (nullable, deny-by-default), so a consumer
+  can resolve it and read this dataset metadata directly. It resolves to `null` when the
+  US dataset is disabled or unconfigured, exactly as the rate/taxability/nexus/sourcing
+  adapters already fall back.
+
+### Security
+
+- Bumped `guzzlehttp/guzzle` to `7.15.2` (CVE-2026-69245 noncanonical cookie domain keeps
+  subdomain scope; CVE-2026-69246 noncanonical host bypasses host-based checks).
+
+### Notes
+
+- **Backward compatible.** The new accessors and binding are additive; every existing
+  query and assessment is unchanged and the full suite stays green.
+
+## [0.2.1] - 2026-08-03
+
+### Changed
+
+- Ship the MIT licence text with the package.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added
