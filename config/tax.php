@@ -23,7 +23,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The authoritative US source: the compiled us-tax-data dataset (schemaVersion
-    | 3) supplying all-51 state rates, product taxability (25 categories), economic
+    | 4) supplying all-51 state rates, product taxability (25 categories), economic
     | nexus, and intrastate sourcing. Enabled by default — it REPLACES the hardcoded
     | US entries in the static tables: the dataset-backed sources are bound for the
     | US and composed ahead of the static snapshot (which now carries non-US only).

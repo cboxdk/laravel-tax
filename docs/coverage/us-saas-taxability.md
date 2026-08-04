@@ -25,11 +25,12 @@ boolean cannot represent, are **deliberately absent** and throw
 > localities, B2B vs B2C) and changes. **Verify with your tax advisor before
 > relying on this in production.**
 >
-> **No state-only SaaS rates by default.** Even where SaaS is taxable, the shipped
-> `StaticTaxRateSource` refuses `US:*:digital_service` unless a category-specific
-> rate band or external rooftop/local rate source is bound. The illustrative US
-> state base rates are not sufficient for production SaaS invoices because local
-> city/county/special-district rates can apply.
+> **Rates are state-precision by default.** Where SaaS is taxable, the dataset
+> rate source returns the **state** rate at `Confidence::Derived`; local
+> city/county/special-district components are stacked only when a rooftop locality
+> is resolved (experimental, off by default). With the dataset disabled, the
+> `StaticTaxRateSource` instead refuses `US:*:digital_service` unless a
+> category-specific rate band is bound.
 
 ## Sources
 
@@ -132,9 +133,9 @@ Representative primary-source constraints behind the "undetermined" bucket:
   **taxable-by-default**, which is generally correct.
 - Determinations are **state-level**. Home-rule localities (Chicago; Colorado
   home-rule cities) may tax SaaS even where the state does not — resolving those
-  needs a rooftop/local feed, which the package does not ship.
-- Taxable state-level SaaS still needs a category-specific or rooftop rate source.
-  Without one, the engine throws `UnresolvedTaxRate` instead of applying an
-  illustrative state base rate.
+  needs rooftop resolution the package does not yet ship a crosswalk for.
+- Taxable state-level SaaS resolves at the **state** rate. With the dataset
+  disabled and no category-specific band bound, the engine throws
+  `UnresolvedTaxRate` rather than applying an illustrative base rate.
 - Override any entry, or supply your own full map, by binding
   `Cbox\Tax\Contracts\ProductTaxability`.

@@ -42,14 +42,16 @@ destination tax is charged.
 
 ## Sub-federal regimes
 
-- **`UsSalesTaxRegime`** (`us-sales-tax`) — **logic only, not production-ready.**
+- **`UsSalesTaxRegime`** (`us-sales-tax`) — **dataset-backed, state-precision.**
   Destination sourcing with three gates: the state must be resolved (via an
   `AddressGeocoder`), the seller must have **nexus** in it (a registration), and the
   product must be **taxable** there (`ProductTaxability`). Otherwise it returns
   `NotRegistered` or `Exempt` — never a wrong charge; a jurisdiction with no resolved
-  state raises `JurisdictionNotResolved`. The per-state taxability map, rooftop local
-  rates (Geocodio resolves state-level only) and economic-nexus thresholds are DATA
-  that is **not shipped and must be bound** — see
+  state raises `JurisdictionNotResolved`. Rates, per-state taxability, nexus
+  thresholds and intrastate sourcing come from the
+  [us-tax-data dataset](../coverage/us-tax-dataset.md), bound by default. Rooftop
+  (city/district) precision is **partial and opt-in** — Geocodio resolves
+  state-level only — so absent a resolved locality the state rate applies; see
   [coverage](../coverage/supported.md).
 - **`CaGstRegime`** (`ca-gst`) — Canada has no local sales tax, so a province
   (subdivision) fully determines the combined GST/HST(/PST/QST) rate. A cross-border

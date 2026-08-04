@@ -5,6 +5,33 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.3.1] - 2026-08-04
+
+### Fixed
+
+- **Docs described the pre-dataset world.** `coverage/supported.md` still titled the
+  US regime "LOGIC ONLY, not production-ready" and listed local (rooftop) rates as
+  "❌ only illustrative state base rates" — directly contradicting
+  `coverage/us-tax-dataset.md` in the same folder, which documents the compiled
+  us-tax-data dataset as bound **by default** for rates, taxability, nexus and
+  sourcing. The US sections now state the real position: dataset-backed across all
+  51 jurisdictions, with the remaining limitation being **precision, not coverage**
+  (jurisdictions resolve to the state; rooftop stacking is experimental and opt-in).
+- The same stale claim was corrected in `README.md`, `core-concepts/regimes.md` and
+  `coverage/us-saas-taxability.md` (which asserted the shipped rate source refuses
+  `US:*:digital_service` — true only when the dataset is disabled).
+- **Schema version was one behind.** `coverage/us-tax-dataset.md` and the
+  `config/tax.php` block both said the dataset is schemaVersion 3; the loader
+  (`UsTaxData\UsTaxDataset`) reads schemaVersion 4.
+- `coverage/_index.md` did not link `us-tax-dataset.md` at all, leaving the
+  authoritative US source page unreachable from the coverage index; the SaaS and
+  nexus pages are now labelled as the fallbacks they became.
+
+### Notes
+
+- **Documentation only.** No runtime behaviour changed — the sole non-docs edit is a
+  comment in `config/tax.php`. Full suite green.
+
 ## [0.3.0] - 2026-08-04
 
 ### Added

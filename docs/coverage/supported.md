@@ -7,8 +7,9 @@ description: Regime, standard rate, authoritative source and confidence for each
 # Supported jurisdictions
 
 Each row is modelled by a regime and resolves a rate. **Confidence** reflects how
-well the *rate/rules* are grounded in primary sources; the shipped default rates
-are illustrative starting points unless a live source is bound.
+well the *rate/rules* are grounded in primary sources. US rates come from the
+[us-tax-data dataset](us-tax-dataset.md) by default; elsewhere the shipped default
+rates are illustrative starting points unless a live source is bound.
 
 ## EU — VAT (`eu-vat`)
 
@@ -108,13 +109,15 @@ charge** — so this regime never reverse-charges, unlike the national VAT regim
 Service tax **8%** (since 1 Mar 2024), RM 500,000 threshold. Source: **RMCD**.
 Confidence: **high**.
 
-## United States — sales tax (`us-sales-tax`) — LOGIC ONLY, not production-ready
+## United States — sales tax (`us-sales-tax`) — dataset-backed, state-level precision
 
-> **The US regime is not production-ready for fully automatic tax.** The package
-> ships the *logic* (the three gates below) plus **cited SaaS-taxability and
-> economic-nexus data** — but the **local (rooftop) rate feed is still not
-> shipped**, and the SaaS/nexus data is a decision aid to verify with a tax
-> advisor. Do not rely on the shipped defaults alone for US sales tax.
+> **Rates, taxability, nexus and sourcing are supplied by the
+> [us-tax-data dataset](us-tax-dataset.md), enabled by default** across all 51
+> jurisdictions — it replaces the hardcoded US entries the static tables used to
+> ship. The remaining limitation is **precision, not coverage**: jurisdictions
+> resolve to the **state**, so a rate is the state share unless a rooftop locality
+> is resolved (experimental, off by default). Taxability and nexus data remain a
+> decision aid to verify with a tax advisor.
 
 Sub-federal. Three gates before a rate applies: the **state** must be resolved
 (via an `AddressGeocoder`), the seller must have **nexus** in it, and the product
@@ -124,15 +127,16 @@ versus what you must supply:
 | Concern | Shipped | What is required for correctness |
 | --- | --- | --- |
 | Sourcing / nexus / taxability **logic** | ✅ the regime | — |
-| Per-state SaaS **taxability** | ⚠️ a **curated, cited** `digital_service` map for 44 jurisdictions (18 taxable, 26 exempt/no-general-sales-tax) — [details](us-saas-taxability.md) | verify with a tax advisor; the 7 undetermined jurisdictions (AL, MS, TX, IA, OH, MD, AK) and home-rule localities throw `UnresolvedProductTaxability` until you configure them |
-| **Local (rooftop) rates** | ❌ only illustrative state base rates for non-SaaS examples; the shipped `GeocodioGeocoder` resolves **state-level only**, and `StaticTaxRateSource` refuses US `digital_service` rates unless a category-specific rate is bound | a rooftop rate feed (e.g. SST Rate & Boundary files, home-rule feeds such as Colorado/Alabama, or a commercial adapter) — city/district rates stack on the state base and are not resolved without one |
-| **Economic-nexus thresholds** | ⚠️ a **cited** per-state *Wayfair* threshold table flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the table advises, it does not auto-register or evaluate per invoice |
+| Per-state **taxability** (25 categories, incl. SaaS) | ✅ from the dataset; the curated, cited `digital_service` map for 44 jurisdictions is the fallback when the dataset is disabled — [details](us-saas-taxability.md) | verify with a tax advisor; a pair neither source determines throws `UnresolvedProductTaxability` until you configure it |
+| **State rates** | ✅ dataset baseline for all 51 jurisdictions, at `Confidence::Derived` — honestly the state share | — |
+| **Local (rooftop) rates** | ⚠️ the dataset carries every local record, but the shipped `GeocodioGeocoder` resolves **state-level only**; `us_tax_data.rooftop` (experimental, off by default) captures a **county FIPS** and stacks a local rate at `Confidence::Authoritative` | a point→jurisdiction crosswalk — a county FIPS cannot pick a rooftop's city or special-district record. Absent a resolved locality the **state rate** applies, so city/district rates are not included |
+| **Economic-nexus thresholds** | ✅ from the dataset (cited static table as fallback); flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the thresholds advise, they do not auto-register or evaluate per invoice |
 
-The US regime now ships **cited SaaS-taxability and nexus-threshold data**, but the
-**local (rooftop) rate feed is still not shipped**, so a US assessment can still be
-under/over-charged on local rates. The shipped US data is a decision aid — Confidence:
-**high on logic; SaaS + nexus data cited but advisor-verify; rooftop rates NOT
-shipped.**
+So a US assessment is grounded in primary-sourced data end to end, but is
+**state-precision** unless rooftop resolution is enabled — a local city/district
+component can therefore be missing. Confidence: **high on logic; rates, taxability
+and nexus dataset-backed and cited (advisor-verify); rooftop precision partial and
+opt-in.**
 
 ## Canada — GST/HST (`ca-gst`)
 

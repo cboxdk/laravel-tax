@@ -7,7 +7,7 @@ description: The compiled us-tax-data dataset is the default US source — state
 # US tax dataset (us-tax-data)
 
 US sales tax is powered by the compiled [`us-tax-data`](https://github.com/cboxdk/us-tax-dataset)
-dataset (schema version 3): an authoritative, dated, primary-sourced compilation
+dataset (schema version 4): an authoritative, dated, primary-sourced compilation
 covering all 51 jurisdictions. It is **enabled by default** and **replaces the
 hardcoded US entries** that the static tables used to ship — the static snapshot
 now carries non-US rates only. The rest of the world is unaffected.

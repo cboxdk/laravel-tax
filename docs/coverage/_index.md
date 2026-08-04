@@ -15,8 +15,9 @@ confidence level per jurisdiction, and lists the jurisdictions we deliberately d
 - [Supported jurisdictions](supported.md) — regime, rate, source, confidence.
 - [Not yet supported](not-yet-supported.md) — researched but omitted, and why.
 - [EU VAT rate feed](eu-vat-feed.md) — the real, MIT-licensed EU VAT dataset the engine can bind, its source and license.
-- [US SaaS taxability](us-saas-taxability.md) — the curated, cited per-state SaaS map (and which states are left to the operator).
-- [US economic-nexus thresholds](us-nexus-thresholds.md) — the cited per-state *Wayfair* threshold table feeding the nexus logic.
+- [US tax dataset](us-tax-dataset.md) — the compiled us-tax-data source behind US rates, taxability, nexus and sourcing (on by default).
+- [US SaaS taxability](us-saas-taxability.md) — the curated, cited per-state SaaS map (the fallback when the dataset is disabled).
+- [US economic-nexus thresholds](us-nexus-thresholds.md) — the cited per-state *Wayfair* threshold table (the fallback when the dataset is disabled).
 
 Two boundaries to keep in mind:
 
