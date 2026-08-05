@@ -10,7 +10,7 @@ From `composer.json`:
 
 - **PHP** `^8.4`
 - **Laravel** `^13` (`illuminate/contracts`, `illuminate/support`, `illuminate/http`)
-- **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.1` — the
+- **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.5` — the
   canonical jurisdiction reference every assessment binds to.
 - **[`brick/money`](https://github.com/brick/money)** `^0.14` — exact integer-minor-unit
   money for amounts and rate maths.

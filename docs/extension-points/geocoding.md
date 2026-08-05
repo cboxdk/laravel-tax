@@ -35,11 +35,32 @@ $jurisdiction = app(AddressGeocoder::class)->locate([
 
 Two rules the design keeps:
 
-- **We take only geocoding from Geocodio** — country and state/province. The rate
-  and the calculation stay in this engine; Geocodio's own tax append is not used,
-  so the engine stays authoritative and the adapter swappable.
+- **We take only geocoding from Geocodio** — country and state/province (plus the
+  census identifiers below when rooftop is enabled). Geocodio offers no sales-tax
+  or taxing-jurisdiction append, and none is wanted: the rate and the calculation
+  stay in this engine, so it remains authoritative and the adapter swappable.
 - **Deny-by-default.** Any failure — no key, request error, unparseable result, a
   state that does not resolve — returns `null`. Never a ZIP-centroid guess.
+
+## Rooftop resolution (experimental)
+
+With `us_tax_data.rooftop` enabled the adapter requests Geocodio's `census` field
+append and attaches the **county FIPS** to the jurisdiction as a `LocalityCode`
+(scheme `county-fips`), so a rate source can try to stack a local rate. The census
+append returns, per census year:
+
+| Field | Example (400 Broad St, Seattle WA) |
+| --- | --- |
+| `state_fips` | `53` |
+| `county_fips` | `53033` — state-prefixed |
+| `place` | `{"name": "Seattle", "fips": "5363000"}` — state-prefixed |
+| `tract_code` / `block_code` / `full_fips` | census geography, not taxing geography |
+
+**This does not currently resolve a rooftop rate**, and the flag is off by default
+for that reason — see
+[the US dataset's rooftop section](../coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)
+for exactly what is missing. A census place is not a taxing jurisdiction: special
+tax districts are polygons that no point identifier selects.
 
 Without a key the contract is left unbound. Bind your own `AddressGeocoder` if you
 use a different provider.

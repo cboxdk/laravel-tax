@@ -20,11 +20,13 @@ use InvalidArgumentException;
  * stay owned by this package.
  *
  * When `$rooftop` is enabled it also requests Geocodio's census fields and, for US
- * results, attaches the county FIPS as a {@see LocalityCode} (scheme `county-fips`)
- * so a rate source can stack a local rate. This is PARTIAL and experimental: a
- * county FIPS cannot pick city or special-district records, so it is off by default
- * and left to the caller to enable knowingly. Absent a locality the state rate
- * applies.
+ * results, attaches the county FIPS as a {@see LocalityCode} (scheme `county-fips`).
+ * This is experimental, off by default, and does NOT currently resolve a rooftop
+ * rate: Geocodio returns a state-prefixed county FIPS (`53033`) while the dataset
+ * keys counties without the prefix (`033`), so the lookup misses and the state rate
+ * applies. Closing the gap needs more than a prefix strip — see
+ * docs/coverage/us-tax-dataset.md for the per-state code shapes and the intra-local
+ * stacking rules the dataset does not encode.
  *
  * Deny-by-default: any failure (no key match, request error, unparseable result,
  * a state that does not resolve in the geo reference) returns `null`, so the

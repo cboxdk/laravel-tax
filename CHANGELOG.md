@@ -5,6 +5,39 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.3.2] - 2026-08-05
+
+### Fixed
+
+- **Rooftop resolution was documented as working; it is inert.** The docs claimed the
+  rooftop plumbing was "wired end-to-end, so enabling rooftop resolution is a data
+  question, not a code one". Probing Geocodio against the compiled dataset disproved
+  it on three counts, now documented in `coverage/us-tax-dataset.md`:
+  1. Geocodio returns a **state-prefixed** `county_fips` (`53033`) while the dataset
+     keys counties without the prefix (`033`), so the lookup never matches and the
+     state rate applies.
+  2. Only ~19 states key locals by census FIPS; the rest use their own shapes
+     (`2109064` TX, `AJ` AZ, `06:OAKLAND` CA, `048-0002-8` IL, `county:Adams` CO),
+     so no single identifier reaches every state.
+  3. Whether a county and a city record **stack** differs per state — Kansas City
+     is 6.5% + 1.0% county + 1.625% city, while Seattle's place record is already
+     the total local rate — and the dataset marks both `level: "local"`, so the rate
+     source cannot tell them apart. Stacking one record is right for Washington and
+     100 bp low for Kansas.
+  `README.md`, `coverage/supported.md`, the `config/tax.php` `rooftop` comment and the
+  `GeocodioGeocoder` / `UsTaxDatasetRateSource` docblocks now say this plainly.
+- **`extension-points/geocoding.md` claimed "Geocodio's own tax append is not used".**
+  Geocodio publishes no sales-tax or taxing-jurisdiction append; the page now
+  documents what the `census` append actually returns.
+- **`requirements.md` pinned `cboxdk/laravel-geo` at `^0.1`**; `composer.json` requires
+  `^0.5`.
+- `docs/index.md` omitted the Coverage section from its own table of contents.
+
+### Notes
+
+- **Documentation only.** No runtime behaviour changed; the code edits are docblocks
+  and a config comment. Full suite green.
+
 ## [0.3.1] - 2026-08-04
 
 ### Fixed
