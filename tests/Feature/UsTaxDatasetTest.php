@@ -241,22 +241,22 @@ it('sums every local record the boundary index says applies', function () {
         ->and($rate?->kind)->toBe(RateKind::Standard);
 });
 
-it('resolves a whole-ZIP entry with a single local authority', function () {
-    // 67349 is Elk County: the boundary index assigns a county and no city, so the
-    // sum has one addend — the same code path, not a special case.
-    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '67349-4849');
+it('refuses a partial match rather than under-charging', function () {
+    // 66101-3413 resolves to county 209 AND city 20000 (Edwardsville). The trimmed
+    // fixture carries no record for 20000, so summing what is left would be short
+    // by that city's share while still claiming to be authoritative. The honest
+    // answer is the state rate.
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-3413');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
         ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
 
-    // The county's own rate is not in the trimmed fixture, so no record matches and
-    // the source falls back to the state rate rather than inventing a local share.
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
 
-it('falls back to the state rate when the ZIP+4 is not in the index', function () {
-    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-9999');
+it('falls back to the state rate when the ZIP is not in the index at all', function () {
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '99999-0001');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
         ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);

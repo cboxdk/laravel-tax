@@ -5,6 +5,28 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.5.1] - 2026-08-05
+
+### Fixed
+
+- **A partial rooftop match under-charged.** Where the boundary index named an
+  authority the rate records do not carry, the sum was taken over the rest and still
+  labelled `Confidence::Authoritative` — short by that authority's share, and
+  confident about it. Every resolved code must now produce a record; a partial match
+  falls back to the state rate at `Confidence::Derived`. Found while wiring the real
+  Kansas index, where `66101-3413` resolves to Wyandotte County **and** Edwardsville.
+
+### Changed
+
+- Reads the boundary index's compact encoding: a `sets` table of distinct authority
+  combinations, `zip` spans as `[from, to, setIndex]`, and `ranges` as
+  `[zipFrom, zipTo, from, to, setIndex]` for rows spanning several ZIP5s. The
+  dictionary encoding and span merging cut the published indexes from 60 MB to
+  20 MB raw (5.4 MB gzipped) across all 24 SST states.
+- `ranges` matter for correctness, not just size: Indiana, Kentucky, Michigan, New
+  Jersey and Rhode Island state their whole territory in one or two ZIP-spanning
+  rows carrying no local authorities — the correct answer for states that levy none.
+
 ## [0.5.0] - 2026-08-05
 
 ### Changed

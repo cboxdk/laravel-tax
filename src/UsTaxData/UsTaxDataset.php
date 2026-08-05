@@ -287,55 +287,90 @@ readonly class UsTaxDataset
 
     /**
      * The local taxing jurisdictions that apply at a ZIP+4, from the state's
-     * boundary index (`boundaries/US-XX.json`). This is the half of rooftop the
-     * rate records cannot supply: they say what each authority charges, while the
-     * index says which ones apply — inside Kansas City a county AND a city record
-     * apply, inside Seattle only the city one does.
+     * boundary index (`boundaries/US-XX.json`). This is the half of rooftop the rate
+     * records cannot supply: they say what each authority charges, while the index
+     * says which ones apply — inside Kansas City a county AND a city record apply,
+     * inside Seattle only the city one does.
      *
-     * Returns the codes of the NARROWEST span covering the add-on, which the index
-     * orders first. An empty list is a real answer where a ZIP resolves to no local
-     * authority; a MISSING one (no index, no ZIP, no covering span) is a null, so
-     * the caller falls back to the state rate rather than assuming none apply.
+     * The index is dictionary-encoded: a `sets` table of distinct authority
+     * combinations, `zip` entries as `[from, to, setIndex]` scoped to one ZIP5, and
+     * `ranges` as `[zipFrom, zipTo, from, to, setIndex]` for rows spanning several
+     * ZIP5s (Indiana states its whole state that way, carrying no authorities at
+     * all). Exact ZIP entries are tried first, so a specific assignment wins.
+     *
+     * An empty list is a real answer — the state rate alone applies there. A null is
+     * "not carried", so the caller falls back to the state rate rather than assuming
+     * none apply.
      *
      * @return list<string>|null
      */
     public function localJurisdictions(string $state, string $zip5, string $plus4): ?array
     {
         $index = $this->boundaries($state);
-        $entries = is_array($index) && is_array($index[$zip5] ?? null) ? $index[$zip5] : null;
 
-        if ($entries === null) {
+        if ($index === null) {
             return null;
         }
 
-        foreach ($entries as $entry) {
-            if (! is_array($entry)) {
+        $zips = is_array($index['zip'] ?? null) ? $index['zip'] : [];
+
+        foreach (is_array($zips[$zip5] ?? null) ? $zips[$zip5] : [] as $entry) {
+            if (! is_array($entry) || count($entry) < 3) {
                 continue;
             }
 
-            $from = is_string($entry['from'] ?? null) ? $entry['from'] : null;
-            $to = is_string($entry['to'] ?? null) ? $entry['to'] : null;
+            [$from, $to, $set] = [$entry[0], $entry[1], $entry[2]];
 
-            if ($from === null || $to === null || $from > $plus4 || $plus4 > $to) {
+            if ($this->within($from, $to, $plus4)) {
+                return $this->set($index, $set);
+            }
+        }
+
+        foreach (is_array($index['ranges'] ?? null) ? $index['ranges'] : [] as $range) {
+            if (! is_array($range) || count($range) < 5) {
                 continue;
             }
 
-            $codes = [];
+            [$zipFrom, $zipTo, $from, $to, $set] = [$range[0], $range[1], $range[2], $range[3], $range[4]];
 
-            foreach (is_array($entry['codes'] ?? null) ? $entry['codes'] : [] as $code) {
-                if (is_string($code) && $code !== '') {
-                    $codes[] = $code;
-                }
+            if ($this->within($zipFrom, $zipTo, $zip5) && $this->within($from, $to, $plus4)) {
+                return $this->set($index, $set);
             }
-
-            return $codes;
         }
 
         return null;
     }
 
+    /** Whether a string key falls inside an inclusive, equal-width range. */
+    private function within(mixed $from, mixed $to, string $value): bool
+    {
+        return is_string($from) && is_string($to) && $from <= $value && $value <= $to;
+    }
+
     /**
-     * A state's ZIP-keyed boundary index, fetched lazily and cached like a section.
+     * Resolve a span's set index against the index's `sets` table.
+     *
+     * @param  array<array-key, mixed>  $index
+     * @return list<string>
+     */
+    private function set(array $index, mixed $position): array
+    {
+        $sets = is_array($index['sets'] ?? null) ? $index['sets'] : [];
+        $codes = is_int($position) && is_array($sets[$position] ?? null) ? $sets[$position] : [];
+
+        $resolved = [];
+
+        foreach ($codes as $code) {
+            if (is_string($code) && $code !== '') {
+                $resolved[] = $code;
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * A state's boundary index, fetched lazily and cached like a section.
      * It is per state deliberately — an index is ~0.5–3.5 MB, which is fine for the
      * one state a supply resolved to and wasteful for all of them.
      *
@@ -359,15 +394,14 @@ readonly class UsTaxDataset
 
         $decoded = json_decode($raw, true);
 
-        if (! is_array($decoded) || ! is_array($decoded['zip'] ?? null)) {
+        if (! is_array($decoded) || ! is_array($decoded['sets'] ?? null)) {
             return null;
         }
 
-        /** @var array<array-key, mixed> $zip */
-        $zip = $decoded['zip'];
-        $this->cache->put($key, $zip, $this->ttl);
+        /** @var array<array-key, mixed> $decoded */
+        $this->cache->put($key, $decoded, $this->ttl);
 
-        return $zip;
+        return $decoded;
     }
 
     /**

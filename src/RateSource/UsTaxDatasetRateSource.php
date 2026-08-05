@@ -136,29 +136,31 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      * record summed, then the state share added per the state's {@see RateBasis}.
      * Summing is not optional — Kansas City's rate is the county's 1% plus the
      * city's 1.625% on top of the state's 6.5%, and taking either one alone is
-     * wrong. Null when no code resolves an active record, so the caller falls back
-     * to the state rate.
+     * wrong.
+     *
+     * ALL of them must resolve. If the boundary index names an authority the rate
+     * records do not carry, the sum would be short by that authority's share and
+     * still be labelled authoritative — an under-charge that looks certain. So a
+     * partial match yields null and the caller falls back to the honest state rate.
      *
      * @param  list<string>  $codes
      */
     private function stacked(string $state, array $codes, ?DateTimeImmutable $at): ?TaxRate
     {
+        if ($codes === []) {
+            return null;
+        }
+
         $localPercent = BigDecimal::zero();
-        $matched = false;
 
         foreach ($codes as $code) {
             $local = $this->activeGeneralRate($this->dataset->localRateRecords($state, $code), $at);
 
             if ($local === null) {
-                continue;
+                return null;
             }
 
-            $matched = true;
             $localPercent = $localPercent->plus(BigDecimal::of($local)->multipliedBy(100));
-        }
-
-        if (! $matched) {
-            return null;
         }
 
         // Combined records already include the state share; component records are
