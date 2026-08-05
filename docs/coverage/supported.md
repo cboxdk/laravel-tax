@@ -14,12 +14,13 @@ rates are illustrative starting points unless a live source is bound.
 ## EU — VAT (`eu-vat`)
 
 All 27 member states. Destination VAT for B2C digital (Art. 58); intra-EU B2B to a
-VIES-validated customer reverse-charges (Art. 44). Rate source: a **real, public,
-MIT-licensed EU VAT dataset** (`ibericode/vat-rates`), via the
-[`IbericodeVatRateSource`](eu-vat-feed.md) adapter — enable it to compose
-`ChainTaxRateSource(EU feed → static snapshot)`. For a primary-source feed, point
-the config URL at an EU Commission TEDB export instead (via the generic
-[`TedbRateSource`](../extension-points/rate-sources.md)). Confidence: **high**
+VIES-validated customer reverse-charges (Art. 44). Rate sources: the EU
+Commission's **TEDB**, called live via
+[`TedbSoapRateSource`](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)
+(`tax.tedb.live`, no API key — TEDB publishes no downloadable export, so the SOAP
+service is how you consume it), or a **real, public, MIT-licensed EU VAT dataset**
+(`ibericode/vat-rates`) via the [`IbericodeVatRateSource`](eu-vat-feed.md) adapter.
+Either composes `ChainTaxRateSource(feed → static snapshot)`. Confidence: **high**
 (regime + threshold grounded from EU primary law; rates from the bound community
 feed — a good default, re-verify against member-state guidance before filing).
 
@@ -34,7 +35,7 @@ rule. B2B reverse-charge is unaffected.
 
 | Countries | Regime | Rate source |
 | --- | --- | --- |
-| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | EU TEDB (`TedbRateSource`, optional) → static fallback |
+| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | live EU TEDB (`TedbSoapRateSource`, optional) → static fallback |
 
 ### Reduced / zero rates
 
@@ -42,9 +43,12 @@ The rate-source contract resolves rates by **taxability category**, so a supply
 that legally carries a reduced or zero band (e-books, food, etc.) resolves one
 **when the bound source supplies it**. The shipped static snapshot carries **no
 reduced-rate table** — the package will not fabricate national reduced bands.
-Supply bands to `StaticTaxRateSource`, or bind a TEDB export that carries a `bands`
-map, to resolve reduced/zero rates (see
-[rate sources](../extension-points/rate-sources.md)).
+Enable the live TEDB source (`tax.tedb.live`) to resolve them from the Commission's
+own database, or supply bands to `StaticTaxRateSource` yourself. TEDB bands are
+deliberately conservative: where a member state carries a category at several rates
+at once, the band is refused and the standard rate applies rather than guessing
+which sub-scope a supply falls in (see
+[rate sources](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)).
 
 ### Tax-ID validation — live-response verification still needed
 

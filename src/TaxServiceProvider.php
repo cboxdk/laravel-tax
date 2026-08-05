@@ -22,6 +22,7 @@ use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\IbericodeVatRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbRateSource;
+use Cbox\Tax\RateSource\TedbSoapRateSource;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
@@ -74,7 +75,22 @@ class TaxServiceProvider extends ServiceProvider
                 $sources[] = $euVatFeed;
             }
 
-            $tedb = $app->make(Config::class)->get('tax.tedb.url');
+            $config = $app->make(Config::class);
+
+            // The live TEDB service is the authoritative EU source and needs no key,
+            // so it is tried before a hand-built export. It is cached per country, not
+            // per lookup, so enabling it costs one request per country per TTL.
+            if ($config->get('tax.tedb.live') === true) {
+                $ttl = $config->get('tax.tedb.ttl');
+
+                $sources[] = new TedbSoapRateSource(
+                    $app->make(Factory::class),
+                    $app->make(Cache::class),
+                    is_int($ttl) ? $ttl : 86400,
+                );
+            }
+
+            $tedb = $config->get('tax.tedb.url');
 
             if (is_string($tedb) && $tedb !== '') {
                 $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);

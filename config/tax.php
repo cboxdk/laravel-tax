@@ -79,19 +79,31 @@ return [
     | EU TEDB rate feed (optional)
     |--------------------------------------------------------------------------
     |
-    | Point this at a TEDB-derived dataset — the EU Commission's Taxes in Europe
-    | Database (VatRetrievalService), transformed to the JSON shape documented on
-    | Cbox\Tax\RateSource\TedbRateSource — as either an http(s) URL or a local file
-    | path. When set, the engine composes ChainTaxRateSource(TEDB -> static
-    | snapshot): TEDB is authoritative, the shipped static rates are the fallback.
-    | Leave it empty (the default) to run purely on the static snapshot. The
-    | package ships NO endpoint — you must supply a real TEDB export. For a URL
-    | source, wrap the binding in CachingTaxRateSource to avoid a request per lookup
-    | (see docs/extension-points/rate-sources.md).
+    | `live` calls the EU Commission's Taxes in Europe Database DIRECTLY — its
+    | VatRetrievalService SOAP endpoint, which needs no API key and no
+    | registration. This is the way to consume TEDB: the Commission publishes no
+    | downloadable export, so the service and the web UI are the only sources.
+    | Enabled, the engine composes ChainTaxRateSource(TEDB -> static snapshot).
+    | Responses are cached per country for `ttl` seconds, so it costs one request
+    | per country per TTL rather than one per assessment.
+    |
+    | It supplies every member state's STANDARD rate, plus a reduced band for the
+    | few categories TEDB resolves to a single rate for that country. Where TEDB
+    | carries a category at several rates at once — French pharmaceuticals sit at
+    | 2.1%, 5.5% and 10% — the band is refused and the standard rate applies, so a
+    | supply is never quietly charged the wrong reduced rate.
+    |
+    | `url` is the older, file-based path: a TEDB-derived dataset you generated
+    | yourself, in the JSON shape documented on Cbox\Tax\RateSource\TedbRateSource,
+    | as an http(s) URL or local file. Use it to pin a reviewed snapshot instead of
+    | calling the service. Both empty (the default) runs purely on the static
+    | snapshot.
     |
     */
 
     'tedb' => [
+        'live' => env('TAX_TEDB_LIVE', false),
+        'ttl' => (int) env('TAX_TEDB_TTL', 86400),
         'url' => env('TAX_TEDB_URL'),
     ],
 

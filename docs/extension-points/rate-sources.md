@@ -23,7 +23,7 @@ Recommended defaults per region:
 
 | Region | Source |
 | --- | --- |
-| EU | the MIT-licensed `ibericode/vat-rates` dataset (shipped adapter), or an EU Commission TEDB export |
+| EU | the EU Commission's TEDB, called live (shipped adapter, no API key), or the MIT-licensed `ibericode/vat-rates` dataset |
 | US (SST states) | the SST Rate & Boundary files |
 | US (non-SST / home-rule), Canada provinces | a commercial adapter |
 
@@ -51,9 +51,59 @@ new StaticTaxRateSource(rates: null, bands: [
 
 > **No national reduced-rate table ships.** The default snapshot carries **only
 > standard rates** — the package will not fabricate reduced bands, which are DATA
-> that must come from an authoritative feed. Supply your own bands, or bind a TEDB
-> export whose entries carry a `bands` map. A category with no band resolves the
-> standard rate.
+> that must come from an authoritative feed. Enable the [live TEDB
+> source](#the-eu-tedb-service-tedbsoapratesource) for EU bands, supply your own,
+> or bind a TEDB export whose entries carry a `bands` map. A category with no band
+> resolves the standard rate.
+
+## The EU TEDB service (`TedbSoapRateSource`)
+
+The Commission's **Taxes in Europe Database** is the authoritative EU rate source,
+and this adapter calls it directly. **There is nothing to download** — TEDB
+publishes no CSV/JSON export, and its `VatRetrievalService` SOAP endpoint plus the
+web UI are the only ways to get the data. The service needs **no API key and no
+registration**:
+
+```php
+// config/tax.php  (or .env: TAX_TEDB_LIVE=true)
+'tedb' => [
+    'live' => env('TAX_TEDB_LIVE', false),
+    'ttl'  => (int) env('TAX_TEDB_TTL', 86400),
+],
+```
+
+Enabled, the engine composes `ChainTaxRateSource(TEDB → static snapshot)` and
+caches each member state's parsed rate table for `ttl` seconds — one request per
+country per TTL, not one per assessment.
+
+### What it resolves, and what it refuses
+
+- **Standard rates** for all 27 member states, from the single `DEFAULT` entry.
+- **Reduced and zero bands** for `grocery`, `prepared_food`, `books`, `newspapers`,
+  `magazines`, `medical_devices` and `prescription_drugs` — but **only where TEDB
+  resolves that category to one rate for that country**.
+
+That last condition carries the weight. TEDB routinely carries a category at
+several rates at once because the sub-scopes differ: French pharmaceuticals sit at
+2.1%, 5.5% **and** 10%, and Irish books are zero-rated in print while their
+electronic form is 9%. Nothing in the response says which applies to a given
+supply, so the band is dropped and the **standard rate** applies. Over-charging is
+recoverable; silently applying the wrong reduced rate is not.
+
+Where a state splits a category itself, its own split wins: Poland rates newspapers
+separately at 8%, so that survives, while Sweden files newspapers under the broader
+"books, newspapers and periodicals" heading and resolves from there.
+
+Categories with no confident equivalent — digital services and e-publications above
+all, which several states fold into other headings — are **not mapped at all**
+rather than guessed.
+
+### Two quirks worth knowing
+
+- TEDB spells Greece **`EL`**, not the ISO `GR`, and rejects the *entire* request
+  with `TEDB-ERR-2` if any code is unknown. The adapter translates before calling.
+- A SOAP fault answers HTTP 500. Any fault, timeout or unparseable body yields
+  `null`, so a composed chain falls through instead of guessing.
 
 ## The EU VAT feed (`IbericodeVatRateSource`)
 

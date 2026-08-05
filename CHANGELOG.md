@@ -5,6 +5,42 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.4.0] - 2026-08-05
+
+### Added
+
+- **`TedbSoapRateSource` — the EU Commission's TEDB, called live.** Enable with
+  `tax.tedb.live` (env `TAX_TEDB_LIVE`); no API key and no registration are needed.
+  Responses are cached per member state for `tax.tedb.ttl` seconds, so it costs one
+  request per country per TTL rather than one per assessment.
+- It resolves the **standard rate for all 27 member states**, plus reduced/zero
+  bands for `grocery`, `prepared_food`, `books`, `newspapers`, `magazines`,
+  `medical_devices` and `prescription_drugs` — **only where TEDB resolves that
+  category to a single rate for that country**. Where a state carries a category at
+  several rates at once (French pharmaceuticals sit at 2.1%, 5.5% and 10%; Irish
+  books are zero-rated in print but 9% electronically), the band is refused and the
+  standard rate applies. Over-charging is recoverable; silently applying the wrong
+  reduced rate is not.
+- Where a member state splits a category itself, its own split wins: Poland's
+  separate 8% newspaper rate survives, while Sweden — which files newspapers under
+  the broader "books, newspapers and periodicals" heading — resolves from there.
+- Verified live against seven member states, and against a captured
+  `VatRetrievalService` response committed as a fixture.
+
+### Fixed
+
+- **`TedbRateSource` documented a file that cannot be obtained.** The config and
+  docs told operators to "point the config URL at an EU Commission TEDB export".
+  The Commission publishes no such export — the SOAP service and the web UI are the
+  only ways to get TEDB data — so the adapter could not be used without the operator
+  first building an ETL of their own. It remains, now honestly described as the way
+  to pin a snapshot **you generate**, with the live source as the documented default.
+
+### Notes
+
+- Additive. Both TEDB paths stay opt-in and the static snapshot remains the
+  zero-config default, so no existing behaviour changes.
+
 ## [0.3.4] - 2026-08-05
 
 ### Changed
