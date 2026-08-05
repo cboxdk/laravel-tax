@@ -5,6 +5,18 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.8.1] - 2026-08-05
+
+### Fixed
+
+- **Docs still said the boundary indexes were unpublished.** They shipped earlier the
+  same day — all 24 Streamlined states, 5.4 MB gzipped, refreshed quarterly and
+  verifiable against `boundaries/manifest.json` — but `README.md`,
+  `coverage/supported.md` and `coverage/us-tax-dataset.md` all still told readers the
+  lookup 404s and the state rate applies. Corrected to what is true: rooftop is live
+  for **26 states**, and the honest remaining gap is the seven states plus Texas that
+  publish nothing usable.
+
 ## [0.8.0] - 2026-08-05
 
 ### Added

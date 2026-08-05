@@ -86,13 +86,11 @@ Both come out of the same code path. Taking the most specific record alone would
 right for Seattle and 100 bp low for Kansas City; there is no per-state rule to
 encode, because the boundary file carries it.
 
-> **The indexes are not published yet.** `us-tax-data` compiles them
-> (`bin/compile-boundaries.php`, proven for KS and WA) but does not yet ship them in
-> the dataset, so `boundaries/US-XX.json` currently 404s and rooftop falls back to
-> the state rate. The consumer side is complete and tested; it activates the moment
-> the indexes land, with no change here.
+The indexes are published: all 24 member states, **5.4 MB gzipped**, mirrored to
+`boundaries/US-XX.json.gz` and refreshed quarterly, each verifiable against
+`boundaries/manifest.json`.
 
-Three limits remain once they do:
+Three limits remain:
 
 **Coverage is the 24 SST member states, plus two resolved by polygon.**
 
@@ -111,7 +109,7 @@ state rate. Texas is the notable one — it *does* produce an SST-formatted addr
 dataset, but behind an audited account portal that labels the data sensitive, so a
 publicly redistributable index cannot be derived from it.
 
-**A ZIP+4 is required, so a geocoder becomes load-bearing.** Absent an add-on — or
+**A ZIP+4 or a coordinate is required, so a geocoder becomes load-bearing.** Absent an add-on — or
 where Geocodio returns several for one address, which is refused rather than picked
 — no locality is attached and the state rate applies.
 
