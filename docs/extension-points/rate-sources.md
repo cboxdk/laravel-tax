@@ -191,6 +191,32 @@ rather than guessed.
 - A SOAP fault answers HTTP 500. Any fault, timeout or unparseable body yields
   `null`, so a composed chain falls through instead of guessing.
 
+## US rooftop by polygon (`ArcGisRateSource`)
+
+Two states publish rooftop geography as **polygons** rather than as a boundary
+file, and both services are official and unauthenticated:
+
+| State | Service | A point returns |
+| --- | --- | --- |
+| California | CDTFA's `California_Sales_and_Use_Tax_Rates` | the jurisdiction and its all-in `RATE` |
+| New Mexico | the TRD gross-receipts service — the one the compiled dataset already reads for rates, queried *with* geometry | the location code and its combined `grt_rate` |
+
+It is bound automatically when `us_tax_data.rooftop` is enabled, ahead of the
+dataset source, and returns `null` for every other state so the chain falls through.
+Verified against both services: Los Angeles City Hall resolves **9.75%**, San
+Francisco **8.625%**, Albuquerque **7.625%**, Santa Fe **8.1875%**.
+
+This is **finer** than the ZIP+4 index — a polygon is real geography where a ZIP+4
+is a postal proxy for it — and it is a live query per point rather than a shipped
+file, cached like the TEDB source. Misses are cached too, so an address in the sea
+does not re-query on every assessment.
+
+Three things it does not do. It carries no category-specific rates, because neither
+service publishes any, so a reduced band must come from elsewhere in the chain. It
+stacks nothing: the rate returned is already all-in for the point. And it needs
+coordinates, which is why the geocoder attaches a point rather than a ZIP+4 for
+these two states.
+
 ## The EU VAT feed (`IbericodeVatRateSource`)
 
 `IbericodeVatRateSource` binds a **real, public, MIT-licensed** EU VAT-rate dataset

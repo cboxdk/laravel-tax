@@ -5,6 +5,22 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.8.2] - 2026-08-05
+
+### Fixed
+
+- **`ArcGisRateSource` shipped undocumented.** v0.8.0 added a public rate source and
+  bound it automatically, but `extension-points/rate-sources.md` — the page someone
+  reads to learn which sources exist — never mentioned it. It now has its own
+  section: the two services, what a point returns, the verified figures, and the
+  three things it deliberately does not do (no category rates, no stacking, needs
+  coordinates).
+- **`extension-points/geocoding.md` described only half the behaviour.** It said the
+  adapter attaches a ZIP+4, which stopped being the whole truth in v0.8.0: a
+  `Jurisdiction` carries one locality, so the adapter attaches a **point** for
+  California and New Mexico and a **ZIP+4** for the Streamlined states. The page now
+  shows which states get which, and why.
+
 ## [0.8.1] - 2026-08-05
 
 ### Fixed

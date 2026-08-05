@@ -66,9 +66,17 @@ versions.
 
 ## Rooftop resolution (experimental)
 
-With `us_tax_data.rooftop` enabled the adapter requests Geocodio's `zip4` append and
-attaches the address's full **ZIP+4** as a `LocalityCode` (scheme `zip9`, e.g.
-`66101-3064`):
+A `Jurisdiction` carries exactly **one** locality, so with `us_tax_data.rooftop`
+enabled the adapter attaches whichever key that state is actually resolved by:
+
+| State | Locality attached | Resolved by |
+| --- | --- | --- |
+| California, New Mexico | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the state's own polygon service, via `ArcGisRateSource` |
+| the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the dataset's boundary index, via `UsTaxDatasetRateSource` |
+| everywhere else | none | the state rate applies |
+
+Coordinates come back on every Geocodio result; the ZIP+4 needs the `zip4` append,
+which the adapter requests when rooftop is on:
 
 | Field | Example (701 N 7th St, Kansas City KS) |
 | --- | --- |
@@ -76,8 +84,10 @@ attaches the address's full **ZIP+4** as a `LocalityCode` (scheme `zip9`, e.g.
 | `address_components.postal_code` | `66101` — the ZIP5 alone, not enough |
 
 A ZIP+4 is a **postal** key, not a taxing authority. The dataset's boundary index
-is what expands it into the authorities that apply, and the rate source sums them —
-see [the US dataset's rooftop section](../coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index).
+expands it into the authorities that apply, and the rate source sums them — see
+[the US dataset's rooftop section](../coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index).
+A point needs no such expansion: it is real geography, and the polygon it falls in
+carries the rate directly.
 
 Two refusals worth knowing. Geocodio returns `zip9` as a **list**; an address
 spanning several add-ons could straddle a jurisdiction line, so no locality is
