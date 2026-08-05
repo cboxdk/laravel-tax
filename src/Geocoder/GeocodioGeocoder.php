@@ -19,6 +19,12 @@ use InvalidArgumentException;
  * state/province — and hands off to the rate engine; the rate and calculation
  * stay owned by this package.
  *
+ * Targets **API v2**. Of v2's breaking changes only two touch this adapter: the
+ * response no longer wraps results beside a top-level `input` key (we always read
+ * `results`), and `address_components.state` became `state_province`. Both keys are
+ * accepted so pinning `baseUrl` to a v1.x URL still resolves. Canadian results now
+ * echo the full postal code where the FSA matches, which this adapter does not read.
+ *
  * When `$rooftop` is enabled it also requests Geocodio's census fields and, for US
  * results, attaches the county FIPS as a {@see LocalityCode} (scheme `county-fips`).
  * This is experimental, off by default, and does NOT currently resolve a rooftop
@@ -38,7 +44,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private Factory $http,
         private JurisdictionRepository $geo,
         private string $apiKey,
-        private string $baseUrl = 'https://api.geocod.io/v1.7',
+        private string $baseUrl = 'https://api.geocod.io/v2',
         private bool $rooftop = false,
     ) {}
 
@@ -76,7 +82,12 @@ readonly class GeocodioGeocoder implements AddressGeocoder
 
         $components = is_array($first['address_components'] ?? null) ? $first['address_components'] : null;
         $countryValue = is_array($components) ? ($components['country'] ?? null) : null;
-        $stateValue = is_array($components) ? ($components['state'] ?? null) : null;
+
+        // v2 renamed `state` to `state_province`; the older key is still read so an
+        // operator who pins `baseUrl` to v1.x keeps working.
+        $stateValue = is_array($components)
+            ? ($components['state_province'] ?? $components['state'] ?? null)
+            : null;
 
         if (! is_string($countryValue) || ! is_string($stateValue)) {
             return null;

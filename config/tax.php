@@ -106,11 +106,15 @@ return [
     | adapter. Without a key the contract is left unbound (deny-by-default) — bind
     | your own if you use a different provider.
     |
+    | `base_url` targets Geocodio API v2. The adapter reads both v2's
+    | `state_province` and v1's `state` key, so pinning this back to a v1.x URL
+    | still resolves.
+    |
     */
 
     'geocodio' => [
         'key' => env('GEOCODIO_API_KEY'),
-        'base_url' => env('GEOCODIO_BASE_URL', 'https://api.geocod.io/v1.7'),
+        'base_url' => env('GEOCODIO_BASE_URL', 'https://api.geocod.io/v2'),
     ],
 
     /*

@@ -10,8 +10,8 @@ US sales tax stacks rates below the state (county, city, special district), so a
 state alone is not enough — the address must be resolved to a taxing jurisdiction.
 The `AddressGeocoder` contract is that seam.
 
-The shipped **`GeocodioGeocoder`** resolves US and Canada addresses via Geocodio.
-Set an API key to bind it:
+The shipped **`GeocodioGeocoder`** resolves US and Canada addresses via Geocodio
+**API v2**. Set an API key to bind it:
 
 ```php
 // config/tax.php  (or .env: GEOCODIO_API_KEY=...)
@@ -41,6 +41,22 @@ Two rules the design keeps:
   stay in this engine, so it remains authoritative and the adapter swappable.
 - **Deny-by-default.** Any failure — no key, request error, unparseable result, a
   state that does not resolve — returns `null`. Never a ZIP-centroid guess.
+
+### API version
+
+The adapter targets **v2** (`https://api.geocod.io/v2`). Of v2's breaking changes
+only two touch it — the response no longer carries a top-level `input` key beside
+`results`, and `address_components.state` became `state_province` — and both key
+spellings are read, so passing a v1.x `baseUrl` to the constructor still resolves:
+
+```php
+new GeocodioGeocoder($http, $geo, $key, 'https://api.geocod.io/v1.7');
+```
+
+Two further v2 changes do not affect this adapter: `zip` became `postal_code`
+(unread), and Canadian results now echo the full postal code where the FSA matches
+instead of returning the FSA alone. The `census` append is unchanged between
+versions.
 
 ## Rooftop resolution (experimental)
 

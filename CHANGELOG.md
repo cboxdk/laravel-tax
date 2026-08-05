@@ -5,6 +5,29 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.3.4] - 2026-08-05
+
+### Changed
+
+- **`GeocodioGeocoder` now targets Geocodio API v2**, the current version. The
+  default `baseUrl`, the `tax.geocodio.base_url` config default and the provider's
+  fallback all move from `https://api.geocod.io/v1.7` to `https://api.geocod.io/v2`.
+- Of v2's breaking changes, two touch this adapter: the response no longer carries a
+  top-level `input` key beside `results`, and `address_components.state` is now
+  `state_province`. **v2 does not emit the old `state` key at all** (verified against
+  the live API), so an adapter reading only `state` would have denied every lookup
+  against a v2 URL. Both spellings are now read, so passing a v1.x `baseUrl` keeps
+  resolving.
+- Two further v2 changes do not affect the adapter: `zip` became `postal_code`
+  (never read), and Canadian results echo the full postal code where the FSA matches
+  rather than returning the FSA alone. The `census` field append is unchanged.
+
+### Upgrade note
+
+If you published `config/tax.php` before this release it still pins
+`https://api.geocod.io/v1.7`. That keeps working, but update it (or set
+`GEOCODIO_BASE_URL`) to move to v2.
+
 ## [0.3.3] - 2026-08-05
 
 ### Fixed

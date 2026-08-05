@@ -245,7 +245,7 @@ class TaxServiceProvider extends ServiceProvider
         }
 
         $baseUrl = $config->get('tax.geocodio.base_url');
-        $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v1.7';
+        $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2';
 
         // Rooftop county-FIPS capture is opt-in (partial; see tax.us_tax_data.rooftop).
         $rooftop = $config->get('tax.us_tax_data.rooftop') === true;
