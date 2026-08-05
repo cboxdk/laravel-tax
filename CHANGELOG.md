@@ -5,6 +5,24 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.7.1] - 2026-08-05
+
+### Notes
+
+- **Documented why the package requires Laravel 13 only.** A library should install
+  on the current *and* previous major, and this one does not. Investigated properly:
+  `brick/money ^0.14` — the exact-money library every amount and rate calculation
+  runs through — requires `brick/math ~0.15` or newer, while `laravel/framework`
+  12.64 caps it at `^0.11|^0.12|^0.13|^0.14`. The ranges are disjoint. Supporting
+  Laravel 12 would mean pinning `brick/money` back to `^0.11`, three minors and a
+  different rounding surface, in a tax engine where the money library's behaviour
+  *is* the calculation.
+- Nothing in this package's own graph causes it: `illuminate/support`,
+  `illuminate/contracts` and `illuminate/http` never require `brick/math`. The cap
+  lives in the full framework package, and only from 12.64 onward. `requirements.md`
+  records this so the gap reads as a decision rather than an oversight, and the
+  constraint widens the moment a Laravel 12 patch relaxes it.
+
 ## [0.7.0] - 2026-08-05
 
 ### Added
