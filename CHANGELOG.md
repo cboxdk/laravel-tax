@@ -5,6 +5,42 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.7.0] - 2026-08-05
+
+### Added
+
+- **Commodity codes close the splits a category cannot.** `TaxQuery` takes an
+  optional `commodityCode` — a **CN code** for goods or a **CPA code** for services.
+  This is not an invented taxonomy: TEDB scopes its own rates by exactly these, and
+  92% of its reduced and exempt entries carry them, most at full 8-digit depth. The
+  Commission publishes the Combined Nomenclature free and machine-readable.
+- `Contracts\CommodityRateSource` — a **separate** contract, not a fourth parameter
+  on `TaxRateSource`, so a source that cannot use codes keeps working untouched.
+  `TedbSoapRateSource` implements it; `ChainTaxRateSource` and
+  `CachingTaxRateSource` are unaffected.
+- Measured across the nineteen splits left open in v0.6.0, disjoint CN scopes
+  resolve **seven outright** — AT/BE/HU groceries, IT medical devices, IT/PL
+  pharmaceuticals, PL books — and narrow the rest to a handful of overlapping codes.
+  Verified live: Polish beef `0201` resolves 5% where the category alone gives 23%;
+  Hungarian yoghurt `0403` gives 5% against 27%; Austrian fresh fish `0302` gives
+  10% against 20%.
+
+Four rules keep it safe:
+
+- The code **refines, never restricts** — absent or unrecognised, the category alone
+  decides exactly as before.
+- A code TEDB itself lists at **several rates** within a category is dropped; it is
+  no more decisive than the category.
+- Spacing is irrelevant (`0504 00 00`, `05040000`, `0504.00.00`).
+- A code is tried at successively shallower depths (8 → 6 → 4 → 2), since a state may
+  scope a rate to a whole heading rather than one subheading.
+
+### Notes
+
+- Additive throughout. `commodityCode` defaults to null, the `TaxRateSource`
+  contract is unchanged, and every regime routes the code through a shared trait so
+  the five of them cannot drift.
+
 ## [0.6.0] - 2026-08-05
 
 ### Added

@@ -9,6 +9,7 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
+use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -24,6 +25,7 @@ use Cbox\Tax\ValueObjects\TaxRate;
 abstract class DestinationTaxRegime implements TaxRegime
 {
     use AppliesTaxRate;
+    use ResolvesRates;
 
     /** Short name of the regime, used in the assessment's human-readable reason. */
     abstract protected function label(): string;
@@ -36,7 +38,7 @@ abstract class DestinationTaxRegime implements TaxRegime
 
         $place = $this->sourcingPlace($query);
 
-        $rate = $rates->rateFor($place, $query->category);
+        $rate = $this->resolveRate($rates, $query, $place);
 
         if ($rate === null) {
             throw UnresolvedTaxRate::for($place);

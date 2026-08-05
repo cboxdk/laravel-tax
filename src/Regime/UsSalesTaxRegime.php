@@ -12,6 +12,7 @@ use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
+use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -39,6 +40,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 readonly class UsSalesTaxRegime implements TaxRegime
 {
     use AppliesTaxRate;
+    use ResolvesRates;
 
     public function __construct(
         private ProductTaxability $taxability,
@@ -81,7 +83,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
             );
         }
 
-        $rate = $rates->rateFor($query->place, $query->category);
+        $rate = $this->resolveRate($rates, $query);
 
         if ($rate === null) {
             throw UnresolvedTaxRate::for($query->place);

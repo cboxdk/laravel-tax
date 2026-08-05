@@ -7,6 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxCategory;
@@ -20,6 +21,14 @@ use Cbox\Tax\Enums\TaxCategory;
  * `customerTaxIdValidated` records that the business customer's tax ID was
  * verified (e.g. via VIES for the EU) — reverse-charge zero-rating legally hinges
  * on it, so the engine only applies reverse-charge when it is true.
+ *
+ * `commodityCode` optionally carries the supply's **CN code** (goods) or **CPA
+ * code** (services) — the classifications the EU Commission's own rate database
+ * keys its scopes by. It refines, never restricts: a source that can use it
+ * ({@see CommodityRateSource}) resolves reduced bands the
+ * coarse {@see TaxCategory} cannot, because a category like `grocery` genuinely
+ * carries several rates in half the member states. Absent or unrecognised, the
+ * category alone decides exactly as before.
  *
  * `exemption` carries an optional buyer tax exemption ({@see TaxExemption}) the
  * consumer has captured and verified — a resale/nonprofit/government certificate.
@@ -39,6 +48,7 @@ readonly class TaxQuery
         public TaxCategory $category = TaxCategory::Standard,
         public bool $customerTaxIdValidated = false,
         public ?TaxExemption $exemption = null,
+        public ?string $commodityCode = null,
     ) {}
 
     public function isBusiness(): bool

@@ -249,3 +249,63 @@ it('never overrides an unambiguous TEDB answer', function () {
     expect(tedbSource($http)->rateFor(tedbPlace('IE'), TaxCategory::Books)?->percentage?->__toString())
         ->toBe('4');
 });
+
+it('resolves a split by commodity code where the category cannot', function () {
+    // Poland rates foodstuffs 5% and 8% by product type, so `grocery` alone
+    // resolves nothing and the standard 23% applies. CN 0201 — beef, fresh or
+    // chilled — is scoped to the 5% band, and the code says so.
+    $source = tedbSource($this->http);
+    $place = tedbPlace('PL');
+
+    expect($source->rateFor($place, TaxCategory::Grocery)?->percentage?->__toString())->toBe('23')
+        ->and($source->rateForCommodity($place, TaxCategory::Grocery, '0201')?->percentage?->__toString())->toBe('5')
+        ->and($source->rateForCommodity($place, TaxCategory::Grocery, '0201')?->kind)->toBe(RateKind::Reduced);
+});
+
+it('accepts a commodity code however TEDB spaces it', function () {
+    // TEDB writes codes as "0504 00 00"; a caller passes "05040000" or "0504.00.00".
+    $source = tedbSource($this->http);
+    $place = tedbPlace('PL');
+
+    foreach (['05040000', '0504 00 00', '0504.00.00'] as $code) {
+        expect($source->rateForCommodity($place, TaxCategory::Grocery, $code)?->percentage?->__toString())->toBe('5');
+    }
+});
+
+it('falls back to the heading when the exact subheading is not scoped', function () {
+    // A caller's 8-digit code need not appear verbatim: a state may scope the rate
+    // to the 4-digit heading, so the lookup shortens 8 -> 6 -> 4 -> 2.
+    expect(tedbSource($this->http)->rateForCommodity(tedbPlace('PL'), TaxCategory::Grocery, '03021100')?->percentage?->__toString())
+        ->toBe('5');
+});
+
+it('ignores a commodity code TEDB itself lists at several rates', function () {
+    // A code carried under two rates within one category is no more decisive than
+    // the category; it is dropped rather than answered from.
+    $http = new Factory;
+    $http->fake(['ec.europa.eu/*' => $http->response(<<<'XML'
+        <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body>
+        <r xmlns="urn:ec.europa.eu:taxud:tedb:services:v1:IVatRetrievalService:types">
+          <vatRateResults><memberState>PL</memberState><type>STANDARD</type>
+            <rate><type>DEFAULT</type><value>23.0</value></rate></vatRateResults>
+          <vatRateResults><memberState>PL</memberState><type>REDUCED</type>
+            <rate><type>REDUCED_RATE</type><value>5.0</value></rate>
+            <category><identifier>FOODSTUFFS</identifier></category>
+            <cnCodes><code><value>0201</value></code></cnCodes></vatRateResults>
+          <vatRateResults><memberState>PL</memberState><type>REDUCED</type>
+            <rate><type>REDUCED_RATE</type><value>8.0</value></rate>
+            <category><identifier>FOODSTUFFS</identifier></category>
+            <cnCodes><code><value>0201</value></code></cnCodes></vatRateResults>
+        </r></env:Body></env:Envelope>
+        XML)]);
+
+    expect(tedbSource($http)->rateForCommodity(tedbPlace('PL'), TaxCategory::Grocery, '0201')?->percentage?->__toString())
+        ->toBe('23');
+});
+
+it('behaves exactly like rateFor when no code is supplied', function () {
+    $source = tedbSource($this->http);
+
+    expect($source->rateForCommodity(tedbPlace('FR'), TaxCategory::Books, null)?->percentage?->__toString())
+        ->toBe($source->rateFor(tedbPlace('FR'), TaxCategory::Books)?->percentage?->__toString());
+});

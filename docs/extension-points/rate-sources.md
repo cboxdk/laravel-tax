@@ -132,8 +132,53 @@ single number is right:
 `medical_devices` in **CY EL IT** · `prescription_drugs` in **IT MT PL** ·
 `newspapers` in **HR** · `books` and `magazines` in **PL**
 
-These resolve to the standard rate. Closing them needs a finer product category —
-CN-code granularity — not more curation.
+These resolve to the standard rate from the category alone — and this is what a
+**commodity code** closes.
+
+### Commodity codes: CN and CPA
+
+TEDB scopes its own rates by **CN codes** (goods) and **CPA codes** (services) —
+92% of its reduced and exempt entries carry them, most at full 8-digit depth. So
+the finer product model is not something to invent: it is the classification the
+authority already speaks, published free and machine-readable by the Commission.
+
+Pass one on the query and the split resolves:
+
+```php
+new TaxQuery(
+    amount: Money::of('100.00', 'EUR'),
+    pricing: Pricing::Exclusive,
+    place: $geo->find(new CountryCode('PL')),
+    customer: CustomerType::Consumer,
+    seller: new SellerRegistrations(new CountryCode('PL')),
+    category: TaxCategory::Grocery,
+    commodityCode: '0201',        // beef, fresh or chilled
+);
+```
+
+| Country | Category | Category alone | With a CN code |
+| --- | --- | --- | --- |
+| PL | `grocery` | 23% (split 5/8) | **5%** for `0201` beef |
+| HU | `grocery` | 27% (split 5/18) | **5%** for `0403` yoghurt |
+| AT | `grocery` | 20% (split 0/4.9/10/13) | **10%** for `0302` fresh fish |
+
+Measured across the nineteen open splits, disjoint CN scopes resolve **seven of
+them outright** — Austrian, Belgian and Hungarian groceries, Italian medical
+devices, Italian and Polish pharmaceuticals, Polish books — and narrow the rest to
+a handful of overlapping codes.
+
+Four rules keep it safe:
+
+- The code **refines, never restricts**. Absent or unrecognised, the category alone
+  decides, exactly as before.
+- A code TEDB itself lists at **several rates** within a category is dropped — it is
+  no more decisive than the category.
+- Spacing is irrelevant: `0504 00 00`, `05040000` and `0504.00.00` are the same code.
+- A code is tried at successively shallower depths (8 → 6 → 4 → 2), since a member
+  state may scope a rate to a whole heading rather than one subheading.
+
+Sources opt in by implementing `Contracts\CommodityRateSource`; a source that cannot
+use codes is called exactly as before, so existing implementations are untouched.
 
 Categories with no confident equivalent — digital services and e-publications above
 all, which several states fold into other headings — are **not mapped at all**

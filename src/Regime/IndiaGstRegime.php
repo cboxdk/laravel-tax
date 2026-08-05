@@ -8,6 +8,7 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
+use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -28,6 +29,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 readonly class IndiaGstRegime implements TaxRegime
 {
     use AppliesTaxRate;
+    use ResolvesRates;
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
@@ -43,7 +45,7 @@ readonly class IndiaGstRegime implements TaxRegime
             );
         }
 
-        $rate = $rates->rateFor($query->place, $query->category);
+        $rate = $this->resolveRate($rates, $query);
 
         if ($rate === null) {
             throw UnresolvedTaxRate::for($query->place);

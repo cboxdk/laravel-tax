@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\RateSource;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
-use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxCategory;
@@ -48,7 +48,7 @@ use Throwable;
  * member state the response does not carry all yield `null`, so a composed
  * {@see ChainTaxRateSource} falls through rather than the engine guessing.
  */
-readonly class TedbSoapRateSource implements TaxRateSource
+readonly class TedbSoapRateSource implements CommodityRateSource
 {
     public const string ENDPOINT = 'https://ec.europa.eu/taxation_customs/tedb/ws/';
 
@@ -154,6 +154,15 @@ readonly class TedbSoapRateSource implements TaxRateSource
         TaxCategory $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
+        return $this->rateForCommodity($jurisdiction, $category, null, $at);
+    }
+
+    public function rateForCommodity(
+        Jurisdiction $jurisdiction,
+        TaxCategory $category,
+        ?string $commodityCode = null,
+        ?DateTimeImmutable $at = null,
+    ): ?TaxRate {
         $country = $jurisdiction->country->value;
 
         if (! in_array($country, self::EU, true)) {
@@ -164,6 +173,22 @@ readonly class TedbSoapRateSource implements TaxRateSource
 
         if ($table === null) {
             return null;
+        }
+
+        // A commodity code resolves a split the category cannot: TEDB scopes its
+        // own rates by CN and CPA codes, so where the category carries several
+        // rates the code says which one this supply falls in.
+        $exact = $commodityCode === null
+            ? null
+            : $this->byCommodity($table, $category->value, $commodityCode);
+
+        if ($exact !== null) {
+            return new TaxRate(
+                $exact,
+                $exact === '0' ? RateKind::Zero : RateKind::Reduced,
+                self::SOURCE,
+                Confidence::Authoritative,
+            );
         }
 
         $band = $table['bands'][$category->value] ?? null;
@@ -188,15 +213,16 @@ readonly class TedbSoapRateSource implements TaxRateSource
      * repository is bound. A failed call is not cached — a transient outage must
      * not pin a null for the whole TTL.
      *
-     * @return array{standard: string|null, bands: array<string, string>}|null
+     * @return array{standard: string|null, bands: array<string, string>, commodity: array<string, array<string, string>>}|null
      */
     private function table(string $country, string $on): ?array
     {
         $key = 'cbox-tax:tedb:'.$country.':'.$on;
         $cached = $this->cache?->get($key);
 
-        if (is_array($cached) && array_key_exists('standard', $cached) && is_array($cached['bands'] ?? null)) {
-            /** @var array{standard: string|null, bands: array<string, string>} $cached */
+        if (is_array($cached) && array_key_exists('standard', $cached) && is_array($cached['bands'] ?? null)
+            && is_array($cached['commodity'] ?? null)) {
+            /** @var array{standard: string|null, bands: array<string, string>, commodity: array<string, array<string, string>>} $cached */
             return $cached;
         }
 
@@ -252,7 +278,7 @@ readonly class TedbSoapRateSource implements TaxRateSource
     /**
      * Reduce a response to one standard rate plus the unambiguous reduced bands.
      *
-     * @return array{standard: string|null, bands: array<string, string>}|null
+     * @return array{standard: string|null, bands: array<string, string>, commodity: array<string, array<string, string>>}|null
      */
     private function parse(string $xml, string $isoCode): ?array
     {
@@ -277,6 +303,9 @@ readonly class TedbSoapRateSource implements TaxRateSource
 
         /** @var array<string, list<string>> $byCategory */
         $byCategory = [];
+
+        /** @var array<string, array<string, list<string>>> $byCode */
+        $byCode = [];
 
         foreach ($results as $result) {
             if (! $result instanceof DOMElement) {
@@ -320,8 +349,15 @@ readonly class TedbSoapRateSource implements TaxRateSource
                 continue;
             }
 
+            $percent = $this->percent($value);
+            $codes = $this->commodityCodes($xpath, $result);
+
             foreach ($this->identifiers($xpath, $result) as $identifier) {
-                $byCategory[$identifier][] = $this->percent($value);
+                $byCategory[$identifier][] = $percent;
+
+                foreach ($codes as $code) {
+                    $byCode[$identifier][$code][] = $percent;
+                }
             }
         }
 
@@ -329,7 +365,11 @@ readonly class TedbSoapRateSource implements TaxRateSource
             return null;
         }
 
-        return ['standard' => $standard, 'bands' => $this->bands($byCategory, $isoCode)];
+        return [
+            'standard' => $standard,
+            'bands' => $this->bands($byCategory, $isoCode),
+            'commodity' => $this->commodityBands($byCode),
+        ];
     }
 
     /**
@@ -380,6 +420,105 @@ readonly class TedbSoapRateSource implements TaxRateSource
         }
 
         return $bands;
+    }
+
+    /**
+     * The CN/CPA codes a result is scoped to, normalised: TEDB writes them with
+     * spaces ("4903 00 00") and at mixed depth, and a lookup compares them as the
+     * digits alone.
+     *
+     * @return list<string>
+     */
+    private function commodityCodes(DOMXPath $xpath, DOMElement $result): array
+    {
+        $nodes = $xpath->query('.//t:code/t:value', $result);
+
+        if ($nodes === false) {
+            return [];
+        }
+
+        $codes = [];
+
+        foreach ($nodes as $node) {
+            if (! $node instanceof DOMElement) {
+                continue;
+            }
+
+            $code = str_replace([' ', '.'], '', trim($node->textContent));
+
+            if ($code !== '') {
+                $codes[] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Codes that map to exactly ONE rate, keyed by category. A code TEDB lists
+     * under several rates within a category is dropped — it is as ambiguous as the
+     * category, and keeping it would answer a question the source does not.
+     *
+     * @param  array<string, array<string, list<string>>>  $byCode
+     * @return array<string, array<string, string>>
+     */
+    private function commodityBands(array $byCode): array
+    {
+        /** @var array<string, array<string, string>> $resolved */
+        $resolved = [];
+
+        /** @var array<string, array<string, bool>> $ambiguous */
+        $ambiguous = [];
+
+        foreach (self::BANDS as $category => $tiers) {
+            foreach ($tiers as $identifiers) {
+                foreach ($identifiers as $identifier) {
+                    foreach ($byCode[$identifier] ?? [] as $rawCode => $rates) {
+                        $code = (string) $rawCode;
+                        $distinct = array_values(array_unique($rates));
+
+                        if (count($distinct) === 1 && $distinct[0] !== self::UNUSABLE) {
+                            $resolved[$category][$code] ??= $distinct[0];
+
+                            continue;
+                        }
+
+                        $ambiguous[$category][$code] = true;
+                    }
+                }
+            }
+        }
+
+        foreach ($ambiguous as $category => $codes) {
+            foreach ($codes as $code => $_) {
+                unset($resolved[$category][(string) $code]);
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * The rate a commodity code resolves for a category, trying the code as given
+     * and then at successively shallower CN levels (8 → 6 → 4 → 2 digits), since a
+     * member state may scope a rate to a whole heading rather than one subheading.
+     *
+     * @param  array{standard: string|null, bands: array<string, string>, commodity: array<string, array<string, string>>}  $table
+     */
+    private function byCommodity(array $table, string $category, string $commodityCode): ?string
+    {
+        $codes = $table['commodity'][$category] ?? [];
+        $needle = str_replace([' ', '.'], '', $commodityCode);
+
+        for ($length = strlen($needle); $length >= 2; $length -= 2) {
+            $rate = $codes[substr($needle, 0, $length)] ?? null;
+
+            if (is_string($rate)) {
+                return $rate;
+            }
+        }
+
+        return null;
     }
 
     /**
