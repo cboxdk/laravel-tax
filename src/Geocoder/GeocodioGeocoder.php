@@ -10,6 +10,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
 
@@ -25,14 +26,16 @@ use InvalidArgumentException;
  * accepted so pinning `baseUrl` to a v1.x URL still resolves. Canadian results now
  * echo the full postal code where the FSA matches, which this adapter does not read.
  *
- * When `$rooftop` is enabled it also requests Geocodio's census fields and, for US
- * results, attaches the county FIPS as a {@see LocalityCode} (scheme `county-fips`).
- * This is experimental, off by default, and does NOT currently resolve a rooftop
- * rate: Geocodio returns a state-prefixed county FIPS (`53033`) while the dataset
- * keys counties without the prefix (`033`), so the lookup misses and the state rate
- * applies. Closing the gap needs more than a prefix strip — see
- * docs/coverage/us-tax-dataset.md for the per-state code shapes and the boundary
- * data that decides which local records apply at an address.
+ * When `$rooftop` is enabled it also requests Geocodio's `zip4` append and, for US
+ * results, attaches the full ZIP+4 as a {@see LocalityCode} (scheme
+ * {@see UsTaxDatasetRateSource::ZIP9_SCHEME}, e.g. `66101-3064`).
+ *
+ * A ZIP+4 is a POSTAL key, not a taxing authority — it is what the dataset's
+ * boundary index is keyed by, and that index is what turns it into the authorities
+ * that actually apply (a county and a city in Kansas City, the city alone in
+ * Seattle). An earlier version attached a county FIPS instead, which could never
+ * resolve: it named one authority where several may apply, and Geocodio's is
+ * state-prefixed where the dataset's codes are not.
  *
  * Deny-by-default: any failure (no key match, request error, unparseable result,
  * a state that does not resolve in the geo reference) returns `null`, so the
@@ -62,10 +65,10 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             'limit' => 1,
         ];
 
-        // Rooftop resolution needs the county FIPS, which Geocodio returns in its
-        // census append fields.
+        // Rooftop resolution is keyed by ZIP+4 — the USPS add-on from Geocodio's
+        // zip4 append, not the postal code on address_components.
         if ($this->rooftop) {
-            $params['fields'] = 'census';
+            $params['fields'] = 'zip4';
         }
 
         $response = $this->http->get($this->baseUrl.'/geocode', $params);
@@ -112,37 +115,32 @@ readonly class GeocodioGeocoder implements AddressGeocoder
     }
 
     /**
-     * Extract a county-FIPS locality from a Geocodio result's census fields, if
-     * present and well-formed. Returns null otherwise (the caller keeps the plain
-     * state-level jurisdiction).
+     * Extract a ZIP+4 locality from a Geocodio result's `zip4` append. Returns null
+     * when the address carries no add-on — the caller then keeps the plain
+     * state-level jurisdiction and the state rate applies, rather than a rooftop
+     * rate resolved from a partial key.
      *
      * @param  array<array-key, mixed>  $result
      */
     private function localityFrom(array $result, SubdivisionCode $subdivision): ?LocalityCode
     {
         $fields = $result['fields'] ?? null;
-        $census = is_array($fields) && is_array($fields['census'] ?? null) ? $fields['census'] : null;
+        $zip4 = is_array($fields) && is_array($fields['zip4'] ?? null) ? $fields['zip4'] : null;
+        $zip9 = is_array($zip4) && is_array($zip4['zip9'] ?? null) ? $zip4['zip9'] : null;
 
-        if ($census === null || $census === []) {
+        // Geocodio returns zip9 as a LIST: an address spanning several add-ons is
+        // ambiguous, and picking one would silently choose a jurisdiction.
+        if ($zip9 === null || count($zip9) !== 1) {
             return null;
         }
 
-        // Census is keyed by year; take the most recent entry.
-        $latest = $census[array_key_last($census)];
+        $value = reset($zip9);
 
-        if (! is_array($latest)) {
+        if (! is_string($value) || $value === '') {
             return null;
         }
 
-        $countyFips = $latest['county_fips'] ?? null;
-
-        if (! is_string($countyFips) || $countyFips === '') {
-            return null;
-        }
-
-        $countyName = is_string($latest['county_name'] ?? null) ? $latest['county_name'] : null;
-
-        return new LocalityCode($subdivision, 'county-fips', $countyFips, $countyName);
+        return new LocalityCode($subdivision, UsTaxDatasetRateSource::ZIP9_SCHEME, $value);
     }
 
     /**

@@ -60,7 +60,7 @@ calculation the billing engine supplies per invoice.
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus/taxability/sourcing logic, with rates, 25-category taxability, nexus thresholds and sourcing from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ⚠️ state-precision; no rooftop yet |
+| **US sales tax** | `us-sales-tax` — nexus/taxability/sourcing logic, with rates, 25-category taxability, nexus thresholds and sourcing from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ⚠️ state-precision; rooftop wired, indexes pending |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -74,12 +74,12 @@ resolved (via the `AddressGeocoder`), the seller must have **nexus** in it, and 
 product must be **taxable** there — otherwise it returns `NotRegistered` or
 `Exempt`, never a wrong charge. State rates, per-state taxability (25 categories),
 economic-nexus thresholds and intrastate sourcing are supplied by the **us-tax-data
-dataset**, enabled by default. What is still missing is **rooftop precision**: the
-shipped `GeocodioGeocoder` resolves state-level only, so the **state rate** applies
-and city/district components are not stacked — closing that needs per-state
-locality codes plus the boundary data saying which local records apply at an
-address, not just a geocoder flag
-([details](docs/coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)).
+dataset**, enabled by default. **Rooftop** resolution is wired: `us_tax_data.rooftop`
+captures the address's ZIP+4, the dataset's boundary index expands it into the
+authorities that apply, and every applicable local record is summed onto the state
+share — so Kansas City resolves 6.5% + 1.0% county + 1.625% city. The indexes are
+not published yet, so today the **state rate** applies
+([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).
 **Canada** resolves at province level (no local tax). Rate data plugs in via
 `TaxRateSource`: set `TAX_TEDB_LIVE=true` to resolve EU rates from the
 Commission's own TEDB service (no key, no registration, cached per country), or

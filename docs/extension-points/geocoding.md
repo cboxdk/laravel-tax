@@ -60,23 +60,27 @@ versions.
 
 ## Rooftop resolution (experimental)
 
-With `us_tax_data.rooftop` enabled the adapter requests Geocodio's `census` field
-append and attaches the **county FIPS** to the jurisdiction as a `LocalityCode`
-(scheme `county-fips`), so a rate source can try to stack a local rate. The census
-append returns, per census year:
+With `us_tax_data.rooftop` enabled the adapter requests Geocodio's `zip4` append and
+attaches the address's full **ZIP+4** as a `LocalityCode` (scheme `zip9`, e.g.
+`66101-3064`):
 
-| Field | Example (400 Broad St, Seattle WA) |
+| Field | Example (701 N 7th St, Kansas City KS) |
 | --- | --- |
-| `state_fips` | `53` |
-| `county_fips` | `53033` — state-prefixed |
-| `place` | `{"name": "Seattle", "fips": "5363000"}` — state-prefixed |
-| `tract_code` / `block_code` / `full_fips` | census geography, not taxing geography |
+| `fields.zip4.zip9` | `["66101-3064"]` — the USPS add-on |
+| `address_components.postal_code` | `66101` — the ZIP5 alone, not enough |
 
-**This does not currently resolve a rooftop rate**, and the flag is off by default
-for that reason — see
-[the US dataset's rooftop section](../coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)
-for exactly what is missing. A census place is not a taxing jurisdiction: special
-tax districts are polygons that no point identifier selects.
+A ZIP+4 is a **postal** key, not a taxing authority. The dataset's boundary index
+is what expands it into the authorities that apply, and the rate source sums them —
+see [the US dataset's rooftop section](../coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index).
+
+Two refusals worth knowing. Geocodio returns `zip9` as a **list**; an address
+spanning several add-ons could straddle a jurisdiction line, so no locality is
+attached rather than one being picked. And ZIP5 alone is never used: 54% of
+Washington's ZIP5s and 91% of Kansas' span more than one jurisdiction set.
+
+An earlier version attached a county FIPS from the `census` append instead. It could
+never resolve — it names one authority where several may apply, and Geocodio's code
+is state-prefixed where the dataset's are not.
 
 Without a key the contract is left unbound. Bind your own `AddressGeocoder` if you
 use a different provider.

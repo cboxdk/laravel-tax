@@ -43,6 +43,13 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
 {
     private const string SOURCE = 'us-tax-data';
 
+    /**
+     * The locality scheme carrying a full ZIP+4 (`66101-3064`) — a postal key the
+     * boundary index expands into the authorities that apply there, rather than an
+     * authority code itself.
+     */
+    public const string ZIP9_SCHEME = 'zip9';
+
     public function __construct(private UsTaxDataset $dataset) {}
 
     public function rateFor(
@@ -68,7 +75,7 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         $locality = $jurisdiction->locality;
 
         if ($locality !== null && $locality->subdivision->value === $state) {
-            $stacked = $this->stacked($state, $locality->value, $at);
+            $stacked = $this->stacked($state, $this->codesFor($state, $locality), $at);
 
             if ($stacked !== null) {
                 return $stacked;
@@ -100,20 +107,59 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
     }
 
     /**
-     * The all-in rate for a resolved rooftop locality: the matched local record
-     * stacked onto the state share per the state's {@see RateBasis}. Null when no
-     * active local record is carried for the code (the caller then falls back to
-     * the state rate).
+     * The local jurisdiction codes that apply at a locality.
+     *
+     * A `zip9` locality is a postal key, not an authority: it is resolved through
+     * the state's boundary index, which may return SEVERAL codes (a county and a
+     * city both apply in Kansas City) or none. Any other scheme is already a
+     * jurisdiction code and is used as-is.
+     *
+     * @return list<string>
      */
-    private function stacked(string $state, string $code, ?DateTimeImmutable $at): ?TaxRate
+    private function codesFor(string $state, LocalityCode $locality): array
     {
-        $local = $this->activeGeneralRate($this->dataset->localRateRecords($state, $code), $at);
-
-        if ($local === null) {
-            return null;
+        if ($locality->scheme !== self::ZIP9_SCHEME) {
+            return [$locality->value];
         }
 
-        $localPercent = BigDecimal::of($local)->multipliedBy(100);
+        [$zip5, $plus4] = array_pad(explode('-', $locality->value, 2), 2, '');
+
+        if ($zip5 === '' || $plus4 === '') {
+            return [];
+        }
+
+        return $this->dataset->localJurisdictions($state, $zip5, $plus4) ?? [];
+    }
+
+    /**
+     * The all-in rate for a resolved rooftop locality: EVERY applicable local
+     * record summed, then the state share added per the state's {@see RateBasis}.
+     * Summing is not optional — Kansas City's rate is the county's 1% plus the
+     * city's 1.625% on top of the state's 6.5%, and taking either one alone is
+     * wrong. Null when no code resolves an active record, so the caller falls back
+     * to the state rate.
+     *
+     * @param  list<string>  $codes
+     */
+    private function stacked(string $state, array $codes, ?DateTimeImmutable $at): ?TaxRate
+    {
+        $localPercent = BigDecimal::zero();
+        $matched = false;
+
+        foreach ($codes as $code) {
+            $local = $this->activeGeneralRate($this->dataset->localRateRecords($state, $code), $at);
+
+            if ($local === null) {
+                continue;
+            }
+
+            $matched = true;
+            $localPercent = $localPercent->plus(BigDecimal::of($local)->multipliedBy(100));
+        }
+
+        if (! $matched) {
+            return null;
+        }
 
         // Combined records already include the state share; component records are
         // just the local addend and need the state rate added on top.

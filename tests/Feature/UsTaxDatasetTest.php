@@ -222,3 +222,56 @@ it('resolves to null when the US dataset is disabled', function () {
 
     expect($this->app->make(UsTaxDataset::class))->toBeNull();
 });
+
+// The boundary fixture is a slice of the real dist/boundaries/US-KS.json compiled
+// from the SSTGB Kansas boundary file, and the rate records are the real Wyandotte
+// County (209) and Kansas City (36000) rows.
+
+it('sums every local record the boundary index says applies', function () {
+    // 66101-6200 is a Kansas City address: county AND city both apply, so the rate
+    // is 6.5% state + 1.0% county + 1.625% city. Taking either local record alone
+    // would be 100 bp out.
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
+
+    $rate = new UsTaxDatasetRateSource($this->dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    expect((string) $rate?->percentage)->toBe('9.125')
+        ->and($rate?->confidence)->toBe(Confidence::Authoritative)
+        ->and($rate?->kind)->toBe(RateKind::Standard);
+});
+
+it('resolves a whole-ZIP entry with a single local authority', function () {
+    // 67349 is Elk County: the boundary index assigns a county and no city, so the
+    // sum has one addend — the same code path, not a special case.
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '67349-4849');
+
+    $rate = new UsTaxDatasetRateSource($this->dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    // The county's own rate is not in the trimmed fixture, so no record matches and
+    // the source falls back to the state rate rather than inventing a local share.
+    expect((string) $rate?->percentage)->toBe('6.5')
+        ->and($rate?->confidence)->toBe(Confidence::Derived);
+});
+
+it('falls back to the state rate when the ZIP+4 is not in the index', function () {
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-9999');
+
+    $rate = new UsTaxDatasetRateSource($this->dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    expect((string) $rate?->percentage)->toBe('6.5')
+        ->and($rate?->confidence)->toBe(Confidence::Derived);
+});
+
+it('still accepts a direct jurisdiction code, so a caller can supply its own', function () {
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), 'sst-fips', '36000');
+
+    $rate = new UsTaxDatasetRateSource($this->dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    // City only: 6.5% + 1.625%. Honest for a caller that resolved one authority,
+    // and exactly why the ZIP+4 path exists — it finds the ones you did not.
+    expect((string) $rate?->percentage)->toBe('8.125');
+});

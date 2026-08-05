@@ -5,6 +5,44 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.5.0] - 2026-08-05
+
+### Changed
+
+- **`UsTaxDatasetRateSource` now sums every applicable local record**, where it
+  previously stacked exactly one. That was right where only a city record applies
+  at an address (Seattle) and 100 bp low where a county applies alongside it
+  (Kansas City): 6.5% state + 1.0% county + 1.625% city = the 9.125% Kansas City
+  levies. Which records apply comes from the dataset's boundary index, so there is
+  no per-state rule — the same code path produces both answers.
+- **`GeocodioGeocoder` attaches a ZIP+4 locality** (scheme `zip9`, e.g.
+  `66101-3064`) from Geocodio's `zip4` append, replacing the county FIPS it took
+  from the `census` append. The county FIPS could never resolve: it names one
+  authority where several may apply, and Geocodio's is state-prefixed where the
+  dataset's codes are not. A ZIP+4 is a postal key that the boundary index expands
+  into the authorities that actually apply.
+- Geocodio returns `zip9` as a list; where an address spans several add-ons no
+  locality is attached rather than one being picked. ZIP5 alone is never used — 54%
+  of Washington's ZIP5s and 91% of Kansas' span more than one jurisdiction set.
+
+### Added
+
+- `UsTaxDataset::localJurisdictions()` reads a state's `boundaries/US-XX.json`
+  index lazily and cached, alongside the existing sections.
+
+### Notes
+
+- **The boundary indexes are not published yet.** `us-tax-data` compiles them
+  (`bin/compile-boundaries.php`, proven for Kansas and Washington) but does not yet
+  ship them, so the lookup 404s and the state rate applies — unchanged behaviour in
+  practice. This side is complete and tested against the real compiled Kansas index;
+  it activates when they land.
+- Once shipped, rooftop covers the **24 SST member states**. Texas, California,
+  Arizona, Colorado, Louisiana, Missouri, New Mexico, Illinois, Alabama and Alaska
+  publish no boundary files at all.
+- A caller supplying its own `LocalityCode` in a state's native key shape still
+  resolves that single authority, as before.
+
 ## [0.4.1] - 2026-08-05
 
 ### Fixed

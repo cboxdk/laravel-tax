@@ -36,14 +36,17 @@ return [
     | seconds. Point `location` at a pinned tag or a committed local copy for an
     | offline/deterministic build; disable it to fall back to the static snapshot.
     |
-    | `rooftop` (experimental, off by default) lets the Geocodio adapter capture a
-    | county FIPS as a locality. It does NOT yet yield a rooftop rate: Geocodio
-    | returns a state-prefixed county FIPS while the dataset keys counties without
-    | the prefix, the other states use their own code shapes entirely, and which
-    | local records apply at an address (a county record applies inside Kansas City
-    | but not inside Seattle) lives in boundary data the dataset does not ship.
-    | Enabling it is therefore inert today — the state rate applies — and it stays
-    | off until those are closed. See docs/coverage/us-tax-dataset.md.
+    | `rooftop` (experimental, off by default) lets the Geocodio adapter capture the
+    | address's ZIP+4 as a locality. The dataset's per-state boundary index expands
+    | it into the taxing authorities that apply there, and EVERY applicable local
+    | record is summed onto the state share — inside Kansas City a county and a city
+    | record both apply (6.5% + 1.0% + 1.625%), inside Seattle only the city one
+    | does (6.5% + 4.05%).
+    |
+    | It stays off by default because the boundary indexes are not published in the
+    | dataset yet: the lookup 404s and the state rate applies. Once shipped it covers
+    | the 24 SST member states — TX, CA, AZ, CO, LA, MO, NM, IL, AL and AK publish no
+    | boundary files at all. See docs/coverage/us-tax-dataset.md.
     |
     */
 

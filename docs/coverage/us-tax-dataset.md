@@ -41,9 +41,9 @@ pairs the dataset leaves undetermined — to the static fallback matrix.
 `location` is an `http(s)` base URL (the public dataset mirror) or a local
 directory, under which the split files live at `by-section/<section>.json`. Only
 the small `baseline`, `taxability`, `nexus` and `sourcing` sections are fetched for
-the common state-level path; the bulky `rates` section (every local record) is read
-lazily and only when a rooftop locality is resolved. Fetched sections are cached for
-`ttl` seconds. **Pin `location` at a tagged release or a committed local copy** for
+the common state-level path; the bulky `rates` section (every local record) and a
+state's `boundaries/US-XX.json` index are read lazily and only when a rooftop
+locality is resolved. Fetched sections are cached for `ttl` seconds. **Pin `location` at a tagged release or a committed local copy** for
 an offline/deterministic build. Disabling it falls back to the static snapshot (and,
 for taxability/nexus, the shipped static US tables).
 
@@ -58,59 +58,53 @@ returns:
 
 1. A **reduced rate** when a state reduces a category (e.g. Missouri groceries at
    1.225%) — a product rule applied whatever the location.
-2. A **rooftop all-in** rate when the jurisdiction carries a `LocalityCode`: the
-   state and the matched local record are stacked per the state's rate basis
-   (`component` adds the state share; `combined` records are already all-in), at
-   `Confidence::Authoritative`. **No shipped geocoder produces a matching locality
-   yet** — see [below](#rooftop-is-partial-and-opt-in) — so this path is reachable
-   only by supplying a `LocalityCode` in the state's own key shape yourself.
+2. A **rooftop all-in** rate when the jurisdiction carries a `LocalityCode`: EVERY
+   applicable local record is summed and the state share added per the state's rate
+   basis (`component` adds it; `combined` records are already all-in), at
+   `Confidence::Authoritative`. Which records apply comes from the boundary index —
+   see [below](#rooftop-zip4-into-the-boundary-index).
 3. Otherwise the **state rate**, at `Confidence::Derived` — honest that it is the
    state share, not a rooftop all-in figure.
 
-### Rooftop is partial and opt-in
+### Rooftop: ZIP+4 into the boundary index
 
-Setting `us_tax_data.rooftop` lets the Geocodio adapter capture a **county FIPS** as
-a locality. It is **experimental and off by default**, and three separate things
-must be solved before it yields a trustworthy all-in rate.
+Setting `us_tax_data.rooftop` lets the Geocodio adapter capture the address's full
+**ZIP+4** as a locality (scheme `zip9`, e.g. `66101-3064`). A ZIP+4 is a *postal*
+key, not a taxing authority — the dataset's **boundary index** turns it into the
+authorities that actually apply, and the rate source sums **every** local record
+they resolve, then adds the state share per the state's `rateBasis`.
 
-**1. The locality code does not match the dataset's keys.** Geocodio returns a
-state-prefixed `county_fips` (`53033` for King County, WA) while the dataset keys
-that state's county records as `033`. The lookup therefore finds nothing and falls
-back to the state rate — so today rooftop resolution is inert rather than wrong.
-Stripping the two-digit state prefix is what makes the key match.
+That summing is the whole point. Local records are components, and which of them
+apply differs by address in a way no rule can predict:
 
-**2. The dataset's local codes are heterogeneous**, so no single identifier reaches
-every state. Probing Geocodio against the compiled dataset:
-
-| Dataset key shape | States | Derivable from Geocodio? |
+| Address | Index returns | Rate |
 | --- | --- | --- |
-| FIPS county (`033`) and place (`63000`) | WA UT TN WI KS NE ND NV WY OH NC AR GA IA MN OK SD VT WV | ✅ `county_fips` / `place.fips` minus the state prefix |
-| `<stateFips>:<PLACENAME>` (`06:OAKLAND`) | CA | ✅ from `place.name` |
-| `US-XX:<County name>` | FL HI MS PA SC VA | ⚠️ county name matches; city-keyed rows and NYC do not |
-| Own authority codes (`2109064`, `7001`, `9001`, `AJ`) | TX AL AK AZ | ❌ needs a crosswalk |
-| Composite ids (`048-0002-8`, `00000-001-000`, `09-509`, `acadia-parish:A`) | IL MO NM LA | ❌ needs a crosswalk |
-| `county:<Name>` | CO | ❌ curated names, no code |
+| `701 N 7th St, Kansas City KS` → `66101-3064` | county `209` **and** city `36000` | 6.5% + 1.0% + 1.625% = **9.125%** |
+| `400 Broad St, Seattle WA` → `98109-4607` | city `63000` only | 6.5% + 4.05% = **10.55%** |
 
-**3. Which local records apply at an address is not in the dataset.** Local records
-are components of a sum, and `rateBasis` only says whether the *state* share is
-already inside one. What decides the sum's membership is the SST boundary file,
-which the dataset does not ship — and states assign differently:
+Both come out of the same code path. Taking the most specific record alone would be
+right for Seattle and 100 bp low for Kansas City; there is no per-state rule to
+encode, because the boundary file carries it.
 
-- **Washington** — inside Seattle the boundary file assigns **no county record**, so
-  the total is state + city: 6.5% + 4.05% = 10.55%. King County's `033` (3.8%)
-  applies to unincorporated addresses, not to a Seattle rooftop; adding both would
-  give 14.35%.
-- **Kansas** — inside Kansas City it assigns **county and city**, so the total is
-  6.5% + 1.0% (Wyandotte `209`) + 1.625% (`36000`) = the 9.125% the city levies.
+> **The indexes are not published yet.** `us-tax-data` compiles them
+> (`bin/compile-boundaries.php`, proven for KS and WA) but does not yet ship them in
+> the dataset, so `boundaries/US-XX.json` currently 404s and rooftop falls back to
+> the state rate. The consumer side is complete and tested; it activates the moment
+> the indexes land, with no change here.
 
-Since dataset **v0.4.3** every SST record carries its authority as `level`
-(`county`, `city`, `special_district`), so a consumer can at least see what a record
-*is* — but knowing the kind does not tell you the membership. Picking one record and
-adding it to the state rate, which is what `UsTaxDatasetRateSource` does when handed
-a locality, is right for Washington and 100 bp low for Kansas.
+Three limits remain once they do:
 
-Special tax districts settle it: Kansas City alone has six, pushing local rates to
-10.125–11.125%, and a district is a polygon no point identifier selects. A faithful
-rooftop rate therefore needs boundary data, not just a resolved locality. Until
-then, absent a resolved locality the **state rate applies** at `Confidence::Derived`,
-which is honest about what it is.
+**Coverage is the 24 SST member states.** Only they publish boundary files. Texas
+explicitly publishes none, and CA, AZ, CO, LA, MO, NM, IL, AL and AK have no
+equivalent — those states resolve to the state rate regardless of rooftop.
+
+**A ZIP+4 is required, so a geocoder becomes load-bearing.** Absent an add-on — or
+where Geocodio returns several for one address, which is refused rather than picked
+— no locality is attached and the state rate applies.
+
+**Address-range precision is not indexed.** The boundary files carry street-level
+`A` rows (570k of Kansas' 684k), but resolving those needs a parsed street address
+rather than a ZIP+4, so the index carries the whole-ZIP and ZIP+4 rows only.
+
+Absent a resolved locality the **state rate applies** at `Confidence::Derived`,
+which is honest about what it is; a resolved one is `Confidence::Authoritative`.

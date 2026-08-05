@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
@@ -83,7 +84,7 @@ it('denies by default on an empty geocoding result', function () {
     expect($geocoder->locate(['line1' => 'nowhere', 'country' => 'US']))->toBeNull();
 });
 
-it('attaches a county-FIPS locality from the census fields when rooftop is enabled', function () {
+it('attaches a ZIP+4 locality from the zip4 append when rooftop is enabled', function () {
     $http = new Factory;
     $http->fake([
         'api.geocod.io/*' => $http->response([
@@ -91,15 +92,7 @@ it('attaches a county-FIPS locality from the census fields when rooftop is enabl
                 [
                     'address_components' => ['country' => 'US', 'state_province' => 'CA'],
                     'fields' => [
-                        'census' => [
-                            // v2 returns the census append unchanged from v1: a
-                            // state-prefixed county FIPS, plus a `place` object.
-                            '2025' => [
-                                'county_fips' => '06001',
-                                'county_name' => 'Alameda County',
-                                'place' => ['name' => 'Oakland', 'fips' => '0653000'],
-                            ],
-                        ],
+                        'zip4' => ['plus4' => ['4607'], 'zip9' => ['94612-4607']],
                     ],
                 ],
             ],
@@ -118,8 +111,8 @@ it('attaches a county-FIPS locality from the census fields when rooftop is enabl
     expect($jurisdiction)->not->toBeNull()
         ->and($jurisdiction->subdivision->value)->toBe('US-CA')
         ->and($jurisdiction->locality)->not->toBeNull()
-        ->and($jurisdiction->locality->scheme)->toBe('county-fips')
-        ->and($jurisdiction->locality->value)->toBe('06001')
+        ->and($jurisdiction->locality->scheme)->toBe(UsTaxDatasetRateSource::ZIP9_SCHEME)
+        ->and($jurisdiction->locality->value)->toBe('94612-4607')
         ->and($jurisdiction->needsRooftop())->toBeFalse();
 });
 
@@ -138,4 +131,38 @@ it('does not attach a locality when rooftop is disabled (the default)', function
     $jurisdiction = $geocoder->locate(['line1' => 'x', 'subdivision' => 'CA', 'country' => 'US']);
 
     expect($jurisdiction->locality)->toBeNull();
+});
+
+it('refuses an ambiguous ZIP+4 rather than picking one', function () {
+    // Geocodio returns zip9 as a list; an address spanning several add-ons could
+    // straddle a jurisdiction line, so no locality is attached and the state rate
+    // applies.
+    $http = new Factory;
+    $http->fake([
+        'api.geocod.io/*' => $http->response([
+            'results' => [
+                [
+                    'address_components' => ['country' => 'US', 'state_province' => 'CA'],
+                    'fields' => ['zip4' => ['zip9' => ['94612-4607', '94612-4608']]],
+                ],
+            ],
+        ]),
+    ]);
+
+    $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
+        ->locate(['line1' => '1 Frank H Ogawa Plaza', 'country' => 'US']);
+
+    expect($jurisdiction?->locality)->toBeNull();
+});
+
+it('requests the zip4 append, not census, when rooftop is enabled', function () {
+    $http = new Factory;
+    $http->fake(['api.geocod.io/*' => $http->response(['results' => [
+        ['address_components' => ['country' => 'US', 'state_province' => 'CA']],
+    ]])]);
+
+    new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
+        ->locate(['line1' => 'x', 'country' => 'US']);
+
+    $http->assertSent(fn ($request): bool => str_contains($request->url(), 'fields=zip4'));
 });

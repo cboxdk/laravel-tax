@@ -286,6 +286,91 @@ readonly class UsTaxDataset
     }
 
     /**
+     * The local taxing jurisdictions that apply at a ZIP+4, from the state's
+     * boundary index (`boundaries/US-XX.json`). This is the half of rooftop the
+     * rate records cannot supply: they say what each authority charges, while the
+     * index says which ones apply — inside Kansas City a county AND a city record
+     * apply, inside Seattle only the city one does.
+     *
+     * Returns the codes of the NARROWEST span covering the add-on, which the index
+     * orders first. An empty list is a real answer where a ZIP resolves to no local
+     * authority; a MISSING one (no index, no ZIP, no covering span) is a null, so
+     * the caller falls back to the state rate rather than assuming none apply.
+     *
+     * @return list<string>|null
+     */
+    public function localJurisdictions(string $state, string $zip5, string $plus4): ?array
+    {
+        $index = $this->boundaries($state);
+        $entries = is_array($index) && is_array($index[$zip5] ?? null) ? $index[$zip5] : null;
+
+        if ($entries === null) {
+            return null;
+        }
+
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $from = is_string($entry['from'] ?? null) ? $entry['from'] : null;
+            $to = is_string($entry['to'] ?? null) ? $entry['to'] : null;
+
+            if ($from === null || $to === null || $from > $plus4 || $plus4 > $to) {
+                continue;
+            }
+
+            $codes = [];
+
+            foreach (is_array($entry['codes'] ?? null) ? $entry['codes'] : [] as $code) {
+                if (is_string($code) && $code !== '') {
+                    $codes[] = $code;
+                }
+            }
+
+            return $codes;
+        }
+
+        return null;
+    }
+
+    /**
+     * A state's ZIP-keyed boundary index, fetched lazily and cached like a section.
+     * It is per state deliberately — an index is ~0.5–3.5 MB, which is fine for the
+     * one state a supply resolved to and wasteful for all of them.
+     *
+     * @return array<array-key, mixed>|null
+     */
+    private function boundaries(string $state): ?array
+    {
+        $key = 'cbox-tax:us-dataset:'.substr(hash('sha256', $this->location), 0, 16).':boundaries:'.$state;
+
+        $cached = $this->cache->get($key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $raw = $this->read('boundaries/'.$state.'.json');
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (! is_array($decoded) || ! is_array($decoded['zip'] ?? null)) {
+            return null;
+        }
+
+        /** @var array<array-key, mixed> $zip */
+        $zip = $decoded['zip'];
+        $this->cache->put($key, $zip, $this->ttl);
+
+        return $zip;
+    }
+
+    /**
      * Load a section's `states` map — from the per-section cache, else fetched
      * from the configured location and cached. Returns null on any failure.
      *
