@@ -15,12 +15,16 @@ use Illuminate\Http\Client\Factory;
 use Throwable;
 
 /**
- * Reads EU VAT rates from a TEDB-derived dataset — the EU Commission's *Taxes in
- * Europe Database* (`VatRetrievalService`), transformed to the JSON shape below.
- * The dataset location is CONFIG-DRIVEN (`tax.tedb.url`): either an `http(s)://`
- * URL or a local filesystem path. The package ships NO endpoint — an operator must
- * point this at a real TEDB export; unconfigured, the static snapshot stays the
- * zero-config default.
+ * Reads EU VAT rates from a TEDB-derived dataset you generated yourself, in the
+ * JSON shape below. The location is CONFIG-DRIVEN (`tax.tedb.url`): an `http(s)://`
+ * URL or a local filesystem path.
+ *
+ * **There is no TEDB file to download.** The Commission publishes no export — its
+ * SOAP service and web UI are the only sources — so this adapter is for pinning a
+ * snapshot you produced and reviewed, typically to keep builds deterministic or to
+ * override a band. To read TEDB itself, use {@see TedbSoapRateSource}, which calls
+ * the service directly and needs no key. Unconfigured, the static snapshot stays
+ * the zero-config default.
  *
  * Documented dataset shape (a TEDB export normalised to per-country rates):
  *

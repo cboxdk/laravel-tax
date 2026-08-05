@@ -21,8 +21,11 @@ Commission's **TEDB**, called live via
 service is how you consume it), or a **real, public, MIT-licensed EU VAT dataset**
 (`ibericode/vat-rates`) via the [`IbericodeVatRateSource`](eu-vat-feed.md) adapter.
 Either composes `ChainTaxRateSource(feed → static snapshot)`. Confidence: **high**
-(regime + threshold grounded from EU primary law; rates from the bound community
-feed — a good default, re-verify against member-state guidance before filing).
+— the regime and threshold are grounded in EU primary law, and with the live TEDB
+source bound the rates come from the Commission's own database rather than a
+community compilation. Reduced bands are the caveat: TEDB resolves them for some
+member states and splits them across sub-scopes for others, where the standard rate
+applies instead. Re-verify against member-state guidance before filing.
 
 **€10,000 micro-business threshold (Art. 59c).** The regime is threshold-aware: a
 seller established in a single member state, **below** the €10,000 combined

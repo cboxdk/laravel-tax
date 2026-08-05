@@ -26,8 +26,10 @@ documents exactly which dataset, under what license, and how it is wired.
 > authority. The maintainers state plainly that they "cannot be held responsible
 > for its accuracy or completeness." Treat it as a good, refreshable default —
 > pin/mirror a copy and re-verify against each member state's own guidance before
-> relying on it for filing. For a primary-source feed, point the config URL at an
-> EU Commission TEDB export instead (see [rate sources](../extension-points/rate-sources.md)).
+> relying on it for filing. **For a primary source, enable the live EU Commission
+> TEDB feed instead** (`tax.tedb.live`) — it needs no API key, and it is the tax
+> authority's own database rather than a compilation of it. See
+> [rate sources](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource).
 
 ## Dataset shape
 

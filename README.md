@@ -35,8 +35,9 @@ $assessment->reason;      // human-readable explanation for the audit trail
 ```
 
 The engine decides *whether and how* to tax; the **`TaxRateSource`** contract
-supplies the rate number (an EU TEDB feed, the SST files, a commercial adapter).
-A missing rate is **refused, never assumed 0%**.
+supplies the rate number — the EU Commission's TEDB called live (no API key), the
+compiled US dataset, or a commercial adapter. A missing rate is **refused, never
+assumed 0%**.
 
 ## Multi-entity / seller-of-record routing
 
@@ -55,7 +56,7 @@ calculation the billing engine supplies per invoice.
 
 | | Regime | Status |
 | --- | --- | --- |
-| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge, Art. 59c €10k micro-business origin/destination sourcing | ✅ |
+| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge, Art. 59c €10k micro-business origin/destination sourcing; rates live from the Commission's TEDB | ✅ |
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
@@ -79,9 +80,10 @@ and city/district components are not stacked — closing that needs per-state
 locality codes plus the boundary data saying which local records apply at an
 address, not just a geocoder flag
 ([details](docs/coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)).
-**Canada** resolves at province level (no local tax). Rate data (TEDB via
-`TedbRateSource`, SST, commercial) plugs in via `TaxRateSource` —
-see [`docs/coverage`](docs/coverage/_index.md).
+**Canada** resolves at province level (no local tax). Rate data plugs in via
+`TaxRateSource`: set `TAX_TEDB_LIVE=true` to resolve EU rates from the
+Commission's own TEDB service (no key, no registration, cached per country), or
+bind a commercial adapter — see [`docs/coverage`](docs/coverage/_index.md).
 
 **EU** additionally applies the **Art. 59c €10,000 micro-business threshold**: a
 below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
@@ -114,7 +116,7 @@ capture and verification are the consumer's concern.** See
 
 ## Requirements
 
-PHP `^8.4`; Laravel `^13`. See `composer.json`.
+PHP `^8.4` with `ext-dom`; Laravel `^13`. See `composer.json`.
 
 ## Development
 

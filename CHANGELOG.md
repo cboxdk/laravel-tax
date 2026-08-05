@@ -5,6 +5,29 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.4.1] - 2026-08-05
+
+### Fixed
+
+- **`ext-dom` was used but not required.** `TedbSoapRateSource` parses the
+  Commission's SOAP responses with `DOMDocument`/`DOMXPath`; `composer.json` did not
+  declare the extension, so an install without it would have fatalled at runtime
+  instead of failing at install time. Declared, and stated in `requirements.md`.
+
+### Changed
+
+- Docs now present the **live TEDB service as the EU default** rather than a
+  footnote: `README.md`, `coverage/supported.md` and `coverage/eu-vat-feed.md`
+  point at it, and the `eu-vat-feed` page says plainly that the community
+  compilation is a good default while TEDB is the tax authority's own database.
+- `TedbRateSource`'s docblock no longer tells operators to "point this at a real
+  TEDB export". It now says there is no such file to download and describes what
+  the adapter is genuinely for — pinning a snapshot you generated and reviewed —
+  pointing at `TedbSoapRateSource` for reading TEDB itself.
+- The EU confidence note in `coverage/supported.md` names the real caveat: reduced
+  bands resolve for some member states and split across sub-scopes in others, where
+  the standard rate applies.
+
 ## [0.4.0] - 2026-08-05
 
 ### Added
