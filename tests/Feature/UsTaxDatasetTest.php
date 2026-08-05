@@ -310,3 +310,38 @@ it('falls back to the plain index when no gzipped one is published', function ()
     expect((string) new UsTaxDatasetRateSource($dataset)
         ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard)?->percentage)->toBe('9.125');
 });
+
+it('treats "no local authority applies" as an authoritative answer', function () {
+    // Indiana levies no local sales tax and states its whole territory in one
+    // ZIP-spanning row carrying no authorities. The rate equals the state share,
+    // but it is a complete all-in answer — not a fallback that might be missing
+    // locals, which is what Derived would signal.
+    $index = json_decode((string) file_get_contents(
+        dirname(__DIR__).'/Fixtures/us-tax-dataset/boundaries/US-KS.json'
+    ), true);
+
+    $index['sets'] = [[]];
+    $index['zip'] = [];
+    $index['ranges'] = [['66000', '67999', '0000', '9999', 0]];
+
+    $directory = sys_get_temp_dir().'/cbox-tax-empty-'.bin2hex(random_bytes(4));
+    mkdir($directory.'/boundaries', 0o755, true);
+    mkdir($directory.'/by-section', 0o755, true);
+
+    foreach (['rates', 'baseline', 'taxability', 'nexus', 'sourcing'] as $section) {
+        copy(
+            dirname(__DIR__).'/Fixtures/us-tax-dataset/by-section/'.$section.'.json',
+            $directory.'/by-section/'.$section.'.json',
+        );
+    }
+
+    file_put_contents($directory.'/boundaries/US-KS.json', json_encode($index));
+
+    $dataset = new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), $directory);
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
+
+    $rate = new UsTaxDatasetRateSource($dataset)->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    expect((string) $rate?->percentage)->toBe('6.5')
+        ->and($rate?->confidence)->toBe(Confidence::Authoritative);
+});

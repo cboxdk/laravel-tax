@@ -75,7 +75,12 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         $locality = $jurisdiction->locality;
 
         if ($locality !== null && $locality->subdivision->value === $state) {
-            $stacked = $this->stacked($state, $this->codesFor($state, $locality), $at);
+            $codes = $this->codesFor($state, $locality);
+
+            // An EMPTY list is a positive answer — the index says no local authority
+            // applies there, as in Indiana, which levies none. That is an all-in
+            // rate that happens to equal the state share, not a fallback to it.
+            $stacked = $codes === null ? null : $this->stacked($state, $codes, $at);
 
             if ($stacked !== null) {
                 return $stacked;
@@ -111,12 +116,17 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      *
      * A `zip9` locality is a postal key, not an authority: it is resolved through
      * the state's boundary index, which may return SEVERAL codes (a county and a
-     * city both apply in Kansas City) or none. Any other scheme is already a
-     * jurisdiction code and is used as-is.
+     * city both apply in Kansas City), an empty list (none apply, as everywhere in
+     * Indiana) or nothing at all. Any other scheme is already a jurisdiction code
+     * and is used as-is.
      *
-     * @return list<string>
+     * Null means UNKNOWN and the caller falls back to the state rate; an empty list
+     * means the index positively answered "no local authority", which is an all-in
+     * rate in its own right.
+     *
+     * @return list<string>|null
      */
-    private function codesFor(string $state, LocalityCode $locality): array
+    private function codesFor(string $state, LocalityCode $locality): ?array
     {
         if ($locality->scheme !== self::ZIP9_SCHEME) {
             return [$locality->value];
@@ -125,10 +135,10 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         [$zip5, $plus4] = array_pad(explode('-', $locality->value, 2), 2, '');
 
         if ($zip5 === '' || $plus4 === '') {
-            return [];
+            return null;
         }
 
-        return $this->dataset->localJurisdictions($state, $zip5, $plus4) ?? [];
+        return $this->dataset->localJurisdictions($state, $zip5, $plus4);
     }
 
     /**
@@ -147,10 +157,6 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      */
     private function stacked(string $state, array $codes, ?DateTimeImmutable $at): ?TaxRate
     {
-        if ($codes === []) {
-            return null;
-        }
-
         $localPercent = BigDecimal::zero();
 
         foreach ($codes as $code) {

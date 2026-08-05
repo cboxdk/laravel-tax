@@ -5,6 +5,25 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.5.3] - 2026-08-05
+
+### Fixed
+
+- **"No local authority applies" was reported as a fallback.** Where the boundary
+  index positively answers that no local authority covers an address — as it does
+  everywhere in Indiana, Kentucky, Michigan, New Jersey and Rhode Island, which levy
+  no local sales tax — the resulting rate equals the state share but is a *complete*
+  all-in answer. It was returned at `Confidence::Derived`, the same signal as "we
+  only know the state share and locals may be missing". It is now `Authoritative`,
+  and an index that carries nothing for the address stays `Derived`.
+
+### Notes
+
+- **Rooftop is live.** The indexes are published, and the chain resolves end to end
+  against the public mirror: Kansas City `9.125%`, Seattle `10.55%`, Indianapolis
+  `7%` — the first two authoritative sums over several authorities, the third an
+  authoritative statement that none apply.
+
 ## [0.5.2] - 2026-08-05
 
 ### Changed
