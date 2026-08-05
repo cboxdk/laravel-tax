@@ -42,6 +42,12 @@ Two rules the design keeps:
 - **Deny-by-default.** Any failure — no key, request error, unparseable result, a
   state that does not resolve — returns `null`. Never a ZIP-centroid guess.
 
+A failure is **retried once** before it is believed. Geocodio answers
+`403 Invalid API key` intermittently on a valid key (observed twice in roughly ten
+calls while this adapter was built), and with rooftop enabled an unresolved address
+is not a degraded rate but a failed assessment — `JurisdictionNotResolved`. A
+genuinely invalid key just costs one extra request.
+
 ### API version
 
 The adapter targets **v2** (`https://api.geocod.io/v2`). Of v2's breaking changes

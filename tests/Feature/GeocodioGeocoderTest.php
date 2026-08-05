@@ -166,3 +166,31 @@ it('requests the zip4 append, not census, when rooftop is enabled', function () 
 
     $http->assertSent(fn ($request): bool => str_contains($request->url(), 'fields=zip4'));
 });
+
+it('retries a transient failure before giving up', function () {
+    // Geocodio answers 403 "Invalid API key" intermittently on a valid key. With
+    // rooftop that is not a degraded rate, it is a failed assessment — so one
+    // failure is not believed on its own.
+    $http = new Factory;
+    $http->fake([
+        'api.geocod.io/*' => $http->sequence()
+            ->push(['error' => 'Invalid API key'], 403)
+            ->push(['results' => [
+                ['address_components' => ['country' => 'US', 'state_province' => 'CA']],
+            ]], 200),
+    ]);
+
+    $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key')
+        ->locate(['line1' => '1600 Amphitheatre Pkwy', 'country' => 'US']);
+
+    expect($jurisdiction?->subdivision->value)->toBe('US-CA');
+    $http->assertSentCount(2);
+});
+
+it('still denies when the failure persists', function () {
+    $http = new Factory;
+    $http->fake(['api.geocod.io/*' => $http->response(['error' => 'Invalid API key'], 403)]);
+
+    expect(new GeocodioGeocoder($http, $this->geo, 'test-key')->locate(['line1' => 'x', 'country' => 'US']))
+        ->toBeNull();
+});

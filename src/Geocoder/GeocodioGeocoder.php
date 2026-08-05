@@ -13,6 +13,7 @@ use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Resolves an address to a jurisdiction via the Geocodio API (US + Canada). It
@@ -43,6 +44,19 @@ use InvalidArgumentException;
  */
 readonly class GeocodioGeocoder implements AddressGeocoder
 {
+    /**
+     * Geocodio answers `403 Invalid API key` intermittently on a perfectly valid
+     * key — observed twice in roughly ten calls while this adapter was being built.
+     * That used to cost a state-level rate; with rooftop resolution it costs the
+     * whole assessment, because an address that does not resolve raises
+     * `JurisdictionNotResolved`. So a failure is retried once before it is believed.
+     *
+     * A genuinely invalid key just costs one extra request.
+     */
+    private const int ATTEMPTS = 2;
+
+    private const int RETRY_DELAY_MS = 250;
+
     public function __construct(
         private Factory $http,
         private JurisdictionRepository $geo,
@@ -71,7 +85,13 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             $params['fields'] = 'zip4';
         }
 
-        $response = $this->http->get($this->baseUrl.'/geocode', $params);
+        try {
+            $response = $this->http
+                ->retry(self::ATTEMPTS, self::RETRY_DELAY_MS, throw: false)
+                ->get($this->baseUrl.'/geocode', $params);
+        } catch (Throwable) {
+            return null;
+        }
 
         if (! $response->successful()) {
             return null;

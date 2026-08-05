@@ -5,6 +5,18 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.5.4] - 2026-08-05
+
+### Fixed
+
+- **A transient geocoding failure aborted the assessment.** Geocodio answers
+  `403 Invalid API key` intermittently on a valid key — observed twice in roughly
+  ten calls. Before rooftop that cost a state-level rate; with rooftop enabled an
+  unresolved address raises `JurisdictionNotResolved` and the whole assessment
+  fails. `GeocodioGeocoder` now retries once (250 ms apart) before believing a
+  failure. A genuinely invalid key costs one extra request; deny-by-default is
+  unchanged once the retry is exhausted.
+
 ## [0.5.3] - 2026-08-05
 
 ### Fixed
