@@ -17,6 +17,7 @@ use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Nexus\StaticNexusThresholds;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
+use Cbox\Tax\RateSource\ArcGisRateSource;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\IbericodeVatRateSource;
@@ -94,6 +95,19 @@ class TaxServiceProvider extends ServiceProvider
 
             if (is_string($tedb) && $tedb !== '') {
                 $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);
+            }
+
+            // Where a state publishes its own rooftop polygons (CA, NM), a point
+            // resolves finer than the dataset's postal index — so it is tried
+            // first, and returns null everywhere else.
+            if ($config->get('tax.us_tax_data.rooftop') === true) {
+                $ttl = $config->get('tax.us_tax_data.ttl');
+
+                $sources[] = new ArcGisRateSource(
+                    $app->make(Factory::class),
+                    $app->make(Cache::class),
+                    is_int($ttl) ? $ttl : 86400,
+                );
             }
 
             // The US dataset owns US rates (the static snapshot carries none). It is

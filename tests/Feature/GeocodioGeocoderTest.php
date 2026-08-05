@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\RateSource\ArcGisRateSource;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 
@@ -85,14 +86,16 @@ it('denies by default on an empty geocoding result', function () {
 });
 
 it('attaches a ZIP+4 locality from the zip4 append when rooftop is enabled', function () {
+    // Washington is a Streamlined member, so its rooftop key is the postal one the
+    // boundary index carries — unlike California, which is resolved by polygon.
     $http = new Factory;
     $http->fake([
         'api.geocod.io/*' => $http->response([
             'results' => [
                 [
-                    'address_components' => ['country' => 'US', 'state_province' => 'CA'],
+                    'address_components' => ['country' => 'US', 'state_province' => 'WA'],
                     'fields' => [
-                        'zip4' => ['plus4' => ['4607'], 'zip9' => ['94612-4607']],
+                        'zip4' => ['plus4' => ['4607'], 'zip9' => ['98109-4607']],
                     ],
                 ],
             ],
@@ -102,17 +105,17 @@ it('attaches a ZIP+4 locality from the zip4 append when rooftop is enabled', fun
     $geocoder = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true);
 
     $jurisdiction = $geocoder->locate([
-        'line1' => '1 Frank H Ogawa Plaza',
-        'city' => 'Oakland',
-        'subdivision' => 'CA',
+        'line1' => '400 Broad St',
+        'city' => 'Seattle',
+        'subdivision' => 'WA',
         'country' => 'US',
     ]);
 
     expect($jurisdiction)->not->toBeNull()
-        ->and($jurisdiction->subdivision->value)->toBe('US-CA')
+        ->and($jurisdiction->subdivision->value)->toBe('US-WA')
         ->and($jurisdiction->locality)->not->toBeNull()
         ->and($jurisdiction->locality->scheme)->toBe(UsTaxDatasetRateSource::ZIP9_SCHEME)
-        ->and($jurisdiction->locality->value)->toBe('94612-4607')
+        ->and($jurisdiction->locality->value)->toBe('98109-4607')
         ->and($jurisdiction->needsRooftop())->toBeFalse();
 });
 
@@ -142,8 +145,8 @@ it('refuses an ambiguous ZIP+4 rather than picking one', function () {
         'api.geocod.io/*' => $http->response([
             'results' => [
                 [
-                    'address_components' => ['country' => 'US', 'state_province' => 'CA'],
-                    'fields' => ['zip4' => ['zip9' => ['94612-4607', '94612-4608']]],
+                    'address_components' => ['country' => 'US', 'state_province' => 'WA'],
+                    'fields' => ['zip4' => ['zip9' => ['98109-4607', '98109-4608']]],
                 ],
             ],
         ]),
@@ -193,4 +196,48 @@ it('still denies when the failure persists', function () {
 
     expect(new GeocodioGeocoder($http, $this->geo, 'test-key')->locate(['line1' => 'x', 'country' => 'US']))
         ->toBeNull();
+});
+
+it('attaches a point locality for the states resolved by polygon', function () {
+    // California and New Mexico publish polygon services, so a point is the useful
+    // key there — a jurisdiction carries only one locality, so the ZIP+4 is not.
+    $http = new Factory;
+    $http->fake([
+        'api.geocod.io/*' => $http->response([
+            'results' => [
+                [
+                    'address_components' => ['country' => 'US', 'state_province' => 'CA'],
+                    'location' => ['lat' => 34.0522, 'lng' => -118.2437],
+                    'fields' => ['zip4' => ['zip9' => ['90012-4801']]],
+                ],
+            ],
+        ]),
+    ]);
+
+    $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
+        ->locate(['line1' => '200 N Spring St', 'city' => 'Los Angeles', 'country' => 'US']);
+
+    expect($jurisdiction?->locality?->scheme)->toBe(ArcGisRateSource::LATLNG_SCHEME)
+        ->and($jurisdiction?->locality?->value)->toBe('34.052200,-118.243700');
+});
+
+it('keeps the ZIP+4 key for states resolved by the boundary index', function () {
+    $http = new Factory;
+    $http->fake([
+        'api.geocod.io/*' => $http->response([
+            'results' => [
+                [
+                    'address_components' => ['country' => 'US', 'state_province' => 'KS'],
+                    'location' => ['lat' => 39.1155, 'lng' => -94.6268],
+                    'fields' => ['zip4' => ['zip9' => ['66101-3064']]],
+                ],
+            ],
+        ]),
+    ]);
+
+    $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
+        ->locate(['line1' => '701 N 7th St', 'city' => 'Kansas City', 'country' => 'US']);
+
+    expect($jurisdiction?->locality?->scheme)->toBe(UsTaxDatasetRateSource::ZIP9_SCHEME)
+        ->and($jurisdiction?->locality?->value)->toBe('66101-3064');
 });

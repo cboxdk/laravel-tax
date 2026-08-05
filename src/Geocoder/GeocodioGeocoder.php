@@ -10,6 +10,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\RateSource\ArcGisRateSource;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
@@ -80,7 +81,9 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         ];
 
         // Rooftop resolution is keyed by ZIP+4 — the USPS add-on from Geocodio's
-        // zip4 append, not the postal code on address_components.
+        // zip4 append, not the postal code on address_components. California and
+        // New Mexico are resolved by coordinates instead (see localityFrom), and
+        // those come back on every result without an append.
         if ($this->rooftop) {
             $params['fields'] = 'zip4';
         }
@@ -144,6 +147,13 @@ readonly class GeocodioGeocoder implements AddressGeocoder
      */
     private function localityFrom(array $result, SubdivisionCode $subdivision): ?LocalityCode
     {
+        // A jurisdiction carries ONE locality, so the useful key differs by state:
+        // California and New Mexico publish polygon services a point resolves
+        // against, which is finer than the postal proxy the ZIP+4 index offers.
+        if (in_array($subdivision->value, ArcGisRateSource::states(), true)) {
+            return $this->pointLocality($result, $subdivision);
+        }
+
         $fields = $result['fields'] ?? null;
         $zip4 = is_array($fields) && is_array($fields['zip4'] ?? null) ? $fields['zip4'] : null;
         $zip9 = is_array($zip4) && is_array($zip4['zip9'] ?? null) ? $zip4['zip9'] : null;
@@ -161,6 +171,30 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         }
 
         return new LocalityCode($subdivision, UsTaxDatasetRateSource::ZIP9_SCHEME, $value);
+    }
+
+    /**
+     * A WGS84 point locality from the result's `location`, for the states resolved
+     * by polygon rather than by postal key. Null when the geocoder returned no
+     * usable coordinates — the caller then keeps the state-level jurisdiction.
+     *
+     * @param  array<array-key, mixed>  $result
+     */
+    private function pointLocality(array $result, SubdivisionCode $subdivision): ?LocalityCode
+    {
+        $location = is_array($result['location'] ?? null) ? $result['location'] : null;
+        $lat = $location['lat'] ?? null;
+        $lng = $location['lng'] ?? null;
+
+        if ((! is_float($lat) && ! is_int($lat)) || (! is_float($lng) && ! is_int($lng))) {
+            return null;
+        }
+
+        return new LocalityCode(
+            $subdivision,
+            ArcGisRateSource::LATLNG_SCHEME,
+            sprintf('%.6F,%.6F', $lat, $lng),
+        );
     }
 
     /**

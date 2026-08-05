@@ -5,6 +5,35 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.8.0] - 2026-08-05
+
+### Added
+
+- **`ArcGisRateSource` — rooftop for California and New Mexico, by polygon.** Neither
+  state publishes a boundary file, but both publish an official, unauthenticated
+  ArcGIS service of polygons carrying the jurisdiction and its rate. A point query
+  resolves an address directly, which is **finer** than a ZIP+4: real geography
+  rather than a postal proxy for it.
+- Verified against both services: Los Angeles City Hall **9.75%**, San Francisco
+  **8.625%**, Albuquerque **7.625%**, Santa Fe **8.1875%**. California publishes the
+  rate as a fraction and New Mexico as a percentage; both are normalised.
+- New Mexico's is the service the compiled dataset **already reads** for rates — it
+  had simply never been queried with geometry.
+- Because a jurisdiction carries exactly one locality, `GeocodioGeocoder` now emits a
+  **point** (`latlng`) for those two states and a **ZIP+4** (`zip9`) everywhere else.
+  The list of polygon states lives in one place, with the source that uses it.
+
+### Notes
+
+- Live query per point, cached — the posture of the TEDB source rather than the
+  shipped boundary indexes. Misses are cached too, so an address in the sea does not
+  re-query on every assessment.
+- Rooftop now reaches **26 states**. Six have no path from anything published:
+  Arizona, Colorado, Louisiana, Missouri, Illinois, Alabama, Alaska — and Texas,
+  which does produce an SST-formatted address dataset but behind an audited account
+  portal labelling the data sensitive, so no publicly redistributable index can be
+  derived from it.
+
 ## [0.7.1] - 2026-08-05
 
 ### Notes

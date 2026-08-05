@@ -94,9 +94,22 @@ encode, because the boundary file carries it.
 
 Three limits remain once they do:
 
-**Coverage is the 24 SST member states.** Only they publish boundary files. Texas
-explicitly publishes none, and CA, AZ, CO, LA, MO, NM, IL, AL and AK have no
-equivalent — those states resolve to the state rate regardless of rooftop.
+**Coverage is the 24 SST member states, plus two resolved by polygon.**
+
+California and New Mexico publish no boundary file but do publish an official
+ArcGIS service of **polygons** carrying the jurisdiction and its rate, which
+`ArcGisRateSource` queries by point — finer than a ZIP+4, since it is real geography
+rather than a postal proxy for it. Verified against both services: Los Angeles City
+Hall resolves 9.75%, San Francisco 8.625%, Albuquerque 7.625%, Santa Fe 8.1875%.
+
+Because a jurisdiction carries exactly one locality, the geocoder emits a **point**
+for those two states and a **ZIP+4** everywhere else.
+
+That leaves **six** states with no rooftop path from anything published: Texas,
+Arizona, Colorado, Louisiana, Missouri, Illinois, Alabama and Alaska resolve to the
+state rate. Texas is the notable one — it *does* produce an SST-formatted address
+dataset, but behind an audited account portal that labels the data sensitive, so a
+publicly redistributable index cannot be derived from it.
 
 **A ZIP+4 is required, so a geocoder becomes load-bearing.** Absent an add-on — or
 where Geocodio returns several for one address, which is refused rather than picked

@@ -43,10 +43,12 @@ return [
     | record both apply (6.5% + 1.0% + 1.625%), inside Seattle only the city one
     | does (6.5% + 4.05%).
     |
-    | It stays off by default because the boundary indexes are not published in the
-    | dataset yet: the lookup 404s and the state rate applies. Once shipped it covers
-    | the 24 SST member states — TX, CA, AZ, CO, LA, MO, NM, IL, AL and AK publish no
-    | boundary files at all. See docs/coverage/us-tax-dataset.md.
+    | Coverage is the 24 SST member states via that index, plus California and New
+    | Mexico, which publish official polygon services a point resolves against
+    | instead (ArcGisRateSource, finer than a ZIP+4). A jurisdiction carries one
+    | locality, so the geocoder emits a point for those two and a ZIP+4 elsewhere.
+    | The remaining states resolve to the state rate. See
+    | docs/coverage/us-tax-dataset.md.
     |
     */
 
