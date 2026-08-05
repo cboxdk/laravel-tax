@@ -5,6 +5,40 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.6.0] - 2026-08-05
+
+### Added
+
+- **Determinations for the EU categories TEDB splits.** Where TEDB carries a mapped
+  category at several rates, the band was refused and the standard rate applied —
+  Irish books were charged 23% where the true rate is 0%. Thirteen of those splits
+  are only apparent: the competing rate belongs to a *different product class*, and
+  TEDB's own scope note says which. Ireland's 9% "foodstuffs" rate is restaurant,
+  canteen and takeaway food; its 13.5% "medical equipment" rate is *repairs* to
+  equipment; France's 10% pharmaceutical rate is the non-reimbursed one. Those are
+  now resolved, each with the note it rests on recorded beside it.
+- Covers `grocery`, `books`, `newspapers`, `magazines`, `medical_devices` and
+  `prescription_drugs` in IE; `prescription_drugs` in FR, HR, BE and EL; and
+  `books`/`newspapers`/`magazines` in BE.
+
+Two properties keep them honest:
+
+- A determination is consulted **only when TEDB is ambiguous**. A member state
+  reporting one rate is never overridden.
+- It is applied only while the rate it names is **still one TEDB returns**. If a
+  state changes its split, the determination stops matching and the band is refused
+  rather than shipped stale — it self-invalidates instead of quietly going wrong.
+
+### Notes
+
+- **What stays open, and why it is not curatable.** Nineteen splits remain, because
+  the category genuinely spans several rates by product type: Hungary rates meat,
+  fish, milk and eggs at 5% and dairy desserts, flavoured milk and cereals at 18% —
+  both are groceries. `grocery` in AT/BE/EL/HU/IT/PL/PT/SK, `prepared_food` in SK,
+  `medical_devices` in CY/EL/IT, `prescription_drugs` in IT/MT/PL, `newspapers` in
+  HR, `books` and `magazines` in PL. They resolve to the standard rate. Closing them
+  needs a finer product category — CN-code granularity — not more curation.
+
 ## [0.5.4] - 2026-08-05
 
 ### Fixed

@@ -98,6 +98,50 @@ readonly class TedbSoapRateSource implements TaxRateSource
         TaxCategory::PrescriptionDrugs->value => [['PHARMACEUTICAL_PRODUCTS']],
     ];
 
+    /**
+     * Determinations for the (country, category) pairs TEDB carries at several
+     * rates, where its OWN scope note resolves which one our category means. Each
+     * entry is `[rate, why]`, and `why` quotes the note it rests on.
+     *
+     * These are only consulted when TEDB is ambiguous — an unambiguous answer is
+     * never overridden — and a determination is only applied when its rate is still
+     * one of the rates TEDB returns. If a member state changes the split, the
+     * curated value stops matching and the band is refused rather than shipped
+     * stale: the entry self-invalidates instead of quietly going wrong.
+     *
+     * Only pairs where the competing rate is a DIFFERENT product class are listed.
+     * Where a category genuinely spans several rates — Hungarian groceries are 5%
+     * for meat and fish and 18% for dairy desserts and cereals — no determination
+     * is possible at this granularity and the standard rate applies. See
+     * docs/extension-points/rate-sources.md for the full list and what is left open.
+     *
+     * @var array<string, array{string, string}>
+     */
+    private const CURATED = [
+        // Ireland's 9% food rate is restaurant, canteen and takeaway food — prepared
+        // food, not groceries, which are zero-rated.
+        'IE:grocery' => ['0', 'the competing 9% is "Restaurant food, food served in canteens, and take away food"'],
+        'IE:books' => ['0', '"The Zero Rate applies to newspapers, printed books, e-books, audiobooks"; 9% is brochures, leaflets and catalogues'],
+        'IE:newspapers' => ['0', 'the zero rate names newspapers explicitly; 9% is brochures, leaflets and catalogues'],
+        'IE:magazines' => ['9', '"9% applies to periodicals (in printed form or electronically supplied)" — periodicals are the 9% band, unlike books and newspapers'],
+        'IE:medical_devices' => ['0', 'the competing 13.5% is "Repairs to medical equipment" — a service, not the device'],
+        'IE:prescription_drugs' => ['0', '"Human Oral Medicine, Oral and Non-oral hormone replacement therapy…"; 13.5% is non-oral contraceptives'],
+
+        // France separates reimbursed from non-reimbursed medicines; a prescribed
+        // medicine is the reimbursed one.
+        'FR:prescription_drugs' => ['2.1', '"For reimbursed pharmaceutical products (article 281 octies)"; 10% is non-reimbursed and 5.5% sanitary protection and condoms'],
+
+        'HR:prescription_drugs' => ['5', '"medicines which have the approval of the competent authority for medicines and medical products"; 13% is menstrual products'],
+        'BE:prescription_drugs' => ['6', '"medicinal products registered as medicines/medicinal product"; the 0% is human organs and human blood'],
+        'EL:prescription_drugs' => ['6', '"medicaments for human medicine of tariff heading 3003 and 3004 and vaccines"; the 0% covers Covid-19 vaccines only'],
+
+        // Belgium's zero rates here are library loans by non-profits and specific
+        // exempt periodicals; the general publication rate is 6%.
+        'BE:books' => ['6', '"Newspapers, periodicals and books (digital and on paper)" at 6%; the 0% entries are library loans by non-profit organisations'],
+        'BE:newspapers' => ['6', 'same 6% publication band; the 0% entries are library loans and specific exempt periodicals'],
+        'BE:magazines' => ['6', 'same 6% publication band; the 0% entries are library loans and specific exempt periodicals'],
+    ];
+
     public function __construct(
         private Factory $http,
         private ?Repository $cache = null,
@@ -285,7 +329,7 @@ readonly class TedbSoapRateSource implements TaxRateSource
             return null;
         }
 
-        return ['standard' => $standard, 'bands' => $this->bands($byCategory)];
+        return ['standard' => $standard, 'bands' => $this->bands($byCategory, $isoCode)];
     }
 
     /**
@@ -296,7 +340,7 @@ readonly class TedbSoapRateSource implements TaxRateSource
      * @param  array<string, list<string>>  $byCategory
      * @return array<string, string>
      */
-    private function bands(array $byCategory): array
+    private function bands(array $byCategory, string $country): array
     {
         $bands = [];
 
@@ -319,6 +363,16 @@ readonly class TedbSoapRateSource implements TaxRateSource
                 // would answer a question the state deliberately split.
                 if (count($rates) === 1 && ! array_key_exists(self::UNUSABLE, $rates)) {
                     $bands[$category] = (string) array_key_first($rates);
+
+                    break;
+                }
+
+                // Ambiguous: consult a determination, and only trust it while the
+                // rate it names is still one TEDB returns for the category.
+                $curated = self::CURATED[$country.':'.$category][0] ?? null;
+
+                if ($curated !== null && array_key_exists($curated, $rates)) {
+                    $bands[$category] = $curated;
                 }
 
                 break;

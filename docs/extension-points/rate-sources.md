@@ -94,6 +94,47 @@ Where a state splits a category itself, its own split wins: Poland rates newspap
 separately at 8%, so that survives, while Sweden files newspapers under the broader
 "books, newspapers and periodicals" heading and resolves from there.
 
+### Determinations for the splits TEDB resolves in prose
+
+Some splits are only apparent. Ireland's 9% "foodstuffs" rate is *restaurant,
+canteen and takeaway food*; its 13.5% "medical equipment" rate is *repairs* to
+equipment. The competing rate belongs to a different product class, and TEDB's own
+scope note says so — so the band is determined, with that note as the basis:
+
+| Country | Category | Rate | Because TEDB's note says |
+| --- | --- | --- | --- |
+| IE | `grocery` | 0% | the competing 9% is "Restaurant food, food served in canteens, and take away food" |
+| IE | `books` | 0% | "The Zero Rate applies to newspapers, printed books, e-books, audiobooks"; 9% is brochures and catalogues |
+| IE | `newspapers` | 0% | the zero rate names newspapers explicitly |
+| IE | `magazines` | 9% | "9% applies to periodicals (in printed form or electronically supplied)" — unlike books and newspapers |
+| IE | `medical_devices` | 0% | the competing 13.5% is "Repairs to medical equipment" — a service |
+| IE | `prescription_drugs` | 0% | 0% is "Human Oral Medicine…"; 13.5% is non-oral contraceptives |
+| FR | `prescription_drugs` | 2.1% | "For reimbursed pharmaceutical products"; 10% is non-reimbursed, 5.5% sanitary protection |
+| HR | `prescription_drugs` | 5% | "medicines which have the approval of the competent authority"; 13% is menstrual products |
+| BE | `prescription_drugs` | 6% | "medicinal products registered as medicines"; the 0% is human organs and blood |
+| EL | `prescription_drugs` | 6% | "medicaments … of tariff heading 3003 and 3004 and vaccines"; the 0% is Covid-19 vaccines only |
+| BE | `books` `newspapers` `magazines` | 6% | "Newspapers, periodicals and books (digital and on paper)"; the 0% entries are library loans by non-profits |
+
+Two properties keep these honest. A determination is consulted **only when TEDB is
+ambiguous** — a state reporting one rate is never overridden. And it is applied only
+while the rate it names is **still one TEDB returns**: if a member state changes the
+split, the determination stops matching and the band is refused rather than shipped
+stale. It self-invalidates instead of quietly going wrong.
+
+### The splits that stay open
+
+The rest are not curatable at this granularity, because the category genuinely spans
+several rates by product type. Hungary rates meat, fish, milk and eggs at 5% and
+dairy desserts, flavoured milk and cereals at 18% — both are groceries, and no
+single number is right:
+
+`grocery` in **AT BE EL HU IT PL PT SK** · `prepared_food` in **SK** ·
+`medical_devices` in **CY EL IT** · `prescription_drugs` in **IT MT PL** ·
+`newspapers` in **HR** · `books` and `magazines` in **PL**
+
+These resolve to the standard rate. Closing them needs a finer product category —
+CN-code granularity — not more curation.
+
 Categories with no confident equivalent — digital services and e-publications above
 all, which several states fold into other headings — are **not mapped at all**
 rather than guessed.

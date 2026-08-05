@@ -84,19 +84,16 @@ it('resolves a reduced band where the category carries exactly one rate', functi
 it('refuses a band the response carries at several rates and charges standard instead', function () {
     $source = tedbSource($this->http);
 
-    // FR pharmaceuticals sit at 2.1%, 5.5% AND 10% — sub-scopes the response does
-    // not resolve. Charging the standard 20% is recoverable; silently picking 2.1%
-    // is not.
-    $rate = $source->rateFor(tedbPlace('FR'), TaxCategory::PrescriptionDrugs);
+    // Poland splits foodstuffs across 5% and 8% by product type, and periodicals
+    // likewise — no note resolves which one the category means, so no band is
+    // curated and the standard 23% applies. Over-charging is recoverable; silently
+    // picking one of the two is not.
+    foreach ([TaxCategory::Grocery, TaxCategory::Magazines] as $category) {
+        $rate = $source->rateFor(tedbPlace('PL'), $category);
 
-    expect($rate?->percentage?->__toString())->toBe('20')
-        ->and($rate?->kind)->toBe(RateKind::Standard);
-
-    // Poland splits foodstuffs across 5% and 8%.
-    $polish = $source->rateFor(tedbPlace('PL'), TaxCategory::Grocery);
-
-    expect($polish?->percentage?->__toString())->toBe('23')
-        ->and($polish?->kind)->toBe(RateKind::Standard);
+        expect($rate?->percentage?->__toString())->toBe('23')
+            ->and($rate?->kind)->toBe(RateKind::Standard);
+    }
 });
 
 it('falls back to the standard rate for a category it deliberately does not map', function () {
@@ -129,25 +126,26 @@ it('denies by default on unparseable XML', function () {
 });
 
 it('counts an exemption as a competing rate, not as absent', function () {
-    // Ireland files printed books as EXEMPTED 0% and their electronic form at
-    // REDUCED 9% under the same category. Reading only the reduced rows would
-    // have charged 9% on a zero-rated book — the exact silent error this guards.
+    // A category carrying an exemption AND a reduced rate is split, not settled.
+    // Reading only the reduced rows would charge that rate on a zero-rated supply
+    // — the exact silent error this guards. Poland is used because it carries no
+    // determination for books, so nothing resolves the split.
     $http = new Factory;
     $http->fake(['ec.europa.eu/*' => $http->response(<<<'XML'
         <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body>
         <r xmlns="urn:ec.europa.eu:taxud:tedb:services:v1:IVatRetrievalService:types">
-          <vatRateResults><memberState>IE</memberState><type>STANDARD</type>
+          <vatRateResults><memberState>PL</memberState><type>STANDARD</type>
             <rate><type>DEFAULT</type><value>23.0</value></rate></vatRateResults>
-          <vatRateResults><memberState>IE</memberState><type>REDUCED</type>
+          <vatRateResults><memberState>PL</memberState><type>REDUCED</type>
             <rate><type>EXEMPTED</type><value>0.0</value></rate>
             <category><identifier>LOAN_LIBRARIES</identifier></category></vatRateResults>
-          <vatRateResults><memberState>IE</memberState><type>REDUCED</type>
+          <vatRateResults><memberState>PL</memberState><type>REDUCED</type>
             <rate><type>REDUCED_RATE</type><value>9.0</value></rate>
             <category><identifier>LOAN_LIBRARIES</identifier></category></vatRateResults>
         </r></env:Body></env:Envelope>
         XML)]);
 
-    $rate = tedbSource($http)->rateFor(tedbPlace('IE'), TaxCategory::Books);
+    $rate = tedbSource($http)->rateFor(tedbPlace('PL'), TaxCategory::Books);
 
     expect($rate?->percentage?->__toString())->toBe('23')
         ->and($rate?->kind)->toBe(RateKind::Standard);
@@ -158,15 +156,15 @@ it('resolves a lone exemption as a zero rate', function () {
     $http->fake(['ec.europa.eu/*' => $http->response(<<<'XML'
         <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body>
         <r xmlns="urn:ec.europa.eu:taxud:tedb:services:v1:IVatRetrievalService:types">
-          <vatRateResults><memberState>IE</memberState><type>STANDARD</type>
+          <vatRateResults><memberState>PL</memberState><type>STANDARD</type>
             <rate><type>DEFAULT</type><value>23.0</value></rate></vatRateResults>
-          <vatRateResults><memberState>IE</memberState><type>REDUCED</type>
+          <vatRateResults><memberState>PL</memberState><type>REDUCED</type>
             <rate><type>EXEMPTED</type><value>0.0</value></rate>
             <category><identifier>LOAN_LIBRARIES</identifier></category></vatRateResults>
         </r></env:Body></env:Envelope>
         XML)]);
 
-    $rate = tedbSource($http)->rateFor(tedbPlace('IE'), TaxCategory::Books);
+    $rate = tedbSource($http)->rateFor(tedbPlace('PL'), TaxCategory::Books);
 
     expect($rate?->percentage?->__toString())->toBe('0')
         ->and($rate?->kind)->toBe(RateKind::Zero);
@@ -189,4 +187,65 @@ it('caches the parsed table so one country costs one request', function () {
     $source->rateFor(tedbPlace('FR'), TaxCategory::Newspapers);
 
     $this->http->assertSentCount(1);
+});
+
+it('applies a determination where TEDB splits a category', function () {
+    // FR pharmaceuticals sit at 2.1%, 5.5% and 10% at once. TEDB's own note says
+    // 2.1% is "reimbursed pharmaceutical products", 10% non-reimbursed and 5.5%
+    // sanitary protection — so a prescribed medicine is the 2.1% band.
+    $rate = tedbSource($this->http)->rateFor(tedbPlace('FR'), TaxCategory::PrescriptionDrugs);
+
+    expect($rate?->percentage?->__toString())->toBe('2.1')
+        ->and($rate?->kind)->toBe(RateKind::Reduced);
+});
+
+it('leaves a category with no determination at the standard rate', function () {
+    // Poland splits foodstuffs 5%/8% by product type, and no note resolves which
+    // one "grocery" means — so nothing is curated and the standard rate applies.
+    expect(tedbSource($this->http)->rateFor(tedbPlace('PL'), TaxCategory::Grocery)?->percentage?->__toString())
+        ->toBe('23');
+});
+
+it('drops a determination once TEDB no longer carries its rate', function () {
+    // The curated French figure is 2.1%. Here TEDB reports the category split
+    // across 6% and 10% only — the law moved — so the determination is stale and
+    // is refused rather than applied, and the standard rate stands.
+    $http = new Factory;
+    $http->fake(['ec.europa.eu/*' => $http->response(<<<'XML'
+        <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body>
+        <r xmlns="urn:ec.europa.eu:taxud:tedb:services:v1:IVatRetrievalService:types">
+          <vatRateResults><memberState>FR</memberState><type>STANDARD</type>
+            <rate><type>DEFAULT</type><value>20.0</value></rate></vatRateResults>
+          <vatRateResults><memberState>FR</memberState><type>REDUCED</type>
+            <rate><type>REDUCED_RATE</type><value>6.0</value></rate>
+            <category><identifier>PHARMACEUTICAL_PRODUCTS</identifier></category></vatRateResults>
+          <vatRateResults><memberState>FR</memberState><type>REDUCED</type>
+            <rate><type>REDUCED_RATE</type><value>10.0</value></rate>
+            <category><identifier>PHARMACEUTICAL_PRODUCTS</identifier></category></vatRateResults>
+        </r></env:Body></env:Envelope>
+        XML)]);
+
+    $rate = tedbSource($http)->rateFor(tedbPlace('FR'), TaxCategory::PrescriptionDrugs);
+
+    expect($rate?->percentage?->__toString())->toBe('20')
+        ->and($rate?->kind)->toBe(RateKind::Standard);
+});
+
+it('never overrides an unambiguous TEDB answer', function () {
+    // Ireland's books are curated to 0%. Where TEDB reports one rate, that rate
+    // wins — a determination only ever resolves a split.
+    $http = new Factory;
+    $http->fake(['ec.europa.eu/*' => $http->response(<<<'XML'
+        <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body>
+        <r xmlns="urn:ec.europa.eu:taxud:tedb:services:v1:IVatRetrievalService:types">
+          <vatRateResults><memberState>IE</memberState><type>STANDARD</type>
+            <rate><type>DEFAULT</type><value>23.0</value></rate></vatRateResults>
+          <vatRateResults><memberState>IE</memberState><type>REDUCED</type>
+            <rate><type>REDUCED_RATE</type><value>4.0</value></rate>
+            <category><identifier>LOAN_LIBRARIES</identifier></category></vatRateResults>
+        </r></env:Body></env:Envelope>
+        XML)]);
+
+    expect(tedbSource($http)->rateFor(tedbPlace('IE'), TaxCategory::Books)?->percentage?->__toString())
+        ->toBe('4');
 });
