@@ -5,6 +5,17 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.5.2] - 2026-08-05
+
+### Changed
+
+- **Boundary indexes are read gzipped.** `boundaries/US-XX.json.gz` is tried first
+  and inflated, falling back to the plain file where a local build wrote one. The
+  indexes are published compressed — 5.4 MB across the 24 SST states instead of
+  20 MB — because they are rewritten every quarter and the uncompressed form would
+  dominate the mirror's history.
+- Adds **`ext-zlib`** to `require`, stated in `requirements.md`.
+
 ## [0.5.1] - 2026-08-05
 
 ### Fixed

@@ -386,7 +386,12 @@ readonly class UsTaxDataset
             return $cached;
         }
 
-        $raw = $this->read('boundaries/'.$state.'.json');
+        // Boundary indexes are published GZIPPED — 5.4 MB across the 24 member
+        // states instead of 20 MB, and they are rewritten every quarter, so the
+        // uncompressed form would dominate the mirror's history. The plain file is
+        // still read where a local build wrote one.
+        $raw = $this->readCompressed('boundaries/'.$state.'.json.gz')
+            ?? $this->read('boundaries/'.$state.'.json');
 
         if ($raw === null) {
             return null;
@@ -458,6 +463,24 @@ readonly class UsTaxDataset
      * Read a relative path under the configured location — an HTTP GET for a URL
      * base, a filesystem read for a local directory. Any failure returns null.
      */
+    /**
+     * Read a gzipped part and inflate it. A body that is not valid gzip yields null
+     * rather than a warning-laden empty string, so the caller falls through to the
+     * plain file.
+     */
+    private function readCompressed(string $relative): ?string
+    {
+        $raw = $this->read($relative);
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $inflated = @gzdecode($raw);
+
+        return $inflated === false ? null : $inflated;
+    }
+
     private function read(string $relative): ?string
     {
         $base = rtrim($this->location, '/');

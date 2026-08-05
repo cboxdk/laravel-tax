@@ -275,3 +275,38 @@ it('still accepts a direct jurisdiction code, so a caller can supply its own', f
     // and exactly why the ZIP+4 path exists — it finds the ones you did not.
     expect((string) $rate?->percentage)->toBe('8.125');
 });
+
+it('prefers the gzipped boundary index, which is how it is published', function () {
+    // Both forms exist in the fixture directory; the .gz is read and inflated.
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
+
+    $rate = new UsTaxDatasetRateSource($this->dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+
+    expect((string) $rate?->percentage)->toBe('9.125');
+});
+
+it('falls back to the plain index when no gzipped one is published', function () {
+    $only = dirname(__DIR__).'/Fixtures/us-tax-dataset';
+    $temporary = sys_get_temp_dir().'/cbox-tax-boundaries-'.bin2hex(random_bytes(4));
+
+    mkdir($temporary.'/boundaries', 0o755, true);
+    mkdir($temporary.'/by-section', 0o755, true);
+
+    foreach (['rates', 'baseline', 'taxability', 'nexus', 'sourcing'] as $section) {
+        copy($only.'/by-section/'.$section.'.json', $temporary.'/by-section/'.$section.'.json');
+    }
+
+    copy($only.'/boundaries/US-KS.json', $temporary.'/boundaries/US-KS.json');   // no .gz sibling
+
+    $dataset = new UsTaxDataset(
+        $this->app->make(Factory::class),
+        $this->app->make(Cache::class),
+        $temporary,
+    );
+
+    $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
+
+    expect((string) new UsTaxDatasetRateSource($dataset)
+        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard)?->percentage)->toBe('9.125');
+});

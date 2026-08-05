@@ -11,6 +11,8 @@ From `composer.json`:
 - **PHP** `^8.4`
 - **`ext-dom`** — the live [EU TEDB source](extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)
   parses the Commission's SOAP responses with `DOMDocument`/`DOMXPath`.
+- **`ext-zlib`** — the US boundary indexes are published gzipped (5.4 MB across the
+  24 SST states instead of 20 MB) and inflated on read.
 - **Laravel** `^13` (`illuminate/contracts`, `illuminate/support`, `illuminate/http`)
 - **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.5` — the
   canonical jurisdiction reference every assessment binds to.
