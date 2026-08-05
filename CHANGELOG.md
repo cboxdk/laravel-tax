@@ -5,6 +5,31 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.3.3] - 2026-08-05
+
+### Fixed
+
+- **The rooftop explanation named the wrong obstacle.** v0.3.2 said a county and a
+  city record are indistinguishable because the dataset marks both `level: "local"`,
+  so the rate source cannot tell whether they stack. Tracing it to the SST **boundary
+  file** showed the mechanism is different: local records are always components of a
+  sum, and what varies is *which* records a state assigns to an address — inside
+  Seattle no county record applies (state + city = 10.55%), inside Kansas City both
+  do (state + county + city = 9.125%). The conclusion is unchanged — a trustworthy
+  rooftop rate needs boundary data — but the reason is now stated correctly in
+  `coverage/us-tax-dataset.md`, `coverage/supported.md`, `README.md`, the
+  `config/tax.php` `rooftop` comment and the `UsTaxDatasetRateSource` /
+  `GeocodioGeocoder` docblocks.
+- Dataset **v0.4.3** types every SST local record by its taxing authority
+  (`county`, `city`, `special_district`) where they were previously all `local`, so
+  the claim that they are byte-for-byte indistinguishable no longer holds either.
+  The docs now note what `level` does and does not tell a consumer.
+
+### Notes
+
+- **Documentation only.** No runtime behaviour changed; the code edits are docblocks
+  and a config comment. Full suite green.
+
 ## [0.3.2] - 2026-08-05
 
 ### Fixed

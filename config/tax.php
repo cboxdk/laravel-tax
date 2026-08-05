@@ -39,11 +39,11 @@ return [
     | `rooftop` (experimental, off by default) lets the Geocodio adapter capture a
     | county FIPS as a locality. It does NOT yet yield a rooftop rate: Geocodio
     | returns a state-prefixed county FIPS while the dataset keys counties without
-    | the prefix, the other states use their own code shapes entirely, and whether a
-    | county and a city record stack differs per state (Kansas yes, Washington no)
-    | without the dataset saying which. Enabling it is therefore inert today — the
-    | state rate applies — and it stays off until those are closed. See
-    | docs/coverage/us-tax-dataset.md.
+    | the prefix, the other states use their own code shapes entirely, and which
+    | local records apply at an address (a county record applies inside Kansas City
+    | but not inside Seattle) lives in boundary data the dataset does not ship.
+    | Enabling it is therefore inert today — the state rate applies — and it stays
+    | off until those are closed. See docs/coverage/us-tax-dataset.md.
     |
     */
 

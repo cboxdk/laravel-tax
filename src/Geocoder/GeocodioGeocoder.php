@@ -25,8 +25,8 @@ use InvalidArgumentException;
  * rate: Geocodio returns a state-prefixed county FIPS (`53033`) while the dataset
  * keys counties without the prefix (`033`), so the lookup misses and the state rate
  * applies. Closing the gap needs more than a prefix strip — see
- * docs/coverage/us-tax-dataset.md for the per-state code shapes and the intra-local
- * stacking rules the dataset does not encode.
+ * docs/coverage/us-tax-dataset.md for the per-state code shapes and the boundary
+ * data that decides which local records apply at an address.
  *
  * Deny-by-default: any failure (no key match, request error, unparseable result,
  * a state that does not resolve in the geo reference) returns `null`, so the

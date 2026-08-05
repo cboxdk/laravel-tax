@@ -28,11 +28,11 @@ use DateTimeImmutable;
  *  2. When the jurisdiction carries a rooftop {@see LocalityCode},
  *     the state and the matched local record are stacked into an all-in rate
  *     (respecting the state's {@see RateBasis}) at {@see Confidence::Authoritative}.
- *     ONE local record is stacked, which is correct where a place record already
- *     carries the total local rate (Washington) but low where a county and a city
- *     record stack (Kansas) — the dataset does not distinguish the two, so no
- *     shipped geocoder emits a matching locality yet. See
- *     docs/coverage/us-tax-dataset.md.
+ *     ONE local record is stacked, which is correct where only the city record
+ *     applies at that address (Seattle) but low where a county record applies
+ *     alongside it (Kansas City). Which records apply is defined by boundary data
+ *     the dataset does not ship, so no shipped geocoder emits a matching locality
+ *     yet. See docs/coverage/us-tax-dataset.md.
  *  3. Otherwise the authoritative STATE rate is returned at {@see Confidence::Derived}
  *     — honest that it is the state share, not a rooftop all-in figure.
  *

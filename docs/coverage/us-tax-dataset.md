@@ -91,24 +91,26 @@ every state. Probing Geocodio against the compiled dataset:
 | Composite ids (`048-0002-8`, `00000-001-000`, `09-509`, `acadia-parish:A`) | IL MO NM LA | ❌ needs a crosswalk |
 | `county:<Name>` | CO | ❌ curated names, no code |
 
-**3. Intra-local stacking semantics differ per state and the dataset does not
-encode them.** `rateBasis` says whether the *state* share is included in a local
-record; it says nothing about whether a county and a city record stack with each
-other — and they demonstrably differ:
+**3. Which local records apply at an address is not in the dataset.** Local records
+are components of a sum, and `rateBasis` only says whether the *state* share is
+already inside one. What decides the sum's membership is the SST boundary file,
+which the dataset does not ship — and states assign differently:
 
-- **Washington** — King County `033` is 3.8%, Seattle `63000` is 4.05%. The place
-  record is the *total* local rate; adding both would give 14.35%.
-- **Kansas** — Wyandotte County `209` is 1.0%, Kansas City `36000` is 1.625%. Here
-  they **do** stack: 6.5% + 1.0% + 1.625% = the 9.125% Kansas City actually levies.
+- **Washington** — inside Seattle the boundary file assigns **no county record**, so
+  the total is state + city: 6.5% + 4.05% = 10.55%. King County's `033` (3.8%)
+  applies to unincorporated addresses, not to a Seattle rooftop; adding both would
+  give 14.35%.
+- **Kansas** — inside Kansas City it assigns **county and city**, so the total is
+  6.5% + 1.0% (Wyandotte `209`) + 1.625% (`36000`) = the 9.125% the city levies.
 
-The two states' records are byte-for-byte indistinguishable (both `level: "local"`),
-so the rate source cannot tell which rule applies. Picking one record and adding it
-to the state rate — what `UsTaxDatasetRateSource` does today — is right for
-Washington and 100 bp low for Kansas.
+Since dataset **v0.4.3** every SST record carries its authority as `level`
+(`county`, `city`, `special_district`), so a consumer can at least see what a record
+*is* — but knowing the kind does not tell you the membership. Picking one record and
+adding it to the state rate, which is what `UsTaxDatasetRateSource` does when handed
+a locality, is right for Washington and 100 bp low for Kansas.
 
-Special tax districts close the gap for good: Kansas City alone has six, pushing
-local rates to 10.125–11.125%, and a district is a polygon that no point identifier
-selects. A faithful rooftop rate therefore needs boundary data plus per-state
-stacking rules, not just a resolved locality. Until then, absent a resolved locality
-the **state rate applies** at `Confidence::Derived`, which is honest about what it
-is.
+Special tax districts settle it: Kansas City alone has six, pushing local rates to
+10.125–11.125%, and a district is a polygon no point identifier selects. A faithful
+rooftop rate therefore needs boundary data, not just a resolved locality. Until
+then, absent a resolved locality the **state rate applies** at `Confidence::Derived`,
+which is honest about what it is.

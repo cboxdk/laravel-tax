@@ -76,8 +76,9 @@ economic-nexus thresholds and intrastate sourcing are supplied by the **us-tax-d
 dataset**, enabled by default. What is still missing is **rooftop precision**: the
 shipped `GeocodioGeocoder` resolves state-level only, so the **state rate** applies
 and city/district components are not stacked — closing that needs per-state
-locality codes, intra-local stacking rules and district boundaries, not just a
-geocoder flag ([details](docs/coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)).
+locality codes plus the boundary data saying which local records apply at an
+address, not just a geocoder flag
+([details](docs/coverage/us-tax-dataset.md#rooftop-is-partial-and-opt-in)).
 **Canada** resolves at province level (no local tax). Rate data (TEDB via
 `TedbRateSource`, SST, commercial) plugs in via `TaxRateSource` —
 see [`docs/coverage`](docs/coverage/_index.md).
