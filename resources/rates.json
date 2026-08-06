@@ -1,6 +1,6 @@
 {
   "version": "2026-08-06",
-  "note": "Standard rates as dated windows. A window with a null `from` extends backwards indefinitely and a null `to` forwards; a query resolves the window covering its date, so a historical invoice reprices correctly. Prior windows are carried only where a dated, primary-source-verified change is recorded — absence of one is not a claim that the rate never moved.",
+  "note": "Standard rates as dated windows. A window with a null `from` extends backwards indefinitely and a null `to` forwards; a query resolves the window covering its date, so a historical invoice reprices correctly. Prior windows are carried only where a dated, primary-source-verified change is recorded — absence of one is not a claim that the rate never moved. A `watch` URL is the authority page a rate change would appear on; bin/watch-rates.php hashes it so a change is noticed rather than discovered. Jurisdictions without one are not unwatched by choice — their pages block automated fetching or were not yet verified.",
   "rates": {
     "AE": {
       "authority": "FTA",
@@ -10,7 +10,8 @@
           "to": null,
           "rate": "5"
         }
-      ]
+      ],
+      "watch": "https://tax.gov.ae/en/taxes/vat.aspx"
     },
     "AT": {
       "authority": "BMF",
@@ -156,7 +157,8 @@
           "to": null,
           "rate": "8.1"
         }
-      ]
+      ],
+      "watch": "https://www.estv.admin.ch/estv/en/home/value-added-tax/vat-rates-switzerland.html"
     },
     "CL": {
       "authority": "SII",
@@ -256,7 +258,8 @@
           "to": null,
           "rate": "20"
         }
-      ]
+      ],
+      "watch": "https://www.gov.uk/api/content/vat-rates"
     },
     "GR": {
       "authority": "AADE",
@@ -307,7 +310,8 @@
           "to": null,
           "rate": "23"
         }
-      ]
+      ],
+      "watch": "https://www.revenue.ie/en/vat/vat-rates/index.aspx"
     },
     "IN": {
       "authority": "CBIC",
@@ -338,7 +342,8 @@
           "to": null,
           "rate": "10"
         }
-      ]
+      ],
+      "watch": "https://www.nta.go.jp/english/taxes/consumption_tax/index.htm"
     },
     "KR": {
       "authority": "NTS",
@@ -414,7 +419,8 @@
           "rate": "8"
         }
       ],
-      "note": "Service tax, not a destination VAT: charged on B2B and B2C with no reverse charge."
+      "note": "Service tax, not a destination VAT: charged on B2B and B2C with no reverse charge.",
+      "watch": "https://mysst.customs.gov.my/"
     },
     "NL": {
       "authority": "Belastingdienst",
@@ -434,7 +440,8 @@
           "to": null,
           "rate": "25"
         }
-      ]
+      ],
+      "watch": "https://www.skatteetaten.no/en/rates/value-added-tax/"
     },
     "NZ": {
       "authority": "IRD",
@@ -444,7 +451,8 @@
           "to": null,
           "rate": "15"
         }
-      ]
+      ],
+      "watch": "https://www.ird.govt.nz/gst"
     },
     "OM": {
       "authority": "OTA",
@@ -464,7 +472,8 @@
           "to": null,
           "rate": "12"
         }
-      ]
+      ],
+      "watch": "https://www.bir.gov.ph/value-added-tax"
     },
     "PL": {
       "authority": "KAS",
@@ -509,7 +518,8 @@
           "to": null,
           "rate": "15"
         }
-      ]
+      ],
+      "watch": "https://zatca.gov.sa/en/RulesRegulations/Taxes/Pages/VAT.aspx"
     },
     "SE": {
       "authority": "Skatteverket",
@@ -529,7 +539,8 @@
           "to": null,
           "rate": "9"
         }
-      ]
+      ],
+      "watch": "https://www.iras.gov.sg/taxes/goods-services-tax-(gst)/basics-of-gst/current-gst-rates"
     },
     "SI": {
       "authority": "FURS",
@@ -559,7 +570,8 @@
           "to": null,
           "rate": "7"
         }
-      ]
+      ],
+      "watch": "https://www.rd.go.th/english/6043.html"
     },
     "TR": {
       "authority": "Gazette",
@@ -574,7 +586,8 @@
           "to": null,
           "rate": "20"
         }
-      ]
+      ],
+      "watch": "https://www.gib.gov.tr/"
     },
     "TW": {
       "authority": "MOF",

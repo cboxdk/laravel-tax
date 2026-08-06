@@ -101,6 +101,15 @@ reverse-charges.
 > for it. The overlay lives in `resources/rates.json` with the authority named per
 > jurisdiction.
 
+> **The authority pages are watched.** No statistical API publishes VAT/GST rates —
+> verified against the OECD's SDMX service, whose 4,603 dataflows carry national
+> accounts only — so the shipped rates cannot be refreshed from a feed. A monthly
+> workflow instead hashes the authority page behind each rate and opens an issue when
+> one changes, for **13 jurisdictions** so far (GB, IE, NO, CH, NZ, SG, JP, MY, TR,
+> SA, AE, PH, TH). It never reads a rate off a page: a change means *verify*, and a
+> human updates the window. The rest are unwatched because their pages block
+> automated fetching (Australia, Canada) or have not been verified yet.
+
 > **Time-sensitive rate notes.** Indonesia's headline PPN is 12% but the *effective*
 > rate on non-luxury supplies is **11%** (the 11/12 base mechanism) — the engine
 > encodes 11%. Vietnam's statutory standard is **10%**, currently reduced to 8% for

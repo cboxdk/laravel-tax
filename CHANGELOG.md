@@ -5,6 +5,37 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.9.1] - 2026-08-06
+
+### Added
+
+- **A watch on the authority pages behind the shipped rates.** `bin/watch-rates.php`
+  hashes the readable text of each authority's rate page and compares it to a
+  committed baseline; a monthly workflow opens an issue when one moves. **13
+  jurisdictions** are watched (GB, IE, NO, CH, NZ, SG, JP, MY, TR, SA, AE, PH, TH),
+  each URL verified to serve real content first.
+- It never parses a rate out of a page. A changed page means *verify*, and a human
+  updates the dated window — reading a percentage out of prose would be a guess that
+  fails silently, which is the failure this exists to catch.
+
+### Notes
+
+Two things had to be got right or the alarm would be worthless:
+
+- **Noise.** The UAE's page carries a visitor counter, so two fetches a second apart
+  differed and every run would have reported a change. Bare integers of six digits or
+  more are stripped — safely past any tax rate, since the longest shipped is
+  `14.975` — so counters and build ids go while rates stay.
+- **Transients.** Malaysia's site serves occasional variants that no normalisation
+  catches. A page that looks changed is fetched a second time and only reported if
+  the change confirms; an unconfirmed one keeps its old baseline rather than
+  silently adopting the variant.
+
+An alarm that cries wolf trains you to ignore it, and so does one that is
+permanently red — India's page serves cURL but rejects PHP's stream wrapper, so it
+was dropped back to the unwatched set rather than shipped as a monthly failure.
+Australia and Canada block automated fetching outright.
+
 ## [0.9.0] - 2026-08-06
 
 ### Fixed

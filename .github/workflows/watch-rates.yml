@@ -1,0 +1,56 @@
+name: Watch rate authorities
+
+# The national rates in resources/rates.json have no live feed, because none
+# exists: no statistical API publishes VAT/GST rates, and the authorities publish
+# theirs as prose. The risk that creates is not answering wrongly today — it is a
+# rate moving and nobody noticing for months.
+#
+# So this watches the authority pages and opens an issue when one changes. It never
+# parses a rate out of a page and never edits the overlay: a change means "go and
+# verify", and a human decides whether the rate actually moved.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly, on the 2nd. Rate changes almost always take effect on the 1st of a
+    # month or a quarter, so this reads the page after it has been updated.
+    - cron: '23 6 2 * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: Compare authority pages to the recorded baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Check the watched pages
+        id: watch
+        run: |
+          set +e
+          php bin/watch-rates.php | tee /tmp/watch.txt
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Open an issue when something moved
+        if: steps.watch.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # One open issue at a time: a monthly duplicate is how an alarm gets muted.
+          existing=$(gh issue list --state open --label rate-watch --limit 1 --json number --jq '.[0].number // empty')
+          body=$(printf 'A watched authority page changed, or could not be read.\n\n```\n%s\n```\n\nA changed page does **not** mean the rate changed — verify against the authority, then either update `resources/rates.json` with a dated window or, if nothing moved, re-baseline with `php bin/watch-rates.php --update`. The alarm stays until the baseline is updated, which is deliberate.\n' "$(cat /tmp/watch.txt)")
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Rate authority page changed" --label rate-watch --body "$body"
+          fi

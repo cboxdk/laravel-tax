@@ -1,0 +1,83 @@
+{
+    "note": "Baseline hashes of the authority pages behind resources/rates.json. A differing hash means the page moved, not that the rate did \u2014 it is a prompt to verify, never an input to a calculation.",
+    "pages": {
+        "AE": {
+            "url": "https://tax.gov.ae/en/taxes/vat.aspx",
+            "sha256": "db83491b7b96f41e6892c2402236eba263ccd396087ecc588dc586ad074a0301",
+            "checkedAt": "2026-08-06",
+            "changedAt": "2026-08-06"
+        },
+        "CH": {
+            "url": "https://www.estv.admin.ch/estv/en/home/value-added-tax/vat-rates-switzerland.html",
+            "sha256": "e917e67360267117366829c669695dcef379a47ae2e1257fc6ceaa0808ae1328",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "GB": {
+            "url": "https://www.gov.uk/api/content/vat-rates",
+            "sha256": "9b3208ddb51e9855792b4482542704d78bfa98e2a0446900f63e19f53e52b7eb",
+            "checkedAt": "2026-08-06",
+            "changedAt": "2026-08-06"
+        },
+        "IE": {
+            "url": "https://www.revenue.ie/en/vat/vat-rates/index.aspx",
+            "sha256": "cf090c59b1025717a3ef7c7f338e46278264b88b90e7af0cd4f2d11a729c3809",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "JP": {
+            "url": "https://www.nta.go.jp/english/taxes/consumption_tax/index.htm",
+            "sha256": "95377c93daa203a7f31fa751a527870b534ca812cc8a440d75f66d7c371f110e",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "MY": {
+            "url": "https://mysst.customs.gov.my/",
+            "sha256": "697a96ad7b43720e0cb6bf944360e19b5e179933e44e74f9c4881a9142d7e786",
+            "checkedAt": "2026-08-06",
+            "changedAt": "2026-08-06"
+        },
+        "NO": {
+            "url": "https://www.skatteetaten.no/en/rates/value-added-tax/",
+            "sha256": "1c58f71e76493c78c7153a51436af28a0161698c64c80886abac714e4ddbe40a",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "NZ": {
+            "url": "https://www.ird.govt.nz/gst",
+            "sha256": "34d3192d1c84c0d80f82ead4171266ad6f8f00cc4ef59cb4aa3855498e72708d",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "PH": {
+            "url": "https://www.bir.gov.ph/value-added-tax",
+            "sha256": "a27bcd165bfa3b50c83f9fc1952f3f13d3293ee775254d2937f270c42542e4db",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "SA": {
+            "url": "https://zatca.gov.sa/en/RulesRegulations/Taxes/Pages/VAT.aspx",
+            "sha256": "6cee859795ec8662aeee771d7e1a384e1100f6bb399d1abc280532f4bc62624b",
+            "checkedAt": "2026-08-06",
+            "changedAt": "2026-08-06"
+        },
+        "SG": {
+            "url": "https://www.iras.gov.sg/taxes/goods-services-tax-(gst)/basics-of-gst/current-gst-rates",
+            "sha256": "0c09bc312e289dd799600a0b0ec7fcdb8735a46a699c1f3d62cad5c8361ebb2d",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "TH": {
+            "url": "https://www.rd.go.th/english/6043.html",
+            "sha256": "b7fbcf86871e6c976bdf41ecc9dc0e39a101088a8c2578f4ad85ca7873808946",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        },
+        "TR": {
+            "url": "https://www.gib.gov.tr/",
+            "sha256": "d670bb98e8722dcd5702b5c2d24a9249f8d579b2d152b8687eff989acb50b0e4",
+            "checkedAt": "2026-08-06",
+            "changedAt": null
+        }
+    }
+}
