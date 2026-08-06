@@ -1,0 +1,611 @@
+{
+  "version": "2026-08-06",
+  "note": "Standard rates as dated windows. A window with a null `from` extends backwards indefinitely and a null `to` forwards; a query resolves the window covering its date, so a historical invoice reprices correctly. Prior windows are carried only where a dated, primary-source-verified change is recorded — absence of one is not a claim that the rate never moved.",
+  "rates": {
+    "AE": {
+      "authority": "FTA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "5"
+        }
+      ]
+    },
+    "AT": {
+      "authority": "BMF",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "AU": {
+      "authority": "ATO",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "10"
+        }
+      ]
+    },
+    "BE": {
+      "authority": "FPS Finance",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "BG": {
+      "authority": "NRA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "BH": {
+      "authority": "NBR",
+      "windows": [
+        {
+          "from": null,
+          "to": "2021-12-31",
+          "rate": "5"
+        },
+        {
+          "from": "2022-01-01",
+          "to": null,
+          "rate": "10"
+        }
+      ]
+    },
+    "CA-AB": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "5"
+        }
+      ]
+    },
+    "CA-BC": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "12"
+        }
+      ]
+    },
+    "CA-MB": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "12"
+        }
+      ]
+    },
+    "CA-NB": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "15"
+        }
+      ]
+    },
+    "CA-NS": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "14"
+        }
+      ]
+    },
+    "CA-ON": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "13"
+        }
+      ]
+    },
+    "CA-QC": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "14.975"
+        }
+      ],
+      "note": "GST 5% + QST 9.975%, compounded as Revenu Québec applies them."
+    },
+    "CA-SK": {
+      "authority": "CRA / provincial ministry",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "11"
+        }
+      ]
+    },
+    "CH": {
+      "authority": "ESTV/FTA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "8.1"
+        }
+      ]
+    },
+    "CL": {
+      "authority": "SII",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "19"
+        }
+      ]
+    },
+    "CY": {
+      "authority": "Tax Department",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "19"
+        }
+      ]
+    },
+    "CZ": {
+      "authority": "Finanční správa",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "DE": {
+      "authority": "BZSt",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "19"
+        }
+      ]
+    },
+    "DK": {
+      "authority": "Skattestyrelsen",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "25"
+        }
+      ]
+    },
+    "EE": {
+      "authority": "MTA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "22"
+        }
+      ]
+    },
+    "ES": {
+      "authority": "AEAT",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "FI": {
+      "authority": "Vero",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "25.5"
+        }
+      ]
+    },
+    "FR": {
+      "authority": "DGFiP",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "GB": {
+      "authority": "HMRC",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "GR": {
+      "authority": "AADE",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "24"
+        }
+      ]
+    },
+    "HR": {
+      "authority": "Porezna uprava",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "25"
+        }
+      ]
+    },
+    "HU": {
+      "authority": "NAV",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "27"
+        }
+      ]
+    },
+    "ID": {
+      "authority": "DGT",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "11"
+        }
+      ],
+      "note": "Headline PPN is 12%; the EFFECTIVE rate on non-luxury supplies is 11% via the 11/12 base mechanism."
+    },
+    "IE": {
+      "authority": "Revenue",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "23"
+        }
+      ]
+    },
+    "IN": {
+      "authority": "CBIC",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "18"
+        }
+      ],
+      "note": "Post-22 Sep 2025 slab restructure. Customer-facing rate is uniform across the IGST vs CGST+SGST split."
+    },
+    "IT": {
+      "authority": "Agenzia delle Entrate",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "22"
+        }
+      ]
+    },
+    "JP": {
+      "authority": "NTA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "10"
+        }
+      ]
+    },
+    "KR": {
+      "authority": "NTS",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "10"
+        }
+      ]
+    },
+    "LT": {
+      "authority": "VMI",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "LU": {
+      "authority": "AED",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "17"
+        }
+      ]
+    },
+    "LV": {
+      "authority": "VID",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "MT": {
+      "authority": "CFR",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "18"
+        }
+      ]
+    },
+    "MX": {
+      "authority": "SAT",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "16"
+        }
+      ]
+    },
+    "MY": {
+      "authority": "RMCD",
+      "windows": [
+        {
+          "from": null,
+          "to": "2024-02-29",
+          "rate": "6"
+        },
+        {
+          "from": "2024-03-01",
+          "to": null,
+          "rate": "8"
+        }
+      ],
+      "note": "Service tax, not a destination VAT: charged on B2B and B2C with no reverse charge."
+    },
+    "NL": {
+      "authority": "Belastingdienst",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "21"
+        }
+      ]
+    },
+    "NO": {
+      "authority": "Skatteetaten",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "25"
+        }
+      ]
+    },
+    "NZ": {
+      "authority": "IRD",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "15"
+        }
+      ]
+    },
+    "OM": {
+      "authority": "OTA",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "5"
+        }
+      ]
+    },
+    "PH": {
+      "authority": "BIR",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "12"
+        }
+      ]
+    },
+    "PL": {
+      "authority": "KAS",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "23"
+        }
+      ]
+    },
+    "PT": {
+      "authority": "AT",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "23"
+        }
+      ]
+    },
+    "RO": {
+      "authority": "ANAF",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "19"
+        }
+      ]
+    },
+    "SA": {
+      "authority": "ZATCA",
+      "windows": [
+        {
+          "from": null,
+          "to": "2020-06-30",
+          "rate": "5"
+        },
+        {
+          "from": "2020-07-01",
+          "to": null,
+          "rate": "15"
+        }
+      ]
+    },
+    "SE": {
+      "authority": "Skatteverket",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "25"
+        }
+      ]
+    },
+    "SG": {
+      "authority": "IRAS",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "9"
+        }
+      ]
+    },
+    "SI": {
+      "authority": "FURS",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "22"
+        }
+      ]
+    },
+    "SK": {
+      "authority": "Finančná správa",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "23"
+        }
+      ]
+    },
+    "TH": {
+      "authority": "Revenue Department",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "7"
+        }
+      ]
+    },
+    "TR": {
+      "authority": "Gazette",
+      "windows": [
+        {
+          "from": null,
+          "to": "2023-07-09",
+          "rate": "18"
+        },
+        {
+          "from": "2023-07-10",
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "TW": {
+      "authority": "MOF",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "5"
+        }
+      ]
+    },
+    "UA": {
+      "authority": "STS",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "20"
+        }
+      ]
+    },
+    "VN": {
+      "authority": "GDT",
+      "windows": [
+        {
+          "from": null,
+          "to": null,
+          "rate": "10"
+        }
+      ],
+      "note": "Statutory standard. A temporary cut to 8% applies to most (not all) supplies through 2026-12-31; it is not shipped as the standard rate because \"most supplies\" cannot be expressed as one, and over-charging is the recoverable direction."
+    }
+  }
+}

@@ -91,6 +91,16 @@ reverse-charges.
 | Thailand | `th-vat` | 7% | Revenue Department (VES regime) | high |
 | Ukraine | `ua-vat` | 20% | STS | high |
 
+> **Rates carry dates.** The shipped snapshot is a set of dated *windows*, not a
+> flat map, and `rateFor()` honours the `$at` it is given — so reissuing a 2023
+> invoice reprices at the rate that applied then rather than today's. Prior windows
+> are carried where a dated, primary-source-verified change is recorded: Türkiye
+> (18% → 20% on 10 Jul 2023), Saudi Arabia (5% → 15%, Jul 2020), Bahrain (5% → 10%,
+> Jan 2022) and Malaysia (6% → 8%, 1 Mar 2024). Absence of a prior window is not a
+> claim that a rate never moved — only that this package carries no dated change
+> for it. The overlay lives in `resources/rates.json` with the authority named per
+> jurisdiction.
+
 > **Time-sensitive rate notes.** Indonesia's headline PPN is 12% but the *effective*
 > rate on non-luxury supplies is **11%** (the 11/12 base mechanism) — the engine
 > encodes 11%. Vietnam's statutory standard is **10%**, currently reduced to 8% for

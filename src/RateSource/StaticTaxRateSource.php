@@ -30,16 +30,23 @@ use DateTimeImmutable;
  */
 readonly class StaticTaxRateSource implements TaxRateSource
 {
-    /** @var array<string, string> */
-    private array $rates;
+    /** The shipped overlay: dated rate windows per jurisdiction, with its authority. */
+    private const string OVERLAY = __DIR__.'/../../resources/rates.json';
+
+    /** @var array<string, list<array{from: ?string, to: ?string, rate: string}>> */
+    private array $windows;
 
     /**
-     * @param  array<string, string>|null  $rates  Country/subdivision code → standard percentage; null uses the built-in defaults.
+     * @param  array<string, string>|null  $rates  Country/subdivision code → standard percentage. Supplying
+     *                                             one collapses every jurisdiction to a single open window;
+     *                                             null loads the shipped dated overlay.
      * @param  array<string, RateBand>  $bands  "<jurisdiction>:<category>" → reduced/zero band, e.g. "DK:ebook".
      */
     public function __construct(?array $rates = null, private array $bands = [])
     {
-        $this->rates = $rates ?? self::defaults();
+        $this->windows = $rates === null
+            ? self::overlay()
+            : array_map(static fn (string $rate): array => [['from' => null, 'to' => null, 'rate' => $rate]], $rates);
     }
 
     public function rateFor(
@@ -65,15 +72,17 @@ readonly class StaticTaxRateSource implements TaxRateSource
         }
 
         // Prefer a subdivision-level rate (US states, Canadian provinces), then
-        // fall back to the national rate.
+        // fall back to the national rate — each resolved for the DATE asked about,
+        // so reissuing an old invoice reprices at the rate that applied then.
+        $on = ($at ?? new DateTimeImmutable)->format('Y-m-d');
         $percentage = null;
 
         if ($jurisdiction->subdivision !== null) {
-            $percentage = $this->rates[$jurisdiction->subdivision->value] ?? null;
+            $percentage = $this->windowFor($jurisdiction->subdivision->value, $on);
         }
 
         if ($percentage === null) {
-            $percentage = $this->rates[$jurisdiction->country->value] ?? null;
+            $percentage = $this->windowFor($jurisdiction->country->value, $on);
         }
 
         if ($percentage === null) {
@@ -86,6 +95,23 @@ readonly class StaticTaxRateSource implements TaxRateSource
             source: 'static',
             confidence: Confidence::Derived,
         );
+    }
+
+    /**
+     * The rate in effect for a jurisdiction on a date. Null when the jurisdiction is
+     * unknown, or known but with no window covering that date — a rate that had not
+     * been introduced yet is a genuine absence, not a reason to use today's.
+     */
+    private function windowFor(string $code, string $on): ?string
+    {
+        foreach ($this->windows[$code] ?? [] as $window) {
+            if (($window['from'] === null || $window['from'] <= $on)
+                && ($window['to'] === null || $on <= $window['to'])) {
+                return $window['rate'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -115,34 +141,72 @@ readonly class StaticTaxRateSource implements TaxRateSource
     }
 
     /**
-     * Representative national standard VAT/GST rates. Illustrative defaults, not a
-     * live feed — refresh or override in production.
+     * The current standard rate per jurisdiction — the window in effect today,
+     * flattened. Kept for callers that want the plain map; the source itself reads
+     * the dated windows, so a historical query is answered from the right one.
      *
      * @return array<string, string>
      */
     public static function defaults(): array
     {
-        return [
-            // EU member states.
-            'AT' => '20', 'BE' => '21', 'BG' => '20', 'HR' => '25', 'CY' => '19',
-            'CZ' => '21', 'DK' => '25', 'EE' => '22', 'FI' => '25.5', 'FR' => '20',
-            'DE' => '19', 'GR' => '24', 'HU' => '27', 'IE' => '23', 'IT' => '22',
-            'LV' => '21', 'LT' => '21', 'LU' => '17', 'MT' => '18', 'NL' => '21',
-            'PL' => '23', 'PT' => '23', 'RO' => '19', 'SK' => '23', 'SI' => '22',
-            'ES' => '21', 'SE' => '25',
-            // Non-EU national regimes (rates verified against primary sources).
-            'GB' => '20', 'CH' => '8.1', 'NO' => '25', 'AU' => '10', 'NZ' => '15',
-            'MX' => '16', 'SG' => '9', 'IN' => '18',
-            // Round-5 primary-source-verified national VAT rates.
-            'TW' => '5', 'AE' => '5', 'SA' => '15', 'BH' => '10', 'OM' => '5',
-            'TR' => '20', 'CL' => '19', 'ID' => '11', 'VN' => '10', 'PH' => '12',
-            // Round-6 primary-source-verified rates (JP/KR/TH/UA national VAT; MY SST service tax).
-            'JP' => '10', 'KR' => '10', 'TH' => '7', 'UA' => '20', 'MY' => '8',
-            // US state/local rates are owned by the us-tax-data dataset (bound via
-            // UsTaxDatasetRateSource) — not this snapshot. See config `us_tax_data`.
-            // Canadian provinces — combined GST/HST or GST+PST/QST (no local tax).
-            'CA-ON' => '13', 'CA-QC' => '14.975', 'CA-BC' => '12', 'CA-AB' => '5',
-            'CA-NS' => '14', 'CA-NB' => '15', 'CA-MB' => '12', 'CA-SK' => '11',
-        ];
+        $today = new DateTimeImmutable()->format('Y-m-d');
+        $rates = [];
+
+        foreach (self::overlay() as $code => $windows) {
+            foreach ($windows as $window) {
+                if (($window['from'] === null || $window['from'] <= $today)
+                    && ($window['to'] === null || $today <= $window['to'])) {
+                    $rates[$code] = $window['rate'];
+
+                    break;
+                }
+            }
+        }
+
+        return $rates;
+    }
+
+    /**
+     * The shipped overlay, decoded. A missing or malformed file yields an empty map
+     * rather than a guess — the engine then denies, as it does for any unknown
+     * jurisdiction.
+     *
+     * @return array<string, list<array{from: ?string, to: ?string, rate: string}>>
+     */
+    private static function overlay(): array
+    {
+        /** @var array<string, list<array{from: ?string, to: ?string, rate: string}>>|null $cached */
+        static $cached = null;
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $raw = is_readable(self::OVERLAY) ? file_get_contents(self::OVERLAY) : false;
+        $decoded = $raw === false ? null : json_decode($raw, true);
+        $rates = is_array($decoded) && is_array($decoded['rates'] ?? null) ? $decoded['rates'] : [];
+
+        /** @var array<string, list<array{from: ?string, to: ?string, rate: string}>> $windows */
+        $windows = [];
+
+        foreach ($rates as $code => $entry) {
+            if (! is_string($code) || ! is_array($entry) || ! is_array($entry['windows'] ?? null)) {
+                continue;
+            }
+
+            foreach ($entry['windows'] as $window) {
+                if (! is_array($window) || ! is_string($window['rate'] ?? null)) {
+                    continue;
+                }
+
+                $windows[$code][] = [
+                    'from' => is_string($window['from'] ?? null) ? $window['from'] : null,
+                    'to' => is_string($window['to'] ?? null) ? $window['to'] : null,
+                    'rate' => $window['rate'],
+                ];
+            }
+        }
+
+        return $cached = $windows;
     }
 }

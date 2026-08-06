@@ -5,6 +5,39 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.9.0] - 2026-08-06
+
+### Fixed
+
+- **Historical queries returned today's rate.** `TaxRateSource::rateFor()` has always
+  accepted an `$at`, and `StaticTaxRateSource` accepted it and never read it. Asking
+  for Türkiye's rate on 2023-01-01 answered 20% when 18% applied until 10 July that
+  year — so reissuing an old invoice, or raising a credit note against one, priced it
+  at the wrong rate with no indication anything was off.
+
+### Changed
+
+- **Rates are dated windows, not a flat map.** They move from a hardcoded array into
+  `resources/rates.json`, one or more `{from, to, rate}` windows per jurisdiction with
+  the authority named. A query resolves the window covering its date.
+- Prior windows are carried where this package's own coverage docs already record a
+  dated, primary-source-verified change: **Türkiye** 18% → 20% (10 Jul 2023),
+  **Saudi Arabia** 5% → 15% (Jul 2020), **Bahrain** 5% → 10% (Jan 2022) and
+  **Malaysia** 6% → 8% (1 Mar 2024). Absence of a prior window is not a claim that a
+  rate never moved — only that no dated change is recorded for it, which the overlay
+  says out loud.
+- `StaticTaxRateSource::defaults()` still returns a flat map, now derived from the
+  windows in effect today, and a caller-supplied map still works — it becomes one
+  open window per jurisdiction.
+
+### Notes
+
+- Groundwork rather than a feature: the 50 shipped rates still have no live source,
+  because none exists. Verified during planning that the OECD's SDMX API carries no
+  VAT/GST *rate* dataflow — across all 4,603 dataflows the only matches are national
+  accounts. Dating the rates is what makes the next step possible: an overlay that
+  can express a change is a thing a monitor can update.
+
 ## [0.8.2] - 2026-08-05
 
 ### Fixed
