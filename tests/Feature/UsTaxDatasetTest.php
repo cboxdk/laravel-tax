@@ -316,12 +316,17 @@ it('treats "no local authority applies" as an authoritative answer', function ()
     // ZIP-spanning row carrying no authorities. The rate equals the state share,
     // but it is a complete all-in answer — not a fallback that might be missing
     // locals, which is what Derived would signal.
+    //
+    // `zip` is built as an empty OBJECT because that is what the dataset publishes
+    // for these states. PHP decodes `{}` and `[]` to the same empty array, so this
+    // reader cannot tell them apart — but the fixture should still be the shape
+    // that actually ships.
     $index = json_decode((string) file_get_contents(
         dirname(__DIR__).'/Fixtures/us-tax-dataset/boundaries/US-KS.json'
     ), true);
 
     $index['sets'] = [[]];
-    $index['zip'] = [];
+    $index['zip'] = (object) [];
     $index['ranges'] = [['66000', '67999', '0000', '9999', 0]];
 
     $directory = sys_get_temp_dir().'/cbox-tax-empty-'.bin2hex(random_bytes(4));
