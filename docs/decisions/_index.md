@@ -6,4 +6,4 @@ description: Dated findings with the evidence behind them, so a later reader can
 
 # Decisions
 
-- **[French overseas territories](french-overseas-vat.md)** (2026-08-14) — three of five are under-charged; verified against the CGI and not yet implemented.
+- **[French overseas territories](french-overseas-vat.md)** (2026-08-14) — the engine is right to charge 0%; records a wrong finding and why it was wrong.

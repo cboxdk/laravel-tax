@@ -1,64 +1,75 @@
 ---
 title: French overseas territories
 weight: 53
-description: Measured 2026-08-14 — Martinique, Guadeloupe and Réunion charge 8.5% French VAT and this engine charges nothing. Guyane and Mayotte are correct.
+description: Measured 2026-08-14 — the engine's 0% is correct. An earlier version of this page said it was a P0 under-collection; that was wrong, and this records why.
 ---
 
 # French overseas territories
 
-**Date:** 2026-08-14 · **Status:** verified, not yet implemented
+**Date:** 2026-08-14 · **Status:** verified — no change needed, and a correction
 
-## What the engine does today
+## The conclusion
 
-All five resolve `isEuMember = false`, so an EU VAT assessment returns nothing and
-the supply is treated as an export:
+Charging **0%** on a supply from an EU member state to Martinique, Guadeloupe,
+Réunion, French Guiana or Mayotte is **correct**. The engine already does this, and
+nothing needs to change.
 
-```
-MQ Martinique   GP Guadeloupe   RE Réunion   GF Guyane   YT Mayotte   → 0%
-```
+## An earlier version of this page said the opposite
 
-## What the law says
+It claimed three of the five were under-charged at 8.5% and called it a P0. That
+was wrong. The reasoning that produced it is worth keeping, because the mistake is
+an easy one to make twice.
 
-**Guadeloupe, Martinique, La Réunion — VAT applies.** CGI art. 296 sets a normal
-rate of **8.5%** and a reduced rate of **2.1%**. CGI art. 296 bis adds 1.75% on
-sales of live meat animals to non-taxable persons and 1.05% on the first 140
-theatrical performances; CGI art. 298 septies sets 1.05% on qualifying press.
-Confirmed by the French tax administration's own doctrine, BOI-TVA-GEO-20-10.
+TEDB states, under its `REGION` heading: *"The standard VAT rate in Martinique,
+Guadeloupe and Réunion is 8.5%."* That is true. CGI art. 296 sets exactly that rate,
+and the French tax administration's own doctrine (BOI-TVA-GEO-20-10) confirms it.
 
-**Guyane and Mayotte — VAT does not apply.** CGI art. 294 provides that VAT is
-provisionally not applicable there, neither internally nor on imports.
+The error was inferring from "a VAT of 8.5% exists there" that **an EU seller
+shipping there charges it**. It does not follow.
 
-TEDB says the same thing in its own words, under the `REGION` heading: *"The
-standard VAT rate in Martinique, Guadeloupe and Réunion is 8.5%. The reduced rate is
-2.1%."*
+## What the Directive actually says
 
-## So two of the five are right and three are wrong
+**Article 6(1) of Directive 2006/112/EC excludes the French overseas departments
+from the Directive entirely** — alongside Mount Athos, the Canary Islands, the
+Åland Islands and the Channel Islands. They are outside the EU VAT territory.
 
-`isEuMember = false` is **legally correct for all five**: the French overseas
-departments are excluded from the EU VAT territory by Directive 2006/112/EC art. 6.
-What follows from it is not. France levies its own VAT in three of them under
-national law, outside the harmonised system — no intra-EU rules, no OSS, but a
-seller shipping there charges 8.5%.
+So a supply from a member state to any of the five is an **export**, zero-rated
+under art. 146. The Commission puts it plainly: goods leaving to these territories
+are subject to export formalities and are treated as transported outside the EU.
 
-**The direction matters.** Ceuta and Melilla over-charged, and a customer can be
-refunded. This under-charges: the seller owes tax it never collected, and finds out
-at audit.
+France's 8.5% is a **national** VAT levied under its own law on supplies made
+*within* those territories, or on *importation into* them — paid by a seller
+established there, or by the importer at the border. It is not an obligation on an
+EU seller selling across the border.
 
-## Why it is not implemented here yet
+## This is the same shape the engine already gets right
 
-The shape does not fit the existing seam. `StaticEuTerritories` is keyed on a member
-state plus a postal code, and these arrive as their own ISO country codes — so the
-fix is not a territory entry but a decision about where a non-EU jurisdiction with a
-modellable national VAT belongs. That is the same question Corsica raises from the
-other side: it IS in France's VAT territory, at special rates (CGI art. 297 — 0.9%,
-2.1%, 10%, 13%), and has no entry at all.
+The Canary Islands charge IGIC. Ceuta and Melilla charge IPSI. Neither is EU VAT,
+and the engine correctly stops charging Spanish VAT and reports the local tax by
+name instead — a fix made earlier the same day, on exactly this reasoning.
 
-Both need a home before either is written. Guessing at it produced the measurement
-error that found this in the first place.
+The failure here was not applying it to France.
+
+## What remains genuinely open
+
+**Corsica.** Unlike the overseas departments, Corsica IS inside France's VAT
+territory, and it applies special rates under CGI art. 297 — TEDB reports 0.9% and
+13%, with 2.1% and 10% on other categories. A Corsican supply currently takes
+mainland France's rates, and for the categories with a special rate that is wrong.
+It has no entry in `StaticEuTerritories` at all.
+
+That one is a real gap, and it is the opposite case: a territory inside the VAT area
+whose own rates the engine does not carry — the same shape as Madeira and the
+Azores, which are now handled.
+
+**A seller established in one of the five.** If this engine ever has to price a
+local supply inside Martinique, that is a domestic French-overseas regime and not an
+EU VAT question. Nothing about the current behaviour blocks adding it later.
 
 ## Sources
 
-- CGI art. 294, 296, 296 bis, 298 septies
-- BOI-TVA-GEO-20-10, *Taux applicables en Guadeloupe, en Martinique et à La Réunion*
-- Directive 2006/112/EC art. 6
+- Council Directive 2006/112/EC, art. 6(1) and art. 146
+- CGI art. 294, 296, 296 bis, 297, 298 septies
+- BOI-TVA-GEO-20-10 and BOI-TVA-GEO-20-40, French tax administration doctrine
+- European Commission, *Territorial scope* (VAT Directive guidance)
 - TEDB `REGION` heading, captured 2026-08-14
