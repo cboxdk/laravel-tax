@@ -44,20 +44,18 @@ it('returns null for a state with no general sales tax', function (string $state
     expect($this->thresholds->for(new SubdivisionCode($state)))->toBeNull();
 })->with(['US-DE', 'US-MT', 'US-NH', 'US-OR']);
 
-it('evaluates "either" thresholds on sales OR transactions', function () {
+it('carries the figures but refuses to reach a verdict', function () {
+    // This object used to answer isMet($sales, $transactions): bool. It could not
+    // legitimately: the answer turns on the state's measuring PERIOD and sales
+    // BASIS, which it does not carry — so the same seller totals returned a
+    // confident `true` here and `Unknown` from the package that models both.
+    // Two packages, one question, contradictory answers. The verdict belongs to
+    // whichever one knows the period and the basis, and that is not this one.
     $nj = $this->thresholds->for(new SubdivisionCode('US-NJ'));
 
-    expect($nj->isMet(150_000, 10))->toBeTrue()   // sales alone
-        ->and($nj->isMet(5_000, 250))->toBeTrue() // transactions alone
-        ->and($nj->isMet(5_000, 10))->toBeFalse();
-});
-
-it('evaluates "both" thresholds on sales AND transactions', function () {
-    $ct = $this->thresholds->for(new SubdivisionCode('US-CT'));
-
-    expect($ct->isMet(150_000, 250))->toBeTrue()    // both met
-        ->and($ct->isMet(150_000, 10))->toBeFalse() // sales only, not enough transactions
-        ->and($ct->isMet(5_000, 250))->toBeFalse();
+    expect(method_exists($nj, 'isMet'))->toBeFalse()
+        ->and($nj->salesDollars)->toBe(100_000)
+        ->and($nj->transactions)->toBe(200);
 });
 
 it('describes a threshold for display', function () {

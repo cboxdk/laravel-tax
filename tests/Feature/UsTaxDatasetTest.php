@@ -12,7 +12,7 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\SourcingMode;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Sourcing\UsTaxDatasetSourcing;
@@ -43,7 +43,7 @@ function datasetPlace(string $state, ?LocalityCode $locality = null): Jurisdicti
 it('resolves an authoritative state rate at derived confidence for a US state', function () {
     $source = new UsTaxDatasetRateSource($this->dataset);
 
-    $rate = $source->rateFor(datasetPlace('US-CA'), TaxCategory::Standard);
+    $rate = $source->rateFor(datasetPlace('US-CA'), TaxClass::GeneralGoods);
 
     expect((string) $rate->percentage)->toBe('7.25')
         ->and($rate->kind)->toBe(RateKind::Standard)
@@ -54,18 +54,22 @@ it('resolves an authoritative state rate at derived confidence for a US state', 
 it('returns null for a non-US jurisdiction so a chain falls through', function () {
     $source = new UsTaxDatasetRateSource($this->dataset);
 
-    expect($source->rateFor($this->geo->find(new CountryCode('DE')), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor($this->geo->find(new CountryCode('DE')), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('applies a reduced-rate category rule over the general rate', function () {
     $source = new UsTaxDatasetRateSource($this->dataset);
 
-    // Missouri taxes groceries at a reduced 1.225%.
-    $rate = $source->rateFor(datasetPlace('US-MO'), TaxCategory::Grocery);
+    // Missouri's reduced 1.225% grocery rate is its STATE share — Missouri's own
+    // guidance is explicit that local sales taxes continue to apply to food. With
+    // no rooftop locality resolved this is the same partial answer the general
+    // state rate is, and it now carries the same confidence rather than claiming
+    // to be the whole rate.
+    $rate = $source->rateFor(datasetPlace('US-MO'), TaxClass::Groceries);
 
     expect((string) $rate->percentage)->toBe('1.225')
         ->and($rate->kind)->toBe(RateKind::Reduced)
-        ->and($rate->confidence)->toBe(Confidence::Authoritative);
+        ->and($rate->confidence)->toBe(Confidence::Derived);
 });
 
 it('stacks a combined local record into an all-in rooftop rate', function () {
@@ -73,7 +77,7 @@ it('stacks a combined local record into an all-in rooftop rate', function () {
 
     // California is combined-basis: the local record is already all-in (10.75%).
     $locality = new LocalityCode(new SubdivisionCode('US-CA'), 'ca-place', '06:ALAMEDA');
-    $rate = $source->rateFor(datasetPlace('US-CA', $locality), TaxCategory::Standard);
+    $rate = $source->rateFor(datasetPlace('US-CA', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate->percentage)->toBe('10.75')
         ->and($rate->confidence)->toBe(Confidence::Authoritative); // rooftop
@@ -84,7 +88,7 @@ it('stacks a component local record onto the state share', function () {
 
     // North Carolina is component-basis: local 2% + state 4.75% = 6.75% all-in.
     $locality = new LocalityCode(new SubdivisionCode('US-NC'), 'county-fips', '001');
-    $rate = $source->rateFor(datasetPlace('US-NC', $locality), TaxCategory::Standard);
+    $rate = $source->rateFor(datasetPlace('US-NC', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate->percentage)->toBe('6.75')
         ->and($rate->confidence)->toBe(Confidence::Authoritative);
@@ -94,7 +98,7 @@ it('falls back to the state rate when a locality has no matching local record', 
     $source = new UsTaxDatasetRateSource($this->dataset);
 
     $locality = new LocalityCode(new SubdivisionCode('US-NC'), 'county-fips', 'ZZZ-unknown');
-    $rate = $source->rateFor(datasetPlace('US-NC', $locality), TaxCategory::Standard);
+    $rate = $source->rateFor(datasetPlace('US-NC', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate->percentage)->toBe('4.75') // NC state rate
         ->and($rate->confidence)->toBe(Confidence::Derived);
@@ -105,17 +109,17 @@ it('falls back to the state rate when a locality has no matching local record', 
 it('reads per-state, per-category taxability from the dataset', function () {
     $taxability = new UsTaxDatasetTaxability($this->dataset, new StaticProductTaxability);
 
-    expect($taxability->isTaxable(datasetPlace('US-CA'), TaxCategory::Clothing))->toBeTrue()
-        ->and($taxability->isTaxable(datasetPlace('US-CA'), TaxCategory::DigitalService))->toBeFalse()
-        ->and($taxability->isTaxable(datasetPlace('US-CA'), TaxCategory::Grocery))->toBeFalse()
-        ->and($taxability->isTaxable(datasetPlace('US-NY'), TaxCategory::DigitalService))->toBeTrue();
+    expect($taxability->determine(datasetPlace('US-CA'), TaxClass::Clothing, anyAmount())->isExemptFor(anyAmount()))->toBeFalse()
+        ->and($taxability->determine(datasetPlace('US-CA'), TaxClass::DigitalService, anyAmount())->isExemptFor(anyAmount()))->toBeTrue()
+        ->and($taxability->determine(datasetPlace('US-CA'), TaxClass::Groceries, anyAmount())->isExemptFor(anyAmount()))->toBeTrue()
+        ->and($taxability->determine(datasetPlace('US-NY'), TaxClass::DigitalService, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
 it('delegates non-US taxability to the fallback matrix', function () {
     $taxability = new UsTaxDatasetTaxability($this->dataset, new StaticProductTaxability);
 
     // Standard goods are taxable everywhere by the fallback default.
-    expect($taxability->isTaxable($this->geo->find(new CountryCode('DE')), TaxCategory::Standard))->toBeTrue();
+    expect($taxability->determine($this->geo->find(new CountryCode('DE')), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
 // ---- Nexus ---------------------------------------------------------------
@@ -162,7 +166,7 @@ it('denies (returns null) when the dataset location is unreadable', function () 
 
     $source = new UsTaxDatasetRateSource($missing);
 
-    expect($source->rateFor(datasetPlace('US-CA'), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor(datasetPlace('US-CA'), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('selects the nexus window in effect now over a future-dated one', function () {
@@ -234,7 +238,7 @@ it('sums every local record the boundary index says applies', function () {
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.125')
         ->and($rate?->confidence)->toBe(Confidence::Authoritative)
@@ -249,7 +253,7 @@ it('refuses a partial match rather than under-charging', function () {
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-3413');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->confidence)->toBe(Confidence::Derived);
@@ -259,7 +263,7 @@ it('falls back to the state rate when the ZIP is not in the index at all', funct
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '99999-0001');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->confidence)->toBe(Confidence::Derived);
@@ -269,7 +273,7 @@ it('still accepts a direct jurisdiction code, so a caller can supply its own', f
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), 'sst-fips', '36000');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     // City only: 6.5% + 1.625%. Honest for a caller that resolved one authority,
     // and exactly why the ZIP+4 path exists — it finds the ones you did not.
@@ -281,7 +285,7 @@ it('prefers the gzipped boundary index, which is how it is published', function 
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
 
     $rate = new UsTaxDatasetRateSource($this->dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.125');
 });
@@ -308,7 +312,7 @@ it('falls back to the plain index when no gzipped one is published', function ()
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
 
     expect((string) new UsTaxDatasetRateSource($dataset)
-        ->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard)?->percentage)->toBe('9.125');
+        ->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods)?->percentage)->toBe('9.125');
 });
 
 it('treats "no local authority applies" as an authoritative answer', function () {
@@ -345,8 +349,89 @@ it('treats "no local authority applies" as an authoritative answer', function ()
     $dataset = new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), $directory);
     $locality = new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200');
 
-    $rate = new UsTaxDatasetRateSource($dataset)->rateFor(datasetPlace('US-KS', $locality), TaxCategory::Standard);
+    $rate = new UsTaxDatasetRateSource($dataset)->rateFor(datasetPlace('US-KS', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
+});
+
+// ---- The publisher's manifest is checked, not just trusted ----------------
+
+it('refuses a remote section whose bytes do not match the manifest', function () {
+    // The default location is a MUTABLE branch head on a third-party host. One bad
+    // push would otherwise land in every deployment within a TTL, with no alarm.
+    $http = new Factory;
+    $http->fake([
+        'dataset.test/manifest.json' => $http->response([
+            'schemaVersion' => 4,
+            'files' => ['sections' => ['baseline' => ['sha256' => str_repeat('0', 64)]]],
+        ]),
+        'dataset.test/by-section/baseline.json' => $http->response([
+            'states' => ['US-CA' => ['baseline' => [['stateRate' => 0.99, 'noSalesTax' => false]]]],
+        ]),
+    ]);
+
+    $dataset = new UsTaxDataset($http, $this->app->make(Cache::class), 'https://dataset.test');
+
+    expect($dataset->stateRatePercent('US-CA'))->toBeNull();
+});
+
+it('accepts a remote section whose bytes match the manifest', function () {
+    $body = json_encode(['states' => ['US-CA' => ['baseline' => [
+        ['stateRate' => 0.0725, 'noSalesTax' => false, 'effectiveFrom' => null, 'effectiveTo' => null],
+    ]]]]);
+
+    $http = new Factory;
+    $http->fake([
+        'ok.test/manifest.json' => $http->response([
+            'schemaVersion' => 4,
+            'files' => ['sections' => ['baseline' => ['sha256' => hash('sha256', (string) $body)]]],
+        ]),
+        'ok.test/by-section/baseline.json' => $http->response($body, 200, ['Content-Type' => 'application/json']),
+    ]);
+
+    $dataset = new UsTaxDataset($http, $this->app->make(Cache::class), 'https://ok.test');
+
+    expect($dataset->stateRatePercent('US-CA'))->toBe('7.25');
+});
+
+it('refuses a schema version this reader was not written for', function () {
+    // A bump that re-scaled stateRate from a fraction to a percentage would be
+    // multiplied by 100 again here and charge 725% at Authoritative confidence.
+    $body = json_encode(['states' => ['US-CA' => ['baseline' => [['stateRate' => 7.25, 'noSalesTax' => false]]]]]);
+
+    $http = new Factory;
+    $http->fake([
+        'v5.test/manifest.json' => $http->response([
+            'schemaVersion' => 5,
+            'files' => ['sections' => ['baseline' => ['sha256' => hash('sha256', (string) $body)]]],
+        ]),
+        'v5.test/by-section/baseline.json' => $http->response($body, 200, ['Content-Type' => 'application/json']),
+    ]);
+
+    $dataset = new UsTaxDataset($http, $this->app->make(Cache::class), 'https://v5.test');
+
+    expect($dataset->stateRatePercent('US-CA'))->toBeNull();
+});
+
+it('refuses a remote source that publishes no manifest at all', function () {
+    // Over the network you did not choose the bytes. A missing manifest is a fetch
+    // that went somewhere unexpected, not a deliberate operator choice.
+    $http = new Factory;
+    $http->fake([
+        'bare.test/manifest.json' => $http->response('', 404),
+        'bare.test/by-section/baseline.json' => $http->response([
+            'states' => ['US-CA' => ['baseline' => [['stateRate' => 0.0725, 'noSalesTax' => false]]]],
+        ]),
+    ]);
+
+    $dataset = new UsTaxDataset($http, $this->app->make(Cache::class), 'https://bare.test');
+
+    expect($dataset->stateRatePercent('US-CA'))->toBeNull();
+});
+
+it('still reads a local mirror that has no manifest', function () {
+    // On your own disk you DID choose the bytes; requiring a manifest there would
+    // break every committed fixture and offline build for no gain in trust.
+    expect($this->dataset->stateRatePercent('US-CA'))->toBe('7.25');
 });

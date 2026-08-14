@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Enums\Confidence;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\RateSource\ArcGisRateSource;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Http\Client\Factory;
@@ -41,7 +42,7 @@ it('reads California a fraction and returns a percentage', function () {
     $http = new Factory;
     $http->fake(['*' => gisResponse($http, ['RATE' => 0.0975, 'JURIS_NAME' => 'LOS ANGELES'])]);
 
-    $rate = gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxCategory::Standard);
+    $rate = gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.75')
         ->and($rate?->source)->toBe('state-gis')
@@ -52,7 +53,7 @@ it('reads New Mexico a percentage and leaves it alone', function () {
     $http = new Factory;
     $http->fake(['*' => gisResponse($http, ['grt_rate' => 7.625, 'locat_cdr' => '02-100'])]);
 
-    expect((string) gisSource($http)->rateFor(gisPlace('US-NM', '35.084400,-106.650400'), TaxCategory::Standard)?->percentage)
+    expect((string) gisSource($http)->rateFor(gisPlace('US-NM', '35.084400,-106.650400'), TaxClass::GeneralGoods)?->percentage)
         ->toBe('7.625');
 });
 
@@ -60,7 +61,7 @@ it('queries the point as an intersecting geometry', function () {
     $http = new Factory;
     $http->fake(['*' => gisResponse($http, ['RATE' => 0.0975, 'JURIS_NAME' => 'LOS ANGELES'])]);
 
-    gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxCategory::Standard);
+    gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxClass::GeneralGoods);
 
     $http->assertSent(function ($request): bool {
         $url = urldecode($request->url());
@@ -75,7 +76,7 @@ it('answers only for the states that publish polygons', function () {
     $http = new Factory;
     $http->fake(['*' => gisResponse($http, ['RATE' => 0.0825, 'JURIS_NAME' => 'AUSTIN'])]);
 
-    expect(gisSource($http)->rateFor(gisPlace('US-TX', '30.267200,-97.743100'), TaxCategory::Standard))->toBeNull();
+    expect(gisSource($http)->rateFor(gisPlace('US-TX', '30.267200,-97.743100'), TaxClass::GeneralGoods))->toBeNull();
 
     $http->assertNothingSent();
 });
@@ -85,7 +86,7 @@ it('ignores a locality that is not a point', function () {
     $http->fake(['*' => gisResponse($http, ['RATE' => 0.0975, 'JURIS_NAME' => 'LOS ANGELES'])]);
 
     // A ZIP+4 locality belongs to the dataset source, not this one.
-    expect(gisSource($http)->rateFor(gisPlace('US-CA', '90012-4801', 'zip9'), TaxCategory::Standard))->toBeNull();
+    expect(gisSource($http)->rateFor(gisPlace('US-CA', '90012-4801', 'zip9'), TaxClass::GeneralGoods))->toBeNull();
 
     $http->assertNothingSent();
 });
@@ -96,7 +97,7 @@ it('refuses coordinates that are not plausible rather than querying', function (
     $source = gisSource($http);
 
     foreach (['91.0,-118.2', '34.0,-181.0', 'north,west', '34.0'] as $bad) {
-        expect($source->rateFor(gisPlace('US-CA', $bad), TaxCategory::Standard))->toBeNull();
+        expect($source->rateFor(gisPlace('US-CA', $bad), TaxClass::GeneralGoods))->toBeNull();
     }
 
     $http->assertNothingSent();
@@ -107,14 +108,19 @@ it('denies by default when the point falls in no polygon', function () {
     $http->fake(['*' => $http->response(['features' => []])]);
 
     // Off the California coast: a real answer of "nowhere", not an error.
-    expect(gisSource($http)->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxCategory::Standard))->toBeNull();
+    expect(gisSource($http)->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxClass::GeneralGoods))->toBeNull();
 });
 
-it('denies by default when the service fails', function () {
+it('reports a failed service as unavailable, not as "no rate here"', function () {
+    // These are opposite facts and used to be the same value. A point off the
+    // coast resolving to nothing (above) is an ANSWER; a 504 is the absence of
+    // one, and reporting it as null let a composed chain move on to the state
+    // rate as though the polygons had been consulted and had nothing to say.
     $http = new Factory;
     $http->fake(['*' => $http->response('gateway timeout', 504)]);
 
-    expect(gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxCategory::Standard))->toBeNull();
+    expect(fn () => gisSource($http)->rateFor(gisPlace('US-CA', '34.052200,-118.243700'), TaxClass::GeneralGoods))
+        ->toThrow(RateSourceUnavailable::class);
 });
 
 it('caches on the point, including a miss', function () {
@@ -122,8 +128,8 @@ it('caches on the point, including a miss', function () {
     $http->fake(['*' => $http->response(['features' => []])]);
     $source = gisSource($http, app('cache')->store());
 
-    $source->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxCategory::Standard);
-    $source->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxCategory::Standard);
+    $source->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxClass::GeneralGoods);
+    $source->rateFor(gisPlace('US-CA', '34.000000,-125.000000'), TaxClass::GeneralGoods);
 
     // A point in the sea must not re-query on every assessment.
     $http->assertSentCount(1);

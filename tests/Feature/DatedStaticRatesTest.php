@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 
 // Prior windows are carried only where this package's own coverage docs record a
@@ -19,7 +19,7 @@ function ratedAt(string $country, ?string $on): ?string
 
     $rate = new StaticTaxRateSource()->rateFor(
         $place,
-        TaxCategory::Standard,
+        TaxClass::GeneralGoods,
         $on === null ? null : new DateTimeImmutable($on),
     );
 
@@ -60,7 +60,7 @@ it('resolves a subdivision before its country, on the same date basis', function
         new SubdivisionCode('CA-QC'),
     );
 
-    expect((string) new StaticTaxRateSource()->rateFor($place, TaxCategory::Standard)?->percentage)
+    expect((string) new StaticTaxRateSource()->rateFor($place, TaxClass::GeneralGoods)?->percentage)
         ->toBe('14.975');
 });
 
@@ -68,7 +68,7 @@ it('still accepts a caller-supplied flat map, as one open window each', function
     $place = app(JurisdictionRepository::class)->find(new CountryCode('DK'));
     $source = new StaticTaxRateSource(['DK' => '12.5']);
 
-    expect((string) $source->rateFor($place, TaxCategory::Standard, new DateTimeImmutable('2001-01-01'))?->percentage)
+    expect((string) $source->rateFor($place, TaxClass::GeneralGoods, new DateTimeImmutable('2001-01-01'))?->percentage)
         ->toBe('12.5');
 });
 

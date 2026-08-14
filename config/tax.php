@@ -36,6 +36,27 @@ return [
     | seconds. Point `location` at a pinned tag or a committed local copy for an
     | offline/deterministic build; disable it to fall back to the static snapshot.
     |
+    | INTEGRITY — a remote `location` is verified, a local one is trusted. The
+    | publisher's `manifest.json` carries a sha256 per section and the schema
+    | version the files were built to; over http(s) both are checked and a mismatch
+    | denies. On a local directory they are optional: you put the files there. Note
+    | the default points at a MUTABLE branch head, so pinning a tag is still the
+    | right call for a reproducible build — verification proves the bytes are the
+    | ones published, not that they are the ones you reviewed.
+    |
+    | LICENCE — read this before you build a product on it. This package is MIT,
+    | but the dataset it fetches by default is NOT: `cboxdk/us-tax-dataset` is
+    | published under the PolyForm Internal Use Licence 1.0.0. You may use it for
+    | your own business, including commercially — computing the tax on your own
+    | sales is exactly the intended use. What it does not permit is passing the
+    | data on: redistributing it, bundling it into something you ship, or offering
+    | a rate lookup, an API or a product feature that gives your customers the
+    | rates themselves. That needs a separate licence from Cbox.
+    |
+    | The line is "charging your customers tax you computed with it" (fine) versus
+    | "telling your customers what the rates are" (not covered). If you are
+    | building the latter, disable this and bind your own source.
+    |
     | `rooftop` (experimental, off by default) lets the Geocodio adapter capture the
     | address's ZIP+4 as a locality. The dataset's per-state boundary index expands
     | it into the taxing authorities that apply there, and EVERY applicable local

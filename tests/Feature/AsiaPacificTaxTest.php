@@ -8,7 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -25,7 +25,7 @@ it('charges India IGST at 18% on a foreign B2C digital supply (OIDAR)', function
         place: $this->geo->find(new CountryCode('IN')),
         customer: CustomerType::Consumer,
         seller: new SellerRegistrations(new CountryCode('US')),
-        category: TaxCategory::DigitalService,
+        category: TaxClass::DigitalService,
     ));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)

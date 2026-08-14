@@ -5,8 +5,14 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Charges\NoFlatCharges;
+use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\NexusThresholds;
+use Cbox\Tax\Contracts\OrderFlatChargeSource;
+use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
@@ -30,6 +36,7 @@ use Cbox\Tax\Returns\DefaultReturnAggregator;
 use Cbox\Tax\Sourcing\UsTaxDatasetSourcing;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
+use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
@@ -158,18 +165,52 @@ class TaxServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
+            // Sourcing is a dataset-only plane, and its binding refuses outright
+            // when the dataset is off. Ask the same question the binding asks
+            // rather than resolving it to find out: the regime treats a missing
+            // source as "destination everywhere", which is what it did before
+            // intrastate sourcing was applied at all.
+            $sourcing = self::usTaxDataset($app) !== null ? $app->make(SourcingRules::class) : null;
+
             return DefaultRegimeRegistry::withDefaults(
                 $app->make(ProductTaxability::class),
                 $app->make(JurisdictionRepository::class),
                 $app->make(NexusThresholds::class),
+                $sourcing,
             );
         });
+
+        // No fixed charges are shipped: these levies are per-jurisdiction, move on
+        // their own schedule, and no authoritative compilation of them sits behind
+        // this package. The seam is bound so a host can supply its own.
+        // Two seams, because the two levies are genuinely different: one attaches to
+        // a supply, the other to a delivery however many lines it has. Colorado's
+        // Retail Delivery Fee is the second kind, and charging it through the first
+        // billed a two-line order twice for one delivery.
+        $this->app->singleton(EuTerritories::class, static fn (): EuTerritories => new StaticEuTerritories);
+
+        $this->app->singleton(FlatChargeSource::class, static fn (): FlatChargeSource => new NoFlatCharges);
+        $this->app->singleton(OrderFlatChargeSource::class, static fn (): OrderFlatChargeSource => new NoOrderFlatCharges);
 
         $this->app->singleton(TaxCalculator::class, static function (Application $app): DefaultTaxCalculator {
             return new DefaultTaxCalculator(
                 $app->make(RegimeRegistry::class),
                 $app->make(TaxRateSource::class),
+                $app->make(FlatChargeSource::class),
+                $app->make(OrderFlatChargeSource::class),
             );
+        });
+
+        // The shipped calculator assesses documents directly. A host that rebound
+        // TaxCalculator to its own engine gets the same capability by fan-out —
+        // never the shipped calculator, which would silently bypass their tax logic
+        // for multi-line invoices while single supplies still used it.
+        $this->app->singleton(OrderTaxCalculator::class, static function (Application $app): OrderTaxCalculator {
+            $calculator = $app->make(TaxCalculator::class);
+
+            return $calculator instanceof OrderTaxCalculator
+                ? $calculator
+                : new FanOutOrderCalculator($calculator);
         });
 
         $this->app->singleton(ReturnAggregator::class, static fn (): DefaultReturnAggregator => new DefaultReturnAggregator);

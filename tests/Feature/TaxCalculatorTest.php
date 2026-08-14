@@ -8,7 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
@@ -93,7 +93,7 @@ it('charges destination VAT on a cross-border B2C digital supply', function () {
         place: place('FR'),
         customer: CustomerType::Consumer,
         seller: seller('DE'),
-        category: TaxCategory::DigitalService,
+        category: TaxClass::DigitalService,
     ));
 
     expect((string) $a->tax->getAmount())->toBe('20.00');

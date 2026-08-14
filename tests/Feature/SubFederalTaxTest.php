@@ -11,7 +11,7 @@ use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
@@ -34,7 +34,7 @@ function usSeller(string $state): SellerRegistrations
     ]);
 }
 
-function usBuyer(string $sellerState, string $buyerState, TaxCategory $category = TaxCategory::Standard): TaxQuery
+function usBuyer(string $sellerState, string $buyerState, TaxClass $category = TaxClass::GeneralGoods): TaxQuery
 {
     return new TaxQuery(
         amount: Money::of('100.00', 'USD'),
@@ -67,7 +67,7 @@ it('exempts a product that is not taxable in the state', function () {
     );
     $calc = new DefaultTaxCalculator($registry, new StaticTaxRateSource);
 
-    $a = $calc->assess(usBuyer('US-CA', 'US-CA', TaxCategory::DigitalService));
+    $a = $calc->assess(usBuyer('US-CA', 'US-CA', TaxClass::DigitalService));
 
     expect($a->treatment)->toBe(TaxTreatment::Exempt)
         ->and((string) $a->tax->getAmount())->toBe('0.00');
@@ -77,7 +77,7 @@ it('charges taxable US SaaS at the dataset state rate', function () {
     // NY taxes SaaS (digital_service) and the dataset carries NY's 4% state rate,
     // so a taxable digital service now resolves to the state rate instead of
     // refusing for want of one.
-    $a = $this->tax->assess(usBuyer('US-NY', 'US-NY', TaxCategory::DigitalService));
+    $a = $this->tax->assess(usBuyer('US-NY', 'US-NY', TaxClass::DigitalService));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $a->tax->getAmount())->toBe('4.00') // NY state rate 4%
@@ -92,7 +92,7 @@ it('charges taxable US SaaS when an explicit SaaS category rate is bound', funct
         'US-NY:digital_service' => new RateBand('8.875'),
     ]));
 
-    $a = $calc->assess(usBuyer('US-NY', 'US-NY', TaxCategory::DigitalService));
+    $a = $calc->assess(usBuyer('US-NY', 'US-NY', TaxClass::DigitalService));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $a->tax->getAmount())->toBe('8.88');

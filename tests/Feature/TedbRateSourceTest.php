@@ -6,7 +6,7 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbRateSource;
@@ -20,7 +20,7 @@ beforeEach(function () {
 it('reads a standard rate from a TEDB dataset file (no network)', function () {
     $source = new TedbRateSource(new Factory, $this->fixture);
 
-    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::Standard);
+    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
     expect($dk)->not->toBeNull()
         ->and((string) $dk->percentage)->toBe('25')
@@ -31,8 +31,8 @@ it('reads a standard rate from a TEDB dataset file (no network)', function () {
 it('resolves a reduced band by category from the TEDB dataset', function () {
     $source = new TedbRateSource(new Factory, $this->fixture);
 
-    $frDigital = $source->rateFor($this->geo->find(new CountryCode('FR')), TaxCategory::DigitalService);
-    $frStandard = $source->rateFor($this->geo->find(new CountryCode('FR')), TaxCategory::Standard);
+    $frDigital = $source->rateFor($this->geo->find(new CountryCode('FR')), TaxClass::DigitalService);
+    $frStandard = $source->rateFor($this->geo->find(new CountryCode('FR')), TaxClass::GeneralGoods);
 
     expect((string) $frDigital->percentage)->toBe('5.5')
         ->and($frDigital->kind)->toBe(RateKind::Reduced)
@@ -43,13 +43,13 @@ it('resolves a reduced band by category from the TEDB dataset', function () {
 it('returns null for a country absent from the TEDB dataset', function () {
     $source = new TedbRateSource(new Factory, $this->fixture);
 
-    expect($source->rateFor($this->geo->find(new CountryCode('ES')), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor($this->geo->find(new CountryCode('ES')), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('returns null when the TEDB source path does not exist', function () {
     $source = new TedbRateSource(new Factory, __DIR__.'/../Fixtures/does-not-exist.json');
 
-    expect($source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('reads a TEDB dataset from an http URL', function () {
@@ -60,7 +60,7 @@ it('reads a TEDB dataset from an http URL', function () {
 
     $source = new TedbRateSource($http, 'https://tedb.example/rates.json');
 
-    expect((string) $source->rateFor($this->geo->find(new CountryCode('DE')), TaxCategory::Standard)->percentage)->toBe('19');
+    expect((string) $source->rateFor($this->geo->find(new CountryCode('DE')), TaxClass::GeneralGoods)->percentage)->toBe('19');
 });
 
 it('falls back to the static snapshot when TEDB has no rate for the country', function () {
@@ -70,7 +70,7 @@ it('falls back to the static snapshot when TEDB has no rate for the country', fu
         new StaticTaxRateSource,
     ]);
 
-    $es = $chain->rateFor($this->geo->find(new CountryCode('ES')), TaxCategory::Standard);
+    $es = $chain->rateFor($this->geo->find(new CountryCode('ES')), TaxClass::GeneralGoods);
 
     expect((string) $es->percentage)->toBe('21') // static snapshot ES
         ->and($es->source)->toBe('static');

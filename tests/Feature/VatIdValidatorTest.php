@@ -50,15 +50,58 @@ it('supports Greece under VIES', function () {
 
 it('validates a UK VAT number via HMRC', function () {
     $http = new Factory;
+    // The shape HMRC actually returns: the looked-up number echoed back beside
+    // the registered name and address.
     $http->fake(['api.service.hmrc.gov.uk/*' => $http->response([
-        'target' => ['name' => 'ACME Ltd'], 'consultationNumber' => 'ABC123',
+        'target' => [
+            'name' => 'ACME Ltd',
+            'vatNumber' => '123456789',
+            'address' => ['line1' => '1 High Street', 'postcode' => 'SW1A 1AA', 'countryCode' => 'GB'],
+        ],
+        'consultationNumber' => 'ABC123',
     ])]);
 
     $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
 
     expect($r->permitsReverseCharge())->toBeTrue()
         ->and($r->name)->toBe('ACME Ltd')
+        ->and($r->address)->toBe('1 High Street, SW1A 1AA, GB')
         ->and($r->consultationReference)->toBe('ABC123');
+});
+
+it('does not treat a bare 2xx from HMRC as proof of registration', function () {
+    // An empty body, an error envelope, or a captive portal serving JSON all
+    // arrive as a successful response. None of them says the number is
+    // registered, and reading them as "conclusively valid" zero-rates a UK B2B
+    // supply that was never checked.
+    $bodies = [
+        'empty object' => [],
+        'error envelope' => ['code' => 'INVALID_REQUEST', 'message' => 'nope'],
+        'target without a number' => ['target' => ['name' => 'ACME Ltd']],
+        'target without a name' => ['target' => ['vatNumber' => '123456789']],
+    ];
+
+    foreach ($bodies as $label => $body) {
+        $http = new Factory;
+        $http->fake(['api.service.hmrc.gov.uk/*' => $http->response($body)]);
+
+        $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
+
+        expect($r->permitsReverseCharge())->toBeFalse("$label must not permit reverse charge")
+            ->and($r->conclusive)->toBeFalse("$label must be inconclusive");
+    }
+});
+
+it('refuses an HMRC response about a different registration', function () {
+    $http = new Factory;
+    $http->fake(['api.service.hmrc.gov.uk/*' => $http->response([
+        'target' => ['name' => 'Someone Else Ltd', 'vatNumber' => '999999999'],
+    ])]);
+
+    $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
+
+    expect($r->permitsReverseCharge())->toBeFalse()
+        ->and($r->conclusive)->toBeFalse();
 });
 
 it('treats an HMRC 404 as conclusively not registered', function () {

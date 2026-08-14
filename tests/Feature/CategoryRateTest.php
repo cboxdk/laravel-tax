@@ -8,7 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\ValueObjects\RateBand;
@@ -23,8 +23,8 @@ it('ships no reduced bands by default — every category resolves the standard r
     $source = new StaticTaxRateSource;
     $fr = $this->geo->find(new CountryCode('FR'));
 
-    $standard = $source->rateFor($fr, TaxCategory::Standard);
-    $digital = $source->rateFor($fr, TaxCategory::DigitalService);
+    $standard = $source->rateFor($fr, TaxClass::GeneralGoods);
+    $digital = $source->rateFor($fr, TaxClass::DigitalService);
 
     expect($standard->kind)->toBe(RateKind::Standard)
         ->and($digital->kind)->toBe(RateKind::Standard)
@@ -38,8 +38,8 @@ it('resolves a configured reduced band for a category, else the standard rate', 
     ]);
     $fr = $this->geo->find(new CountryCode('FR'));
 
-    $digital = $source->rateFor($fr, TaxCategory::DigitalService);
-    $standard = $source->rateFor($fr, TaxCategory::Standard);
+    $digital = $source->rateFor($fr, TaxClass::DigitalService);
+    $standard = $source->rateFor($fr, TaxClass::GeneralGoods);
 
     expect((string) $digital->percentage)->toBe('5.5')
         ->and($digital->kind)->toBe(RateKind::Reduced)
@@ -52,8 +52,8 @@ it('resolves a zero band and leaves other jurisdictions on standard', function (
         'DK:digital_service' => new RateBand('0', RateKind::Zero),
     ]);
 
-    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::DigitalService);
-    $de = $source->rateFor($this->geo->find(new CountryCode('DE')), TaxCategory::DigitalService);
+    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::DigitalService);
+    $de = $source->rateFor($this->geo->find(new CountryCode('DE')), TaxClass::DigitalService);
 
     expect($dk->isZero())->toBeTrue()
         ->and($dk->kind)->toBe(RateKind::Zero)
@@ -69,7 +69,7 @@ it('drives a reduced band end-to-end through the calculator', function () {
         place: $this->geo->find(new CountryCode('FR')),
         customer: CustomerType::Consumer,
         seller: new SellerRegistrations(new CountryCode('FR')), // domestic FR supply
-        category: TaxCategory::DigitalService,
+        category: TaxClass::DigitalService,
     ));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)

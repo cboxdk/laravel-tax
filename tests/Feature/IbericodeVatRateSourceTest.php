@@ -6,7 +6,7 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\IbericodeVatRateSource;
@@ -21,7 +21,7 @@ beforeEach(function () {
 it('reads a standard rate from the ibericode dataset file (no network)', function () {
     $source = new IbericodeVatRateSource(new Factory, $this->fixture);
 
-    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::Standard);
+    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
     expect($dk)->not->toBeNull()
         ->and((string) $dk->percentage)->toBe('25')
@@ -34,8 +34,8 @@ it('selects the rate period in force at a given date', function () {
     $de = $this->geo->find(new CountryCode('DE'));
 
     // 2021+ period is 19%; the 2020-07-01 temporary cut was 16%.
-    $now = $source->rateFor($de, TaxCategory::Standard, new DateTimeImmutable('2022-01-01'));
-    $cut = $source->rateFor($de, TaxCategory::Standard, new DateTimeImmutable('2020-09-01'));
+    $now = $source->rateFor($de, TaxClass::GeneralGoods, new DateTimeImmutable('2022-01-01'));
+    $cut = $source->rateFor($de, TaxClass::GeneralGoods, new DateTimeImmutable('2020-09-01'));
 
     expect((string) $now->percentage)->toBe('19')
         ->and((string) $cut->percentage)->toBe('16');
@@ -47,12 +47,12 @@ it('resolves a reduced tier only when the operator maps a category to it', funct
     $default = new IbericodeVatRateSource(new Factory, $this->fixture);
     $fr = $this->geo->find(new CountryCode('FR'));
 
-    expect((string) $default->rateFor($fr, TaxCategory::DigitalService)->percentage)->toBe('20');
+    expect((string) $default->rateFor($fr, TaxClass::DigitalService)->percentage)->toBe('20');
 
     // Operator-supplied mapping surfaces the real reduced tier from the dataset.
     $mapped = new IbericodeVatRateSource(new Factory, $this->fixture, ['digital_service' => 'reduced1']);
 
-    $band = $mapped->rateFor($fr, TaxCategory::DigitalService);
+    $band = $mapped->rateFor($fr, TaxClass::DigitalService);
     expect((string) $band->percentage)->toBe('5.5')
         ->and($band->kind)->toBe(RateKind::Reduced);
 });
@@ -60,13 +60,13 @@ it('resolves a reduced tier only when the operator maps a category to it', funct
 it('returns null for a country absent from the dataset', function () {
     $source = new IbericodeVatRateSource(new Factory, $this->fixture);
 
-    expect($source->rateFor($this->geo->find(new CountryCode('ES')), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor($this->geo->find(new CountryCode('ES')), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('returns null when the source path does not exist', function () {
     $source = new IbericodeVatRateSource(new Factory, __DIR__.'/../Fixtures/does-not-exist.json');
 
-    expect($source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::Standard))->toBeNull();
+    expect($source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))->toBeNull();
 });
 
 it('reads the dataset from an http URL', function () {
@@ -77,7 +77,7 @@ it('reads the dataset from an http URL', function () {
 
     $source = new IbericodeVatRateSource($http, 'https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json');
 
-    expect((string) $source->rateFor($this->geo->find(new CountryCode('DK')), TaxCategory::Standard)->percentage)->toBe('25');
+    expect((string) $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods)->percentage)->toBe('25');
 });
 
 it('falls back to the static snapshot when the feed has no rate for the country', function () {
@@ -86,7 +86,7 @@ it('falls back to the static snapshot when the feed has no rate for the country'
         new StaticTaxRateSource,
     ]);
 
-    $es = $chain->rateFor($this->geo->find(new CountryCode('ES')), TaxCategory::Standard);
+    $es = $chain->rateFor($this->geo->find(new CountryCode('ES')), TaxClass::GeneralGoods);
 
     expect((string) $es->percentage)->toBe('21') // static snapshot ES
         ->and($es->source)->toBe('static');
