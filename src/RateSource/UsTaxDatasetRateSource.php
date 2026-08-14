@@ -7,6 +7,7 @@ namespace Cbox\Tax\RateSource;
 use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
@@ -112,7 +113,10 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         return ['US-PA:Philadelphia'];
     }
 
-    public function __construct(private UsTaxDataset $dataset) {}
+    public function __construct(
+        private UsTaxDataset $dataset,
+        private LocalAuthorityResolver $authorities = new DefersLocalAuthorities,
+    ) {}
 
     public function rateFor(
         Jurisdiction $jurisdiction,
@@ -130,6 +134,26 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         // grocery rate is its state share; local sales taxes still apply to food,
         // so returning 1.225% all-in under-charged by most of the true rate.
         $reduced = $this->reducedStateShare($state, $category);
+
+        // The host's resolver is asked FIRST, and about the whole jurisdiction
+        // rather than about a locality. A Colorado address carries no locality at
+        // all — nothing this package ships resolves Colorado below the state line,
+        // which is precisely why a host would bind a resolver there. Gating the
+        // seam behind a locality would close it to the states that need it most.
+        //
+        // It also wins over the shipped resolution where both could answer: binding
+        // one is a deliberate act, and a host with a state portal's own answer has
+        // a better one than a postal-key index.
+        $resolved = $this->authorities->authoritiesFor($jurisdiction, $at);
+
+        if ($resolved !== null) {
+            $stacked = $this->stacked($state, $resolved, $at, $reduced);
+
+            if ($stacked !== null) {
+                return $stacked;
+            }
+        }
+
         $locality = $jurisdiction->locality;
         $atRooftop = $locality !== null && $locality->subdivision->value === $state;
 

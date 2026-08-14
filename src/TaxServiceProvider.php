@@ -10,6 +10,7 @@ use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\FlatChargeSource;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
@@ -26,6 +27,7 @@ use Cbox\Tax\Nexus\StaticNexusThresholds;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\ArcGisRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
+use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbSoapRateSource;
@@ -65,6 +67,13 @@ class TaxServiceProvider extends ServiceProvider
         // matrix). Null when the dataset is disabled or unconfigured, so callers null-check
         // (deny-by-default), exactly as the adapters below do.
         $this->app->singleton(UsTaxDataset::class, static fn (Application $app): ?UsTaxDataset => self::usTaxDataset($app));
+
+        // Deferring by default: this package ships credentials for no state portal
+        // and will not guess an authority it cannot resolve. A host that has better
+        // resolution — Colorado's GIS under its own SUTS key, a commercial adapter,
+        // an internal boundary file — rebinds this one contract and the US rate
+        // source starts stacking what it returns. See docs/extension-points.
+        $this->app->singleton(LocalAuthorityResolver::class, static fn (): LocalAuthorityResolver => new DefersLocalAuthorities);
 
         $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
             $static = new StaticTaxRateSource;
@@ -127,7 +136,14 @@ class TaxServiceProvider extends ServiceProvider
             $dataset = self::usTaxDataset($app);
 
             if ($dataset !== null) {
-                $sources[] = new UsTaxDatasetRateSource($dataset);
+                // Resolved from the container so a host can bind its own — a state
+                // portal it holds credentials for, a commercial adapter, an
+                // internal boundary file. The default defers on everything, so an
+                // app that binds nothing behaves exactly as before.
+                $sources[] = new UsTaxDatasetRateSource(
+                    $dataset,
+                    $app->make(LocalAuthorityResolver::class),
+                );
             }
 
             if ($sources === []) {
