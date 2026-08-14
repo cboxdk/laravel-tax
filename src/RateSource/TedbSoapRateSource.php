@@ -23,7 +23,7 @@ use Throwable;
  * Reads EU VAT rates LIVE from the Commission's *Taxes in Europe Database* — its
  * `VatRetrievalService` SOAP endpoint, called directly. This exists because TEDB
  * publishes no downloadable export: the SOAP service and the web UI are the only
- * ways to get the data, so an adapter that expects a file (see {@see TedbRateSource})
+ * ways to get the data, so an adapter that expects a file (see {@see EuTaxDatasetRateSource})
  * cannot be used without the operator first building an ETL of their own.
  *
  * The service needs no key and no registration. One call covers one member state

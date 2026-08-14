@@ -25,7 +25,7 @@ most callers get the weaker one.
 So the rooftop path rests on primary sources; the state rate — which is what you
 get in the [16 states with no rooftop path](#the-16-states-with-local-tax-and-no-rooftop-path)
 — rests on a secondary one. That is the same footing the
-[EU VAT feed](eu-vat-feed.md) is on, and it is described the same way there.
+[EU VAT dataset](eu-tax-dataset.md) is on, and it is described the same way there.
 
 Treat the state rates as a good, refreshable default and re-verify against each
 state's own guidance before relying on them for a filing.
@@ -52,7 +52,7 @@ If you are building the latter, set `TAX_US_DATASET=false` and bind your own
 [the disabled-dataset path](#configuration) below, which is a narrow escape hatch
 rather than an equivalent mode.
 
-The [EU VAT feed](eu-vat-feed.md) is a different story — that one is MIT, and
+The [EU VAT dataset](eu-tax-dataset.md) is a different story — that one is ours, and
 documented as such.
 
 ## The four planes it supplies

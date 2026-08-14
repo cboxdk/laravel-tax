@@ -19,7 +19,7 @@ Commission's **TEDB**, called live via
 [`TedbSoapRateSource`](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)
 (`tax.tedb.live`, no API key — TEDB publishes no downloadable export, so the SOAP
 service is how you consume it), or a **real, public, MIT-licensed EU VAT dataset**
-(`ibericode/vat-rates`) via the [`IbericodeVatRateSource`](eu-vat-feed.md) adapter.
+via the [`EuTaxDatasetRateSource`](eu-tax-dataset.md) adapter, reading the compiled `cboxdk/eu-tax-dataset`.
 Either composes `ChainTaxRateSource(feed → static snapshot)`. Confidence: **high**
 — the regime and threshold are grounded in EU primary law, and with the live TEDB
 source bound the rates come from the Commission's own database rather than a

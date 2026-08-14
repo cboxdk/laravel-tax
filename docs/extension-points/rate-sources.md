@@ -12,7 +12,7 @@ Bind your own `Contracts\TaxRateSource` to replace the default static rates:
 ```php
 use Cbox\Tax\Contracts\TaxRateSource;
 
-$this->app->singleton(TaxRateSource::class, fn () => new TedbRateSource(/* ... */));
+$this->app->singleton(TaxRateSource::class, fn () => new EuTaxDatasetRateSource(/* ... */));
 ```
 
 A source returns a `TaxRate` (percentage, band, provenance, confidence) for a
@@ -263,37 +263,15 @@ stacks nothing: the rate returned is already all-in for the point. And it needs
 coordinates, which is why the geocoder attaches a point rather than a ZIP+4 for
 these two states.
 
-## The EU VAT feed (`IbericodeVatRateSource`)
+## The EU VAT dataset (`EuTaxDatasetRateSource`)
 
-`IbericodeVatRateSource` binds a **real, public, MIT-licensed** EU VAT-rate dataset
-— the community-maintained
-[`ibericode/vat-rates`](https://github.com/ibericode/vat-rates) feed
-(`https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json`). Its
-source, license, shape and honest-provenance notes are documented in
-[EU VAT rate feed](../coverage/eu-vat-feed.md).
+Reads the compiled `cboxdk/eu-tax-dataset`: 27 member states, dated windows back to
+the start of the Commission's records, and per-band provenance. It replaced two
+earlier adapters — a community-maintained third-party feed, and a hand-built TEDB
+export reader — because it does what both did and carries what neither had: a supply
+date, a published class map, and the source's own ambiguities rather than a guess.
 
-Enable it and the provider composes `ChainTaxRateSource(EU feed → static snapshot)`:
-
-```dotenv
-TAX_EU_VAT_FEED=true
-# Optional: pin to a mirror or a TEDB export.
-# TAX_EU_VAT_URL=https://your-mirror.example/vat-rates.json
-```
-
-It reads the real dataset shape (`items` keyed by country → date-effective rate
-periods) and selects the period **in force** at the assessment date. The dataset's
-reduced tiers are not category-labelled, so it resolves the **standard** rate by
-default; pass an authoritative `TaxCategory → tier` map to surface a reduced tier:
-
-```php
-use Cbox\Tax\RateSource\IbericodeVatRateSource;
-
-new IbericodeVatRateSource(
-    $app->make(\Illuminate\Http\Client\Factory::class),
-    config('tax.eu_vat.url'),
-    categoryTiers: ['digital_service' => 'reduced1'], // operator-asserted mapping
-);
-```
+See [EU VAT dataset](../coverage/eu-tax-dataset.md).
 
 ## The TEDB adapter
 
@@ -332,9 +310,8 @@ fallback:
 
 - **`StaticTaxRateSource`** — the built-in map (default binding); accepts optional
   reduced/zero `bands`.
-- **`IbericodeVatRateSource`** — reads the real MIT-licensed `ibericode/vat-rates`
-  EU dataset (URL or file), date-effective; auto-wired to a `ChainTaxRateSource`
-  fallback when `tax.eu_vat.enabled` is true.
+- **`EuTaxDatasetRateSource`** — reads the compiled `cboxdk/eu-tax-dataset`: dated
+  windows, a published class map, and the source's own ambiguities.
 - **`TedbRateSource`** — reads a normalised TEDB-derived dataset (URL or file);
   auto-wired to a `ChainTaxRateSource` fallback when `tax.tedb.url` is set.
 - **`RemoteRateSource`** — fetches a generic JSON country→rate feed (number,

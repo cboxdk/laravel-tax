@@ -25,12 +25,9 @@ use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Nexus\StaticNexusThresholds;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\ArcGisRateSource;
-use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
-use Cbox\Tax\RateSource\IbericodeVatRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\TedbRateSource;
 use Cbox\Tax\RateSource\TedbSoapRateSource;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
@@ -79,12 +76,6 @@ class TaxServiceProvider extends ServiceProvider
             // engine denies rather than guessing.
             $sources = [];
 
-            $euVatFeed = self::euVatFeedSource($app);
-
-            if ($euVatFeed !== null) {
-                $sources[] = $euVatFeed;
-            }
-
             $config = $app->make(Config::class);
 
             // The compiled EU dataset, tried before the live service and before any
@@ -116,12 +107,6 @@ class TaxServiceProvider extends ServiceProvider
                     $app->make(Cache::class),
                     is_int($ttl) ? $ttl : 86400,
                 );
-            }
-
-            $tedb = $config->get('tax.tedb.url');
-
-            if (is_string($tedb) && $tedb !== '') {
-                $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);
             }
 
             // Where a state publishes its own rooftop polygons (CA, NM), a point
@@ -267,38 +252,6 @@ class TaxServiceProvider extends ServiceProvider
             $location,
             is_int($ttl) ? $ttl : 86400,
         );
-    }
-
-    /**
-     * Build the EU VAT live feed (the MIT-licensed ibericode/vat-rates dataset)
-     * when it is enabled, wrapped in the request cache. Returns `null` when the
-     * feed is disabled (the default) so the static snapshot stays the zero-config
-     * default. A URL source is cached to avoid a request per lookup; a local file
-     * path is read directly.
-     */
-    private static function euVatFeedSource(Application $app): ?TaxRateSource
-    {
-        $config = $app->make(Config::class);
-
-        if ($config->get('tax.eu_vat.enabled') !== true) {
-            return null;
-        }
-
-        $url = $config->get('tax.eu_vat.url');
-
-        if (! is_string($url) || $url === '') {
-            return null;
-        }
-
-        $feed = new IbericodeVatRateSource($app->make(Factory::class), $url);
-
-        $isRemote = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
-
-        if (! $isRemote) {
-            return $feed;
-        }
-
-        return new CachingTaxRateSource($feed, $app->make(Cache::class));
     }
 
     /**
