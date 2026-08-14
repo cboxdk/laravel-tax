@@ -12,6 +12,7 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
+use Throwable;
 
 /**
  * Reads EU VAT rates from the published `cboxdk/eu-tax-dataset`.
@@ -62,12 +63,30 @@ readonly class EuTaxDatasetRateSource implements TaxRateSource
 
             if (is_array($band) && is_string($rate)) {
                 /** @var array<string, mixed> $band */
-                return new TaxRate(
-                    $rate,
-                    RateKind::Reduced,
-                    $this->source($country, $heading, $band),
-                    Confidence::Authoritative,
-                );
+                try {
+                    return new TaxRate(
+                        $rate,
+                        RateKind::Reduced,
+                        $this->source($country, $heading, $band),
+                        Confidence::Authoritative,
+                    );
+                } catch (Throwable) {
+                    // A band that is not a rate. The publisher refuses to emit one,
+                    // so reaching here means verification passed and something else
+                    // went wrong — and the blast radius of throwing is the whole
+                    // engine, for every country, over one bad heading in one.
+                    //
+                    // Priced at the standard rate instead: over-charging is
+                    // recoverable, a failed checkout is not, and the confidence and
+                    // source say plainly that a band was there and could not be read.
+                    // Silently trying the next heading would be the quiet
+                    // substitution this file exists to avoid.
+                    return $this->standard(
+                        $window['standard'],
+                        sprintf('eu-tax-dataset (%s %s unreadable, standard rate applied)', $country, $heading),
+                        Confidence::LowConfidence,
+                    );
+                }
             }
 
             // Undecided beats the remaining headings: the state DOES rate this
@@ -75,21 +94,36 @@ readonly class EuTaxDatasetRateSource implements TaxRateSource
             // heading would quietly answer a different question — France's books
             // under LOAN_LIBRARIES when BOOKS is the ambiguous one.
             if (isset($window['undecided'][$heading])) {
-                return new TaxRate(
+                return $this->standard(
                     $window['standard'],
-                    RateKind::Standard,
                     sprintf('eu-tax-dataset (%s %s undecided, standard rate applied)', $country, $heading),
                     Confidence::Derived,
                 );
             }
         }
 
-        return new TaxRate(
+        return $this->standard(
             $window['standard'],
-            RateKind::Standard,
             'eu-tax-dataset ('.$country.' standard)',
             Confidence::Authoritative,
         );
+    }
+
+    /**
+     * The member state's standard rate, or null if even that will not read.
+     *
+     * A corrupt BAND can be worked around by charging the standard rate. A corrupt
+     * standard rate cannot be worked around at all — there is nothing left to fall
+     * back to — so the source denies and the engine refuses the line rather than
+     * inventing a percentage.
+     */
+    private function standard(string $percentage, string $source, Confidence $confidence): ?TaxRate
+    {
+        try {
+            return new TaxRate($percentage, RateKind::Standard, $source, $confidence);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

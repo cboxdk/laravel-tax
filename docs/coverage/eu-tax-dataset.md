@@ -74,6 +74,32 @@ trusted without a manifest — reading your own disk is a deliberate act.
 
 ## What it does not do yet
 
-**The special territories.** Madeira's 12/5 and the Azores' 9/4 reduced bands are
-not in the dataset, so the engine still substitutes the standard territorial rates
-and marks them `Derived`. See [EU territories](../core-concepts/eu-territories.md).
+**The special territories, and this source makes the gap more visible.** Madeira's
+12/5 and the Azores' 9/4 reduced bands are not in the dataset.
+
+For a STANDARD-rated supply that is handled: the regime substitutes the territory's
+own rate after the source answers, marked `Derived`. But for a supply that matches a
+reduced band, the regime keeps what the source returned — mainland Portugal's 6% on
+a Madeira grocery line, where Madeira charges 5% — and appends a caveat saying the
+band may be up to two points high.
+
+That behaviour predates this source and is unchanged by it. What changed is how
+often it is reached: before, the EU had few resolved reduced bands, so most
+territory supplies fell to the standard path. Now that bands resolve across the
+union, a territory line is far more likely to be priced from the mainland.
+
+Two points high is an over-charge, which is recoverable, and the caveat says so on
+the assessment. Closing it properly means publishing the territories' own bands in
+the dataset. See [EU territories](../core-concepts/eu-territories.md).
+
+## What it does with data it cannot read
+
+The publisher refuses to emit a rate outside 0–100, so a band that will not parse
+means verification passed and something else went wrong. Throwing there would fail
+every assessment for every country over one bad heading in one, so:
+
+- **An unreadable band** → the standard rate at `LowConfidence`, with the heading
+  named in the source string. It does **not** fall through to the next heading:
+  that would price the supply under one nobody asked about and look successful.
+- **An unreadable standard rate** → null. There is nothing left to fall back to,
+  and the engine refuses rather than inventing a percentage.

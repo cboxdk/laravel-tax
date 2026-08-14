@@ -141,3 +141,93 @@ it('trusts a local path without a manifest, and a remote one not at all', functi
 
     expect($remote->rateFor(euPlace('DK'), TaxClass::Electronics))->toBeNull();
 });
+
+// ---- Corrupt data, and the blast radius of getting it wrong --------------------
+
+function euCorrupt(string $mutate): EuTaxDatasetRateSource
+{
+    // A copy of the real fixture with one value damaged, and the manifest left
+    // alone — a local path is trusted without one, which is exactly the case where
+    // corrupt bytes can reach the source.
+    $dir = sys_get_temp_dir().'/eu-corrupt-'.bin2hex(random_bytes(6));
+
+    mkdir($dir.'/by-section', 0o755, true);
+
+    $rates = (string) file_get_contents(dirname(__DIR__).'/Fixtures/eu-tax-dataset/by-section/rates.json');
+    file_put_contents($dir.'/by-section/rates.json', $mutate === '' ? $rates : $mutate);
+    copy(
+        dirname(__DIR__).'/Fixtures/eu-tax-dataset/by-section/class-map.json',
+        $dir.'/by-section/class-map.json',
+    );
+
+    return new EuTaxDatasetRateSource(new EuTaxDataset(app(Factory::class), app(Cache::class), $dir));
+}
+
+/** @param  callable(array<string, mixed>): array<string, mixed>  $edit */
+function euWithEditedFr(callable $edit): EuTaxDatasetRateSource
+{
+    $rates = json_decode(
+        (string) file_get_contents(dirname(__DIR__).'/Fixtures/eu-tax-dataset/by-section/rates.json'),
+        true,
+    );
+
+    foreach ($rates['states']['FR'] as $i => $window) {
+        if (($window['effectiveTo'] ?? null) === null) {
+            $rates['states']['FR'][$i] = $edit($window);
+        }
+    }
+
+    return euCorrupt((string) json_encode($rates));
+}
+
+it('charges the standard rate when a band is not a rate, rather than taking the engine down', function () {
+    // The publisher refuses to emit a rate outside 0–100, so reaching here means
+    // verification passed and something else went wrong. Throwing would fail every
+    // assessment for every country over one bad heading in one — so the supply is
+    // priced at the standard rate, and the confidence says why.
+    $source = euWithEditedFr(function (array $window): array {
+        $window['bands']['FOODSTUFFS']['rate'] = 'not-a-rate';
+
+        return $window;
+    });
+
+    $rate = $source->rateFor(euPlace('FR'), TaxClass::Groceries);
+
+    expect((string) $rate?->percentage)->toBe('20')
+        ->and($rate?->confidence)->toBe(Confidence::LowConfidence)
+        ->and($rate?->source)->toContain('unreadable');
+});
+
+it('does not quietly try the next heading when a band is unreadable', function () {
+    // `book` maps to BOOKS then LOAN_LIBRARIES. If BOOKS is unreadable, falling
+    // through would price the supply under a heading nobody asked about and look
+    // entirely successful — the quiet substitution this source exists to avoid.
+    $source = euWithEditedFr(function (array $window): array {
+        $window['bands']['BOOKS'] = ['rate' => '999', 'basis' => 'source'];
+
+        return $window;
+    });
+
+    $rate = $source->rateFor(euPlace('FR'), TaxClass::Book);
+
+    expect($rate?->confidence)->toBe(Confidence::LowConfidence)
+        ->and($rate?->source)->toContain('BOOKS')
+        ->and($rate?->source)->not->toContain('LOAN_LIBRARIES');
+});
+
+it('denies when even the standard rate will not read', function () {
+    // A corrupt band can be worked around by charging the standard rate. A corrupt
+    // standard rate cannot: there is nothing left to fall back to, so the source
+    // denies and the engine refuses rather than inventing a percentage.
+    $source = euWithEditedFr(function (array $window): array {
+        $window['standard'] = '-5';
+
+        return $window;
+    });
+
+    expect($source->rateFor(euPlace('FR'), TaxClass::Electronics))->toBeNull();
+});
+
+it('survives a rates section that is not JSON at all', function () {
+    expect(euCorrupt('<html>gateway timeout</html>')->rateFor(euPlace('FR'), TaxClass::Electronics))->toBeNull();
+});
