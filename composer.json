@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "cboxdk/laravel-tax",
-    "description": "Cbox Tax — a self-hostable consumption-tax engine for Laravel: it owns the calculation logic (place-of-supply, reverse-charge, rate application, inclusive/exclusive) per jurisdiction and sources only rate data behind a pluggable contract.",
+    "description": "Cbox Tax \u2014 a self-hostable consumption-tax engine for Laravel: it owns the calculation logic (place-of-supply, reverse-charge, rate application, inclusive/exclusive) per jurisdiction and sources only rate data behind a pluggable contract.",
     "keywords": [
         "cbox",
         "tax",
@@ -18,7 +18,7 @@
         "ext-dom": "*",
         "ext-zlib": "*",
         "brick/money": "^0.14",
-        "cboxdk/laravel-geo": "^0.5",
+        "cboxdk/laravel-geo": "^0.6",
         "illuminate/contracts": "^13.0",
         "illuminate/http": "^13.0",
         "illuminate/support": "^13.0"
@@ -50,7 +50,12 @@
             "@analyse",
             "@test",
             "@license-check",
-            "@composer audit"
+            "@audit"
+        ],
+        "audit": "composer audit --no-dev",
+        "sbom-check": [
+            "@sbom",
+            "git diff --exit-code sbom.json"
         ]
     },
     "extra": {

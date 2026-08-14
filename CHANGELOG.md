@@ -5,6 +5,344 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [Unreleased]
+
+### Fixed — correctness and fail-safe direction
+
+These came out of a platform review and each one is a case where the engine
+answered confidently instead of refusing. **Several are behaviour changes**: code
+that previously got a number back may now get an exception. That is the point —
+every one of them was returning the wrong number.
+
+- **UK VAT IDs were validated fail-OPEN.** `HmrcVatValidator` treated *any* 2xx
+  JSON response as a conclusive VALID — an empty object, an error envelope, a
+  captive portal serving JSON. That permitted reverse charge, so a UK B2B supply
+  was zero-rated against a number nobody had checked, with an audit trail claiming
+  otherwise. A conclusive valid now requires HMRC to echo the requested number in
+  `target.vatNumber` alongside a registered `target.name`; anything less is
+  inconclusive and tax is charged.
+- **Undetermined US taxability silently became taxable.** `StaticProductTaxability`
+  threw only for `DigitalService` and returned `true` for everything else, so **84
+  of the 95 (state, category) pairs the dataset deliberately leaves undetermined**
+  — because its sources disagree — were charged full tax. Every US category except
+  `Standard` now refuses. `Standard` keeps its default because general merchandise
+  is taxable in every sales-tax state; that rule states the law rather than
+  guessing at it.
+- **Conditional taxability charged the full rate.** Massachusetts exempts clothing
+  below $175, New York below $110, Rhode Island below $250. The dataset carries all
+  three; `TaxabilityTreatment::isTaxable()` collapsed `Conditional` to `true` and
+  the conditions were discarded, over-charging every exempt garment in those states.
+  A conditional rule now refuses until the seam can carry the line amount.
+- **Alaska was charged at an affirmative 0%.** Its baseline is `stateRate: 0` with
+  `noSalesTax: false` — no *state* tax, but boroughs and cities levy their own
+  (Juneau 5%, Wrangell 7%, and no statutory cap on how high a borough may go).
+  That produced a real 0% `Standard` assessment: a confident "no tax due" on a
+  supply that is taxed. A zero state share under real local taxes now refuses.
+- **Commodity codes were dropped by the default wiring.** `ResolvesRates` decides
+  whether to pass the code by testing the *outermost* source, and the provider
+  composes a `ChainTaxRateSource` whenever the US dataset is enabled — the default.
+  Both `ChainTaxRateSource` and `CachingTaxRateSource` advertised only
+  `TaxRateSource`, so every commodity-aware source beneath them was unreachable
+  through the calculator while their own tests passed. Both now implement
+  `CommodityRateSource` and forward.
+- **The rate cache was rooftop-blind.** `CachingTaxRateSource`'s key carried
+  country/subdivision and category only, so every rooftop address in a state
+  collapsed onto one entry — a Los Angeles rate served for a San Francisco address.
+  The key now covers the locality, the commodity code, and a namespace for the
+  composition. Not exploitable in the shipped wiring, which only wraps a
+  country-level source; a trap for anyone composing it as documented.
+- **A sourced rate outside 0–100% was accepted.** `new TaxRate('-25')` produced
+  −25.00 in tax. A malformed feed, or a fraction/percent unit mismatch after a
+  schema change, silently credited or over-collected. `TaxRate` now raises
+  `ImplausibleTaxRate`.
+
+### Fixed — a dependency was fabricating subdivision codes
+
+`cboxdk/laravel-geo` read the addressing library's `getCode()` — the POSTAL/display
+abbreviation — where it meant `getId()`, the ISO 3166-2 code. It failed in two
+directions at once. Most values were rejected by the format check and silently
+skipped, so `subdivisions('ES')` returned **0 of Spain's 52**. But a display name
+that happened to be short and alphanumeric slipped THROUGH as a plausible
+invention: Japan's "Mie" became `JP-MIE` and India's "Goa" became `IN-GOA`. Neither
+is an ISO code — they are `JP-24` and `IN-GA` — and nothing anywhere said so.
+
+Fixed in laravel-geo with tests over ES/MX/JP/IN, plus a property test that every
+code the repository lists is one `find()` resolves. Canada, the only country the
+old test covered, is the worst possible choice: its postal and ISO codes are
+identical, so reading the wrong field passed anyway.
+
+### Fixed — a reduced category is a reduced STATE share
+
+Missouri's 1.225% grocery rate and Tennessee's 4% are **state shares**; both states'
+own guidance says local sales taxes still apply to food. The engine returned the
+reduced figure as the whole rate, so a Missouri grocery basket was charged 1.225%
+against a real rate that reaches 8%+.
+
+It now stacks — and stacks the right local number. The dataset carries
+`foodDrugRate` per locality alongside the general rate precisely because they
+differ: a Tennessee city may levy 2.75% generally and 2.25% on food, and some
+exempt food locally altogether. Reading the general rate there would have replaced
+one wrong answer with another.
+
+Without a rooftop locality the reduced share is returned at `Confidence::Derived`
+rather than `Authoritative` — it is the same partial answer the general state rate
+is, and it now says so.
+
+Verified against the published dataset: 2,550 Missouri and 483 Tennessee localities
+carry a food rate. **Utah does not** — all 210 carry zero, so the engine returns
+1.75% where Utah's real grocery rate is a flat 3.0%. That is a gap in the DATA, not
+the code, and it is tracked against `us-tax-data`.
+
+### Security — the dataset is verified, not just fetched
+
+The publisher's `manifest.json` carries a sha256 per section and the schema version
+the files were built to, and the ETL's own docs tell consumers to check both.
+Neither was checked. Two holes, no alarm on either:
+
+- a schemaVersion bump that re-scaled `stateRate` from a fraction to a percentage
+  would have been multiplied by 100 again here — **725% tax at `Authoritative`
+  confidence**, reaching every deployment on the next cache expiry with nobody
+  releasing anything;
+- the default `location` is a **mutable branch head on a third-party host**, so one
+  bad push lands everywhere within one TTL.
+
+Verification is now required over http(s) and optional for a local directory. That
+line is deliberate: over the network you did not choose the bytes; on your own disk
+you did. A remote source with no manifest, a schema this reader was not written
+for, or a section whose bytes do not match now **deny**.
+
+### Fixed — EU place of supply: Art. 45 is the rule, destination is the carve-out
+
+The engine taxed every B2C supply at the customer's location. That is right for
+goods (Art. 33(a)) and for telecoms/broadcasting/electronic services (Art. 58), and
+wrong for services in general: **Art. 45 places a service to a non-taxable person
+where the SUPPLIER is established.**
+
+A German consultancy invoicing a French consumer €100 was charged FR 20%. It owes
+DE 19%, and owes no OSS obligation for that supply at all.
+
+`TaxCategory::placeOfSupplyRule()` now classifies each class, and `EuVatRegime`
+applies it. Goods and electronically-supplied services are unchanged. Deliberately
+limited to the intra-EU case — a supplier established outside the Community
+supplying general services to an EU consumer stays on destination, because Art. 45
+would put that supply outside EU VAT entirely while Art. 59a lets a Member State
+pull it back on effective-use-and-enjoyment grounds, which is a per-state option
+this engine does not model.
+
+`ServicesRepair` and `ServicesPersonalCare` are classified `WhereProvided` (Art. 54,
+taxed where the work is done). The engine does not carry a performance location, so
+it still uses the customer's location as a proxy — for a consumer having a device
+repaired the two nearly always coincide, and the classification records that it is
+a proxy rather than the rule.
+
+**Art. 59c relief is now gated to the supplies it covers.** It disapplies Art. 33(a)
+and Art. 58 and only those — it is relief for intra-Community distance sales of
+goods and for TBE services, not a general small-seller exemption. Granting it to,
+say, admission to an event charged origin VAT on a supply taxed where the event is.
+
+### Breaking — the disabled-dataset path
+
+`tax.us_tax_data.enabled=false` is now a narrow escape hatch rather than an
+equivalent mode. Rates still fall back to the static snapshot and nexus to the
+shipped table, but taxability does not: only `Standard` and your own overrides
+resolve, and every other US category raises `UnresolvedProductTaxability`. The docs
+previously implied the static tables covered taxability; they never did beyond
+`digital_service`, and the old behaviour was to answer `true` regardless.
+
+Mirror the dataset to a local directory and point `location` at it rather than
+disabling it. Fabricating 25 categories × 51 states of determinations we have no
+source for is the one thing this package will not do.
+
+### Changed — honesty
+
+- **The dataset's licence is now disclosed where it is used.** This package is MIT;
+  `cboxdk/us-tax-dataset`, which it fetches **by default**, is PolyForm Internal
+  Use 1.0.0. Computing tax on your own sales is the intended use and fine; offering
+  a rate lookup, an API, or a product feature that gives your customers the rates
+  is distribution and needs a separate licence. The optional, disabled-by-default
+  EU feed documented its MIT licence four times while the enabled-by-default US one
+  documented nothing — that asymmetry is what made this worth fixing first.
+- **"Primary-sourced" was half true, and the false half is the number most callers
+  get.** The local rate records genuinely are primary — the SST Governing Board's
+  own files for 24 states, plus each state's revenue department. The **51
+  state-level rates are not**: they come from a single Tax Foundation compilation,
+  which is the same footing the EU feed is on and is now described the same way.
+  That is the figure returned in the 16 states with no rooftop path.
+- The SaaS taxability map's two sources are now labelled as what they are: vendor
+  guidance, not tax authorities, with no statutory citations and no obligation to
+  stay current. Requiring both to agree is the only cross-check there is, which is
+  why a disagreement ships as a refusal.
+- The rooftop coverage gap is **sixteen** states, not the "six" the docs claimed
+  before listing eight. Recomputed against the published dataset: 37 states levy
+  local tax, 26 have a rooftop path. AL·AZ·CO·FL·HI·ID·IL·LA·MO·MS·NY·PA·SC·TX·VA
+  resolve to the state share at `Confidence::Derived`; AK now refuses. **NY and IL
+  were undisclosed and both matter for SaaS.**
+- The README no longer claims the US regime does "sourcing logic". `SourcingRules`
+  is bound and backed by a dataset section, but no regime consults it — it is data
+  for a host to consume, and it now says so.
+- The README's Art. 45 claim is now true rather than removed — see the place-of-
+  supply fix above. It briefly said Art. 44/58 only, which was the honest
+  description of the code at that moment.
+
+### Added — fixed charges that are not a percentage of anything
+
+`FlatCharge`, the `FlatChargeSource` seam, and `TaxAssessment::$charges` /
+`payable()`.
+
+`TaxRate` is a percentage and refuses to be anything else — the constructor
+rejects a value outside 0–100 and components must sum to it exactly. Those
+invariants are right, and they made a real class of charge inexpressible:
+Colorado's Retail Delivery Fee is **$0.31 per order** from 1 July 2026 and
+Minnesota's is $0.50. A caller could only fake one as a rate derived from that
+order's total, which changes per order and fails the reconciliation check anyway.
+
+`gross` deliberately stays `net + tax` — the invariant holds throughout the engine
+and several things depend on it — so a charge sits beside it and `payable()` is
+what the buyer owes once billed-on charges are added. A charge marked
+`passedToBuyer: false` is one the seller must absorb, and it is excluded from what
+the buyer pays; reporting one without saying so would put it on a customer's
+invoice.
+
+The source is handed the ASSESSMENT as well as the query, because applicability
+turns on the outcome: Colorado's fee is due on a delivery containing taxable goods.
+
+**The package ships no charges**, for the same reason it ships no reduced-rate
+bands: no authoritative compilation of these sits behind it, and inventing one
+would be worse than the gap. What was missing was not the data but the ability to
+express it.
+
+Note what is deliberately NOT here: a non-pass-through flag on rate-based tax.
+Gross-receipts taxes work that way, but nothing in the dataset carries them, and a
+field nothing populates is the mistake `SourcingRules` already demonstrated.
+`FlatCharge::$passedToBuyer` covers the case where we have something to attach it
+to.
+
+### Added — two dates, because one cannot do both jobs
+
+`TaxQuery::$reportedOn` decides which RETURN PERIOD a supply falls into;
+`suppliedAt` still decides the rate. They are usually the same date and are not
+always: goods supplied on 30 December and invoiced on 3 January are rated at
+December's rate while national tax-point rules may put them in either period.
+Conflating them silently misfiles every invoice that straddles a period end.
+
+`ReturnAggregator::aggregate()` now takes an optional `ReturnPeriod`, and
+`ReturnPeriod::quarter()`, `::month()` and `::year()` build the windows an
+authority actually files on — with **inclusive** bounds, because a quarter that
+ends on 31 December has to contain the supplies made on 31 December.
+
+An assessment carrying no reporting date is EXCLUDED from a period rather than
+assumed into it: a supply that cannot say which period it belongs to must not land
+on a return someone signs. Aggregating without a period keeps the previous
+behaviour.
+
+### Added — where a supply came FROM
+
+`SupplyRoute` on `TaxQuery` and `TaxOrder` carries `shipFrom`, `orderAcceptance`
+and `billTo`. `place` remains the destination; these are the roles it never had.
+
+**This is what finally connects `SourcingRules`.** It shipped bound, backed by a
+whole dataset section, and read by nothing — not from neglect, but because nine US
+states source an in-state sale at the SELLER's location and `TaxQuery` had no field
+to source from. A Houston seller shipping to an unincorporated Harris County
+address was charged the buyer's 6.25% where Texas wants the seller's 8.25%: a 2%
+error in the seller's own home state, the one they are most likely to be audited
+in.
+
+Three things must hold before origin sourcing applies, and any missing one falls
+back to destination rather than guessing: a bound `SourcingRules` that knows the
+state's rule, a rule of `Origin` (not `Mixed` — California splits by jurisdiction
+layer in ways one place cannot express), and a supplied origin in the SAME state,
+because interstate is destination-sourced everywhere without exception.
+
+Supplying no route keeps the previous behaviour exactly.
+
+### Added — invoice mentions
+
+`TaxAssessment::$mentions` carries the legal statements the **invoice** must
+bear, as `{code, text, reference}` rather than prose.
+
+This is not formatting. Art. 226(11a) of the VAT Directive requires the words
+**"Reverse charge"** on the invoice, and the CJEU held in *Luxury Trust Automobil*
+(C-247/21) that a missing mention **cannot be corrected retroactively** — the
+supply stays defective. Until now the only output was `reason`, an English
+explanation written for an audit trail, and a caller printing that produced an
+invoice that could never be fixed.
+
+The EU regime emits the mandatory wording with its citation; the shared
+destination regime emits nothing unless a regime supplies its own, because a
+Directive citation on a UK or Norwegian invoice would be a defect a reader would
+trust. A certificate-driven exemption names the certificate it rests on.
+
+### Added — documents
+
+- **A document is now a first-class thing.** `TaxOrder` carries the context every
+  line shares plus `SupplyLine[]`; `OrderTaxCalculator::assessOrder()` returns an
+  `OrderAssessment` with each line's verdict tied to the id the caller sent. A real
+  SaaS invoice is a subscription, metered usage and one-off services — three
+  categories on one document, settled once. Three separate `assess()` calls round
+  three times and produce three assessments nothing ties together.
+- **The order plane adds no tax logic.** `TaxOrder::queryFor()` is the single place
+  a line becomes a `TaxQuery`, so every regime, gate and refusal applies exactly as
+  it does for one supply, and a document cannot reach an outcome a single supply
+  could not. A line that refuses fails the whole document: half a tax-assessed
+  invoice is not a useful artefact.
+- **Totals are summed from the rounded lines, never recomputed.** Rounding the sum
+  instead produces a total that does not equal the invoice rows beneath it.
+- `SupplyLine::$pricing` overrides the document's, because a subscription quoted
+  VAT-inclusive beside usage quoted exclusive is an ordinary invoice.
+- `OrderAssessment::taxByAuthority()` rolls a document up per taxing authority for
+  remittance, and returns **null** rather than a partial roll-up when any taxed
+  line could not be decomposed — a partial one looks like the document's split
+  while silently omitting lines, and looks reasonable doing it.
+- A `TaxOrder` must have at least one line, one currency, and unique non-empty line
+  ids. The id is how tax gets back onto an invoice row; two lines sharing one means
+  the totals count both while a lookup finds only the first.
+- Deliberately absent: `quantity` and per-line `discount`. The mature APIs carry
+  quantity because they support quantity-based taxes (per-litre duty, per-unit
+  fees); this engine has none, so it would be a field nothing reads. Discount
+  allocation is commercial logic — which lines a promotion touches, how a
+  whole-order discount splits, what rounds where — and an engine that took it would
+  be making those calls silently, with money.
+
+### Added
+
+- **Per-authority rate breakdown.** A stacked US rooftop rate now keeps the
+  authorities it was summed from (`TaxRate::$components`), and an assessment
+  carries a `TaxBreakdown` splitting its tax across them — the state share, each
+  county/city/special-district share — so a seller can remit per jurisdiction
+  instead of only knowing the combined figure.
+- The shares are **allocated from the tax actually charged**, not recomputed per
+  authority, so `breakdown->total()` equals `assessment->tax` exactly. Applying
+  each rate to the net independently rounds every share on its own: on a $1.00
+  supply in Kansas City that yields 0.07 + 0.01 + 0.02 = $0.10 against a $0.09
+  tax — a cent that was never collected, in a return that no longer reconciles.
+  The remainder goes to the largest fractional shares (Hamilton), so list order
+  never decides who is owed it and a 0% authority never receives one.
+- `TaxRate` enforces that components sum to the rate
+  (`RateComponentsDoNotReconcile`). A slightly-wrong split is worse than none: it
+  has the shape of an authoritative one, so it gets remitted on and the shortfall
+  surfaces at audit. A source that cannot decompose a rate emits none, and a null
+  breakdown means **unknown**, never "one authority takes it all".
+- `InteractsWithTax::assertBreakdownReconciles()` for consumers, dogfooded by this
+  package's own suite.
+
+### Fixed
+
+- A **combined-basis** state (California) whose boundary index answers "no local
+  authority applies here" no longer reports the bare state share as an
+  authoritative all-in rooftop rate. A combined record *is* the all-in rate, so
+  the absence of one leaves nothing all-in to report; it now falls back to the
+  state rate at `Derived` confidence. Component-basis states are unaffected —
+  Indiana levies no local tax, and its state share genuinely is the whole rate.
+
+### Notes
+
+Every line's `taxableAmount` is the supply's full net, because the engine applies
+one taxable base across the stack. That is correct for the states modelled today
+but would not be for a state that exempts a category at state level while its
+localities still tax it (Illinois and Missouri do this for groceries). That needs
+a per-level taxability seam, so a per-level base is deliberately not claimed yet.
+
 ## [0.9.1] - 2026-08-06
 
 ### Added

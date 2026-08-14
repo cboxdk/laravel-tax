@@ -56,11 +56,11 @@ calculation the billing engine supplies per invoice.
 
 | | Regime | Status |
 | --- | --- | --- |
-| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply, intra-EU B2B reverse charge, Art. 59c €10k micro-business origin/destination sourcing; rates live from the Commission's TEDB | ✅ |
+| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply (general B2C services source at the supplier; goods and electronic services at the customer), intra-EU B2B reverse charge, Art. 59c €10k micro-business relief scoped to the supplies it covers; rates live from the Commission's TEDB | ✅ |
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus/taxability/sourcing logic, with rates, 25-category taxability, nexus thresholds and sourcing from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ rooftop for 26 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ rooftop for 26 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -72,9 +72,16 @@ rate we cannot stand behind.
 The **US** regime gates on three things before applying a rate — the state must be
 resolved (via the `AddressGeocoder`), the seller must have **nexus** in it, and the
 product must be **taxable** there — otherwise it returns `NotRegistered` or
-`Exempt`, never a wrong charge. State rates, per-state taxability (25 categories),
-economic-nexus thresholds and intrastate sourcing are supplied by the **us-tax-data
-dataset**, enabled by default. **Rooftop** resolution is live for **26 states** with
+`Exempt`, never a wrong charge. A category the dataset leaves undetermined, or one
+whose rule is conditional on the line amount (the MA/NY/RI clothing thresholds),
+**refuses** rather than defaulting to taxable — over-collecting from a consumer is
+a failure too. State rates, per-state taxability (25 categories) and economic-nexus
+thresholds are supplied by the **us-tax-data dataset**, enabled by default.
+**Intrastate sourcing is applied**, not just supplied: nine states tax an in-state
+sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
+a Texas in-state sale is charged the seller's rate. Interstate stays
+destination-sourced everywhere, and a supply with no route behaves exactly as
+before. **Rooftop** resolution is live for **26 states** with
 `us_tax_data.rooftop` enabled: the 24 Streamlined states resolve by ZIP+4 through the
 published boundary index — Kansas City comes out as 6.5% state + 1.0% county + 1.625%
 city — while California and New Mexico resolve by point against their own polygon
@@ -85,13 +92,58 @@ services. The rest fall back to the state rate
 Commission's own TEDB service (no key, no registration, cached per country), or
 bind a commercial adapter — see [`docs/coverage`](docs/coverage/_index.md).
 
-**EU** additionally applies the **Art. 59c €10,000 micro-business threshold**: a
-below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
-charges destination (signals supplied on the seller). Rate sources resolve by
-**taxability category**, so reduced/zero bands apply when a bound source supplies
-them (none are fabricated by default).
+**EU** place of supply follows the Directive rather than a single rule: goods
+(Art. 33(a)) and electronically-supplied services (Art. 58) are taxed at the
+customer, while a general B2C service is taxed **where the supplier is
+established** (Art. 45) — so a German consultancy invoicing a French consumer owes
+German VAT. On top of that sits the **Art. 59c €10,000 micro-business threshold**,
+scoped to the supplies it actually covers (goods and TBE, not services generally):
+a below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
+charges destination. Rate sources resolve by **taxability category**, so
+reduced/zero bands apply when a bound source supplies them (none are fabricated by
+default).
 
 Unmodelled jurisdictions and missing rates are **refused, not guessed**.
+
+## Documents, not just single supplies
+
+A real invoice is multi-line. `TaxOrder` carries the context every line shares plus
+`SupplyLine[]`, and `OrderTaxCalculator::assessOrder()` returns each line's verdict
+tied to the id you sent:
+
+```php
+$assessment = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
+    place: $geo->find(new CountryCode('DK')),
+    customer: CustomerType::Consumer,
+    seller: new SellerRegistrations(new CountryCode('DK')),
+    pricing: Pricing::Exclusive,
+    lines: [
+        new SupplyLine('subscription', Money::of('100.00', 'DKK'), TaxCategory::DigitalService),
+        new SupplyLine('usage',        Money::of('37.50',  'DKK'), TaxCategory::DigitalService),
+        new SupplyLine('onboarding',   Money::of('2500.00','DKK'), TaxCategory::ServicesProfessional),
+    ],
+));
+
+$assessment->tax();              // summed from the rounded lines, never recomputed
+$assessment->forLine('usage');   // that line's own assessment
+$assessment->taxByAuthority();   // per-jurisdiction totals for remittance, or null
+```
+
+The order plane adds **no** tax logic — each line becomes a single-supply query and
+runs the identical path, so a document cannot reach an outcome a single supply
+could not. A line may override the document's pricing (VAT-inclusive subscription
+beside exclusive usage) or carry its own exemption.
+
+## Rate breakdown
+
+Where a rate is **stacked** from several authorities — a US state share plus the
+county, city and special-district records a rooftop lookup matched — the
+assessment carries a `TaxBreakdown` splitting the tax across them, so a seller can
+remit per jurisdiction. The shares are **allocated from the tax actually charged**,
+never recomputed per authority, so they sum to it exactly and a return reconciles
+with the invoices behind it. A `null` breakdown means the split is **unknown**, not
+that one authority takes everything. See
+[`docs/core-concepts/rate-breakdown.md`](docs/core-concepts/rate-breakdown.md).
 
 ## Buyer exemptions
 

@@ -32,16 +32,30 @@ boolean cannot represent, are **deliberately absent** and throw
 > `StaticTaxRateSource` instead refuses `US:*:digital_service` unless a
 > category-specific rate band is bound.
 
-## Sources
+## Sources, and what they are not
 
-The map is curated from two recognised, dated SaaS-by-state compilations, retrieved
+The map is curated from two dated, published SaaS-by-state compilations, retrieved
 **2026-07-17**; only states where **both agree** on a clear taxable/exempt outcome
-are shipped:
+are shipped, and a state they disagree on is deliberately absent so it refuses
+rather than guesses.
 
 | Source | URL |
 | --- | --- |
 | TaxJar — "Software-as-a-service (SaaS) sales tax by state" | <https://www.taxjar.com/sales-tax/saas-sales-tax> |
 | Anrok — "SaaS sales tax by state" | <https://www.anrok.com/saas-sales-tax-by-state> |
+
+These are cited because that is where the determinations came from, and unsourced
+data would be worse than awkwardly-sourced data. But be clear what they are:
+**vendor guidance, not tax authorities.** Neither carries statutory citations, both
+are marketing material for competing products, and neither is under any obligation
+to keep the page current.
+
+Two consequences worth acting on. First, requiring both to agree is doing real
+work — it is the only cross-check there is, which is why a disagreement ships as a
+refusal. Second, this is the weakest provenance anywhere in the package, weaker
+than the state rates and far weaker than the SST-sourced local records, so verify
+any state that matters to your revenue against its own department's guidance
+before you rely on it.
 
 ## Shipped — taxable (18 jurisdictions)
 

@@ -1,6 +1,6 @@
 ---
 title: Return data
-weight: 3
+weight: 5
 description: Aggregate assessments into per-jurisdiction return totals for filing.
 ---
 
@@ -40,3 +40,33 @@ state line is not returned unless you pass its subdivision.
 Money of different currencies is never mixed — each currency is its own line, so a
 jurisdiction billed in more than one currency yields more than one line. Summing
 uses exact `Money::plus`, so aggregation introduces no rounding remainder.
+
+## Per-authority totals
+
+A jurisdiction total is not what gets remitted in a stacked state. Kansas is paid
+as a state figure and a city figure, to different authorities, and a line that only
+said "US-KS: $81.25" left you to rebuild the split by hand from the individual
+assessments — the one piece of arithmetic on a signed return that should never be
+done twice.
+
+```php
+foreach ($line->authorities ?? [] as $authority) {
+    $authority->level;                       // JurisdictionLevel::State | County | City | …
+    $authority->label();                     // the name, else the code, else the level
+    (string) $authority->tax->getAmount();   // what this authority is owed for the period
+}
+```
+
+**`authorities` is null when the split cannot be known**, and that is the only safe
+reading of it — treat it as missing data, never as "one authority took everything".
+It is null when any taxed supply in the period arrived without a rate breakdown, or
+carried an authority share with neither a code nor a name: you cannot remit to an
+authority you cannot identify.
+
+That is stricter than the equivalent on a single document, deliberately. A document
+breakdown is there to be read; a return is signed and paid from. A partial roll-up
+would still add up to a plausible figure, which is exactly what makes the omission
+invisible.
+
+The jurisdiction-level `net`, `tax` and `count` on the line stay correct either
+way — only the split goes unreported.

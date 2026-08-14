@@ -155,14 +155,23 @@ versus what you must supply:
 | Sourcing / nexus / taxability **logic** | ✅ the regime | — |
 | Per-state **taxability** (25 categories, incl. SaaS) | ✅ from the dataset; the curated, cited `digital_service` map for 44 jurisdictions is the fallback when the dataset is disabled — [details](us-saas-taxability.md) | verify with a tax advisor; a pair neither source determines throws `UnresolvedProductTaxability` until you configure it |
 | **State rates** | ✅ dataset baseline for all 51 jurisdictions, at `Confidence::Derived` — honestly the state share | — |
-| **Local (rooftop) rates** | ✅ live for **26 states** with `us_tax_data.rooftop` enabled: 24 Streamlined states resolve by ZIP+4 through the published boundary index, and California and New Mexico by point against their own polygon services — [details](us-tax-dataset.md#rooftop-zip4-into-the-boundary-index) | a geocoder that returns a ZIP+4 and coordinates (the shipped Geocodio adapter does). The remaining states resolve to the state rate: Arizona, Colorado, Louisiana, Missouri, Illinois, Alabama and Alaska publish nothing usable, and Texas' address file sits behind an audited portal that forbids redistribution |
+| **Local (rooftop) rates** | ✅ live for **26 states** with `us_tax_data.rooftop` enabled: 24 Streamlined states resolve by ZIP+4 through the published boundary index, and California and New Mexico by point against their own polygon services — [details](us-tax-dataset.md#rooftop-zip4-into-the-boundary-index) | a geocoder that returns a ZIP+4 and coordinates (the shipped Geocodio adapter does). **16 states** have local tax and no rooftop path — AL, AZ, CO, FL, HI, ID, IL, LA, MO, MS, NY, PA, SC, TX, VA resolve to the state share at `Confidence::Derived`, and AK refuses outright. Texas' address file sits behind an audited portal that forbids redistribution; see [the full list and what it costs](us-tax-dataset.md#the-16-states-with-local-tax-and-no-rooftop-path) |
 | **Economic-nexus thresholds** | ✅ from the dataset (cited static table as fallback); flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the thresholds advise, they do not auto-register or evaluate per invoice |
 
-So a US assessment is grounded in primary-sourced data end to end, but is
-**state-precision** unless rooftop resolution is enabled — a local city/district
-component can therefore be missing. Confidence: **high on logic; rates, taxability
-and nexus dataset-backed and cited (advisor-verify); rooftop precision partial and
-opt-in.**
+So a US assessment is **state-precision** unless rooftop resolution is enabled — a
+local city/district component can therefore be missing.
+
+On provenance, be precise: the **local** rate records come from primary sources
+(the SST Governing Board's own files for 24 states, and each state's revenue
+department directly). The **51 state-level rates do not** — they come from a single
+Tax Foundation compilation. That is the number you get in the 16 states with no
+rooftop path, so treat it as a good, refreshable default rather than an
+authority's own figure, and re-verify before filing. See
+[the dataset's provenance table](us-tax-dataset.md#where-the-numbers-come-from-honestly).
+
+Confidence: **high on logic; local rates primary-sourced; state rates, taxability
+and nexus from cited secondary compilations (advisor-verify); rooftop precision
+partial and opt-in.**
 
 ## Canada — GST/HST (`ca-gst`)
 

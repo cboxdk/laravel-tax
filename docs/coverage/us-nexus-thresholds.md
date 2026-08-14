@@ -27,8 +27,15 @@ measuring period, which one supply does not carry. What the threshold table adds
   `NotRegistered` assessment reason is **annotated with that state's threshold** —
   flagging the operator to check whether the *Wayfair* trigger has been crossed and
   a registration is now required.
-- `NexusThreshold::isMet($salesDollars, $transactions)` lets a host evaluate its own
-  running totals against a state's threshold directly.
+- `NexusThreshold::describe()` renders the figures for that annotation.
+
+This package deliberately stops there. It does **not** decide whether a seller has
+crossed a threshold, because the figures alone cannot answer it: the verdict turns
+on the state's measuring **period** (rolling twelve months, previous calendar year,
+the four preceding VAT quarters) and on which sales **basis** it measures (gross,
+retail, taxable). A comparison made without those is a guess wearing the clothes of
+a determination. `cboxdk/laravel-nexus` models both, and reports `Unknown` when the
+seller's totals are measured on a different footing than the state uses.
 
 ## Source
 
@@ -55,11 +62,16 @@ transaction thresholds combine.
 | **$500,000 and 100 transactions** | New York | both required |
 | **$250,000** | Alabama, Mississippi | sales only |
 | **$100,000 and 200 transactions** | Connecticut | both required |
-| **$100,000 or 200 transactions** | Kentucky*, Maryland, Michigan, Minnesota, Nebraska, Nevada, New Jersey, Rhode Island, Vermont | either trigger |
-| **$100,000** | Alaska†, Arizona, Arkansas, Colorado, DC, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Louisiana, Maine, Massachusetts, Missouri, New Mexico, North Carolina, North Dakota, Ohio, Oklahoma, Pennsylvania, South Carolina, South Dakota, Tennessee, Utah, Virginia, Washington, West Virginia, Wisconsin, Wyoming | sales only |
+| **$100,000 or 200 transactions** | Maryland, Michigan, Minnesota, Nebraska, Nevada, New Jersey, Rhode Island, Vermont | either trigger |
+| **$100,000** | Alaska†, Arizona, Arkansas, Colorado, DC, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Louisiana, Maine, Massachusetts, Missouri, New Mexico, North Carolina, North Dakota, Ohio, Oklahoma, Pennsylvania, South Carolina, South Dakota, Tennessee, Utah, Virginia, Washington, West Virginia, Wisconsin, Wyoming, Kentucky* | sales only |
 
-\* Kentucky's 200-transaction threshold is scheduled to end **2026-08-01**; it is
-encoded as still active as of the retrieval date.
+\* Kentucky **repealed** its 200-transaction prong effective **2026-08-01** — HB 757
+(2026 RS) amended KRS 139.340 and 139.450; the $100,000 gross-receipts threshold is
+unchanged. Verified against the Department of Revenue's own *Sales Tax Facts*,
+Summer 2026. **The published dataset still carries the transaction prong on an
+open-ended window**, so a deployment on the default source is applying a repealed
+test until `us-tax-data` is corrected and re-published; the static fallback here is
+right.
 † Alaska has no statewide sales tax; the $100,000 figure is the statewide threshold
 set by the **Alaska Remote Seller Sales Tax Commission** for local sales taxes.
 
