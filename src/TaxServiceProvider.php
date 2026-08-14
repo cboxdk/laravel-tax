@@ -291,7 +291,10 @@ class TaxServiceProvider extends ServiceProvider
         $baseUrl = $config->get('tax.geocodio.base_url');
         $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2';
 
-        // Rooftop county-FIPS capture is opt-in (partial; see tax.us_tax_data.rooftop).
+        // Gates only the paths that resolve BELOW the county line — the ZIP+4 append
+        // and the polygon services. County resolution (FL, PA, HI) runs regardless:
+        // it needs no append, and in those states the county is the whole local
+        // share, so withholding it would just under-charge.
         $rooftop = $config->get('tax.us_tax_data.rooftop') === true;
 
         $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(

@@ -176,6 +176,79 @@ readonly class UsTaxDataset
     }
 
     /**
+     * The local authority code for a county NAME, for the states where the county
+     * is the only local authority that can apply.
+     *
+     * The dataset codes local authorities as `US-FL:Alachua County` while a geocoder
+     * hands back a plain `Alachua County`, so the join is on the name — and a name
+     * join is exactly the kind that fails silently, so it is done in ONE place with
+     * the failure made explicit.
+     *
+     * Matching is on a normalized key: case-folded, punctuation reduced to spaces
+     * (`St. Johns` and `St Johns` are the same county) and the governing-unit suffix
+     * dropped. That last part is what makes Philadelphia work — the dataset carries
+     * it as a CITY named `Philadelphia`, because the city and the county are
+     * coterminous, while a geocoder says `Philadelphia County`.
+     *
+     * Null on no match AND on an ambiguous one. Two authorities normalizing to the
+     * same key means the dataset cannot say which the address is in, and picking
+     * either would attach one authority's rate to the other's territory; the caller
+     * falls back to the state share, which is honest about being partial.
+     */
+    public function localCodeForCounty(string $state, string $county): ?string
+    {
+        $wanted = self::countyKey($county);
+
+        if ($wanted === '') {
+            return null;
+        }
+
+        $rates = $this->stateEntry('rates', $state);
+        $local = is_array($rates) && is_array($rates['local'] ?? null) ? $rates['local'] : null;
+
+        if ($local === null) {
+            return null;
+        }
+
+        $matches = [];
+
+        foreach (array_keys($local) as $code) {
+            if (! is_string($code)) {
+                continue;
+            }
+
+            // `US-FL:Alachua County` — the authority name is what follows the state
+            // prefix. A code without one is used whole rather than skipped.
+            $name = str_contains($code, ':') ? substr($code, strpos($code, ':') + 1) : $code;
+
+            if (self::countyKey($name) === $wanted) {
+                $matches[] = $code;
+            }
+        }
+
+        return count($matches) === 1 ? $matches[0] : null;
+    }
+
+    /**
+     * The normalized join key for a county name: case-folded, punctuation reduced to
+     * single spaces, and the governing-unit suffix removed so `Philadelphia` and
+     * `Philadelphia County` are the same key.
+     *
+     * `parish` and `borough` are stripped too. Neither Louisiana nor Alaska is
+     * county-resolved today, but they are what those states call the same unit, and
+     * a key that silently stopped matching if one were added later would be a
+     * fallback to the state rate that nobody would notice.
+     */
+    private static function countyKey(string $name): string
+    {
+        $key = strtolower(trim($name));
+        $key = (string) preg_replace('/[^a-z0-9]+/', ' ', $key);
+        $key = trim((string) preg_replace('/\s+/', ' ', $key));
+
+        return (string) preg_replace('/\s+(county|parish|borough)$/', '', $key);
+    }
+
+    /**
      * The taxability determination for a (state, dataset-category) pair, or null
      * when the dataset carries no rule for it (the caller then applies its own
      * default or denies).

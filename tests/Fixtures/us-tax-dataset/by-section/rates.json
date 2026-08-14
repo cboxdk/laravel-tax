@@ -1,1 +1,377 @@
-{"schemaVersion":4,"version":"2026-07-22","contentHash":"e6f6a90f1989b80f3c069838d92d515e02dc28f9d174321fe9b661202f197e8d","section":"rates","states":{"US-CA":{"stateFips":"06","rateBasis":"combined","stateRate":0.0725,"sourceMode":"official_files","state":[],"local":{"06:ALAMEDA":[{"level":"city","jurisdictionName":"ALAMEDA","generalRate":0.1075,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":"2022-04-01","effectiveTo":null}],"06:ALBANY":[{"level":"city","jurisdictionName":"ALBANY","generalRate":0.1075,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":"2022-04-01","effectiveTo":null}],"06:BERKELEY":[{"level":"city","jurisdictionName":"BERKELEY","generalRate":0.1025,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":"2022-04-01","effectiveTo":null}]},"note":"CDTFA place rates: each record is the COMBINED all-in rate at that city or unincorporated county area (the 7.25% state share included). District boundaries within cities can vary; CDTFA's address lookup is authoritative for edge cases.","excludedLocations":[],"provenance":[{"url":"https://gis.data.ca.gov/api/download/v1/items/01883a79765a4afba132ba54da408d8b/csv?layers=1","fileName":"CDTFA_SalesandUseTaxRates.csv","sha256":"02d41e1d3b3753ac81b513dc9e8d6de8e8f63f96774986e9bdd69037a616728e","retrievedAt":"2026-07-22T20:26:47+00:00"}]},"US-TX":{"stateFips":"48","rateBasis":"component","stateRate":0.0625,"sourceMode":"official_files","state":{"48":[{"level":"state","jurisdictionName":"Texas","generalRate":0.0625,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":null,"effectiveTo":null}]},"local":{"2109064":[{"level":"city","jurisdictionName":"Abbott","generalRate":0.015,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":null,"effectiveTo":null}],"4109000":[{"level":"county","jurisdictionName":"Hill","generalRate":0.005,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":null,"effectiveTo":null}],"6109607":[{"level":"special_district","jurisdictionName":"Abbott/Hill Co ESD 2-A","generalRate":0.015,"generalRateIntrastate":null,"foodDrugRate":null,"effectiveFrom":null,"effectiveTo":null}]},"note":"Point-in-time snapshot for filing period \"2026 - 2nd\"; the Comptroller file carries no per-row effective dates and no boundary data \u2014 address-to-jurisdiction resolution for Texas needs an external source.","excludedLocations":[],"provenance":[{"url":"https://comptroller.texas.gov/data/edi/sales-tax/taxrates.txt","fileName":"taxrates.txt","sha256":"ffc097238ebf396fa2bef548db0099bd4935dd74f92b519181366f6470a66005","retrievedAt":"2026-07-22T20:26:47+00:00"}]},"US-NC":{"stateFips":"37","rateBasis":"component","stateRate":0.0475,"sourceMode":"official_files","state":{"37":[{"level":"state","jurisdictionName":null,"generalRate":0.0475,"generalRateIntrastate":0.0475,"foodDrugRate":0.02,"effectiveFrom":"2011-07-01","effectiveTo":null}]},"local":{"001":[{"level":"local","jurisdictionName":null,"generalRate":0.02,"generalRateIntrastate":0.02,"foodDrugRate":0,"effectiveFrom":"2009-10-01","effectiveTo":null}],"003":[{"level":"local","jurisdictionName":null,"generalRate":0.0225,"generalRateIntrastate":0.0225,"foodDrugRate":0,"effectiveFrom":"2009-10-01","effectiveTo":null}],"005":[{"level":"local","jurisdictionName":null,"generalRate":0.0225,"generalRateIntrastate":0.0225,"foodDrugRate":0,"effectiveFrom":"2022-10-01","effectiveTo":null}]},"note":null,"excludedLocations":[],"provenance":[{"url":"https://www.streamlinedsalestax.org/ratesandboundry/Rates/NCR2026Q3APR23.csv","fileName":"NCR2026Q3APR23.csv","sha256":"23b84dbfb1e03e9c8712b8c866b1bbf950fd094b8312bdef4c61015e67a7a485","retrievedAt":"2026-07-22T20:26:46+00:00"}]},"US-KS":{"stateFips":"20","rateBasis":"component","stateRate":0.065,"sourceMode":"official_files","state":{"20":[{"level":"state","jurisdictionName":null,"generalRate":0.065,"generalRateIntrastate":0.065,"foodDrugRate":0,"effectiveFrom":"2023-01-01","effectiveTo":"2099-12-31"}]},"local":{"209":[{"level":"county","jurisdictionName":null,"generalRate":0.01,"generalRateIntrastate":0.01,"foodDrugRate":0.01,"effectiveFrom":"2005-10-01","effectiveTo":"2099-12-31"}],"36000":[{"level":"city","jurisdictionName":null,"generalRate":0.01625,"generalRateIntrastate":0.01625,"foodDrugRate":0.01625,"effectiveFrom":"2010-07-01","effectiveTo":"2099-12-31"}]},"note":"SST rate file (SSTGB Technology Guide layout): COMPONENT records \u2014 each row is ONE taxing authority's own rate, typed by `level` (county, city, special_district). The rate at an address is the state rate plus EVERY applicable local record summed, and which locals apply is defined by the companion SST BOUNDARY file, which this dataset does NOT ship. States differ: inside an incorporated city Washington assigns no county record, while Kansas assigns county AND city. Do not assume the most specific record is the whole local rate, and do not sum every record for a code \u2014 without boundary data these records are a rate catalogue keyed by jurisdiction, not an address-resolvable map."}}}
+{
+  "schemaVersion": 4,
+  "version": "2026-07-22",
+  "contentHash": "e6f6a90f1989b80f3c069838d92d515e02dc28f9d174321fe9b661202f197e8d",
+  "section": "rates",
+  "states": {
+    "US-CA": {
+      "stateFips": "06",
+      "rateBasis": "combined",
+      "stateRate": 0.0725,
+      "sourceMode": "official_files",
+      "state": [],
+      "local": {
+        "06:ALAMEDA": [
+          {
+            "level": "city",
+            "jurisdictionName": "ALAMEDA",
+            "generalRate": 0.1075,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2022-04-01",
+            "effectiveTo": null
+          }
+        ],
+        "06:ALBANY": [
+          {
+            "level": "city",
+            "jurisdictionName": "ALBANY",
+            "generalRate": 0.1075,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2022-04-01",
+            "effectiveTo": null
+          }
+        ],
+        "06:BERKELEY": [
+          {
+            "level": "city",
+            "jurisdictionName": "BERKELEY",
+            "generalRate": 0.1025,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2022-04-01",
+            "effectiveTo": null
+          }
+        ]
+      },
+      "note": "CDTFA place rates: each record is the COMBINED all-in rate at that city or unincorporated county area (the 7.25% state share included). District boundaries within cities can vary; CDTFA's address lookup is authoritative for edge cases.",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://gis.data.ca.gov/api/download/v1/items/01883a79765a4afba132ba54da408d8b/csv?layers=1",
+          "fileName": "CDTFA_SalesandUseTaxRates.csv",
+          "sha256": "02d41e1d3b3753ac81b513dc9e8d6de8e8f63f96774986e9bdd69037a616728e",
+          "retrievedAt": "2026-07-22T20:26:47+00:00"
+        }
+      ]
+    },
+    "US-TX": {
+      "stateFips": "48",
+      "rateBasis": "component",
+      "stateRate": 0.0625,
+      "sourceMode": "official_files",
+      "state": {
+        "48": [
+          {
+            "level": "state",
+            "jurisdictionName": "Texas",
+            "generalRate": 0.0625,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ]
+      },
+      "local": {
+        "2109064": [
+          {
+            "level": "city",
+            "jurisdictionName": "Abbott",
+            "generalRate": 0.015,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "4109000": [
+          {
+            "level": "county",
+            "jurisdictionName": "Hill",
+            "generalRate": 0.005,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "6109607": [
+          {
+            "level": "special_district",
+            "jurisdictionName": "Abbott/Hill Co ESD 2-A",
+            "generalRate": 0.015,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ]
+      },
+      "note": "Point-in-time snapshot for filing period \"2026 - 2nd\"; the Comptroller file carries no per-row effective dates and no boundary data \u2014 address-to-jurisdiction resolution for Texas needs an external source.",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://comptroller.texas.gov/data/edi/sales-tax/taxrates.txt",
+          "fileName": "taxrates.txt",
+          "sha256": "ffc097238ebf396fa2bef548db0099bd4935dd74f92b519181366f6470a66005",
+          "retrievedAt": "2026-07-22T20:26:47+00:00"
+        }
+      ]
+    },
+    "US-NC": {
+      "stateFips": "37",
+      "rateBasis": "component",
+      "stateRate": 0.0475,
+      "sourceMode": "official_files",
+      "state": {
+        "37": [
+          {
+            "level": "state",
+            "jurisdictionName": null,
+            "generalRate": 0.0475,
+            "generalRateIntrastate": 0.0475,
+            "foodDrugRate": 0.02,
+            "effectiveFrom": "2011-07-01",
+            "effectiveTo": null
+          }
+        ]
+      },
+      "local": {
+        "001": [
+          {
+            "level": "local",
+            "jurisdictionName": null,
+            "generalRate": 0.02,
+            "generalRateIntrastate": 0.02,
+            "foodDrugRate": 0,
+            "effectiveFrom": "2009-10-01",
+            "effectiveTo": null
+          }
+        ],
+        "003": [
+          {
+            "level": "local",
+            "jurisdictionName": null,
+            "generalRate": 0.0225,
+            "generalRateIntrastate": 0.0225,
+            "foodDrugRate": 0,
+            "effectiveFrom": "2009-10-01",
+            "effectiveTo": null
+          }
+        ],
+        "005": [
+          {
+            "level": "local",
+            "jurisdictionName": null,
+            "generalRate": 0.0225,
+            "generalRateIntrastate": 0.0225,
+            "foodDrugRate": 0,
+            "effectiveFrom": "2022-10-01",
+            "effectiveTo": null
+          }
+        ]
+      },
+      "note": null,
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://www.streamlinedsalestax.org/ratesandboundry/Rates/NCR2026Q3APR23.csv",
+          "fileName": "NCR2026Q3APR23.csv",
+          "sha256": "23b84dbfb1e03e9c8712b8c866b1bbf950fd094b8312bdef4c61015e67a7a485",
+          "retrievedAt": "2026-07-22T20:26:46+00:00"
+        }
+      ]
+    },
+    "US-KS": {
+      "stateFips": "20",
+      "rateBasis": "component",
+      "stateRate": 0.065,
+      "sourceMode": "official_files",
+      "state": {
+        "20": [
+          {
+            "level": "state",
+            "jurisdictionName": null,
+            "generalRate": 0.065,
+            "generalRateIntrastate": 0.065,
+            "foodDrugRate": 0,
+            "effectiveFrom": "2023-01-01",
+            "effectiveTo": "2099-12-31"
+          }
+        ]
+      },
+      "local": {
+        "209": [
+          {
+            "level": "county",
+            "jurisdictionName": null,
+            "generalRate": 0.01,
+            "generalRateIntrastate": 0.01,
+            "foodDrugRate": 0.01,
+            "effectiveFrom": "2005-10-01",
+            "effectiveTo": "2099-12-31"
+          }
+        ],
+        "36000": [
+          {
+            "level": "city",
+            "jurisdictionName": null,
+            "generalRate": 0.01625,
+            "generalRateIntrastate": 0.01625,
+            "foodDrugRate": 0.01625,
+            "effectiveFrom": "2010-07-01",
+            "effectiveTo": "2099-12-31"
+          }
+        ]
+      },
+      "note": "SST rate file (SSTGB Technology Guide layout): COMPONENT records \u2014 each row is ONE taxing authority's own rate, typed by `level` (county, city, special_district). The rate at an address is the state rate plus EVERY applicable local record summed, and which locals apply is defined by the companion SST BOUNDARY file, which this dataset does NOT ship. States differ: inside an incorporated city Washington assigns no county record, while Kansas assigns county AND city. Do not assume the most specific record is the whole local rate, and do not sum every record for a code \u2014 without boundary data these records are a rate catalogue keyed by jurisdiction, not an address-resolvable map."
+    },
+    "US-FL": {
+      "stateFips": "12",
+      "rateBasis": "component",
+      "stateRate": 0.06,
+      "sourceMode": "curated",
+      "state": {},
+      "note": "Curated locals: Florida DOR \u2014 DR-15DSS Discretionary Sales Surtax Information for Calendar Year 2026 (R. 11/25): each county's TOTAL surtax as a component on the 6% state rate, windowed to the publication's calendar year (component surtaxes change on Jan 1; the 2026 edition itself moved Martin and Palm Beach from 1% to 0.5%). Surtax caps on single items above $5,000 are not modeled.",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://floridarevenue.com/Forms_library/current/dr15dss_26.pdf",
+          "fileName": "curated-local-rates.json",
+          "sha256": "87f19364e8eb682063a026700e926085adb85cc211f05f2abf1593163863e229",
+          "retrievedAt": "2026-07-21T00:00:00+00:00"
+        }
+      ],
+      "local": {
+        "US-FL:Alachua County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Alachua County",
+            "generalRate": 0.015,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2026-01-01",
+            "effectiveTo": "2026-12-31"
+          }
+        ],
+        "US-FL:Citrus County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Citrus County",
+            "generalRate": 0,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2026-01-01",
+            "effectiveTo": "2026-12-31"
+          }
+        ],
+        "US-FL:Miami-Dade County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Miami-Dade County",
+            "generalRate": 0.01,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2026-01-01",
+            "effectiveTo": "2026-12-31"
+          }
+        ],
+        "US-FL:St. Johns County": [
+          {
+            "level": "county",
+            "jurisdictionName": "St. Johns County",
+            "generalRate": 0.005,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2026-01-01",
+            "effectiveTo": "2026-12-31"
+          }
+        ]
+      }
+    },
+    "US-PA": {
+      "stateFips": "42",
+      "rateBasis": "component",
+      "stateRate": 0.06,
+      "sourceMode": "curated",
+      "state": {},
+      "note": "Curated locals: Pennsylvania Department of Revenue \u2014 Sales, Use and Hotel Occupancy Tax (official page: 6% state; 1% Allegheny County; 2% Philadelphia)",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://www.pa.gov/en/agencies/revenue/resources/tax-types-and-information/sales-use-and-hotel-occupancy-tax.html",
+          "fileName": "curated-local-rates.json",
+          "sha256": "87f19364e8eb682063a026700e926085adb85cc211f05f2abf1593163863e229",
+          "retrievedAt": "2026-07-20T00:00:00+00:00"
+        }
+      ],
+      "local": {
+        "US-PA:Allegheny County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Allegheny County",
+            "generalRate": 0.01,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "US-PA:Philadelphia": [
+          {
+            "level": "city",
+            "jurisdictionName": "Philadelphia",
+            "generalRate": 0.02,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ]
+      }
+    },
+    "US-HI": {
+      "stateFips": "15",
+      "rateBasis": "component",
+      "stateRate": 0.04,
+      "sourceMode": "curated",
+      "state": {},
+      "note": "Curated locals: Hawaii Department of Taxation \u2014 County Surcharge on General Excise Tax (official page; surcharges apply to activities taxed at the 4% rate)",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://tax.hawaii.gov/geninfo/countysurcharge/",
+          "fileName": "curated-local-rates.json",
+          "sha256": "87f19364e8eb682063a026700e926085adb85cc211f05f2abf1593163863e229",
+          "retrievedAt": "2026-07-20T00:00:00+00:00"
+        }
+      ],
+      "local": {
+        "US-HI:Honolulu County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Honolulu County",
+            "generalRate": 0.005,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2007-01-01",
+            "effectiveTo": "2030-12-31"
+          }
+        ],
+        "US-HI:Maui County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Maui County",
+            "generalRate": 0.005,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": "2024-01-01",
+            "effectiveTo": "2030-12-31"
+          }
+        ]
+      }
+    }
+  }
+}

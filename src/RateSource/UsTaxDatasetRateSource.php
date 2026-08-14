@@ -55,6 +55,63 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      */
     public const string ZIP9_SCHEME = 'zip9';
 
+    /**
+     * The locality scheme carrying a county NAME (`Alachua County`) for the states
+     * in {@see countyResolvedStates()}, resolved to an authority code by the dataset.
+     */
+    public const string COUNTY_SCHEME = 'county';
+
+    /**
+     * The states where the COUNTY is the only local authority that can apply, so
+     * resolving the county resolves the rate exactly — no boundary file needed.
+     *
+     * This is a legal claim about each state's taxing structure, not an observation
+     * of today's data, which is why it is a written list with its grounds rather
+     * than something derived from the records:
+     *
+     *  - **FL** — ch. 212.055 authorizes the discretionary sales surtax to COUNTIES.
+     *    The Department of Revenue's own surtax table is published per county, all 67.
+     *  - **PA** — only two local taxes exist: Allegheny County at 1% and Philadelphia
+     *    at 2%. Philadelphia is carried as a city because that is what it is called,
+     *    but the city and the county are coterminous, so a county resolves it.
+     *  - **HI** — the counties may adopt a GET surcharge by ordinance; four have.
+     *
+     * SOUTH CAROLINA IS DELIBERATELY ABSENT and the reason is the point of this
+     * list. Its local option taxes look county-level, and 46 of the dataset's 47 SC
+     * authorities are counties — but Myrtle Beach levies its own 1% Tourism
+     * Development tax ON TOP of Horry County's. Resolving only the county there
+     * would UNDER-charge, which is the direction that cannot be refunded later. A
+     * state joins this list when nothing can sit below the county line, not when
+     * almost nothing does.
+     *
+     * Two guards hold the list to that claim, and they sit at different layers on
+     * purpose. `tests/Feature/CountyResolvedRateTest.php` checks the engine's
+     * behaviour here; `bin/check-county-resolved.php` in the us-tax-data repo checks
+     * the PUBLISHED data every drift run, which is where a newly-adopted city tax
+     * would actually show up. Adding a state means changing both.
+     *
+     * @return list<string>
+     */
+    public static function countyResolvedStates(): array
+    {
+        return ['US-FL', 'US-PA', 'US-HI'];
+    }
+
+    /**
+     * Authority codes that are NOT counties but are coterminous with one, so a
+     * county resolution reaches them correctly.
+     *
+     * Philadelphia is the only one on the list today. It exists so the guard test
+     * can tell "a city that IS the county" apart from "a city inside a county",
+     * which is the distinction that keeps South Carolina out.
+     *
+     * @return list<string>
+     */
+    public static function coterminousCityCounties(): array
+    {
+        return ['US-PA:Philadelphia'];
+    }
+
     public function __construct(private UsTaxDataset $dataset) {}
 
     public function rateFor(
@@ -134,6 +191,12 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      * Indiana) or nothing at all. Any other scheme is already a jurisdiction code
      * and is used as-is.
      *
+     * A `county` locality is a county NAME, resolved to the single authority that
+     * taxes there. It carries exactly one code by construction — that is what makes
+     * {@see countyResolvedStates()} a closed list rather than a heuristic — so
+     * unlike a ZIP+4 there is no stacking to do and nothing that can be partially
+     * resolved.
+     *
      * Null means UNKNOWN and the caller falls back to the state rate; an empty list
      * means the index positively answered "no local authority", which is an all-in
      * rate in its own right.
@@ -142,6 +205,16 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      */
     private function codesFor(string $state, LocalityCode $locality): ?array
     {
+        if ($locality->scheme === self::COUNTY_SCHEME) {
+            $code = $this->dataset->localCodeForCounty($state, $locality->value);
+
+            // An unmatched or ambiguous county name yields null, NOT an empty list.
+            // Empty would mean "the county levies nothing", which reads as an
+            // authoritative all-in rate; this is "we could not tell which county",
+            // which has to fall back to the state share.
+            return $code === null ? null : [$code];
+        }
+
         if ($locality->scheme !== self::ZIP9_SCHEME) {
             return [$locality->value];
         }

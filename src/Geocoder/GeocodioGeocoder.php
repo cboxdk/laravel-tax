@@ -128,7 +128,12 @@ readonly class GeocodioGeocoder implements AddressGeocoder
 
         $jurisdiction = $this->geo->find($country, $subdivision);
 
-        if ($jurisdiction === null || ! $this->rooftop || $country->value !== 'US') {
+        // NOT gated on `$rooftop`, unlike the ZIP+4 and point paths below. The
+        // county comes back on every result with no append and no extra cost, and
+        // in the states it resolves it is not an approximation of the rate — it IS
+        // the rate. Gating a free, exact answer behind an opt-in would leave those
+        // states under-charging by up to two points for no benefit.
+        if ($jurisdiction === null || $country->value !== 'US') {
             return $jurisdiction;
         }
 
@@ -147,7 +152,22 @@ readonly class GeocodioGeocoder implements AddressGeocoder
      */
     private function localityFrom(array $result, SubdivisionCode $subdivision): ?LocalityCode
     {
-        // A jurisdiction carries ONE locality, so the useful key differs by state:
+        // A jurisdiction carries ONE locality, so the useful key differs by state.
+        //
+        // Florida, Pennsylvania and Hawaii need only the COUNTY, because nothing
+        // can tax below it there — so the county name is not a proxy for the
+        // authority, it names the authority. This branch runs whether or not
+        // rooftop resolution is enabled: it costs nothing extra and is exact.
+        if (in_array($subdivision->value, UsTaxDatasetRateSource::countyResolvedStates(), true)) {
+            return $this->countyLocality($result, $subdivision);
+        }
+
+        // Everything below resolves BELOW the county line and costs an append or a
+        // second service, so it stays behind the opt-in.
+        if (! $this->rooftop) {
+            return null;
+        }
+
         // California and New Mexico publish polygon services a point resolves
         // against, which is finer than the postal proxy the ZIP+4 index offers.
         if (in_array($subdivision->value, ArcGisRateSource::states(), true)) {
@@ -171,6 +191,34 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         }
 
         return new LocalityCode($subdivision, UsTaxDatasetRateSource::ZIP9_SCHEME, $value);
+    }
+
+    /**
+     * A county locality from the result's `address_components.county`.
+     *
+     * Geocodio returns the county on every US result — no append, no extra request
+     * — as a plain name (`Alachua County`, `Philadelphia County`). The dataset does
+     * the name-to-authority join, because it owns the code space; this adapter only
+     * carries the name across.
+     *
+     * The earlier objection to using the county, recorded at the top of this class,
+     * was that it "named one authority where several may apply". That is true, and
+     * it is why this runs ONLY for the states where several cannot — a closed list
+     * with its legal grounds written down, not a heuristic. Null when the result
+     * carries no county, which leaves the honest state rate.
+     *
+     * @param  array<array-key, mixed>  $result
+     */
+    private function countyLocality(array $result, SubdivisionCode $subdivision): ?LocalityCode
+    {
+        $components = is_array($result['address_components'] ?? null) ? $result['address_components'] : null;
+        $county = is_array($components) ? ($components['county'] ?? null) : null;
+
+        if (! is_string($county) || trim($county) === '') {
+            return null;
+        }
+
+        return new LocalityCode($subdivision, UsTaxDatasetRateSource::COUNTY_SCHEME, trim($county));
     }
 
     /**
