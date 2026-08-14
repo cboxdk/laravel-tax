@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository;
@@ -95,9 +96,19 @@ readonly class ArcGisRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
+        // These services answer for TODAY and carry no history — CDTFA's and New
+        // Mexico's layers are the current rate schedule, not a dated one. Now that
+        // the engine passes the supply date, silently returning today's rate for a
+        // 2020 credit note would be the worst of both worlds: the caller asked a
+        // dated question and got an undated answer stamped `Authoritative`. Refuse,
+        // and let the chain fall through to a source that can answer.
+        if ($at !== null && $at->format('Y-m-d') !== new DateTimeImmutable()->format('Y-m-d')) {
+            return null;
+        }
+
         $subdivision = $jurisdiction->subdivision?->value;
         $service = $subdivision === null ? null : (self::SERVICES[$subdivision] ?? null);
         $locality = $jurisdiction->locality;
@@ -146,12 +157,14 @@ readonly class ArcGisRateSource implements TaxRateSource
                 'returnGeometry' => 'false',
                 'f' => 'json',
             ]);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            // Reached only for the two states that publish polygons, so getting
+            // here at all means this source was expected to answer.
+            throw RateSourceUnavailable::transport('arcgis', $e->getMessage());
         }
 
         if (! $response->successful()) {
-            return null;
+            throw RateSourceUnavailable::badResponse('arcgis', $response->status());
         }
 
         $percent = $this->percentFrom($response->json('features'), $service);

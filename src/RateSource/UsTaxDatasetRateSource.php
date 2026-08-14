@@ -9,11 +9,13 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
+use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxabilityTreatment;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
+use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 
@@ -26,15 +28,18 @@ use DateTimeImmutable;
  *  1. A category with a `reduced_rate` treatment (e.g. grocery at 2%) returns that
  *     reduced rate directly — a category rule, applied whatever the location.
  *  2. When the jurisdiction carries a rooftop {@see LocalityCode},
- *     the state and the matched local record are stacked into an all-in rate
- *     (respecting the state's {@see RateBasis}) at {@see Confidence::Authoritative}.
- *     ONE local record is stacked, which is correct where only the city record
- *     applies at that address (Seattle) but low where a county record applies
- *     alongside it (Kansas City). Which records apply is defined by boundary data
- *     the dataset does not ship, so no shipped geocoder emits a matching locality
- *     yet. See docs/coverage/us-tax-dataset.md.
+ *     EVERY local record the state's boundary index says applies there is stacked
+ *     with the state share into an all-in rate (respecting the state's
+ *     {@see RateBasis}) at {@see Confidence::Authoritative}. A `zip9` locality is
+ *     expanded through that index, so a Kansas City address correctly picks up the
+ *     county AND the city; a caller supplying an authority code directly gets that
+ *     one authority. See docs/coverage/us-tax-dataset.md.
  *  3. Otherwise the authoritative STATE rate is returned at {@see Confidence::Derived}
  *     — honest that it is the state share, not a rooftop all-in figure.
+ *
+ * A stacked rate carries its {@see RateComponent}s, so a consumer can remit per
+ * authority; a state-only or reduced-category rate carries none, because there is
+ * no split to report rather than because one authority takes everything.
  *
  * Deny-by-default throughout: an unknown state, a no-sales-tax state, or an
  * unavailable dataset yields null, and the engine denies rather than assuming 0%.
@@ -54,7 +59,7 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
         if ($jurisdiction->country->value !== 'US' || $jurisdiction->subdivision === null) {
@@ -63,52 +68,61 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
 
         $state = $jurisdiction->subdivision->value;
 
-        // 1. A reduced-rate category rule wins over the general rate, wherever the
-        //    supply is: it is a product rule, not a location one.
-        $reduced = $this->reducedRate($state, $category);
-
-        if ($reduced !== null) {
-            return $reduced;
-        }
-
-        // 2. Rooftop all-in when a locality was resolved; else 3. the state rate.
+        // A reduced-rate category rule replaces the STATE share, and — this is the
+        // part that was wrong — does not replace the local ones. Missouri's 1.225%
+        // grocery rate is its state share; local sales taxes still apply to food,
+        // so returning 1.225% all-in under-charged by most of the true rate.
+        $reduced = $this->reducedStateShare($state, $category);
         $locality = $jurisdiction->locality;
+        $atRooftop = $locality !== null && $locality->subdivision->value === $state;
 
-        if ($locality !== null && $locality->subdivision->value === $state) {
+        if ($atRooftop) {
             $codes = $this->codesFor($state, $locality);
 
             // An EMPTY list is a positive answer — the index says no local authority
             // applies there, as in Indiana, which levies none. That is an all-in
             // rate that happens to equal the state share, not a fallback to it.
-            $stacked = $codes === null ? null : $this->stacked($state, $codes, $at);
+            $stacked = $codes === null ? null : $this->stacked($state, $codes, $at, $reduced);
 
             if ($stacked !== null) {
                 return $stacked;
             }
         }
 
-        return $this->stateRate($state);
+        if ($reduced !== null) {
+            // No locality resolved, so this is the state share of a rate that may
+            // have local food taxes on top of it — the same position the general
+            // state rate is in, and it gets the same honest confidence. It used to
+            // claim Authoritative, which said the opposite.
+            return new TaxRate($reduced, RateKind::Reduced, self::SOURCE, Confidence::Derived);
+        }
+
+        return $this->stateRate($state, $at);
     }
 
     /**
-     * A category carrying a `reduced_rate` treatment with a numeric `rate`
-     * condition — returned as a reduced-kind rate. Null otherwise.
+     * The STATE share for a category the state reduces (e.g. groceries), as a
+     * percentage string. Null when the category carries no reduced-rate rule.
      */
-    private function reducedRate(string $state, TaxCategory $category): ?TaxRate
+    private function reducedStateShare(string $state, TaxClass $category): ?string
     {
-        $determination = $this->dataset->taxability($state, $category->datasetCategory());
+        $key = $category->datasetCategory();
+
+        // A class the US dataset has no category for — lodging, passenger
+        // transport, utility supply — has no reduced-rate rule either, because it
+        // has no rule at all. Asking for one under a made-up key would answer for
+        // a different product.
+        if ($key === null) {
+            return null;
+        }
+
+        $determination = $this->dataset->taxability($state, $key);
 
         if ($determination === null || $determination->treatment !== TaxabilityTreatment::ReducedRate) {
             return null;
         }
 
-        $percent = $this->fractionToPercent($determination->conditions['rate'] ?? null);
-
-        if ($percent === null) {
-            return null;
-        }
-
-        return new TaxRate($percent, RateKind::Reduced, self::SOURCE, Confidence::Authoritative);
+        return $this->fractionToPercent($determination->conditions['rate'] ?? null);
     }
 
     /**
@@ -153,45 +167,165 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      * still be labelled authoritative — an under-charge that looks certain. So a
      * partial match yields null and the caller falls back to the honest state rate.
      *
+     * The per-authority shares are kept as {@see RateComponent}s on the returned
+     * rate. Only this method knows them: once the percentages are summed the split
+     * cannot be recovered downstream, and a per-jurisdiction remittance needs it.
+     *
+     * `$reducedStateShare`, when given, is a category the state taxes at a reduced
+     * rate (groceries). It replaces the state share AND switches the local records
+     * to their food/drug rate — the dataset carries `foodDrugRate` per locality for
+     * exactly this, and reading `generalRate` there would charge a Tennessee
+     * grocery basket the 2.75% general local rate where the food rate is 2.25%.
+     *
      * @param  list<string>  $codes
      */
-    private function stacked(string $state, array $codes, ?DateTimeImmutable $at): ?TaxRate
+    private function stacked(string $state, array $codes, ?DateTimeImmutable $at, ?string $reducedStateShare = null): ?TaxRate
     {
+        $basis = $this->dataset->rateBasis($state);
         $localPercent = BigDecimal::zero();
 
+        /** @var list<RateComponent> $components */
+        $components = [];
+
         foreach ($codes as $code) {
-            $local = $this->activeGeneralRate($this->dataset->localRateRecords($state, $code), $at);
+            $local = $this->activeComponent($state, $code, $at, $reducedStateShare !== null);
 
             if ($local === null) {
                 return null;
             }
 
-            $localPercent = $localPercent->plus(BigDecimal::of($local)->multipliedBy(100));
+            $components[] = $local;
+            $localPercent = $localPercent->plus($local->percentage);
+        }
+
+        // "No local record applies here" is only an all-in ANSWER on a
+        // component-basis state, where the state share genuinely is the whole rate
+        // (Indiana levies no local tax). On a combined-basis state the record IS
+        // the all-in rate, so its absence leaves nothing all-in to report; with no
+        // basis at all we do not know which case we are in. Either way, refusing
+        // sends the caller to the honest state rate at Derived confidence instead
+        // of stamping a bare — or zero — figure as an authoritative rooftop one.
+        if ($components === [] && $basis !== RateBasis::Component) {
+            return null;
         }
 
         // Combined records already include the state share; component records are
         // just the local addend and need the state rate added on top.
-        if ($this->dataset->rateBasis($state) === RateBasis::Component) {
-            $statePercent = $this->dataset->stateRatePercent($state);
+        if ($basis === RateBasis::Component) {
+            // ON THE SUPPLY'S DATE, like everything else. Stacking today's state
+            // share onto a historical local rate produces a percentage that was
+            // never in force anywhere: Kansas at 5.5% through 2025 plus a 1% local
+            // came out as 7.5% for a 2025 supply, because the state half had
+            // already moved to 6.5%.
+            $statePercent = $reducedStateShare ?? $this->dataset->stateRatePercent($state, $at);
 
-            if ($statePercent !== null) {
-                $localPercent = $localPercent->plus(BigDecimal::of($statePercent));
+            // On a component-basis state the local records are only the ADDEND. If
+            // the state share cannot be read — a state missing from the baseline, a
+            // section that would not load — then skipping it quietly returns the
+            // locals alone and stamps them authoritative: Kansas City at 1.625%
+            // instead of 9.125%, four fifths of the tax gone, on an answer that
+            // claims to be a rooftop figure. Refusing sends the caller to the state
+            // rate, which is null for the same reason, so the engine denies.
+            if ($statePercent === null) {
+                return null;
             }
+
+            $localPercent = $localPercent->plus(BigDecimal::of($statePercent));
+            // Coded with the state itself. An authority with no code cannot be
+            // merged with the same authority on another line — a document-level
+            // roll-up has to be able to tell "the state" apart from "some unnamed
+            // district", and only a code does that.
+            array_unshift($components, new RateComponent(JurisdictionLevel::State, $statePercent, $state));
+        }
+
+        if ($basis === RateBasis::Combined) {
+            $components = $this->decomposeCombined($state, $components, $localPercent, $at, $reducedStateShare);
         }
 
         return new TaxRate(
             UsTaxDataset::normalize((string) $localPercent),
-            RateKind::Standard,
+            $reducedStateShare !== null ? RateKind::Reduced : RateKind::Standard,
             self::SOURCE,
             Confidence::Authoritative,
+            $components,
         );
     }
 
-    private function stateRate(string $state): ?TaxRate
+    /**
+     * Split a combined-basis all-in rate into the state share and the local share.
+     *
+     * A combined record (California's CDTFA place rates) publishes one figure that
+     * already contains the state share, so the per-authority split the record
+     * itself suggests is not available — but the state share IS known exactly, and
+     * subtracting it leaves the aggregate local share. That two-line split is the
+     * one that drives remittance, so it is worth reporting.
+     *
+     * The remainder is deliberately levelled {@see JurisdictionLevel::Local}, not
+     * the record's own level: it aggregates every district taxing that address, so
+     * labelling it "city" and naming it after the record would attribute other
+     * authorities' money to the city.
+     *
+     * Only decomposable from exactly ONE record: summing two all-in records would
+     * double-count the state share, and the split would then be as wrong as the
+     * total. Anything it cannot decompose yields no components.
+     *
+     * @param  list<RateComponent>  $components
+     * @return list<RateComponent>
+     */
+    private function decomposeCombined(string $state, array $components, BigDecimal $allIn, ?DateTimeImmutable $at = null, ?string $reducedStateShare = null): array
     {
-        $percent = $this->dataset->stateRatePercent($state);
+        if (count($components) !== 1) {
+            return [];
+        }
+
+        // The supply's date here too: a combined record is decomposed by
+        // subtracting the state share, and subtracting the wrong year's share
+        // mis-attributes the split between the state and its localities.
+        $statePercent = $reducedStateShare ?? $this->dataset->stateRatePercent($state, $at);
+
+        if ($statePercent === null) {
+            return [];
+        }
+
+        $stateShare = BigDecimal::of($statePercent);
+        $localShare = $allIn->minus($stateShare);
+
+        // An all-in rate below the state share means the record and the baseline
+        // disagree; report no split rather than a negative local share.
+        if ($localShare->isNegative()) {
+            return [];
+        }
+
+        return [
+            new RateComponent(JurisdictionLevel::State, $stateShare, $state),
+            new RateComponent(
+                JurisdictionLevel::Local,
+                UsTaxDataset::normalize((string) $localShare),
+                $components[0]->code,
+                $components[0]->name,
+            ),
+        ];
+    }
+
+    /**
+     * The state share, as the honest partial answer when no rooftop rate resolved.
+     *
+     * It refuses when the state share is ZERO and local authorities levy their own
+     * tax — Alaska, which has no state sales tax but whose boroughs and cities do
+     * (Juneau 5%, Wrangell 7%). There the state share is not a conservative
+     * under-estimate a caller can reason about; it is an affirmative "no tax due"
+     * on a supply that is taxed, and `Confidence::Derived` does not begin to say
+     * so. Every other state's share is a real floor, so it is returned.
+     */
+    private function stateRate(string $state, ?DateTimeImmutable $at = null): ?TaxRate
+    {
+        $percent = $this->dataset->stateRatePercent($state, $at);
 
         if ($percent === null) {
+            return null;
+        }
+
+        if (BigDecimal::of($percent)->isZero() && $this->dataset->hasLocalSalesTax($state)) {
             return null;
         }
 
@@ -199,47 +333,84 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
     }
 
     /**
-     * The `generalRate` (as a fraction string) of the record whose effective window
-     * is open (effectiveTo null) or covers `$at`, from a locality's record list.
+     * One authority's applicable record as a {@see RateComponent}: the layer of
+     * government it sits at, its share as a percentage, and the code and published
+     * name the dataset carries for it.
      *
-     * @param  list<array<array-key, mixed>>  $records
+     * Selects the record whose effective window covers the date, and ONLY that.
+     * There is no fallback to the first record in file order: a locality whose
+     * expired record happens to be listed before its current one would otherwise
+     * contribute the expired rate to a sum stamped `Authoritative`. Null when no
+     * record applies — which is what makes {@see stacked()} refuse the whole stack
+     * and fall back to the honest state rate.
      */
-    private function activeGeneralRate(array $records, ?DateTimeImmutable $at): ?string
+    private function activeComponent(string $state, string $code, ?DateTimeImmutable $at, bool $food = false): ?RateComponent
     {
-        $fallback = null;
-
-        foreach ($records as $record) {
-            $rate = $record['generalRate'] ?? null;
+        foreach ($this->dataset->localRateRecords($state, $code) as $record) {
+            // A reduced-rate category reads the locality's FOOD rate, which the
+            // dataset carries alongside the general one. They differ: a Tennessee
+            // city may levy 2.75% generally and 2.25% on food, and several exempt
+            // food locally altogether.
+            $rate = $food ? ($record['foodDrugRate'] ?? null) : ($record['generalRate'] ?? null);
 
             if (! is_int($rate) && ! is_float($rate)) {
                 continue;
             }
 
-            $fallback ??= (string) $rate;
-
             $from = is_string($record['effectiveFrom'] ?? null) ? $record['effectiveFrom'] : null;
             $to = is_string($record['effectiveTo'] ?? null) ? $record['effectiveTo'] : null;
 
-            if ($this->covers($from, $to, $at)) {
-                return (string) $rate;
+            if (! $this->covers($from, $to, $at)) {
+                continue;
             }
+
+            $name = $record['jurisdictionName'] ?? null;
+
+            return new RateComponent(
+                $this->levelOf($record),
+                // Normalized like the total it will be summed into, so a consumer
+                // never prints "1.62500%" of a "9.125%" rate.
+                UsTaxDataset::normalize((string) BigDecimal::of((string) $rate)->multipliedBy(100)),
+                $code,
+                is_string($name) ? $name : null,
+            );
         }
 
-        // No window matched explicitly — use the first well-formed record.
-        return $fallback;
+        return null;
+    }
+
+    /**
+     * The layer of government a record belongs to. A record naming a level the
+     * enum does not model falls back to the generic {@see JurisdictionLevel::Local}
+     * — it is certainly a local authority (the state share never comes from here),
+     * and the aggregate level says that without inventing a specific one.
+     *
+     * @param  array<array-key, mixed>  $record
+     */
+    private function levelOf(array $record): JurisdictionLevel
+    {
+        $level = $record['level'] ?? null;
+
+        if (! is_string($level)) {
+            return JurisdictionLevel::Local;
+        }
+
+        return JurisdictionLevel::tryFrom($level) ?? JurisdictionLevel::Local;
     }
 
     /**
      * Whether an effective window [from, to] covers the query date. A null `$at`
-     * means "current": only an open-ended record (no effectiveTo) qualifies.
+     * means TODAY.
+     *
+     * It used to mean "only an open-ended record qualifies", which sounded strict
+     * and was in fact the opposite: the SST files close their current rows with a
+     * sentinel end date (`2099-12-31`) rather than a null, so no record ever
+     * matched and every lookup fell through to whatever was first in the file.
+     * Treating null as today makes the window check actually run.
      */
     private function covers(?string $from, ?string $to, ?DateTimeImmutable $at): bool
     {
-        if ($at === null) {
-            return $to === null;
-        }
-
-        $date = $at->format('Y-m-d');
+        $date = ($at ?? new DateTimeImmutable)->format('Y-m-d');
 
         return ($from === null || $from <= $date) && ($to === null || $date <= $to);
     }

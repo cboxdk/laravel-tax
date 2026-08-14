@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Http\Client\Factory;
@@ -30,6 +31,8 @@ use Throwable;
  */
 readonly class RemoteRateSource implements TaxRateSource
 {
+    use ParsesSourcedRates;
+
     public function __construct(
         private Factory $http,
         private string $url,
@@ -38,23 +41,27 @@ readonly class RemoteRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
+        // A failure here is not "no rate for this country" — it is no answer at
+        // all. Returned as null it was indistinguishable from a source that simply
+        // does not cover the jurisdiction, and the chain moved on to the static
+        // snapshot and billed from it.
         try {
             $response = $this->http->acceptJson()->get($this->url);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            throw RateSourceUnavailable::transport($this->source, $e->getMessage());
         }
 
         if (! $response->successful()) {
-            return null;
+            throw RateSourceUnavailable::badResponse($this->source, $response->status());
         }
 
         $data = $response->json();
 
         if (! is_array($data)) {
-            return null;
+            throw RateSourceUnavailable::unreadable($this->source);
         }
 
         return $this->resolve($data[$jurisdiction->country->value] ?? null, $category);
@@ -64,7 +71,7 @@ readonly class RemoteRateSource implements TaxRateSource
      * Resolve a country entry (number or object) to a rate for the category,
      * preferring a category band over the standard rate.
      */
-    private function resolve(mixed $entry, TaxCategory $category): ?TaxRate
+    private function resolve(mixed $entry, TaxClass $category): ?TaxRate
     {
         if (is_array($entry)) {
             $band = $this->band($entry, $category);
@@ -89,7 +96,7 @@ readonly class RemoteRateSource implements TaxRateSource
      *
      * @param  array<mixed>  $entry
      */
-    private function band(array $entry, TaxCategory $category): ?TaxRate
+    private function band(array $entry, TaxClass $category): ?TaxRate
     {
         $bands = $entry['bands'] ?? null;
 
@@ -113,18 +120,5 @@ readonly class RemoteRateSource implements TaxRateSource
         $kind = is_string($kind) ? RateKind::tryFrom($kind) : null;
 
         return new TaxRate($percentage, $kind ?? RateKind::Reduced, $this->source, Confidence::Authoritative);
-    }
-
-    private function number(mixed $value): ?string
-    {
-        if (is_int($value) || is_float($value)) {
-            return (string) $value;
-        }
-
-        if (is_string($value) && is_numeric($value)) {
-            return $value;
-        }
-
-        return null;
     }
 }

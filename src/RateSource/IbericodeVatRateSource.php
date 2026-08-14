@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Http\Client\Factory;
@@ -59,6 +60,8 @@ use Throwable;
  */
 readonly class IbericodeVatRateSource implements TaxRateSource
 {
+    use ParsesSourcedRates;
+
     /**
      * @param  array<string, string>  $categoryTiers  TaxCategory value -> dataset tier key
      *                                                (e.g. ['digital_service' => 'reduced1']).
@@ -73,7 +76,7 @@ readonly class IbericodeVatRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
         $dataset = $this->load();
@@ -184,15 +187,19 @@ readonly class IbericodeVatRateSource implements TaxRateSource
         return is_array($decoded) ? $decoded : null;
     }
 
-    private function fetch(): ?string
+    private function fetch(): string
     {
         try {
             $response = $this->http->acceptJson()->get($this->location);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            throw RateSourceUnavailable::transport('ibericode', $e->getMessage());
         }
 
-        return $response->successful() ? $response->body() : null;
+        if (! $response->successful()) {
+            throw RateSourceUnavailable::badResponse('ibericode', $response->status());
+        }
+
+        return $response->body();
     }
 
     private function readFile(): ?string
@@ -204,18 +211,5 @@ readonly class IbericodeVatRateSource implements TaxRateSource
         $raw = file_get_contents($this->location);
 
         return $raw === false ? null : $raw;
-    }
-
-    private function number(mixed $value): ?string
-    {
-        if (is_int($value) || is_float($value)) {
-            return (string) $value;
-        }
-
-        if (is_string($value) && is_numeric($value)) {
-            return $value;
-        }
-
-        return null;
     }
 }

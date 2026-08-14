@@ -19,6 +19,27 @@ A source returns a `TaxRate` (percentage, band, provenance, confidence) for a
 jurisdiction and category, or `null` when it has no rate — in which case the
 engine raises `UnresolvedTaxRate` rather than assuming 0%.
 
+## Having no rate, and being unable to answer
+
+These are different facts and a source must not report them the same way.
+
+- **`null`** — "I have no rate for this jurisdiction." A normal answer from a
+  source with limited scope. A composed `ChainTaxRateSource` moves on to the next.
+- **`throw RateSourceUnavailable`** — "my endpoint was unreachable, refused, or
+  returned something I cannot read." Not an answer at all.
+
+The distinction is what stops a timed-out feed from quietly billing off the static
+snapshot. When a source fails, the chain still tries the rest — the snapshot is
+real, reviewed data and falling back to it is usually right — but the rate that
+comes back is marked `Confidence::LowConfidence` with the failure recorded in its
+`source`, so a caller can decide whether to bill on it. If *nothing* answers and
+something was broken, the chain rethrows rather than returning `null`: "we could
+not find out" must not reach the caller as "there is no rate here".
+
+Throw it only for operational failure. A jurisdiction you do not cover is `null`.
+A single unusable value inside an otherwise good payload is also `null` — that is
+bad data, not a broken source, and something else may be able to answer.
+
 Recommended defaults per region:
 
 | Region | Source |
@@ -30,6 +51,31 @@ Recommended defaults per region:
 Rates are **data that changes** — treat them as versioned/refreshable, never
 hard-coded. Record the `source` and `confidence` on each assessment so a coarse
 fallback is never mistaken for an authoritative rate.
+
+## Emitting the authorities behind a stacked rate
+
+If your source builds a rate by stacking several authorities — a US state share
+plus county/city/special-district records — pass them as `RateComponent`s and the
+engine will split the assessed tax across them ([rate
+breakdown](../core-concepts/rate-breakdown.md)):
+
+```php
+return new TaxRate('9.125', RateKind::Standard, 'my-source', components: [
+    new RateComponent(JurisdictionLevel::State, '6.5'),
+    new RateComponent(JurisdictionLevel::County, '1', code: '209'),
+    new RateComponent(JurisdictionLevel::City, '1.625', code: '36000'),
+]);
+```
+
+Only the source that summed the rate knows how it decomposes; the split cannot be
+recovered from the total downstream. Two rules apply:
+
+- **They must sum to the rate.** A `TaxRate` whose components do not reconcile
+  throws `RateComponentsDoNotReconcile` at construction — a not-quite-right split
+  looks authoritative and gets remitted on.
+- **Emit none rather than approximate ones.** An empty list means "not
+  decomposable", which callers handle; it is not read as one authority taking
+  everything.
 
 ## Category-aware rates (reduced / zero bands)
 

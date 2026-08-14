@@ -8,7 +8,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
@@ -51,7 +51,7 @@ readonly class StaticTaxRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
         // A supply may legally carry a reduced/zero band for its category; prefer
@@ -67,7 +67,7 @@ readonly class StaticTaxRateSource implements TaxRateSource
             );
         }
 
-        if ($jurisdiction->country->value === 'US' && $category === TaxCategory::DigitalService) {
+        if ($jurisdiction->country->value === 'US' && $category === TaxClass::DigitalService) {
             return null;
         }
 
@@ -119,7 +119,7 @@ readonly class StaticTaxRateSource implements TaxRateSource
      * subdivision-level entry over a national one. Returns `null` when no band is
      * configured — the caller then applies the standard rate.
      */
-    private function bandFor(Jurisdiction $jurisdiction, TaxCategory $category): ?RateBand
+    private function bandFor(Jurisdiction $jurisdiction, TaxClass $category): ?RateBand
     {
         $scopes = [];
 

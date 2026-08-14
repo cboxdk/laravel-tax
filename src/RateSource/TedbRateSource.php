@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Http\Client\Factory;
@@ -47,6 +48,8 @@ use Throwable;
  */
 readonly class TedbRateSource implements TaxRateSource
 {
+    use ParsesSourcedRates;
+
     public function __construct(
         private Factory $http,
         private string $location,
@@ -55,7 +58,7 @@ readonly class TedbRateSource implements TaxRateSource
 
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
         $dataset = $this->load();
@@ -112,15 +115,19 @@ readonly class TedbRateSource implements TaxRateSource
         return is_array($decoded) ? $decoded : null;
     }
 
-    private function fetch(): ?string
+    private function fetch(): string
     {
         try {
             $response = $this->http->acceptJson()->get($this->location);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            throw RateSourceUnavailable::transport('tedb-export', $e->getMessage());
         }
 
-        return $response->successful() ? $response->body() : null;
+        if (! $response->successful()) {
+            throw RateSourceUnavailable::badResponse('tedb-export', $response->status());
+        }
+
+        return $response->body();
     }
 
     private function readFile(): ?string
@@ -140,7 +147,7 @@ readonly class TedbRateSource implements TaxRateSource
      *
      * @param  array<mixed>  $entry
      */
-    private function band(array $entry, TaxCategory $category): ?TaxRate
+    private function band(array $entry, TaxClass $category): ?TaxRate
     {
         $bands = $entry['bands'] ?? null;
 
@@ -164,18 +171,5 @@ readonly class TedbRateSource implements TaxRateSource
         $kind = is_string($kind) ? RateKind::tryFrom($kind) : null;
 
         return new TaxRate($percentage, $kind ?? RateKind::Reduced, $this->source, Confidence::Authoritative);
-    }
-
-    private function number(mixed $value): ?string
-    {
-        if (is_int($value) || is_float($value)) {
-            return (string) $value;
-        }
-
-        if (is_string($value) && is_numeric($value)) {
-            return $value;
-        }
-
-        return null;
     }
 }
