@@ -372,6 +372,80 @@
           }
         ]
       }
+    },
+    "US-VA": {
+      "stateFips": "51",
+      "rateBasis": "component",
+      "stateRate": 0.053,
+      "sourceMode": "curated",
+      "state": {},
+      "note": "Curated locals: Virginia Tax \u2014 Retail Sales and Use Tax (official rate-by-region page): regional additions on top of the statewide 5.3% (which already includes the mandatory 1% local share; see the flagged baseline). 7% = James City/Williamsburg/York; 6.3% = eight Southside/Eastern localities; 6% = Central Virginia, Hampton Roads and Northern Virginia groups; every other locality is 5.3% total. The statewide 1% grocery/hygiene rate is not modeled.",
+      "excludedLocations": [],
+      "provenance": [
+        {
+          "url": "https://www.tax.virginia.gov/retail-sales-and-use-tax",
+          "fileName": "curated-local-rates.json",
+          "sha256": "87f19364e8eb682063a026700e926085adb85cc211f05f2abf1593163863e229",
+          "retrievedAt": "2026-07-21T00:00:00+00:00"
+        }
+      ],
+      "local": {
+        "US-VA:James City County": [
+          {
+            "level": "county",
+            "jurisdictionName": "James City County",
+            "generalRate": 0.017,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "US-VA:Williamsburg": [
+          {
+            "level": "city",
+            "jurisdictionName": "Williamsburg",
+            "generalRate": 0.017,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "US-VA:Richmond": [
+          {
+            "level": "city",
+            "jurisdictionName": "Richmond",
+            "generalRate": 0.007,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "US-VA:Fairfax": [
+          {
+            "level": "city",
+            "jurisdictionName": "Fairfax",
+            "generalRate": 0.007,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ],
+        "US-VA:Fairfax County": [
+          {
+            "level": "county",
+            "jurisdictionName": "Fairfax County",
+            "generalRate": 0.007,
+            "generalRateIntrastate": null,
+            "foodDrugRate": null,
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        ]
+      }
     }
   }
 }

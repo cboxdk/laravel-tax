@@ -60,7 +60,7 @@ calculation the billing engine supplies per invoice.
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ address-exact for 29 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ address-exact for 30 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -81,11 +81,11 @@ thresholds are supplied by the **us-tax-data dataset**, enabled by default.
 sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
 a Texas in-state sale is charged the seller's rate. Interstate stays
 destination-sourced everywhere, and a supply with no route behaves exactly as
-before. **Address-exact** rates are live for **29 states**. Twenty-six need
+before. **Address-exact** rates are live for **30 states**. Twenty-six need
 `us_tax_data.rooftop` enabled: the 24 Streamlined states resolve by ZIP+4 through the
 published boundary index — Kansas City comes out as 6.5% state + 1.0% county + 1.625%
 city — while California and New Mexico resolve by point against their own polygon
-services. Florida, Pennsylvania and Hawaii need no opt-in and no boundary file at
+services. Florida, Pennsylvania, Hawaii and Virginia need no opt-in and no boundary file at
 all, because the county is the only authority that can tax there and a geocoder
 returns it for free. The rest fall back to the state rate
 ([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).

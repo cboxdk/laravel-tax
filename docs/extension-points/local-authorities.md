@@ -6,7 +6,7 @@ description: Bind a LocalAuthorityResolver to resolve US addresses below the sta
 
 # Local authorities
 
-In [13 US states](../coverage/us-tax-dataset.md#the-13-states-with-local-tax-and-no-rooftop-path)
+In [12 US states](../coverage/us-tax-dataset.md#the-12-states-with-local-tax-and-no-rooftop-path)
 nothing this package ships resolves an address below the state line, so the state
 share applies at `Confidence::Derived` — an honest floor, but a floor. Louisiana's
 state share is 4.45% against a combined rate reaching 11.45%.

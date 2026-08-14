@@ -23,7 +23,7 @@ most callers get the weaker one.
 | Taxability, nexus, sourcing | Practitioner compilations, cross-checked; see the pages for each | **No** |
 
 So the rooftop path rests on primary sources; the state rate — which is what you
-get in the [13 states with no rooftop path](#the-13-states-with-local-tax-and-no-rooftop-path)
+get in the [12 states with no rooftop path](#the-12-states-with-local-tax-and-no-rooftop-path)
 — rests on a secondary one. That is the same footing the
 [EU VAT dataset](eu-tax-dataset.md) is on, and it is described the same way there.
 
@@ -180,7 +180,7 @@ The indexes are published: all 24 member states, **5.4 MB gzipped**, mirrored to
 Three limits remain:
 
 **Boundary-index coverage is the 24 SST member states**, plus two resolved by
-polygon and three by county.
+polygon and four by county.
 
 California and New Mexico publish no boundary file but do publish an official
 ArcGIS service of **polygons** carrying the jurisdiction and its rate, which
@@ -188,23 +188,39 @@ ArcGIS service of **polygons** carrying the jurisdiction and its rate, which
 rather than a postal proxy for it. Verified against both services: Los Angeles City
 Hall resolves 9.75%, San Francisco 8.625%, Albuquerque 7.625%, Santa Fe 8.1875%.
 
-Florida, Pennsylvania and Hawaii need no index at all — see
-[below](#three-states-need-only-the-county-and-get-an-exact-rate-without-a-boundary-file).
+Florida, Pennsylvania, Hawaii and Virginia need no index at all — see
+[below](#four-states-need-only-the-county-and-get-an-exact-rate-without-a-boundary-file).
 
 Because a jurisdiction carries exactly one locality, the key differs by state: a
-**point** for CA/NM, a **county** for FL/PA/HI, and a **ZIP+4** everywhere else.
+**point** for CA/NM, a **county** for FL/PA/HI/VA, and a **ZIP+4** everywhere else.
 
-### Three states need only the county, and get an exact rate without a boundary file
+### Four states need only the county, and get an exact rate without a boundary file
 
-**Florida, Pennsylvania and Hawaii** are resolved exactly with no boundary index at
-all, because in those three the COUNTY is the only authority that can tax. Resolve
-the county and you have the whole local share — there is nothing below it to miss.
+**Florida, Pennsylvania, Hawaii and Virginia** are resolved exactly with no boundary
+index at all, because in those four nothing can tax below the county line. Resolve
+the county and you have the whole local share.
 
 | State | Local authority | Reach |
 | --- | --- | --- |
 | **FL** | Discretionary sales surtax, 0–2% | all 67 counties |
 | **PA** | Allegheny 1%, Philadelphia 2% | the only two that exist |
 | **HI** | County GET surcharge, 0.5% | 4 of 4 adopters |
+| **VA** | Regional additions, +0.7 / +1.0 / +1.7% | all 39 localities in a band |
+
+**Virginia is on the list for a different reason from the other three.** Its cities
+are not small — they are *independent*: under Virginia law a municipality
+incorporated as a city is not part of any county at all, which is why the Census
+counts all 38 as county-equivalents. So a Virginia city is not something sitting
+below a county; it is one. The 5.3% state rate already contains the mandatory
+statewide 1% local levy, and the 39 records are the regional additions on top,
+checked against the Department of Taxation's own bands.
+
+That creates one trap worth knowing about, because Virginia has both a Fairfax
+County and an independent city of Fairfax — and likewise Franklin, Richmond and
+Roanoke. They tax different ground at different rates. The name match is ordered so
+the full name is tried before any shortened form, which keeps each pair apart; a
+pair it genuinely could not tell apart would resolve to nothing and fall back to the
+state rate rather than putting one authority's rate on the other's territory.
 
 A geocoder returns the county on every US result with no add-on, so this path is
 **not** behind the `rooftop` opt-in: it costs nothing extra and gating it would
@@ -224,23 +240,27 @@ Honolulu customer sees a higher percentage than the 4.5% owed. This package
 computes the liability; the gross-up a seller applies to recover it is a separate
 calculation and is deliberately not modelled.
 
+Most of Virginia levies no regional addition at all, and 5.3% is genuinely the whole
+rate there — but that is reached by the county failing to match, which is "unknown"
+rather than "nothing applies", so it is labelled `Derived`.
+
 **South Carolina looks like it belongs here and does not.** 46 of its 47 local
 authorities are counties — but Myrtle Beach levies a 1% Tourism Development tax on
 top of Horry County's, and the statute lets other qualifying municipalities adopt
 one. Pricing from the county alone there would under-charge, so SC stays on the
 list below. `bin/check-county-resolved.php` in the dataset repo fails the build if
-FL, PA or HI ever grows the same exception.
+FL, PA, HI or VA ever grows the same exception — including a Virginia *town*, which
+unlike a Virginia city does sit inside a county.
 
-### The 13 states with local tax and no rooftop path
+### The 12 states with local tax and no rooftop path
 
-37 states levy a local sales tax. 29 of them now have a rooftop-accurate path (the
-24 SST boundary files, CA/NM by polygon, and FL/PA/HI by county). That leaves
-**thirteen** where nothing published resolves below the state line:
+37 states levy a local sales tax. 30 of them now have a rooftop-accurate path (the
+24 SST boundary files, CA/NM by polygon, and FL/PA/HI/VA by county). That leaves
+**twelve** where nothing published resolves below the state line:
 
-**AL · AZ · CO · ID · IL · LA · MO · MS · NY · SC · TX · VA**, and **AK**
-(see below).
+**AL · AZ · CO · ID · IL · LA · MO · MS · NY · SC · TX**, and **AK** (see below).
 
-In twelve of those the **state rate applies** at `Confidence::Derived` — an honest
+In eleven of those the **state rate applies** at `Confidence::Derived` — an honest
 floor, but a floor: Louisiana's state share is 4.45% against a combined rate that
 reaches 11.45%, Alabama's 4% against up to ~12.5%, Colorado's 2.9% against ~11.2%.
 **Check `$assessment->rate->confidence` before relying on a US figure in one of
@@ -249,7 +269,7 @@ these states**, and bind a commercial adapter where the local share matters.
 New York and Illinois are worth calling out for SaaS sellers specifically: both tax
 digital services, and both are in this list.
 
-Colorado is the most tractable of the thirteen: its Department of Revenue runs a
+Colorado is the most tractable of the twelve: its Department of Revenue runs a
 free address-level GIS service, and CRS 39-26-105.2 holds a vendor that relies on it
 harmless in an audit for errors in the data. Its API key is issued per business, so
 it belongs in a host-configured adapter rather than in the dataset — the same shape

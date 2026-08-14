@@ -210,7 +210,10 @@ readonly class UsTaxDataset
             return null;
         }
 
-        $matches = [];
+        $bare = self::dropUnit($wanted);
+
+        /** @var array{0: list<string>, 1: list<string>, 2: list<string>} $passes */
+        $passes = [[], [], []];
 
         foreach (array_keys($local) as $code) {
             if (! is_string($code)) {
@@ -219,33 +222,73 @@ readonly class UsTaxDataset
 
             // `US-FL:Alachua County` — the authority name is what follows the state
             // prefix. A code without one is used whole rather than skipped.
-            $name = str_contains($code, ':') ? substr($code, strpos($code, ':') + 1) : $code;
+            $name = self::countyKey(str_contains($code, ':') ? substr($code, strpos($code, ':') + 1) : $code);
 
-            if (self::countyKey($name) === $wanted) {
-                $matches[] = $code;
+            match (true) {
+                $name === $wanted => $passes[0][] = $code,
+                $name === $bare => $passes[1][] = $code,
+                self::dropUnit($name) === $bare => $passes[2][] = $code,
+                default => null,
+            };
+        }
+
+        // THREE PASSES, ORDERED, and Virginia is why the order matters.
+        //
+        // A Virginia city is independent of any county, so `Fairfax` (the city) and
+        // `Fairfax County` are two different authorities taxing different ground —
+        // and the dataset carries the city under its bare name while a geocoder
+        // says `Fairfax City`. Comparing both sides stripped would match BOTH
+        // records, refuse as ambiguous, and cost Fairfax its regional rate.
+        //
+        //  1. Both names in full — `Fairfax County` finds only the county.
+        //  2. The QUERY stripped against the full stored name — `Fairfax City`
+        //     finds only `Fairfax`, because `Fairfax County` is still spelled out.
+        //     This is also what resolves Philadelphia, stored bare in a state whose
+        //     other authority is a county.
+        //  3. Both stripped — the loosest, for a caller whose county names carry no
+        //     unit word at all.
+        //
+        // Each pass answers only on a UNIQUE match. Two authorities that cannot be
+        // told apart mean the dataset does not know which the address is in, and
+        // attaching either would put one authority's rate on the other's territory.
+        foreach ($passes as $matches) {
+            if (count($matches) === 1) {
+                return $matches[0];
             }
         }
 
-        return count($matches) === 1 ? $matches[0] : null;
+        return null;
     }
 
     /**
-     * The normalized join key for a county name: case-folded, punctuation reduced to
-     * single spaces, and the governing-unit suffix removed so `Philadelphia` and
-     * `Philadelphia County` are the same key.
-     *
-     * `parish` and `borough` are stripped too. Neither Louisiana nor Alaska is
-     * county-resolved today, but they are what those states call the same unit, and
-     * a key that silently stopped matching if one were added later would be a
-     * fallback to the state rate that nobody would notice.
+     * The normalized name: case-folded, punctuation reduced to single spaces. `St.
+     * Johns` and `St Johns` are the same county and must key the same.
      */
     private static function countyKey(string $name): string
     {
         $key = strtolower(trim($name));
         $key = (string) preg_replace('/[^a-z0-9]+/', ' ', $key);
-        $key = trim((string) preg_replace('/\s+/', ' ', $key));
 
-        return (string) preg_replace('/\s+(county|parish|borough)$/', '', $key);
+        return trim((string) preg_replace('/\s+/', ' ', $key));
+    }
+
+    /**
+     * The same key with the governing-unit word dropped, for the looser second pass.
+     *
+     * `city` is in the list and is the reason the passes are ORDERED rather than
+     * merged: dropping it turns `Fairfax City` into `fairfax`, which collides with
+     * `Fairfax County` — two distinct Virginia authorities taxing different ground.
+     * The exact pass separates them; this one only runs when nothing matched
+     * exactly, and returns null on a collision rather than picking.
+     *
+     * `parish` and `borough` are here because they are what Louisiana and Alaska
+     * call the same unit. Neither is county-resolved today, but a key that quietly
+     * stopped matching if one were added later would be a fallback to the state
+     * rate that nobody would notice.
+     */
+    private static function dropUnit(string $key): string
+    {
+        return (string) preg_replace('/\s+(county|parish|borough|city)$/', '', $key);
     }
 
     /**

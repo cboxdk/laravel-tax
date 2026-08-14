@@ -108,6 +108,51 @@ it('adds the Hawaii county surcharge to the general excise rate', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Virginia: cities that are not inside counties
+// ---------------------------------------------------------------------------
+
+it('resolves a Virginia county to its regional rate', function () {
+    // 5.3% state (which already contains the mandatory statewide 1% local) plus
+    // the Historic Triangle's 1.7%.
+    $rate = $this->source->rateFor(atCounty('US-VA', 'James City County'), TaxClass::GeneralGoods);
+
+    expect((string) $rate?->percentage)->toBe('7')
+        ->and($rate?->confidence)->toBe(Confidence::Authoritative);
+});
+
+it('resolves a Virginia independent city, which sits in no county at all', function () {
+    // Williamsburg is a city, and under Virginia law that means it is independent
+    // of every county — a county-equivalent, not something inside one. The dataset
+    // stores it bare; a geocoder says "Williamsburg City".
+    $rate = $this->source->rateFor(atCounty('US-VA', 'Williamsburg City'), TaxClass::GeneralGoods);
+
+    expect((string) $rate?->percentage)->toBe('7');
+});
+
+it('tells Fairfax City and Fairfax County apart', function (string $given, string $expectedName) {
+    // The trap the ordered match exists for. Both are real Virginia authorities
+    // over different ground, and comparing both names stripped would find two
+    // matches and refuse — costing Fairfax its regional rate for no reason.
+    $rate = $this->source->rateFor(atCounty('US-VA', $given), TaxClass::GeneralGoods);
+
+    expect((string) $rate?->percentage)->toBe('6')
+        ->and($rate?->components[1]->name)->toBe($expectedName);
+})->with([
+    'the county' => ['Fairfax County', 'Fairfax County'],
+    'the independent city' => ['Fairfax City', 'Fairfax'],
+]);
+
+it('leaves an unlisted Virginia locality at the statewide rate', function () {
+    // Most of Virginia levies no regional addition, and 5.3% is genuinely the whole
+    // rate there — but it is reached by the county failing to match, which is
+    // "unknown", not "nothing applies". Derived says so honestly.
+    $rate = $this->source->rateFor(atCounty('US-VA', 'Augusta County'), TaxClass::GeneralGoods);
+
+    expect((string) $rate?->percentage)->toBe('5.3')
+        ->and($rate?->confidence)->toBe(Confidence::Derived);
+});
+
+// ---------------------------------------------------------------------------
 // The name join, which is the fragile part
 // ---------------------------------------------------------------------------
 
@@ -147,7 +192,7 @@ it('only claims county resolution where nothing can tax below the county', funct
     // Development tax on top of Horry County's. Resolving only the county there
     // under-charges, and an under-charge is the one error a later refund cannot fix.
     expect($states)->not->toContain('US-SC')
-        ->and($states)->toBe(['US-FL', 'US-PA', 'US-HI']);
+        ->and($states)->toBe(['US-FL', 'US-PA', 'US-HI', 'US-VA']);
 });
 
 it('carries no authority below the county in any county-resolved state', function () {
@@ -157,11 +202,19 @@ it('carries no authority below the county in any county-resolved state', functio
     );
 
     $coterminous = UsTaxDatasetRateSource::coterminousCityCounties();
+    $cityStates = UsTaxDatasetRateSource::countyEquivalentCityStates();
 
     foreach (UsTaxDatasetRateSource::countyResolvedStates() as $state) {
         foreach ($rates['states'][$state]['local'] ?? [] as $code => $records) {
             foreach ($records as $record) {
-                expect($record['level'] === 'county' || in_array($code, $coterminous, true))
+                $ok = $record['level'] === 'county'
+                    || in_array($code, $coterminous, true)
+                    // Virginia: every city is independent of any county by law, so
+                    // a city-level record there is a county-equivalent. A TOWN is
+                    // not — towns do sit inside counties — and would fail here.
+                    || ($record['level'] === 'city' && in_array($state, $cityStates, true));
+
+                expect($ok)
                     ->toBeTrue("{$code} taxes below the county line — {$state} cannot be county-resolved.");
             }
         }
