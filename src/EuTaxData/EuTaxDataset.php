@@ -193,8 +193,14 @@ readonly class EuTaxDataset
             return false;
         }
 
+        // files.sections.<name>.sha256 — the sections are NESTED, and reading
+        // files.<name> instead silently failed every remote verification while the
+        // local path (trusted without a manifest) kept the tests green. The fixture
+        // agreed because it had been hand-built to match the assumption rather than
+        // the published bytes.
         $files = $manifest['files'] ?? null;
-        $entry = is_array($files) ? ($files[$section] ?? null) : null;
+        $sections = is_array($files) ? ($files['sections'] ?? null) : null;
+        $entry = is_array($sections) ? ($sections[$section] ?? null) : null;
         $expected = is_array($entry) ? ($entry['sha256'] ?? null) : null;
 
         return is_string($expected) && hash('sha256', $raw) === $expected;

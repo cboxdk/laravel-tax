@@ -231,3 +231,72 @@ it('denies when even the standard rate will not read', function () {
 it('survives a rates section that is not JSON at all', function () {
     expect(euCorrupt('<html>gateway timeout</html>')->rateFor(euPlace('FR'), TaxClass::Electronics))->toBeNull();
 });
+
+// ---- Remote verification, against the manifest shape the publisher emits -------
+
+/** Serves the real fixture over a faked HTTP client, so the manifest path is exercised. */
+function euRemote(?callable $tamper = null): EuTaxDatasetRateSource
+{
+    $dir = dirname(__DIR__).'/Fixtures/eu-tax-dataset/';
+    $base = 'https://mirror.test/eu-tax-dataset';
+
+    $files = [
+        'manifest.json' => (string) file_get_contents($dir.'manifest.json'),
+        'by-section/rates.json' => (string) file_get_contents($dir.'by-section/rates.json'),
+        'by-section/class-map.json' => (string) file_get_contents($dir.'by-section/class-map.json'),
+    ];
+
+    if ($tamper !== null) {
+        $files = $tamper($files);
+    }
+
+    $factory = new Factory;
+    $factory->fake(array_combine(
+        array_map(static fn (string $p): string => $base.'/'.$p, array_keys($files)),
+        array_map(static fn (string $b): callable => fn () => Factory::response($b), $files),
+    ));
+
+    return new EuTaxDatasetRateSource(new EuTaxDataset($factory, app(Cache::class), $base));
+}
+
+it('verifies a remote read against the published manifest and accepts it', function () {
+    // The test that was missing, and its absence is why a real bug survived: the
+    // manifest nests sections under files.sections.<name>, the reader looked at
+    // files.<name>, and every remote verification failed silently. The local path is
+    // trusted without a manifest, so the rest of this suite stayed green — and the
+    // fixture agreed because it had been hand-built to match the assumption rather
+    // than the bytes the publisher emits.
+    $rate = euRemote()->rateFor(euPlace('FR'), TaxClass::Groceries);
+
+    expect((string) $rate?->percentage)->toBe('5.5')
+        ->and($rate?->source)->toContain('FOODSTUFFS');
+});
+
+it('refuses a remote section whose bytes do not match the manifest', function () {
+    // The published location is a branch head on a third-party host. One bad push
+    // would otherwise reach every deployment within a cache TTL with nobody having
+    // released anything.
+    $tampered = euRemote(function (array $files): array {
+        $rates = json_decode($files['by-section/rates.json'], true);
+        $rates['states']['FR'][0]['standard'] = '99';
+        $files['by-section/rates.json'] = (string) json_encode($rates);
+
+        return $files;
+    });
+
+    expect($tampered->rateFor(euPlace('FR'), TaxClass::Groceries))->toBeNull();
+});
+
+it('refuses a remote read when the schemaVersion is not the one it was written for', function () {
+    // A bump means the publisher changed something this reader relies on. Guessing
+    // which is worse than denying.
+    $future = euRemote(function (array $files): array {
+        $manifest = json_decode($files['manifest.json'], true);
+        $manifest['schemaVersion'] = 99;
+        $files['manifest.json'] = (string) json_encode($manifest);
+
+        return $files;
+    });
+
+    expect($future->rateFor(euPlace('FR'), TaxClass::Groceries))->toBeNull();
+});
