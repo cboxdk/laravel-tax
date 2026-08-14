@@ -10,14 +10,12 @@ use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
-use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
-use LogicException;
 
 /**
  * EU VAT. Digital/B2C supplies are taxed at the customer's Member State rate
@@ -62,7 +60,7 @@ class EuVatRegime extends DestinationTaxRegime
      */
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
-        $territory = $this->territories?->for($query->place->country, $query->postalCode);
+        $territory = $this->territories?->for($query->place->country, $query->postalCode, $query->on());
 
         if ($territory !== null && $territory->outsideVatArea) {
             return new TaxAssessment(
@@ -108,14 +106,28 @@ class EuVatRegime extends DestinationTaxRegime
         $assessment = parent::assess($query, $rates);
         $rate = $assessment->rate;
 
-        if ($rate === null || $rate->kind !== RateKind::Standard) {
-            if ($rate === null) {
-                return $assessment;
-            }
+        if ($rate === null) {
+            return $assessment;
+        }
 
+        // Substituted by LEVEL, not only for the standard rate. Portugal sets three
+        // levels and the regional assemblies set their own value for each, so the
+        // question is "what does this territory charge where the mainland charges
+        // what the source just returned" — and the answer is a lookup on the rate
+        // itself, because a supply carries a percentage rather than a band name.
+        //
+        // This used to handle the standard rate alone, so a Madeira grocery line
+        // kept the mainland's 6% with a caveat saying it might be two points high.
+        // It was: Madeira charges 4%.
+        $substitute = $territory->rateFor((string) $rate->percentage);
+
+        if ($substitute === null) {
+            // A level this territory's figures do not cover. The mainland band
+            // stands, and the caveat says so rather than the engine quietly
+            // pretending the two are the same.
             return $assessment->with(
                 reason: sprintf(
-                    '%s Charged at the mainland %s%% band: %s sets its own reduced rates and this engine carries only its standard rate, so the band may be up to two points high.',
+                    '%s Charged at the mainland %s%% band: no %s rate is carried at that level, so the band may be high.',
                     $assessment->reason,
                     $rate->percentage,
                     $territory->name,
@@ -124,8 +136,8 @@ class EuVatRegime extends DestinationTaxRegime
         }
 
         $regional = new TaxRate(
-            $territory->standardRate ?? throw new LogicException('A region without a standard rate cannot be assessed as one.'),
-            RateKind::Standard,
+            $substitute,
+            $rate->kind,
             'eu-territory',
             Confidence::Derived,
         );
@@ -137,7 +149,12 @@ class EuVatRegime extends DestinationTaxRegime
             tax: $tax,
             gross: $gross,
             rate: $regional,
-            reason: sprintf('EU VAT: %s%% in %s, which sets its own rate.', $regional->percentage, $territory->name),
+            reason: sprintf(
+                'EU VAT: %s%% in %s, which sets its own rate at each level (mainland %s%%).',
+                $regional->percentage,
+                $territory->name,
+                $rate->percentage,
+            ),
         );
     }
 

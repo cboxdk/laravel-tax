@@ -157,3 +157,51 @@ it('marks the regional rate as derived, not authoritative', function () {
     expect($this->tax->assess(delivery('PT', '9000-001'))->rate?->confidence)
         ->toBe(Confidence::Derived);
 });
+
+// ---- The territories' own rates, at every level --------------------------------
+
+it('charges Madeira its own reduced rate, not the mainland band', function () {
+    // The gap this closes. The regime substituted the STANDARD rate only, so a
+    // Madeira grocery line kept mainland Portugal's 6% with a caveat saying it might
+    // be two points high. It was: Madeira charges 4%.
+    //
+    // Rates from Ofício Circulado n.º 25045 (2024-12-06), Anexo — the Portuguese tax
+    // authority's own table. CIVA art. 18 n.º 3 deliberately does not carry them; it
+    // delegates to the regional assemblies, which is why reading the tax code alone
+    // finds nothing.
+    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001');
+
+    expect($territory?->name)->toBe('Madeira')
+        ->and($territory?->rateFor('23'))->toBe('22')
+        ->and($territory?->rateFor('13'))->toBe('12')
+        ->and($territory?->rateFor('6'))->toBe('4');
+});
+
+it('prices a Madeira supply with the reduced rate in force on its date', function () {
+    // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (DLR 6/2024/M art.
+    // 21.º, effective under art. 121.º n.º 2). An invoice corrected afterwards must
+    // reprice at what applied then.
+    $before = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-06-01'));
+    $after = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-10-01'));
+
+    expect($before?->rateFor('6'))->toBe('5')
+        ->and($after?->rateFor('6'))->toBe('4');
+});
+
+it('charges the Azores 30% below every national level', function () {
+    // DLR 15-A/2021/A cut the national rates by 30% from 2021-07-01, turning
+    // 6/13/23 into 4/9/16 — one rule, three levels, and the engine must apply it at
+    // whichever level the supply lands on.
+    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9500-001');
+
+    expect($territory?->name)->toBe('Azores')
+        ->and($territory?->rateFor('23'))->toBe('16')
+        ->and($territory?->rateFor('13'))->toBe('9')
+        ->and($territory?->rateFor('6'))->toBe('4');
+});
+
+it('leaves a level it does not carry on the mainland band, and says so', function () {
+    // Deny-by-default at the level lookup: an unknown mainland rate is not silently
+    // mapped to the standard one.
+    expect(new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
+});
