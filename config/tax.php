@@ -127,6 +127,31 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | EU VAT dataset (eu-tax-data)
+    |--------------------------------------------------------------------------
+    |
+    | The compiled EU VAT dataset: 27 member states, dated windows back to the
+    | start of the Commission's records, and per-band provenance saying whether a
+    | rate came straight from the source or was resolved by a cited determination.
+    |
+    | Unset by default. Configured, it is tried BEFORE the live TEDB service and
+    | before any hand-built export, because it answers a question a live call
+    | cannot: what a rate was on the date of the supply.
+    |
+    | INTEGRITY — a remote `location` is verified against the published manifest
+    | (sha256 per section, plus schemaVersion), a local one is trusted. Pin a tag
+    | rather than a branch: `main` moves, and a rate changing underneath a running
+    | system is the failure this dataset exists to prevent.
+    |
+    */
+
+    'eu_tax_data' => [
+        'location' => env('TAX_EU_DATASET_LOCATION'),
+        'ttl' => (int) env('TAX_EU_DATASET_TTL', 86400),
+    ],
+
     'tedb' => [
         'live' => env('TAX_TEDB_LIVE', false),
         'ttl' => (int) env('TAX_TEDB_TTL', 86400),

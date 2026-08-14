@@ -20,12 +20,14 @@ use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
+use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Nexus\StaticNexusThresholds;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\ArcGisRateSource;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
+use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\RateSource\IbericodeVatRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\RateSource\TedbRateSource;
@@ -84,6 +86,24 @@ class TaxServiceProvider extends ServiceProvider
             }
 
             $config = $app->make(Config::class);
+
+            // The compiled EU dataset, tried before the live service and before any
+            // hand-built export. It carries a dated series, so a back-dated supply is
+            // priced with the rate that applied then rather than today's — which no
+            // live call can do in one request — and it publishes the source's own
+            // ambiguities rather than resolving them silently.
+            $euDataset = $config->get('tax.eu_tax_data.location');
+
+            if (is_string($euDataset) && $euDataset !== '') {
+                $euTtl = $config->get('tax.eu_tax_data.ttl');
+
+                $sources[] = new EuTaxDatasetRateSource(new EuTaxDataset(
+                    $app->make(Factory::class),
+                    $app->make(Cache::class),
+                    $euDataset,
+                    is_int($euTtl) ? $euTtl : 86400,
+                ));
+            }
 
             // The live TEDB service is the authoritative EU source and needs no key,
             // so it is tried before a hand-built export. It is cached per country, not

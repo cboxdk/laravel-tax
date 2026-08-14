@@ -28,3 +28,4 @@ Two boundaries to keep in mind:
 - **Tax rate ≠ e-invoicing.** This engine calculates tax. It does **not** handle
   mandatory e-invoicing / clearance mandates (Brazil NF-e, India IRN, Italy SdI,
   Mexico CFDI, Poland KSeF, Saudi ZATCA, …) — that is a separate invoicing concern.
+- **[EU VAT dataset](eu-tax-dataset.md)** — dated EU rates from the compiled dataset, and what the engine does with a published ambiguity.

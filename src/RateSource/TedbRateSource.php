@@ -20,12 +20,17 @@ use Throwable;
  * JSON shape below. The location is CONFIG-DRIVEN (`tax.tedb.url`): an `http(s)://`
  * URL or a local filesystem path.
  *
- * **There is no TEDB file to download.** The Commission publishes no export — its
- * SOAP service and web UI are the only sources — so this adapter is for pinning a
- * snapshot you produced and reviewed, typically to keep builds deterministic or to
- * override a band. To read TEDB itself, use {@see TedbSoapRateSource}, which calls
- * the service directly and needs no key. Unconfigured, the static snapshot stays
- * the zero-config default.
+ * **The Commission publishes no export** — its SOAP service and web UI are the only
+ * sources — so this adapter is for pinning a snapshot you produced and reviewed,
+ * typically to keep builds deterministic or to override a band.
+ *
+ * PREFER {@see EuTaxDatasetRateSource} unless you have a reason not to. There IS a
+ * compiled dataset now: `cboxdk/eu-tax-dataset`, built from the same service, with
+ * per-band provenance and a dated series — so a back-dated supply is priced with the
+ * rate that applied then, which neither this adapter nor a live call can do. This
+ * one remains for a snapshot of your own. To read TEDB live, use
+ * {@see TedbSoapRateSource}, which calls the service directly and needs no key.
+ * Unconfigured, the static snapshot stays the zero-config default.
  *
  * Documented dataset shape (a TEDB export normalised to per-country rates):
  *
