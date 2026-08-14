@@ -63,6 +63,7 @@ readonly class IndiaGstRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf('India GST: %s at %s%% (destination).', $component, $rate->percentage),
+            breakdown: $this->breakdown($rate, $net, $tax),
         );
     }
 
@@ -79,6 +80,6 @@ readonly class IndiaGstRegime implements TaxRegime
             return false;
         }
 
-        return $query->seller->isRegisteredInSubdivision($buyerState);
+        return $query->seller->isRegisteredInSubdivision($buyerState, $query->on());
     }
 }

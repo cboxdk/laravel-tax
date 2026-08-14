@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 
@@ -19,7 +19,7 @@ interface TaxRateSource
 {
     public function rateFor(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate;
 }

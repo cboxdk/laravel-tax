@@ -43,6 +43,7 @@ readonly class MalaysiaSstRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf('Malaysia SST: service tax at %s%% (charged on B2B and B2C; no reverse charge).', $rate->percentage),
+            breakdown: $this->breakdown($rate, $net, $tax),
         );
     }
 }

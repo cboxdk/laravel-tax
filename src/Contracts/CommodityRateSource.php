@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
-use Cbox\Tax\Enums\TaxCategory;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 
@@ -36,7 +36,7 @@ interface CommodityRateSource extends TaxRateSource
      */
     public function rateForCommodity(
         Jurisdiction $jurisdiction,
-        TaxCategory $category,
+        TaxClass $category,
         ?string $commodityCode,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate;

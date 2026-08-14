@@ -68,10 +68,16 @@ readonly class StaticNexusThresholds implements NexusThresholds
             // $100,000 AND 200 transactions (both required).
             'US-CT' => new NexusThreshold(100_000, 200, NexusCombinator::SalesAndTransactions),
 
+            // Kentucky REPEALED its transaction prong. HB 757 (2026 RS) amended
+            // KRS 139.340 and 139.450 effective 2026-08-01 to remove the "200 or
+            // more separate transactions" test; the $100,000 gross-receipts
+            // threshold is unchanged. Verified against the Department of Revenue's
+            // own Sales Tax Facts, Summer 2026.
+            'US-KY' => $salesOnly(100_000),
+
             // $100,000 OR 200 transactions (either trigger). Per the compilation,
             // these states still applied a 200-transaction threshold as of the
-            // retrieval date (Kentucky's is scheduled to end 2026-08-01).
-            'US-KY' => $or200(),
+            // retrieval date.
             'US-MD' => $or200(),
             'US-MI' => $or200(),
             'US-MN' => $or200(),

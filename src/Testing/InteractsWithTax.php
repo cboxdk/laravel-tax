@@ -13,6 +13,7 @@ use Cbox\Tax\Enums\ExemptionType;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxExemption;
@@ -62,6 +63,40 @@ trait InteractsWithTax
             validFrom: $validFrom,
             validUntil: $validUntil,
         );
+    }
+
+    /**
+     * Assert an assessment's breakdown is present and reconciles: every
+     * authority's share sums back to exactly the tax that was charged.
+     *
+     * This is the property a per-jurisdiction filing depends on, so it is worth
+     * asserting directly rather than eyeballing the individual shares — a
+     * breakdown that is one minor unit out is a filing that does not balance.
+     *
+     * @param  list<string>|null  $levels  Expected authority levels, in order.
+     */
+    protected function assertBreakdownReconciles(TaxAssessment $assessment, ?array $levels = null): void
+    {
+        Assert::assertNotNull($assessment->breakdown, 'Expected a breakdown on the assessment.');
+
+        $total = $assessment->breakdown->total();
+
+        Assert::assertNotNull($total, 'Expected a non-empty breakdown.');
+        Assert::assertTrue(
+            $total->isEqualTo($assessment->tax),
+            sprintf('Breakdown sums to %s but the tax charged was %s.', $total, $assessment->tax),
+        );
+
+        if ($levels !== null) {
+            Assert::assertSame(
+                $levels,
+                array_map(
+                    static fn (BreakdownLine $line): string => $line->level->value,
+                    $assessment->breakdown->lines,
+                ),
+                'Breakdown levels mismatch.',
+            );
+        }
     }
 
     /**

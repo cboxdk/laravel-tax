@@ -11,6 +11,7 @@ use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
@@ -29,6 +30,21 @@ abstract class DestinationTaxRegime implements TaxRegime
 
     /** Short name of the regime, used in the assessment's human-readable reason. */
     abstract protected function label(): string;
+
+    /**
+     * Legal statements a reverse-charged invoice must carry under this regime.
+     *
+     * Empty by default, because only a regime knows whether its jurisdiction
+     * mandates wording and which provision to cite. Inventing a citation would be
+     * worse than printing nothing: a wrong article on an invoice is a defect a
+     * reader will trust.
+     *
+     * @return list<InvoiceMention>
+     */
+    protected function reverseChargeMentions(TaxQuery $query): array
+    {
+        return [];
+    }
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
@@ -71,6 +87,7 @@ abstract class DestinationTaxRegime implements TaxRegime
                 $this->label(),
                 $query->place->country->value,
             ),
+            mentions: $this->reverseChargeMentions($query),
         );
     }
 
@@ -78,6 +95,8 @@ abstract class DestinationTaxRegime implements TaxRegime
     {
         [$net, $tax, $gross] = $this->split($query, $rate);
 
+        // No breakdown on a zero-rated supply: there is no tax to split, and a
+        // stack of zero shares would imply a decomposition that says nothing.
         if ($rate->isZero()) {
             return new TaxAssessment(
                 treatment: TaxTreatment::ZeroRated,
@@ -114,6 +133,7 @@ abstract class DestinationTaxRegime implements TaxRegime
                 $rate->percentage,
                 $place->country->value,
             ),
+            breakdown: $this->breakdown($rate, $net, $tax),
         );
     }
 }

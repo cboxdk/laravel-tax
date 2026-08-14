@@ -6,6 +6,8 @@ namespace Cbox\Tax\ValueObjects;
 
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use DateTimeImmutable;
+use DateTimeInterface;
 
 /**
  * The tax standing of the seller entity that is issuing the invoice: where it is
@@ -36,14 +38,14 @@ readonly class SellerRegistrations
         return $this->establishment->equals($country);
     }
 
-    public function isRegisteredIn(CountryCode $country): bool
+    public function isRegisteredIn(CountryCode $country, ?DateTimeInterface $on = null): bool
     {
         if ($this->establishment->equals($country)) {
             return true;
         }
 
         foreach ($this->registrations as $registration) {
-            if ($registration->country->equals($country)) {
+            if ($registration->country->equals($country) && $this->inForce($registration, $on)) {
                 return true;
             }
         }
@@ -56,15 +58,29 @@ readonly class SellerRegistrations
      * jurisdiction (a US state permit, a Canadian province) — the nexus test for
      * sub-federal regimes.
      */
-    public function isRegisteredInSubdivision(SubdivisionCode $subdivision): bool
+    public function isRegisteredInSubdivision(SubdivisionCode $subdivision, ?DateTimeInterface $on = null): bool
     {
         foreach ($this->registrations as $registration) {
-            if ($registration->subdivision !== null && $registration->subdivision->equals($subdivision)) {
+            if ($registration->subdivision !== null
+                && $registration->subdivision->equals($subdivision)
+                && $this->inForce($registration, $on)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Whether a registration was in force on the date asked about.
+     *
+     * A null date means "today", which keeps every existing caller working. It is
+     * the wrong default for a backfill and the right one for a live invoice, so
+     * regimes pass the supply date explicitly.
+     */
+    private function inForce(SellerRegistration $registration, ?DateTimeInterface $on): bool
+    {
+        return $registration->coversDate($on ?? new DateTimeImmutable);
     }
 
     public function hasScheme(string $scheme): bool

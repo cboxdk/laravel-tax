@@ -8,6 +8,7 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
+use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Regime\CaGstRegime;
 use Cbox\Tax\Regime\EuVatRegime;
@@ -16,6 +17,7 @@ use Cbox\Tax\Regime\MalaysiaSstRegime;
 use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Territories\StaticEuTerritories;
 
 /**
  * Maps regime-module keys to regime instances. Keys with no entry return `null`,
@@ -44,11 +46,12 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
         ?ProductTaxability $taxability = null,
         ?JurisdictionRepository $jurisdictions = null,
         ?NexusThresholds $nexusThresholds = null,
+        ?SourcingRules $sourcing = null,
     ): self {
         $national = new NationalTaxRegime;
 
         return new self([
-            'eu-vat' => new EuVatRegime($jurisdictions),
+            'eu-vat' => new EuVatRegime($jurisdictions, new StaticEuTerritories),
             'uk-vat' => $national,
             'ch-vat' => $national,
             'no-vat' => $national,
@@ -72,7 +75,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing),
             'ca-gst' => new CaGstRegime,
         ]);
     }

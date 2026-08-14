@@ -62,6 +62,7 @@ readonly class CaGstRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf('Canadian GST/HST: %s%% in %s.', $rate->percentage, $subdivision->value),
+            breakdown: $this->breakdown($rate, $net, $tax),
         );
     }
 }

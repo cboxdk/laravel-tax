@@ -18,7 +18,11 @@ readonly class TaxReturn
     /**
      * @param  list<ReturnLine>  $lines
      */
-    public function __construct(public array $lines) {}
+    public function __construct(
+        public array $lines,
+        /** The window this return covers, when it was aggregated for one. */
+        public ?ReturnPeriod $period = null,
+    ) {}
 
     /**
      * The line for a country + currency, optionally narrowed to a subdivision. When

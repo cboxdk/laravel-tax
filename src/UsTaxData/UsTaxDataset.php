@@ -36,6 +36,9 @@ readonly class UsTaxDataset
     /** Sections this loader reads, each a `by-section/<name>.json` file. */
     private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates'];
 
+    /** The only dataset schema this reader understands. See {@see verified()}. */
+    private const int SCHEMA_VERSION = 4;
+
     public function __construct(
         private Factory $http,
         private Cache $cache,
@@ -48,9 +51,9 @@ readonly class UsTaxDataset
      * the curated baseline. Null when the state has no sales tax, no baseline, or
      * the section is unavailable — the caller then denies.
      */
-    public function stateRatePercent(string $state): ?string
+    public function stateRatePercent(string $state, ?DateTimeImmutable $at = null): ?string
     {
-        $baseline = $this->currentBaseline($state);
+        $baseline = $this->currentBaseline($state, $at);
 
         if ($baseline === null || ($baseline['noSalesTax'] ?? null) === true) {
             return null;
@@ -59,12 +62,36 @@ readonly class UsTaxDataset
         return $this->fractionToPercent($baseline['stateRate'] ?? null);
     }
 
-    /** Whether the state levies no general sales tax (DE, MT, NH, OR). */
-    public function hasNoSalesTax(string $state): bool
+    /**
+     * Whether the state levies no general sales tax (DE, MT, NH, OR), or NULL when
+     * the baseline cannot be read.
+     *
+     * Nullable because the alternative answers wrongly in the unsafe direction: a
+     * bare `false` on an unreachable dataset says "this state does tax", which is a
+     * claim, not an absence of one. Every other accessor here refuses; so does this.
+     */
+    public function hasNoSalesTax(string $state): ?bool
     {
         $baseline = $this->currentBaseline($state);
 
-        return $baseline !== null && ($baseline['noSalesTax'] ?? null) === true;
+        return $baseline === null ? null : ($baseline['noSalesTax'] ?? null) === true;
+    }
+
+    /**
+     * Whether local (county/city/borough) authorities levy a sales tax in the
+     * state, per the curated baseline.
+     *
+     * The load-bearing case is Alaska: no STATE sales tax, but boroughs and cities
+     * levy their own (Juneau 5%, Wrangell 7%, with no statutory cap). Its baseline is
+     * `stateRate: 0` with `noSalesTax: false` — a state share that is genuinely
+     * zero, sitting under a local share that is not. A caller that resolves only
+     * the state share there must refuse rather than report 0%.
+     */
+    public function hasLocalSalesTax(string $state): bool
+    {
+        $baseline = $this->currentBaseline($state);
+
+        return $baseline !== null && ($baseline['localsExist'] ?? null) === true;
     }
 
     /**
@@ -83,16 +110,16 @@ readonly class UsTaxDataset
 
     /**
      * The baseline window in effect now — the curated planes are dated-window
-     * lists (schemaVersion 4), so pick the one covering today.
+     * lists (schemaVersion 4), so pick the one covering the date — and only that.
      *
      * @return array<array-key, mixed>|null
      */
-    private function currentBaseline(string $state): ?array
+    private function currentBaseline(string $state, ?DateTimeImmutable $at = null): ?array
     {
         $entry = $this->stateEntry('baseline', $state);
         $windows = is_array($entry) && is_array($entry['baseline'] ?? null) ? $entry['baseline'] : null;
 
-        return $windows === null ? null : $this->activeWindow($windows);
+        return $windows === null ? null : $this->activeWindow($windows, $at);
     }
 
     /**
@@ -153,7 +180,7 @@ readonly class UsTaxDataset
      * when the dataset carries no rule for it (the caller then applies its own
      * default or denies).
      */
-    public function taxability(string $state, string $category): ?TaxabilityDetermination
+    public function taxability(string $state, string $category, ?DateTimeImmutable $at = null): ?TaxabilityDetermination
     {
         $rules = $this->stateEntry('taxability', $state);
 
@@ -162,7 +189,9 @@ readonly class UsTaxDataset
         }
 
         // Taxability is a dated-window list; a category may carry several windows.
-        // Take the window for this category in effect now.
+        // Take the one in effect on the supply's date — the windows exist to carry
+        // law that changed, and evaluating them all against today made every one of
+        // them unreachable for a supply that was not made today.
         $matching = [];
 
         foreach ($rules as $rule) {
@@ -171,7 +200,7 @@ readonly class UsTaxDataset
             }
         }
 
-        $rule = $this->activeWindow($matching);
+        $rule = $this->activeWindow($matching, $at);
 
         if ($rule === null) {
             return null;
@@ -246,8 +275,8 @@ readonly class UsTaxDataset
 
     /**
      * The window in effect on `$at` (default: today) from a dated-window list —
-     * the record whose [effectiveFrom, effectiveTo] covers the date, else the
-     * first. Null for an empty list.
+     * the record whose [effectiveFrom, effectiveTo] covers the date, and ONLY that.
+     * Null when the list is empty or nothing covers the date.
      *
      * @param  array<array-key, mixed>  $windows
      * @return array<array-key, mixed>|null
@@ -255,14 +284,11 @@ readonly class UsTaxDataset
     private function activeWindow(array $windows, ?DateTimeImmutable $at = null): ?array
     {
         $date = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
-        $fallback = null;
 
         foreach ($windows as $window) {
             if (! is_array($window)) {
                 continue;
             }
-
-            $fallback ??= $window;
 
             $from = is_string($window['effectiveFrom'] ?? null) ? $window['effectiveFrom'] : null;
             $to = is_string($window['effectiveTo'] ?? null) ? $window['effectiveTo'] : null;
@@ -272,7 +298,14 @@ readonly class UsTaxDataset
             }
         }
 
-        return $fallback;
+        // No window covers the date. There is deliberately NO fallback to the first
+        // window in the list: the dated-window mechanism exists precisely to carry
+        // pending and repealed law, and serving a window the dataset said does not
+        // apply defeats it. A state whose only window starts in 2027 would have that
+        // future threshold applied today; one whose window has ended would serve a
+        // repealed rate indefinitely. Refusing sends the caller to its own
+        // deny-by-default path, which every caller here already has.
+        return null;
     }
 
     /**
@@ -449,6 +482,10 @@ readonly class UsTaxDataset
             return null;
         }
 
+        if (! $this->verified($section, $raw)) {
+            return null;
+        }
+
         $decoded = json_decode($raw, true);
 
         if (! is_array($decoded) || ! is_array($decoded['states'] ?? null)) {
@@ -479,6 +516,91 @@ readonly class UsTaxDataset
         $inflated = @gzdecode($raw);
 
         return $inflated === false ? null : $inflated;
+    }
+
+    /**
+     * Whether a fetched section is the one the publisher signed off.
+     *
+     * The ETL publishes a `manifest.json` carrying a sha256 per section and the
+     * `schemaVersion` the files were built to, and its own docs tell consumers to
+     * check both. Not checking them left two holes with no alarm on either:
+     *
+     *  - a schemaVersion bump that changed a unit — `stateRate` from a fraction to
+     *    a percentage — would be multiplied by 100 again here and charge 725% tax
+     *    at `Confidence::Authoritative`, reaching every deployment on the next
+     *    cache expiry with nobody releasing anything;
+     *  - the default location is a MUTABLE branch head on a third-party host, so
+     *    one bad push lands everywhere within one TTL.
+     *
+     * Verification is REQUIRED over http(s) and optional for a local directory.
+     * That is not laziness: over the network you did not choose the bytes, and on
+     * your own disk you did. A local mirror without a manifest is a deliberate
+     * choice; a remote one without a manifest is a fetch that went somewhere
+     * unexpected.
+     */
+    private function verified(string $section, string $raw): bool
+    {
+        $manifest = $this->manifest();
+
+        if ($manifest === null) {
+            return ! $this->isRemote();
+        }
+
+        // A schema this reader was not written for cannot be read safely. The
+        // fields it renamed or re-scaled are exactly the ones money depends on.
+        if (($manifest['schemaVersion'] ?? null) !== self::SCHEMA_VERSION) {
+            return false;
+        }
+
+        $files = $manifest['files'] ?? null;
+        $sections = is_array($files) ? ($files['sections'] ?? null) : null;
+        $entry = is_array($sections) ? ($sections[$section] ?? null) : null;
+        $expected = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        if (! is_string($expected)) {
+            // The manifest exists but says nothing about this section. Remotely
+            // that is a gap we cannot close; locally it is the operator's own file.
+            return ! $this->isRemote();
+        }
+
+        return hash_equals($expected, hash('sha256', $raw));
+    }
+
+    /**
+     * The publisher's manifest, cached alongside the sections. Null when there is
+     * none, or it cannot be read or parsed.
+     *
+     * @return array<array-key, mixed>|null
+     */
+    private function manifest(): ?array
+    {
+        $key = 'cbox-tax:us-dataset:'.substr(hash('sha256', $this->location), 0, 16).':manifest';
+        $cached = $this->cache->get($key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $raw = $this->read('manifest.json');
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $this->cache->put($key, $decoded, $this->ttl);
+
+        return $decoded;
+    }
+
+    private function isRemote(): bool
+    {
+        return str_starts_with($this->location, 'http://') || str_starts_with($this->location, 'https://');
     }
 
     private function read(string $relative): ?string

@@ -13,11 +13,18 @@ use Cbox\Tax\Enums\NexusCombinator;
  * thresholds — the point at which a seller with no physical presence nonetheless
  * has an obligation to register and collect.
  *
- * This is DATA (published per state, and largely stable); the engine does not
- * evaluate it automatically per invoice, because economic nexus depends on the
- * seller's CUMULATIVE sales/transactions in the state over a measuring period,
- * which a single supply does not carry. The host supplies those running totals to
- * {@see isMet()} to determine whether the seller has likely crossed the threshold.
+ * This carries the FIGURES so a `NotRegistered` outcome can name them — nothing
+ * more. It deliberately cannot decide whether a seller has crossed a threshold,
+ * and {@see describe()} is its whole purpose.
+ *
+ * The verdict is a different question and a harder one. It turns on the state's
+ * measuring PERIOD (rolling twelve months, previous calendar year, the four
+ * preceding VAT quarters) and on which sales BASIS it measures (gross, retail,
+ * taxable) — neither of which this object carries, and neither of which a single
+ * supply can supply. An answer given without them is a confident guess dressed as
+ * a determination, so this package does not offer one. `cboxdk/laravel-nexus`
+ * models both and returns `Unknown` rather than guessing when the seller's totals
+ * are measured on a different footing than the state uses.
  */
 readonly class NexusThreshold
 {
@@ -26,22 +33,6 @@ readonly class NexusThreshold
         public ?int $transactions,
         public NexusCombinator $combinator,
     ) {}
-
-    /**
-     * Whether the given cumulative sales (in whole dollars) and transaction count
-     * meet this state's economic-nexus threshold.
-     */
-    public function isMet(int $salesDollars, int $transactions): bool
-    {
-        $salesMet = $salesDollars >= $this->salesDollars;
-        $transactionsMet = $this->transactions !== null && $transactions >= $this->transactions;
-
-        return match ($this->combinator) {
-            NexusCombinator::SalesOnly => $salesMet,
-            NexusCombinator::SalesOrTransactions => $salesMet || $transactionsMet,
-            NexusCombinator::SalesAndTransactions => $salesMet && $transactionsMet,
-        };
-    }
 
     /** A short human-readable description, e.g. "$100,000 or 200 transactions". */
     public function describe(): string
