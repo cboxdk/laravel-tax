@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Enums;
 
-use Cbox\Tax\Contracts\ProductTaxability;
-
 /**
- * The taxability class of what is being supplied. Rate sources key rates off this
- * plus the jurisdiction, and the {@see ProductTaxability} seam
- * decides whether it is taxable in a given jurisdiction.
+ * The engine's former product classification, kept as a translator.
  *
- * `Standard` is the default general-goods class (standard-rated tangible goods).
- * `DigitalService` is called out because its place-of-supply rules differ. The
- * remaining cases mirror the product categories the us-tax-data taxability dataset
- * carries, so a host can ask a state-specific question ("is candy taxable in CA?")
- * instead of collapsing everything to standard. Each case maps to a dataset
- * category key via {@see datasetCategory()}.
+ * @deprecated Use {@see TaxClass}. This exists so a caller already storing these
+ * values on their products can migrate a field at a time rather than in one
+ * release, and it will be removed once that migration has had time to happen.
+ *
+ * Why it was replaced, briefly, because the reason matters more than the rename:
+ * these 25 cases were derived from the US question — *is this taxable in this
+ * state*, a boolean per (state, category) — and then reused for the EU, which asks
+ * *which band* against a schedule of 87 headings. Measured against the Commission's
+ * own published rates for all 27 Member States, this list reached 23% of the bands;
+ * {@see TaxClass} reaches 98%. The gap was not sloppiness, it was a list answering
+ * the wrong question.
  */
 enum TaxCategory: string
 {
@@ -47,12 +48,41 @@ enum TaxCategory: string
     case ServicesAiApi = 'services_ai_api';
 
     /**
-     * The us-tax-data taxability category key this class maps to. Identical to the
-     * enum value for every case except `Standard`, which maps to the dataset's
-     * general-tangible-goods category `goods_general`.
+     * The class this category becomes.
+     *
+     * Every case maps to exactly one class and none is dropped, so a stored value
+     * always converts. Clothing maps to {@see TaxClass::Clothing} rather than
+     * splitting into footwear: the old list did not distinguish them, and inventing
+     * a distinction during a migration would silently reclassify a merchant's shoes.
      */
-    public function datasetCategory(): string
+    public function toClass(): TaxClass
     {
-        return $this === self::Standard ? 'goods_general' : $this->value;
+        return match ($this) {
+            self::Standard => TaxClass::GeneralGoods,
+            self::DigitalService => TaxClass::DigitalService,
+            self::DigitalProducts => TaxClass::DigitalProduct,
+            self::Clothing => TaxClass::Clothing,
+            self::Grocery => TaxClass::Groceries,
+            self::PreparedFood => TaxClass::PreparedFood,
+            self::Candy => TaxClass::Candy,
+            self::SoftDrinks => TaxClass::SoftDrinks,
+            self::PrescriptionDrugs => TaxClass::PrescriptionMedicine,
+            self::OtcDrugs => TaxClass::OtcMedicine,
+            self::DietarySupplements => TaxClass::DietarySupplements,
+            self::MedicalDevices => TaxClass::MedicalDevice,
+            self::GoodsElectronics => TaxClass::Electronics,
+            self::GoodsFurniture => TaxClass::Furniture,
+            self::Books => TaxClass::Book,
+            self::Magazines => TaxClass::Periodical,
+            self::Newspapers => TaxClass::Newspaper,
+            self::SoftwarePrewritten => TaxClass::SoftwarePrewritten,
+            self::SoftwareCustom => TaxClass::SoftwareCustom,
+            self::ServicesProfessional => TaxClass::ProfessionalService,
+            self::ServicesRepair => TaxClass::RepairService,
+            self::ServicesDataProcessing => TaxClass::DataProcessing,
+            self::ServicesPersonalCare => TaxClass::PersonalCare,
+            self::ServicesWebHosting => TaxClass::WebHosting,
+            self::ServicesAiApi => TaxClass::AiApi,
+        };
     }
 }
