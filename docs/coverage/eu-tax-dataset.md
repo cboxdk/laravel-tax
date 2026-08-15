@@ -59,6 +59,51 @@ can see that a better answer exists.
 An undecided heading also **stops the search**: falling through to the next heading
 would quietly price the supply under one nobody asked about.
 
+## Getting an exact answer: the supply's classification code
+
+The heading cannot say which supply takes which rate. The **CN code** (goods) or
+**CPA code** (services) can, and the source scopes every rate to them — so pass the
+code and the ambiguity resolves:
+
+```php
+new TaxQuery(
+    // …
+    category: TaxClass::Groceries,
+    commodityCode: '0102 21 10',   // live pure-bred breeding cattle
+);
+```
+
+| What you pass | Hungary answers |
+| --- | --- |
+| `TaxClass::Groceries` alone | 27% standard, `Derived` — the heading is 5% and 18% at once |
+| plus `cn:01022110` | **5%**, `Authoritative` |
+| plus `cn:1806` (chocolate) | **18%**, `Authoritative` |
+
+**Nothing is required.** A code refines and never restricts: unknown, contested, or
+on a heading that was already settled, it changes nothing and the class alone
+decides exactly as before. So you can pass one opportunistically without knowing
+whether a given country needed it.
+
+Write it however your catalogue holds it — `cn:01022110`, `01022110`, or
+`0102 21 10`. A code with no scheme is read as **CN**, because that is what a seller
+of goods has to hand; quote a service as `cpa:…` explicitly. The scheme is not
+guessable from the digits (`32` is a valid CN chapter *and* a valid CPA division),
+so it is stated rather than inferred.
+
+Matching is **longest prefix**, as tariff classification works: the source scopes
+some rates to a bare chapter (`cn:02`, meat) and others to eight digits, and a
+specific code beats the chapter containing it.
+
+### What this does not reach
+
+Of the 2,028 codes sitting under an ambiguous heading, **1,901 resolve to exactly
+one rate**. The rest are published as nothing rather than with a chosen rate — Italy
+holds 57 of them, where foodstuffs split on something the tariff does not record.
+
+And a rate the source scoped to **no codes at all** is unreachable this way. Austria's
+0% foodstuffs row is one: a supply belonging to it still falls back to the standard
+rate. Codes only ever add an answer.
+
 ## What it refuses
 
 **A date before the records begin.** The archive starts 2016-01-01. Estonia charged

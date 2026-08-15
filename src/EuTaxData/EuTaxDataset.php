@@ -49,7 +49,7 @@ readonly class EuTaxDataset
      * which is the whole reason the history exists. Null when the country is absent
      * or nothing covers the date.
      *
-     * @return array{standard: string, bands: array<array-key, mixed>, undecided: array<array-key, mixed>}|null
+     * @return array{standard: string, bands: array<array-key, mixed>, undecided: array<array-key, mixed>, scopes: array<array-key, mixed>}|null
      */
     public function window(string $country, ?DateTimeImmutable $at = null): ?array
     {
@@ -82,6 +82,11 @@ readonly class EuTaxDataset
                     'standard' => $standard,
                     'bands' => is_array($window['bands'] ?? null) ? $window['bands'] : [],
                     'undecided' => is_array($window['undecided'] ?? null) ? $window['undecided'] : [],
+                    // The CN/CPA codes each rate is scoped to, for the headings the
+                    // publisher could not settle. Absent on an older file, which is
+                    // why this reads as an empty map rather than refusing: the codes
+                    // add an answer, they are never required for one.
+                    'scopes' => is_array($window['scopes'] ?? null) ? $window['scopes'] : [],
                 ];
             }
         }

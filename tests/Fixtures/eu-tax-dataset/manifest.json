@@ -1,1 +1,28 @@
-{"schemaVersion":1,"version":"2026-08-14","generatedAt":"2026-08-14T15:57:33+00:00","contentHash":"fb9b9ba19e5fe0c8a81f27a75e84d4efb4c29f43b250dcf5b998ca62a657bb86","files":{"sections":{"class-map":{"path":"by-section/class-map.json","bytes":2362,"sha256":"4dcfcd0c64cb2cc36719856e5ea43096663cc9808612d5ad4c613b6822c108cc","gzip":{"path":"by-section/class-map.json.gz","bytes":1148}},"rates":{"path":"by-section/rates.json","bytes":63629,"sha256":"25c0c817d67f263bb30d01bd6912afb470ef4a5f1db6bc103ee38d847c673fe3","gzip":{"path":"by-section/rates.json.gz","bytes":13244}}}}}
+{
+  "schemaVersion": 1,
+  "version": "2026-08-14",
+  "generatedAt": "2026-08-14T15:57:33+00:00",
+  "contentHash": "fb9b9ba19e5fe0c8a81f27a75e84d4efb4c29f43b250dcf5b998ca62a657bb86",
+  "files": {
+    "sections": {
+      "class-map": {
+        "path": "by-section/class-map.json",
+        "bytes": 2362,
+        "sha256": "4dcfcd0c64cb2cc36719856e5ea43096663cc9808612d5ad4c613b6822c108cc",
+        "gzip": {
+          "path": "by-section/class-map.json.gz",
+          "bytes": 1148
+        }
+      },
+      "rates": {
+        "path": "by-section/rates.json",
+        "bytes": 63629,
+        "sha256": "445ca1dbdb703e8ddf2e88eb0aff4dc9ccf31d9b90498b44754336506dd7a0d3",
+        "gzip": {
+          "path": "by-section/rates.json.gz",
+          "bytes": 13244
+        }
+      }
+    }
+  }
+}
