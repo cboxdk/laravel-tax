@@ -34,7 +34,7 @@ use Throwable;
 readonly class UsTaxDataset
 {
     /** Sections this loader reads, each a `by-section/<name>.json` file. */
-    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates'];
+    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates', 'holidays'];
 
     /** The only dataset schema this reader understands. See {@see verified()}. */
     private const int SCHEMA_VERSION = 4;
@@ -289,6 +289,58 @@ readonly class UsTaxDataset
     private static function dropUnit(string $key): string
     {
         return (string) preg_replace('/\s+(county|parish|borough|city)$/', '', $key);
+    }
+
+    /**
+     * The per-item price cap under which a state exempts a product class on a date,
+     * with the holiday's name — or null when no holiday covers that class then.
+     *
+     * ALL-OR-NOTHING, and that is the opposite of the permanent clothing thresholds
+     * this dataset also carries. Massachusetts exempts the first $175 of any coat
+     * all year and taxes the rest; a holiday cap qualifies the WHOLE item or none of
+     * it, so a $100 coat in a $100-cap state is untaxed and a $101 coat is taxed in
+     * full. The caller must not treat this figure the way it treats a threshold.
+     *
+     * Null covers three cases a caller need not distinguish, because the answer is
+     * the same in all three: the state holds no holiday, none is running that day,
+     * or the calendar for that year has not been sourced. All three mean charge
+     * normally — which over-collects for a weekend, and is refundable and visible,
+     * where exempting a supply the state taxes is neither.
+     *
+     * @return array{name: string, cap: int}|null
+     */
+    public function salesTaxHoliday(string $state, string $class, DateTimeImmutable $on): ?array
+    {
+        $holidays = $this->stateEntry('holidays', $state);
+
+        if (! is_array($holidays)) {
+            return null;
+        }
+
+        $date = $on->format('Y-m-d');
+
+        foreach ($holidays as $holiday) {
+            if (! is_array($holiday)) {
+                continue;
+            }
+
+            $from = $holiday['from'] ?? null;
+            $to = $holiday['to'] ?? null;
+
+            if (! is_string($from) || ! is_string($to) || $date < $from || $date > $to) {
+                continue;
+            }
+
+            $caps = $holiday['caps'] ?? null;
+            $cap = is_array($caps) ? ($caps[$class] ?? null) : null;
+            $name = $holiday['name'] ?? null;
+
+            if (is_int($cap) && $cap > 0 && is_string($name)) {
+                return ['name' => $name, 'cap' => $cap];
+            }
+        }
+
+        return null;
     }
 
     /**

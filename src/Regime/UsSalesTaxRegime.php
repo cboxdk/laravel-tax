@@ -87,6 +87,33 @@ readonly class UsSalesTaxRegime implements TaxRegime
         return $from !== null && $from <= $on->format('Y-m-d');
     }
 
+    /**
+     * Whether the line is at or under a holiday's per-item cap.
+     *
+     * ALL-OR-NOTHING, and this is where the two mechanics would otherwise be
+     * confused. The permanent clothing thresholds a few lines up exempt the first
+     * $175 of a Massachusetts coat and tax the rest. A holiday cap qualifies the
+     * whole item or none of it: at $100 in a $100-cap state the coat is untaxed, at
+     * $100.01 it is taxed in full. Treating a holiday cap as a threshold would
+     * exempt the first $100 of a coat the state charges full tax on.
+     *
+     * CURRENCY MUST MATCH, and a mismatch charges rather than refuses. The caps are
+     * dollar figures in state statutes, so comparing a line billed in another
+     * currency would need an exchange rate on the supply date — the same reason the
+     * threshold path throws. Here it does NOT throw: a holiday is a few days of
+     * relief, and refusing the whole assessment over one would break a checkout for
+     * a supply that is perfectly taxable. It falls through to the ordinary rate,
+     * which is what applies outside the holiday anyway.
+     */
+    private function qualifiesForHoliday(TaxQuery $query, int $cap): bool
+    {
+        if ($query->amount->getCurrency()->getCurrencyCode() !== 'USD') {
+            return false;
+        }
+
+        return $query->amount->getAmount()->toFloat() <= (float) $cap;
+    }
+
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
         $subdivision = $query->place->subdivision;
@@ -169,6 +196,31 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 placeOfSupply: $query->place,
                 rate: null,
                 reason: $this->exemptReason($query, $subdivision, $determination),
+            );
+        }
+
+        // A holiday is the last gate before a rate, because it does not change the
+        // rate — it removes the supply from tax for a few days. Asked after
+        // taxability so a supply that is already exempt is reported as exempt for
+        // its own reason rather than credited to a weekend it did not need.
+        $holiday = $this->dataset?->salesTaxHoliday($subdivision->value, $query->category->value, $query->on());
+
+        if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'])) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::Exempt,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf(
+                    'US sales tax: exempt under %s\'s %s, which covers %s at or under $%d per item on %s.',
+                    $subdivision->value,
+                    $holiday['name'],
+                    $query->category->value,
+                    $holiday['cap'],
+                    $query->on()->format('Y-m-d'),
+                ),
             );
         }
 

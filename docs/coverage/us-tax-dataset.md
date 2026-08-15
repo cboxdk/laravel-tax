@@ -130,6 +130,50 @@ it is the right one to use.
 The refusal is scoped to categories whose taxability actually turns on price.
 Everything else is assessed in whatever currency you bill in.
 
+## Sales tax holidays
+
+Sixteen states hold a back-to-school weekend in the 2026 calendar, and the engine
+applies them automatically from the supply's date. A $80 shirt in Texas on 8 August
+is exempt; the same shirt on the 6th is taxed.
+
+**The cap is all-or-nothing, and it is the opposite of the thresholds above.**
+Massachusetts exempts the first $175 of any coat all year and taxes the rest. A
+holiday cap qualifies the whole item or none of it: at a $100 cap, a $100 coat is
+untaxed and a $101 coat is taxed on all $101. Do not read the two figures the same
+way.
+
+Caps are per state, not shared — Ohio caps clothing at $75 the same weekend Texas
+caps it at $100, so an $80 shirt is exempt in one and taxed in the other.
+
+### What is modelled, and what is charged anyway
+
+Only **clothing, footwear and books**. Everything else a holiday covers is charged
+normally, which over-collects for a weekend — refundable and visible, where
+exempting a supply the state taxes is neither. The reasons are recorded per item
+type in the dataset overlay:
+
+| Not modelled | Why |
+| --- | --- |
+| School supplies | No `TaxClass` expresses it |
+| Computers | `TaxClass::Electronics` is broader — it covers televisions, which the holidays tax |
+| Energy Star | Turns on a certification mark, not a product class |
+| Firearms | No class, and those holidays are uncapped, so a wrong mapping exempts without limit |
+| Buyer status | Nevada's National Guard weekend and New Mexico's Small Business Saturday turn on who is buying or selling |
+
+Four states are omitted whole, each with its reason in the overlay — Massachusetts
+because its holiday covers tangible personal property generally, with statutory
+exclusions this has not sourced.
+
+**A line billed in something other than USD is charged, not refused.** The caps are
+dollar figures in state statutes, and comparing another currency needs an exchange
+rate on the supply date. The threshold path throws on that; this one does not,
+because a holiday is a few days of relief and refusing the assessment would break a
+checkout for a perfectly taxable supply.
+
+**The calendar is republished yearly.** A year that has not been sourced yet means
+`null`, and the engine charges normally — the same safe direction as an unmodelled
+item.
+
 ## Rate precision: state level, with reduced-rate and rooftop refinements
 
 The dataset carries every local rate, but the engine resolves jurisdictions to the
