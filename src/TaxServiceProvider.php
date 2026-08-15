@@ -198,6 +198,7 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(JurisdictionRepository::class),
                 $app->make(NexusThresholds::class),
                 $sourcing,
+                self::usTaxDataset($app),
             );
         });
 

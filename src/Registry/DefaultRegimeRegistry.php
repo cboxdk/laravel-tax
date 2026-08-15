@@ -18,6 +18,7 @@ use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 
 /**
  * Maps regime-module keys to regime instances. Keys with no entry return `null`,
@@ -40,13 +41,17 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
      * seller's origin jurisdiction for Art. 59c micro-business sourcing; without it
      * the regime falls back to destination taxation. The optional
      * {@see NexusThresholds} lets the US regime annotate a `NotRegistered` outcome
-     * with the state's economic-nexus threshold.
+     * with the state's economic-nexus threshold, and the optional
+     * {@see UsTaxDataset} tells it when each state's marketplace-facilitator rule
+     * took effect — without it the regime never applies that treatment, which
+     * leaves the tax with the seller and is the recoverable direction.
      */
     public static function withDefaults(
         ?ProductTaxability $taxability = null,
         ?JurisdictionRepository $jurisdictions = null,
         ?NexusThresholds $nexusThresholds = null,
         ?SourcingRules $sourcing = null,
+        ?UsTaxDataset $dataset = null,
     ): self {
         $national = new NationalTaxRegime;
 
@@ -75,7 +80,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing, $dataset),
             'ca-gst' => new CaGstRegime,
         ]);
     }

@@ -89,6 +89,15 @@ services. Florida, Pennsylvania, Hawaii and Virginia need no opt-in and no bound
 all, because the county is the only authority that can tax there and a geocoder
 returns it for free. The rest fall back to the state rate
 ([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).
+**Marketplace sales are not the seller's to collect.** Every US state with a sales
+tax now makes a qualifying marketplace the liable party — Missouri closed the set on
+2023-01-01 — so pass `marketplaceFacilitated: true` and the engine returns
+`MarketplaceFacilitated`: nothing charged, because the marketplace already charged
+it. It is kept apart from `Exempt` and `NotRegistered` on purpose. All three are a
+zero and they mean opposite things on a return, and most states still expect the
+sale reported in gross receipts and then deducted. The rule is checked **on the
+supply's date**, so a backdated Missouri sale from 2022 is still the seller's.
+
 **Canada** resolves at province level (no local tax). Rate data plugs in via
 `TaxRateSource`: set `TAX_TEDB_LIVE=true` to resolve EU rates from the
 Commission's own TEDB service (no key, no registration, cached per country), or

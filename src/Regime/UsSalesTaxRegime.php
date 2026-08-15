@@ -19,10 +19,12 @@ use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
+use DateTimeImmutable;
 
 /**
  * US sales tax (destination sourcing for remote supplies). Three gates before a
@@ -53,7 +55,37 @@ readonly class UsSalesTaxRegime implements TaxRegime
         private ProductTaxability $taxability,
         private ?NexusThresholds $nexusThresholds = null,
         private ?SourcingRules $sourcing = null,
+        /**
+         * Read for the per-state facts that are not rates: today, when each state's
+         * marketplace-facilitator rule took effect. Nullable so an app running on
+         * the static tables keeps working — it simply never applies the marketplace
+         * treatment, which is the safe direction.
+         */
+        private ?UsTaxDataset $dataset = null,
     ) {}
+
+    /**
+     * Whether the state's marketplace-facilitator rule was in force on the supply's
+     * date.
+     *
+     * Every state with a sales tax has one today — Missouri closed the set on
+     * 2023-01-01 — so for a current supply this is all but always true. It is still
+     * asked, and asked ON THE DATE, because a backdated invoice or a credit note
+     * against an older one is priced under the law that applied then: a Missouri
+     * sale from 2022 was the seller's to collect, and answering from today's map
+     * would zero a charge that was really owed.
+     *
+     * REFUSES ON MISSING DATA rather than assuming the rule applies. Without the
+     * dataset — or for a state it does not carry — the honest answer is that we do
+     * not know, and the seller collecting is the recoverable error. Charging twice
+     * is visible to the customer; not charging at all surfaces in an audit.
+     */
+    private function marketplaceLawInForce(string $state, DateTimeImmutable $on): bool
+    {
+        $from = $this->dataset?->marketplaceFacilitatorFrom($state);
+
+        return $from !== null && $from <= $on->format('Y-m-d');
+    }
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
@@ -61,6 +93,42 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
         if ($subdivision === null) {
             throw JurisdictionNotResolved::needsSubdivision($query->place);
+        }
+
+        // Asked BEFORE the seller's own registration, because the seller's nexus has
+        // nothing to do with it. Where a marketplace is the liable party the tax is
+        // its obligation whether or not this seller has any presence in the state,
+        // and a seller who charges as well double-charges the customer.
+        $facilitated = $query->marketplaceFacilitated
+            && $this->marketplaceLawInForce($subdivision->value, $query->on());
+
+        if ($facilitated) {
+            // Taxability still decides. A marketplace collects nothing on an exempt
+            // supply, and reporting it as facilitated would assert a tax that was
+            // never due — a wrong return under a right charge.
+            $determination = $this->taxability->determine(
+                $query->place,
+                $query->category,
+                $query->amount,
+                $query->on(),
+            );
+
+            if (! $determination->isExemptFor($query->amount)) {
+                return new TaxAssessment(
+                    treatment: TaxTreatment::MarketplaceFacilitated,
+                    net: $query->amount,
+                    tax: $this->zero($query),
+                    gross: $query->amount,
+                    placeOfSupply: $query->place,
+                    rate: null,
+                    reason: sprintf(
+                        'US sales tax: %s holds the marketplace liable to collect on a facilitated sale; '
+                        .'the seller charges nothing and most states still expect the sale reported in gross '
+                        .'receipts and deducted as marketplace-facilitated.',
+                        $subdivision->value,
+                    ),
+                );
+            }
         }
 
         if (! $query->seller->isRegisteredInSubdivision($subdivision, $query->on())) {

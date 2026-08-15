@@ -92,6 +92,28 @@ readonly class TaxQuery
          * missing postcode as proof of mainland.
          */
         public ?string $postalCode = null,
+        /**
+         * The supply was made through a marketplace that is the party liable to
+         * collect the tax on it.
+         *
+         * Every US state with a sales tax now makes a qualifying marketplace liable
+         * for its third-party sellers' supplies — Missouri was the last, on
+         * 2023-01-01 — and the EU does the same through the Art. 14a deemed supplier
+         * rule. Where that applies, the SELLER charges nothing: the marketplace has
+         * already collected it, and a seller who charges as well double-charges the
+         * customer.
+         *
+         * ONLY THE CALLER KNOWS THIS. Whether a given platform qualifies as a
+         * facilitator, and whether it has taken on collection for this supply, is a
+         * fact about a commercial arrangement — nothing in a rate table can answer
+         * it. The engine takes the assertion and then checks the LAW: it applies the
+         * marketplace treatment only where the jurisdiction's rule was in force on
+         * the supply date, so a backdated Missouri sale from 2022 is still the
+         * seller's to collect.
+         *
+         * False is right for a direct sale, which is most of them.
+         */
+        public bool $marketplaceFacilitated = false,
     ) {}
 
     /** The date the assessment resolves against — the supply date, else today. */

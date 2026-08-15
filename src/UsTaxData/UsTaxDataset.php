@@ -292,6 +292,42 @@ readonly class UsTaxDataset
     }
 
     /**
+     * The date a state's marketplace-facilitator rule took effect, as `Y-m-d`, or
+     * null when the dataset does not carry one.
+     *
+     * Every state with a sales tax has such a rule today — Missouri was the last, on
+     * 2023-01-01 — but the DATE is what matters, because a backdated supply is
+     * priced under the law that applied then. Null is an honest "we do not know",
+     * and the caller then leaves the tax with the seller, which is the recoverable
+     * error: charging twice is visible to the customer, charging nothing surfaces in
+     * an audit.
+     */
+    public function marketplaceFacilitatorFrom(string $state): ?string
+    {
+        $rules = $this->stateEntry('nexus', $state);
+
+        if (! is_array($rules)) {
+            return null;
+        }
+
+        // A state carries EITHER one rule or a dated list of them — Kentucky has two
+        // because it dropped its transaction test in 2026. The marketplace date is a
+        // separate statute that does not move when a threshold is amended, so it is
+        // the same on every window and the first one carrying it answers. Reading
+        // only the map shape found nothing at all for the list states.
+        foreach (array_is_list($rules) ? $rules : [$rules] as $rule) {
+            $marketplace = is_array($rule) ? ($rule['marketplaceFacilitator'] ?? null) : null;
+            $from = is_array($marketplace) ? ($marketplace['effectiveFrom'] ?? null) : null;
+
+            if (is_string($from)) {
+                return $from;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The taxability determination for a (state, dataset-category) pair, or null
      * when the dataset carries no rule for it (the caller then applies its own
      * default or denies).

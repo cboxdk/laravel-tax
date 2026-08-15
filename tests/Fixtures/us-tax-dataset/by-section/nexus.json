@@ -1,1 +1,707 @@
-{"schemaVersion":4,"version":"2026-07-22","contentHash":"e6f6a90f1989b80f3c069838d92d515e02dc28f9d174321fe9b661202f197e8d","section":"nexus","sources":{"5764a763ab126c51":{"name":"Sales Tax Institute \u2014 Economic Nexus State Guide (thresholds & measurement rules), cross-validated against Avalara \u2014 State-by-state guide to economic nexus laws; measurement dimensions carried only where both sources agree","url":"https://www.salestaxinstitute.com/resources/economic-nexus-state-guide","retrievedAt":"2026-07-22"}},"states":{"US-AK":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-AL":[{"salesUsd":250000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-AR":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-AZ":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-CA":[{"salesUsd":500000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-CO":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-CT":[{"salesUsd":100000,"transactions":200,"combinator":"sales_and_transactions","measuringPeriod":"rolling_twelve_months","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-DC":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-DE":null,"US-FL":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_calendar_year","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-GA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-HI":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-IA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-ID":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-IL":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"rolling_twelve_months","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-IN":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-KS":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-KY":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-LA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MD":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-ME":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MI":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MN":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"rolling_twelve_months","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MO":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"rolling_twelve_months","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MS":[{"salesUsd":250000,"transactions":null,"combinator":"sales_only","measuringPeriod":"rolling_twelve_months","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-MT":null,"US-NC":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-ND":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-NE":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-NH":null,"US-NJ":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_or_current_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-NM":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_calendar_year","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-NV":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"retail_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-NY":[{"salesUsd":500000,"transactions":100,"combinator":"sales_and_transactions","measuringPeriod":"rolling_twelve_months","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-OH":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-OK":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"taxable_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-OR":null,"US-PA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-RI":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"previous_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-SC":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-SD":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-TN":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"rolling_twelve_months","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-TX":[{"salesUsd":500000,"transactions":null,"combinator":"sales_only","measuringPeriod":"rolling_twelve_months","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-UT":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-VA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-VT":[{"salesUsd":100000,"transactions":200,"combinator":"sales_or_transactions","measuringPeriod":"rolling_twelve_months","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-WA":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-WI":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-WV":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}],"US-WY":[{"salesUsd":100000,"transactions":null,"combinator":"sales_only","measuringPeriod":"previous_or_current_calendar_year","salesBasis":"gross_sales","effectiveFrom":null,"effectiveTo":null,"sourceId":"5764a763ab126c51"}]}}
+{
+  "schemaVersion": 4,
+  "version": "2026-07-22",
+  "contentHash": "e6f6a90f1989b80f3c069838d92d515e02dc28f9d174321fe9b661202f197e8d",
+  "section": "nexus",
+  "sources": {
+    "5764a763ab126c51": {
+      "name": "Sales Tax Institute \u2014 Economic Nexus State Guide (thresholds & measurement rules), cross-validated against Avalara \u2014 State-by-state guide to economic nexus laws; measurement dimensions carried only where both sources agree",
+      "url": "https://www.salestaxinstitute.com/resources/economic-nexus-state-guide",
+      "retrievedAt": "2026-07-22"
+    }
+  },
+  "states": {
+    "US-AK": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51"
+      }
+    ],
+    "US-AL": [
+      {
+        "salesUsd": 250000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-01-01"
+        }
+      }
+    ],
+    "US-AR": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-AZ": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51"
+      }
+    ],
+    "US-CA": [
+      {
+        "salesUsd": 500000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-CO": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-CT": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_and_transactions",
+        "measuringPeriod": "rolling_twelve_months",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-12-01"
+        }
+      }
+    ],
+    "US-DC": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-04-01"
+        }
+      }
+    ],
+    "US-DE": null,
+    "US-FL": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_calendar_year",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2021-07-01"
+        }
+      }
+    ],
+    "US-GA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-04-01"
+        }
+      }
+    ],
+    "US-HI": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-01-01"
+        }
+      }
+    ],
+    "US-IA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-01-01"
+        }
+      }
+    ],
+    "US-ID": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-06-01"
+        }
+      }
+    ],
+    "US-IL": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "rolling_twelve_months",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-01-01"
+        }
+      }
+    ],
+    "US-IN": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-KS": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2021-07-01"
+        }
+      }
+    ],
+    "US-KY": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-LA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-07-01"
+        }
+      }
+    ],
+    "US-MA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-MD": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-ME": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-MI": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-01-01"
+        }
+      }
+    ],
+    "US-MN": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "rolling_twelve_months",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-10-01"
+        }
+      }
+    ],
+    "US-MO": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "rolling_twelve_months",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2023-01-01"
+        }
+      }
+    ],
+    "US-MS": [
+      {
+        "salesUsd": 250000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "rolling_twelve_months",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-07-01"
+        }
+      }
+    ],
+    "US-MT": null,
+    "US-NC": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-02-01"
+        }
+      }
+    ],
+    "US-ND": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-NE": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-04-01"
+        }
+      }
+    ],
+    "US-NH": null,
+    "US-NJ": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-11-01"
+        }
+      }
+    ],
+    "US-NM": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_calendar_year",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-NV": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "retail_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-NY": [
+      {
+        "salesUsd": 500000,
+        "transactions": 100,
+        "combinator": "sales_and_transactions",
+        "measuringPeriod": "rolling_twelve_months",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-06-01"
+        }
+      }
+    ],
+    "US-OH": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-09-01"
+        }
+      }
+    ],
+    "US-OK": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "taxable_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-07-01"
+        }
+      }
+    ],
+    "US-OR": null,
+    "US-PA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-04-01"
+        }
+      }
+    ],
+    "US-RI": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "previous_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-SC": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-11-01"
+        }
+      }
+    ],
+    "US-SD": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-03-01"
+        }
+      }
+    ],
+    "US-TN": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "rolling_twelve_months",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-10-01"
+        }
+      }
+    ],
+    "US-TX": [
+      {
+        "salesUsd": 500000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "rolling_twelve_months",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-UT": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-10-01"
+        }
+      }
+    ],
+    "US-VA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-VT": [
+      {
+        "salesUsd": 100000,
+        "transactions": 200,
+        "combinator": "sales_or_transactions",
+        "measuringPeriod": "rolling_twelve_months",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-06-01"
+        }
+      }
+    ],
+    "US-WA": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2018-01-01"
+        }
+      }
+    ],
+    "US-WI": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2020-01-01"
+        }
+      }
+    ],
+    "US-WV": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ],
+    "US-WY": [
+      {
+        "salesUsd": 100000,
+        "transactions": null,
+        "combinator": "sales_only",
+        "measuringPeriod": "previous_or_current_calendar_year",
+        "salesBasis": "gross_sales",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "sourceId": "5764a763ab126c51",
+        "marketplaceFacilitator": {
+          "effectiveFrom": "2019-07-01"
+        }
+      }
+    ]
+  }
+}
