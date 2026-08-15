@@ -132,7 +132,7 @@ Everything else is assessed in whatever currency you bill in.
 
 ## Sales tax holidays
 
-Sixteen states hold a back-to-school weekend in the 2026 calendar, and the engine
+Fifteen states hold a back-to-school weekend in the 2026 calendar, and the engine
 applies them automatically from the supply's date. A $80 shirt in Texas on 8 August
 is exempt; the same shirt on the 6th is taxed.
 
@@ -160,9 +160,18 @@ type in the dataset overlay:
 | Firearms | No class, and those holidays are uncapped, so a wrong mapping exempts without limit |
 | Buyer status | Nevada's National Guard weekend and New Mexico's Small Business Saturday turn on who is buying or selling |
 
-Four states are omitted whole, each with its reason in the overlay — Massachusetts
+Five states are omitted whole, each with its reason in the overlay — Massachusetts
 because its holiday covers tangible personal property generally, with statutory
 exclusions this has not sourced.
+
+**Illinois is omitted for a different reason, and it is the instructive one.** Its
+back-to-school week is a rate *reduction*, not an exemption: the state share drops
+from 6.25% to 1.25% and every local authority keeps charging in full. Modelled as a
+holiday it would have zeroed the whole line — the remaining state share and the
+entire local stack, which is around nine points in Chicago. A holiday that removes
+the wrong tax under-collects, and that is the direction no later refund fixes. It
+returns when the dataset can express a reduced state share alongside untouched
+locals.
 
 **A line billed in something other than USD is charged, not refused.** The caps are
 dollar figures in state statutes, and comparing another currency needs an exchange

@@ -5,7 +5,7 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
-## [Unreleased]
+## [0.11.0] - 2026-08-15
 
 ### Added
 
@@ -15,7 +15,7 @@ minor bumps may carry additive features; patches are fixes and docs).
   charged, kept apart from `Exempt` and `NotRegistered` because all three are a zero
   and mean opposite things on a return. Checked on the supply's date, so a backdated
   Missouri sale from 2022 is still the seller's.
-- **Sales tax holidays.** Sixteen states' 2026 back-to-school windows, applied from
+- **Sales tax holidays.** Fifteen states' 2026 back-to-school windows, applied from
   the supply's date. The cap is all-or-nothing and its inclusivity is per statute —
   Texas exempts clothing "less than $100", Florida "$100 or less".
 - **`ProductCatalogue`.** Map your SKUs to tax classes once and send `itemCode` per
