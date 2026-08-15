@@ -45,6 +45,23 @@ readonly class TaxOrder
         public ?DateTimeImmutable $reportedOn = null,
         /** Shared by every line: a document ships from one place. */
         public SupplyRoute $route = new SupplyRoute,
+        /**
+         * The delivery postcode, shared by every line — a document ships to one
+         * address.
+         *
+         * Its absence here was a real hole: ten EU territories sit inside a member
+         * state and outside its VAT area, and none can be named by subdivision. A
+         * two-line invoice to Tenerife was charged 21% Spanish VAT while the
+         * identical single supply correctly zero-rated as an export.
+         */
+        public ?string $postalCode = null,
+        /**
+         * The document was invoiced through a marketplace liable to collect on it.
+         *
+         * Document-level rather than per line: the facilitator relationship is a
+         * fact about the transaction, not about one product on it.
+         */
+        public bool $marketplaceFacilitated = false,
     ) {
         if ($lines === []) {
             throw InvalidTaxOrder::withoutLines();
@@ -100,6 +117,15 @@ readonly class TaxOrder
             suppliedAt: $this->suppliedAt,
             reportedOn: $this->reportedOn,
             route: $this->route,
+            // THE THREE THAT USED TO FALL OUT HERE. `queryFor()` is the single place
+            // a line becomes a supply, and the class docblock promises every gate
+            // applies exactly as it does for one amount. Three did not: a Tenerife
+            // document was charged mainland Spanish VAT, a marketplace invoice
+            // double-charged tax the marketplace had already collected, and the
+            // product catalogue was unreachable from any document.
+            postalCode: $this->postalCode,
+            marketplaceFacilitated: $this->marketplaceFacilitated,
+            itemCode: $line->itemCode,
         );
     }
 

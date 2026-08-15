@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Brick\Money\Money;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
@@ -43,5 +44,13 @@ readonly class SupplyLine
         public ?string $commodityCode = null,
         /** Overrides the document's exemption for this line alone. */
         public ?TaxExemption $exemption = null,
+        /**
+         * Your own code for what was sold — a SKU, a plan id, a product slug.
+         *
+         * Resolved through the {@see ProductCatalogue} exactly
+         * as it is for a single supply. Without it the catalogue was unreachable
+         * from a document, which is where most real invoices are built.
+         */
+        public ?string $itemCode = null,
     ) {}
 }

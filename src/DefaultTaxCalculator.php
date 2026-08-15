@@ -139,7 +139,20 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      */
     protected function assessLine(TaxOrder $order, SupplyLine $line): TaxAssessment
     {
-        return $this->assessSupply($order->queryFor($line));
+        // CLASSIFIED FIRST, then assessed. This used to call assessSupply()
+        // directly, which suppressed the per-supply flat charges correctly and
+        // skipped the product catalogue as a side effect — so a document could
+        // never resolve a class from an item code, and an unmapped SKU on an
+        // invoice raised no ItemUnmapped flag either. The review loop the catalogue
+        // exists for reported nothing on exactly the path most invoices take.
+        //
+        // FanOutOrderCalculator, which wraps a host's own calculator, inherits
+        // AssessesOrders::assessLine and DOES classify — so the shipped calculator
+        // and the wrapper answered the same document differently, which the trait's
+        // docblock says it exists to prevent.
+        [$query, $unmapped] = $this->classify($order->queryFor($line));
+
+        return $this->flagUnmapped($this->assessSupply($query), $unmapped);
     }
 
     /**
