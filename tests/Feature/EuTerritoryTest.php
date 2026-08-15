@@ -6,14 +6,17 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
+use DateTimeImmutable;
 
 // Ten territories sit inside a Member State and outside its VAT rules. Before
 // this, a delivery to Tenerife was charged Spanish VAT — which is not a rate
@@ -204,4 +207,43 @@ it('leaves a level it does not carry on the mainland band, and says so', functio
     // Deny-by-default at the level lookup: an unknown mainland rate is not silently
     // mapped to the standard one.
     expect(new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
+});
+
+it('lets a host rebind the territory list and actually reach the regime', function () {
+    // The provider bound EuTerritories while DefaultRegimeRegistry hardcoded
+    // StaticEuTerritories, so a host following the documented instruction to rebind
+    // it changed nothing. A silent no-op on a seam the docs point at, and the
+    // failure mode is mainland VAT charged on a supply outside the VAT area — which
+    // is the whole reason someone would rebind it.
+    $this->app->instance(EuTerritories::class, new class implements EuTerritories
+    {
+        public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
+        {
+            // Everything in France is outside the VAT area, as far as this says.
+            return $country->value === 'FR'
+                ? new EuTerritory('FR-XX', 'Nowhere', true)
+                : null;
+        }
+    });
+
+    // The registry is a singleton and may already have been resolved, in which case
+    // it is holding the territory list built at that moment. Forgetting it is what
+    // a host does implicitly by binding in a provider before anything resolves.
+    // Both, and in this order. TaxCalculator is a singleton holding the registry,
+    // so forgetting only the registry leaves an already-built calculator pointing
+    // at the old territory list. A host binding in a provider gets this for free
+    // because nothing has resolved yet.
+    $this->app->forgetInstance(RegimeRegistry::class);
+    $this->app->forgetInstance(TaxCalculator::class);
+
+    $assessment = $this->app->make(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $this->app->make(JurisdictionRepository::class)->find(new CountryCode('FR')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('FR')),
+        postalCode: '75001',
+    ));
+
+    expect($assessment->tax->getAmount()->toFloat())->toBe(0.0);
 });

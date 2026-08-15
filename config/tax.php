@@ -100,7 +100,7 @@ return [
     | supply is never quietly charged the wrong reduced rate.
     |
     | `url` is the older, file-based path: a TEDB-derived dataset you generated
-    | yourself, in the JSON shape documented on Cbox\Tax\RateSource\TedbRateSource,
+    | yourself and bind your own TaxRateSource,
     | as an http(s) URL or local file. Use it to pin a reviewed snapshot instead of
     | calling the service. Both empty (the default) runs purely on the static
     | snapshot.

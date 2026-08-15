@@ -273,35 +273,17 @@ date, a published class map, and the source's own ambiguities rather than a gues
 
 See [EU VAT dataset](../coverage/eu-tax-dataset.md).
 
-## The TEDB adapter
+## The live TEDB service
 
-`TedbRateSource` reads a **TEDB-derived dataset** — the EU Commission's *Taxes in
-Europe Database* (`VatRetrievalService`), transformed to the JSON shape below. Its
-location is **config-driven** (`tax.tedb.url`), an `http(s)` URL **or** a local file
-path; the package ships **no endpoint**, so you must point it at a real export.
+`TedbSoapRateSource` calls the Commission's *Taxes in Europe Database*
+(`VatRetrievalService`) directly — no key, no registration, cached per country.
+Enable it with `tax.tedb.live` and the provider adds it to the chain.
 
-Set `tax.tedb.url` (env `TAX_TEDB_URL`) and the provider composes
-`ChainTaxRateSource(TEDB → static snapshot)` automatically — TEDB is authoritative,
-the static snapshot is the fallback. Unconfigured, the plain static snapshot stays
-the zero-config default.
-
-Documented dataset shape:
-
-```json
-{
-  "version": "2026-07-01",
-  "rates": {
-    "DK": { "standard": "25" },
-    "FR": { "standard": "20", "bands": { "digital_service": { "rate": "5.5", "kind": "reduced" } } }
-  }
-}
-```
-
-Each country entry's `standard` is the standard rate; an optional `bands` map keys
-reduced/zero rates by `TaxCategory` value (`kind` ∈ `reduced` | `zero`). A missing
-country, an unreadable source, or malformed JSON yields `null` so the engine denies
-(and the chain falls back to the static snapshot) rather than guessing. For a URL
-source, wrap it in `CachingTaxRateSource` to avoid a request per lookup.
+Prefer the [compiled EU dataset](../coverage/eu-tax-dataset.md) above it. The live
+service answers only about a date you name and cannot usefully be asked what a rate
+*was* per request, so a backdated supply cannot be priced from it; the dataset
+carries the answer already resolved, with the source's own ambiguities published
+rather than silently collapsed.
 
 ## Composing sources
 
@@ -312,8 +294,8 @@ fallback:
   reduced/zero `bands`.
 - **`EuTaxDatasetRateSource`** — reads the compiled `cboxdk/eu-tax-dataset`: dated
   windows, a published class map, and the source's own ambiguities.
-- **`TedbRateSource`** — reads a normalised TEDB-derived dataset (URL or file);
-  auto-wired to a `ChainTaxRateSource` fallback when `tax.tedb.url` is set.
+- **`TedbSoapRateSource`** — calls the Commission's TEDB service live; added to the
+  chain when `tax.tedb.live` is true.
 - **`RemoteRateSource`** — fetches a generic JSON country→rate feed (number,
   `{standard}`, or `{standard, bands}`); one request per lookup, so wrap it in caching.
 - **`CachingTaxRateSource`** — caches the current rate from an inner source; a
@@ -322,11 +304,14 @@ fallback:
 
 ```php
 use Cbox\Tax\Contracts\TaxRateSource;
-use Cbox\Tax\RateSource\{ChainTaxRateSource, CachingTaxRateSource, TedbRateSource, StaticTaxRateSource};
+use Cbox\Tax\RateSource\{ChainTaxRateSource, CachingTaxRateSource, TedbSoapRateSource, StaticTaxRateSource};
 
 $this->app->singleton(TaxRateSource::class, fn ($app) => new ChainTaxRateSource([
     new CachingTaxRateSource(
-        new TedbRateSource($app->make(\Illuminate\Http\Client\Factory::class), config('tax.tedb.url')),
+        new TedbSoapRateSource(
+            $app->make(\Illuminate\Http\Client\Factory::class),
+            $app->make(\Illuminate\Contracts\Cache\Repository::class),
+        ),
         $app->make(\Illuminate\Contracts\Cache\Repository::class),
     ),
     new StaticTaxRateSource, // fallback

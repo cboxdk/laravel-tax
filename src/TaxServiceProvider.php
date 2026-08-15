@@ -207,6 +207,7 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(NexusThresholds::class),
                 $sourcing,
                 self::usTaxDataset($app),
+                $app->make(EuTerritories::class),
             );
         });
 

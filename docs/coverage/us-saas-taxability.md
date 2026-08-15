@@ -39,16 +39,17 @@ The map is curated from two dated, published SaaS-by-state compilations, retriev
 are shipped, and a state they disagree on is deliberately absent so it refuses
 rather than guesses.
 
-| Source | URL |
-| --- | --- |
-| TaxJar — "Software-as-a-service (SaaS) sales tax by state" | <https://www.taxjar.com/sales-tax/saas-sales-tax> |
-| Anrok — "SaaS sales tax by state" | <https://www.anrok.com/saas-sales-tax-by-state> |
+Both are **practitioner compilations, not tax authorities**. Neither carries
+statutory citations, both are published by commercial tax vendors as marketing
+material, and neither is under any obligation to keep its page current. The two are
+named with their URLs and retrieval dates in the dataset's own provenance registry
+(`us-tax-data`, `resources/overlays/saas-taxability.json` and the published
+`meta.json`), which is where a determination's source belongs — beside the
+determination, where an auditor reading the data finds it.
 
-These are cited because that is where the determinations came from, and unsourced
-data would be worse than awkwardly-sourced data. But be clear what they are:
-**vendor guidance, not tax authorities.** Neither carries statutory citations, both
-are marketing material for competing products, and neither is under any obligation
-to keep the page current.
+They are not repeated here. This package is the public MIT engine, and a coverage
+page that reads as a comparison against named competitors is not what its
+documentation is for.
 
 Two consequences worth acting on. First, requiring both to agree is doing real
 work — it is the only cross-check there is, which is why a disagreement ships as a

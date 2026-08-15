@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Registry;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
@@ -52,11 +53,20 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
         ?NexusThresholds $nexusThresholds = null,
         ?SourcingRules $sourcing = null,
         ?UsTaxDataset $dataset = null,
+        /**
+         * The territory list the EU regime consults.
+         *
+         * Was hardcoded here while the provider also BOUND the contract, so a host
+         * following the documented instruction to rebind it changed nothing — a
+         * silent no-op on a seam the docs explicitly point at, and the failure mode
+         * is mainland VAT charged on a supply outside the VAT area.
+         */
+        ?EuTerritories $territories = null,
     ): self {
         $national = new NationalTaxRegime;
 
         return new self([
-            'eu-vat' => new EuVatRegime($jurisdictions, new StaticEuTerritories),
+            'eu-vat' => new EuVatRegime($jurisdictions, $territories ?? new StaticEuTerritories),
             'uk-vat' => $national,
             'ch-vat' => $national,
             'no-vat' => $national,
