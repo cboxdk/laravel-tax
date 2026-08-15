@@ -7,6 +7,7 @@ namespace Cbox\Tax\UsTaxData;
 use Brick\Math\BigDecimal;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\TaxabilityTreatment;
+use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -34,7 +35,7 @@ use Throwable;
 readonly class UsTaxDataset
 {
     /** Sections this loader reads, each a `by-section/<name>.json` file. */
-    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates'];
+    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates', 'holidays'];
 
     /** The only dataset schema this reader understands. See {@see verified()}. */
     private const int SCHEMA_VERSION = 4;
@@ -60,6 +61,32 @@ readonly class UsTaxDataset
         }
 
         return $this->fractionToPercent($baseline['stateRate'] ?? null);
+    }
+
+    /**
+     * Where the state rate that answered on this date came from, precisely enough
+     * to find the assessment again after a correction.
+     *
+     * `effectiveFrom` is the window's own start, which is the fact the answer rested
+     * on — the handle a correction names. Null when the state carries no baseline.
+     */
+    public function stateRateProvenance(string $state, ?DateTimeImmutable $at = null): ?RateProvenance
+    {
+        $baseline = $this->currentBaseline($state, $at);
+
+        if ($baseline === null) {
+            return null;
+        }
+
+        $published = $this->published('baseline');
+        $from = $baseline['effectiveFrom'] ?? null;
+
+        return new RateProvenance(
+            'us-tax-data',
+            $published['version'],
+            is_string($from) ? $from : null,
+            $published['sectionHash'],
+        );
     }
 
     /**
@@ -173,6 +200,256 @@ readonly class UsTaxDataset
         }
 
         return $records;
+    }
+
+    /**
+     * The local authority code for a county NAME, for the states where the county
+     * is the only local authority that can apply.
+     *
+     * The dataset codes local authorities as `US-FL:Alachua County` while a geocoder
+     * hands back a plain `Alachua County`, so the join is on the name — and a name
+     * join is exactly the kind that fails silently, so it is done in ONE place with
+     * the failure made explicit.
+     *
+     * Matching is on a normalized key: case-folded, punctuation reduced to spaces
+     * (`St. Johns` and `St Johns` are the same county) and the governing-unit suffix
+     * dropped. That last part is what makes Philadelphia work — the dataset carries
+     * it as a CITY named `Philadelphia`, because the city and the county are
+     * coterminous, while a geocoder says `Philadelphia County`.
+     *
+     * Null on no match AND on an ambiguous one. Two authorities normalizing to the
+     * same key means the dataset cannot say which the address is in, and picking
+     * either would attach one authority's rate to the other's territory; the caller
+     * falls back to the state share, which is honest about being partial.
+     */
+    public function localCodeForCounty(string $state, string $county): ?string
+    {
+        $wanted = self::countyKey($county);
+
+        if ($wanted === '') {
+            return null;
+        }
+
+        $rates = $this->stateEntry('rates', $state);
+        $local = is_array($rates) && is_array($rates['local'] ?? null) ? $rates['local'] : null;
+
+        if ($local === null) {
+            return null;
+        }
+
+        $bare = self::dropUnit($wanted);
+
+        /** @var array{0: list<string>, 1: list<string>, 2: list<string>} $passes */
+        $passes = [[], [], []];
+
+        foreach (array_keys($local) as $code) {
+            if (! is_string($code)) {
+                continue;
+            }
+
+            // `US-FL:Alachua County` — the authority name is what follows the state
+            // prefix. A code without one is used whole rather than skipped.
+            $name = self::countyKey(str_contains($code, ':') ? substr($code, strpos($code, ':') + 1) : $code);
+
+            match (true) {
+                $name === $wanted => $passes[0][] = $code,
+                $name === $bare => $passes[1][] = $code,
+                self::dropUnit($name) === $bare => $passes[2][] = $code,
+                default => null,
+            };
+        }
+
+        // THREE PASSES, ORDERED, and Virginia is why the order matters.
+        //
+        // A Virginia city is independent of any county, so `Fairfax` (the city) and
+        // `Fairfax County` are two different authorities taxing different ground —
+        // and the dataset carries the city under its bare name while a geocoder
+        // says `Fairfax City`. Comparing both sides stripped would match BOTH
+        // records, refuse as ambiguous, and cost Fairfax its regional rate.
+        //
+        //  1. Both names in full — `Fairfax County` finds only the county.
+        //  2. The QUERY stripped against the full stored name — `Fairfax City`
+        //     finds only `Fairfax`, because `Fairfax County` is still spelled out.
+        //     This is also what resolves Philadelphia, stored bare in a state whose
+        //     other authority is a county.
+        //  3. Both stripped — the loosest, for a caller whose county names carry no
+        //     unit word at all.
+        //
+        // Each pass answers only on a UNIQUE match. Two authorities that cannot be
+        // told apart mean the dataset does not know which the address is in, and
+        // attaching either would put one authority's rate on the other's territory.
+        foreach ($passes as $matches) {
+            if (count($matches) === 1) {
+                return $matches[0];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The normalized name: case-folded, punctuation reduced to single spaces. `St.
+     * Johns` and `St Johns` are the same county and must key the same.
+     */
+    private static function countyKey(string $name): string
+    {
+        $key = strtolower(trim($name));
+        $key = (string) preg_replace('/[^a-z0-9]+/', ' ', $key);
+
+        return trim((string) preg_replace('/\s+/', ' ', $key));
+    }
+
+    /**
+     * The same key with the governing-unit word dropped, for the looser second pass.
+     *
+     * `city` is in the list and is the reason the passes are ORDERED rather than
+     * merged: dropping it turns `Fairfax City` into `fairfax`, which collides with
+     * `Fairfax County` — two distinct Virginia authorities taxing different ground.
+     * The exact pass separates them; this one only runs when nothing matched
+     * exactly, and returns null on a collision rather than picking.
+     *
+     * `parish` and `borough` are here because they are what Louisiana and Alaska
+     * call the same unit. Neither is county-resolved today, but a key that quietly
+     * stopped matching if one were added later would be a fallback to the state
+     * rate that nobody would notice.
+     */
+    private static function dropUnit(string $key): string
+    {
+        return (string) preg_replace('/\s+(county|parish|borough|city)$/', '', $key);
+    }
+
+    /**
+     * The per-item price cap under which a state exempts a product class on a date,
+     * with the holiday's name — or null when no holiday covers that class then.
+     *
+     * ALL-OR-NOTHING, and that is the opposite of the permanent clothing thresholds
+     * this dataset also carries. Massachusetts exempts the first $175 of any coat
+     * all year and taxes the rest; a holiday cap qualifies the WHOLE item or none of
+     * it, so a $100 coat in a $100-cap state is untaxed and a $101 coat is taxed in
+     * full. The caller must not treat this figure the way it treats a threshold.
+     *
+     * Null covers three cases a caller need not distinguish, because the answer is
+     * the same in all three: the state holds no holiday, none is running that day,
+     * or the calendar for that year has not been sourced. All three mean charge
+     * normally — which over-collects for a weekend, and is refundable and visible,
+     * where exempting a supply the state taxes is neither.
+     *
+     * @return array{name: string, cap: int, capInclusive: bool}|null
+     */
+    public function salesTaxHoliday(string $state, string $class, string $on): ?array
+    {
+        $holidays = $this->stateEntry('holidays', $state);
+
+        if (! is_array($holidays)) {
+            return null;
+        }
+
+        // Taken as an already-resolved calendar date rather than an instant. The
+        // caller knows the jurisdiction and therefore its clock; rendering here from
+        // a DateTimeImmutable meant rendering in whatever zone it happened to carry,
+        // which for a Laravel default is UTC — ahead of every US state.
+        $date = $on;
+
+        foreach ($holidays as $holiday) {
+            if (! is_array($holiday)) {
+                continue;
+            }
+
+            $from = $holiday['from'] ?? null;
+            $to = $holiday['to'] ?? null;
+
+            if (! is_string($from) || ! is_string($to) || $date < $from || $date > $to) {
+                continue;
+            }
+
+            $caps = $holiday['caps'] ?? null;
+            $cap = is_array($caps) ? ($caps[$class] ?? null) : null;
+            $name = $holiday['name'] ?? null;
+
+            if (is_int($cap) && $cap > 0 && is_string($name)) {
+                // Whether the cap itself qualifies is per statute, not uniform:
+                // Texas exempts clothing "less than $100" so $100.00 is taxable,
+                // while Florida's "$100 or less" exempts it. Absent, the safe
+                // reading is exclusive — over-collecting a cent-band is refundable.
+                return [
+                    'name' => $name,
+                    'cap' => $cap,
+                    'capInclusive' => ($holiday['capInclusive'] ?? null) === true,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * What the publisher says this data is, for an assessment to record.
+     *
+     * Read from the manifest, so a LOCAL mirror answers null — there is no manifest
+     * on your own disk and inventing a version for it would make an untraceable
+     * answer look traceable.
+     *
+     * The section hash is the finer handle. A taxability correction moves the
+     * artifact's overall content hash but not the `rates` section's, so an
+     * assessment that only read rates can be ruled out of a reconciliation without
+     * being re-run.
+     *
+     * @return array{version: ?string, sectionHash: ?string}
+     */
+    public function published(string $section): array
+    {
+        $manifest = $this->manifest();
+
+        if (! is_array($manifest)) {
+            return ['version' => null, 'sectionHash' => null];
+        }
+
+        $version = $manifest['version'] ?? null;
+        $files = $manifest['files'] ?? null;
+        $sections = is_array($files) ? ($files['sections'] ?? null) : null;
+        $entry = is_array($sections) ? ($sections[$section] ?? null) : null;
+        $hash = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        return [
+            'version' => is_string($version) ? $version : null,
+            'sectionHash' => is_string($hash) ? $hash : null,
+        ];
+    }
+
+    /**
+     * The date a state's marketplace-facilitator rule took effect, as `Y-m-d`, or
+     * null when the dataset does not carry one.
+     *
+     * Every state with a sales tax has such a rule today — Missouri was the last, on
+     * 2023-01-01 — but the DATE is what matters, because a backdated supply is
+     * priced under the law that applied then. Null is an honest "we do not know",
+     * and the caller then leaves the tax with the seller, which is the recoverable
+     * error: charging twice is visible to the customer, charging nothing surfaces in
+     * an audit.
+     */
+    public function marketplaceFacilitatorFrom(string $state): ?string
+    {
+        $rules = $this->stateEntry('nexus', $state);
+
+        if (! is_array($rules)) {
+            return null;
+        }
+
+        // A state carries EITHER one rule or a dated list of them — Kentucky has two
+        // because it dropped its transaction test in 2026. The marketplace date is a
+        // separate statute that does not move when a threshold is amended, so it is
+        // the same on every window and the first one carrying it answers. Reading
+        // only the map shape found nothing at all for the list states.
+        foreach (array_is_list($rules) ? $rules : [$rules] as $rule) {
+            $marketplace = is_array($rule) ? ($rule['marketplaceFacilitator'] ?? null) : null;
+            $from = is_array($marketplace) ? ($marketplace['effectiveFrom'] ?? null) : null;
+
+            if (is_string($from)) {
+                return $from;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -423,8 +700,32 @@ readonly class UsTaxDataset
         // states instead of 20 MB, and they are rewritten every quarter, so the
         // uncompressed form would dominate the mirror's history. The plain file is
         // still read where a local build wrote one.
-        $raw = $this->readCompressed('boundaries/'.$state.'.json.gz')
-            ?? $this->read('boundaries/'.$state.'.json');
+        // VERIFIED LIKE EVERY OTHER FILE, which it was not.
+        //
+        // This is the file that decides WHICH authorities apply to an address, and
+        // it was the only one reaching the engine unchecked — `read()` straight to
+        // `json_decode`, with the argument in verified()'s own docblock (a mutable
+        // branch head on a third-party host) applying to it exactly as much as to
+        // the sections. BoundaryIndexEncoder's docblock states that set ORDER is
+        // load-bearing: a Kansas ZIP matches both a narrow span and a whole-ZIP
+        // fallback, and only order decides. A reordered table therefore returns a
+        // real authority set for the wrong jurisdiction, sums real records, and
+        // stamps the result Authoritative.
+        $compressed = $this->read('boundaries/'.$state.'.json.gz');
+
+        if ($compressed !== null && $compressed !== '') {
+            if (! $this->verifiedBoundary($state, $compressed)) {
+                return null;
+            }
+
+            $inflated = @gzdecode($compressed);
+            $raw = $inflated === false ? null : $inflated;
+        } else {
+            // The plain file is what a LOCAL build writes; the published mirror
+            // carries only the gzipped one, which is what the manifest hashes. Same
+            // asymmetry as the sections: your own disk is a deliberate choice.
+            $raw = $this->isRemote() ? null : $this->read('boundaries/'.$state.'.json');
+        }
 
         if ($raw === null) {
             return null;
@@ -500,22 +801,61 @@ readonly class UsTaxDataset
      * Read a relative path under the configured location — an HTTP GET for a URL
      * base, a filesystem read for a local directory. Any failure returns null.
      */
-    /**
-     * Read a gzipped part and inflate it. A body that is not valid gzip yields null
-     * rather than a warning-laden empty string, so the caller falls through to the
-     * plain file.
-     */
-    private function readCompressed(string $relative): ?string
-    {
-        $raw = $this->read($relative);
 
-        if ($raw === null || $raw === '') {
+    /**
+     * Whether a boundary index is the one the publisher signed off.
+     *
+     * Hashed over the COMPRESSED bytes, because that is what the boundary manifest
+     * records — the mirror publishes only the gzipped form. A local mirror with no
+     * boundary manifest is trusted, exactly as a local section is.
+     */
+    private function verifiedBoundary(string $state, string $compressed): bool
+    {
+        if (! $this->isRemote()) {
+            return true;
+        }
+
+        $manifest = $this->boundaryManifest();
+
+        if ($manifest === null) {
+            return false;
+        }
+
+        $states = $manifest['states'] ?? null;
+        $entry = is_array($states) ? ($states[$state] ?? null) : null;
+        $expected = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        return is_string($expected) && hash('sha256', $compressed) === $expected;
+    }
+
+    /**
+     * @return array<array-key, mixed>|null
+     */
+    private function boundaryManifest(): ?array
+    {
+        $key = 'cbox-tax:us-dataset:'.substr(hash('sha256', $this->location), 0, 16).':boundary-manifest';
+        $cached = $this->cache->get($key);
+
+        if (is_array($cached)) {
+            /** @var array<array-key, mixed> $cached */
+            return $cached;
+        }
+
+        $raw = $this->read('boundaries/manifest.json');
+        $decoded = $raw === null ? null : json_decode($raw, true);
+
+        if (! is_array($decoded)) {
             return null;
         }
 
-        $inflated = @gzdecode($raw);
+        // Held for a fraction of the index TTL, for the same reason the section
+        // manifest is: it is what makes every boundary read trustworthy, and a
+        // stale one would keep verifying against yesterday's answer after a
+        // quarterly republish.
+        $this->cache->put($key, $decoded, max(60, (int) ($this->ttl / 12)));
 
-        return $inflated === false ? null : $inflated;
+        /** @var array<array-key, mixed> $decoded */
+        return $decoded;
     }
 
     /**

@@ -7,11 +7,13 @@ namespace Cbox\Tax\RateSource;
 use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
@@ -55,7 +57,103 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      */
     public const string ZIP9_SCHEME = 'zip9';
 
-    public function __construct(private UsTaxDataset $dataset) {}
+    /**
+     * The locality scheme carrying a county NAME (`Alachua County`) for the states
+     * in {@see countyResolvedStates()}, resolved to an authority code by the dataset.
+     */
+    public const string COUNTY_SCHEME = 'county';
+
+    /**
+     * The states where the COUNTY is the only local authority that can apply, so
+     * resolving the county resolves the rate exactly — no boundary file needed.
+     *
+     * This is a legal claim about each state's taxing structure, not an observation
+     * of today's data, which is why it is a written list with its grounds rather
+     * than something derived from the records:
+     *
+     *  - **FL** — ch. 212.055 authorizes the discretionary sales surtax to COUNTIES.
+     *    The Department of Revenue's own surtax table is published per county, all 67.
+     *  - **PA** — only two local taxes exist: Allegheny County at 1% and Philadelphia
+     *    at 2%. Philadelphia is carried as a city because that is what it is called,
+     *    but the city and the county are coterminous, so a county resolves it.
+     *  - **HI** — the counties may adopt a GET surcharge by ordinance; four have.
+     *  - **VA** — a Virginia city is by law INDEPENDENT of any county, so a city
+     *    there is a county-equivalent (FIPS class C7) rather than something sitting
+     *    inside one. Nothing can be below it. The state's own rate page bands all 39
+     *    localities by county or independent city, and the dataset carries 39.
+     *
+     * VIRGINIA ALSO SHOWS WHY THE NAME MATCH IS ORDERED. `Fairfax County` and
+     * `Fairfax City` are different authorities over different ground, and so are
+     * Franklin, Richmond and Roanoke. A match that dropped the unit word would make
+     * each pair ambiguous and refuse — costing Fairfax its regional rate for no
+     * reason. {@see UsTaxDataset::localCodeForCounty()} tries the full name first.
+     *
+     * SOUTH CAROLINA IS DELIBERATELY ABSENT and the reason is the point of this
+     * list. Its local option taxes look county-level, and 46 of the dataset's 47 SC
+     * authorities are counties — but Myrtle Beach levies its own 1% Tourism
+     * Development tax ON TOP of Horry County's. Resolving only the county there
+     * would UNDER-charge, which is the direction that cannot be refunded later. A
+     * state joins this list when nothing can sit below the county line, not when
+     * almost nothing does.
+     *
+     * Two guards hold the list to that claim, and they sit at different layers on
+     * purpose. `tests/Feature/CountyResolvedRateTest.php` checks the engine's
+     * behaviour here; `bin/check-county-resolved.php` in the us-tax-data repo checks
+     * the PUBLISHED data every drift run, which is where a newly-adopted city tax
+     * would actually show up. Adding a state means changing both.
+     *
+     * @return list<string>
+     */
+    public static function countyResolvedStates(): array
+    {
+        return ['US-FL', 'US-PA', 'US-HI', 'US-VA'];
+    }
+
+    /**
+     * Authority codes that are NOT counties but are coterminous with one, so a
+     * county resolution reaches them correctly.
+     *
+     * Philadelphia is the only NAMED one, and it is named because it is a one-off:
+     * a single consolidated city-county in a state whose other authority is an
+     * ordinary county. It exists so the guard can tell "a city that IS the county"
+     * apart from "a city inside a county" — the distinction that keeps South
+     * Carolina out over Myrtle Beach.
+     *
+     * Virginia is handled by rule instead, in {@see countyEquivalentCityStates()},
+     * because there it is not an exception but the entire structure.
+     *
+     * @return list<string>
+     */
+    public static function coterminousCityCounties(): array
+    {
+        return ['US-PA:Philadelphia'];
+    }
+
+    /**
+     * States where EVERY city is a county-equivalent, so a city-level record needs
+     * no individual exemption.
+     *
+     * Virginia only. Under Virginia law every municipality incorporated as a city is
+     * independent of any county — there is no such thing as a Virginia city inside a
+     * county, which is why the Census treats all 38 as county-equivalents. Listing
+     * the 17 that levy a regional rate would read as 17 exceptions to a rule; there
+     * is no rule for them to be exceptions to.
+     *
+     * Note this covers CITIES, not TOWNS. A Virginia town IS inside a county, so a
+     * town-level record would be a genuine sub-county authority and the guard fails
+     * on it — correctly.
+     *
+     * @return list<string>
+     */
+    public static function countyEquivalentCityStates(): array
+    {
+        return ['US-VA'];
+    }
+
+    public function __construct(
+        private UsTaxDataset $dataset,
+        private LocalAuthorityResolver $authorities = new DefersLocalAuthorities,
+    ) {}
 
     public function rateFor(
         Jurisdiction $jurisdiction,
@@ -73,6 +171,26 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
         // grocery rate is its state share; local sales taxes still apply to food,
         // so returning 1.225% all-in under-charged by most of the true rate.
         $reduced = $this->reducedStateShare($state, $category);
+
+        // The host's resolver is asked FIRST, and about the whole jurisdiction
+        // rather than about a locality. A Colorado address carries no locality at
+        // all — nothing this package ships resolves Colorado below the state line,
+        // which is precisely why a host would bind a resolver there. Gating the
+        // seam behind a locality would close it to the states that need it most.
+        //
+        // It also wins over the shipped resolution where both could answer: binding
+        // one is a deliberate act, and a host with a state portal's own answer has
+        // a better one than a postal-key index.
+        $resolved = $this->authorities->authoritiesFor($jurisdiction, $at);
+
+        if ($resolved !== null) {
+            $stacked = $this->stacked($state, $resolved, $at, $reduced);
+
+            if ($stacked !== null) {
+                return $stacked;
+            }
+        }
+
         $locality = $jurisdiction->locality;
         $atRooftop = $locality !== null && $locality->subdivision->value === $state;
 
@@ -134,6 +252,12 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      * Indiana) or nothing at all. Any other scheme is already a jurisdiction code
      * and is used as-is.
      *
+     * A `county` locality is a county NAME, resolved to the single authority that
+     * taxes there. It carries exactly one code by construction — that is what makes
+     * {@see countyResolvedStates()} a closed list rather than a heuristic — so
+     * unlike a ZIP+4 there is no stacking to do and nothing that can be partially
+     * resolved.
+     *
      * Null means UNKNOWN and the caller falls back to the state rate; an empty list
      * means the index positively answered "no local authority", which is an all-in
      * rate in its own right.
@@ -142,6 +266,16 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      */
     private function codesFor(string $state, LocalityCode $locality): ?array
     {
+        if ($locality->scheme === self::COUNTY_SCHEME) {
+            $code = $this->dataset->localCodeForCounty($state, $locality->value);
+
+            // An unmatched or ambiguous county name yields null, NOT an empty list.
+            // Empty would mean "the county levies nothing", which reads as an
+            // authoritative all-in rate; this is "we could not tell which county",
+            // which has to fall back to the state share.
+            return $code === null ? null : [$code];
+        }
+
         if ($locality->scheme !== self::ZIP9_SCHEME) {
             return [$locality->value];
         }
@@ -329,7 +463,20 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
             return null;
         }
 
-        return new TaxRate($percent, RateKind::Standard, self::SOURCE, Confidence::Derived);
+        // The state share, and the caller is told what it is missing rather than
+        // only that something is. In Louisiana this is 4.45% against a combined rate
+        // reaching 11.45%, and the remedy names the two ways to close it.
+        return new TaxRate(
+            $percent,
+            RateKind::Standard,
+            self::SOURCE,
+            Confidence::Derived,
+            [],
+            $this->dataset->hasLocalSalesTax($state) ? RateLimit::NoLocalResolution : null,
+            // Stamped so this assessment can be found again after the data behind
+            // it is corrected. The window's own start is the precise handle.
+            $this->dataset->stateRateProvenance($state, $at),
+        );
     }
 
     /**

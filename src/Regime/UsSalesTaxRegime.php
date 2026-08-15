@@ -19,10 +19,12 @@ use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
+use DateTimeImmutable;
 
 /**
  * US sales tax (destination sourcing for remote supplies). Three gates before a
@@ -53,7 +55,81 @@ readonly class UsSalesTaxRegime implements TaxRegime
         private ProductTaxability $taxability,
         private ?NexusThresholds $nexusThresholds = null,
         private ?SourcingRules $sourcing = null,
+        /**
+         * Read for the per-state facts that are not rates: today, when each state's
+         * marketplace-facilitator rule took effect. Nullable so an app running on
+         * the static tables keeps working — it simply never applies the marketplace
+         * treatment, which is the safe direction.
+         */
+        private ?UsTaxDataset $dataset = null,
     ) {}
+
+    /**
+     * Whether the state's marketplace-facilitator rule was in force on the supply's
+     * date.
+     *
+     * Every state with a sales tax has one today — Missouri closed the set on
+     * 2023-01-01 — so for a current supply this is all but always true. It is still
+     * asked, and asked ON THE DATE, because a backdated invoice or a credit note
+     * against an older one is priced under the law that applied then: a Missouri
+     * sale from 2022 was the seller's to collect, and answering from today's map
+     * would zero a charge that was really owed.
+     *
+     * REFUSES ON MISSING DATA rather than assuming the rule applies. Without the
+     * dataset — or for a state it does not carry — the honest answer is that we do
+     * not know, and the seller collecting is the recoverable error. Charging twice
+     * is visible to the customer; not charging at all surfaces in an audit.
+     */
+    private function marketplaceLawInForce(string $state, DateTimeImmutable $on): bool
+    {
+        $from = $this->dataset?->marketplaceFacilitatorFrom($state);
+
+        return $from !== null && $from <= $on->format('Y-m-d');
+    }
+
+    /**
+     * Whether the line is at or under a holiday's per-item cap.
+     *
+     * ALL-OR-NOTHING, and this is where the two mechanics would otherwise be
+     * confused. The permanent clothing thresholds a few lines up exempt the first
+     * $175 of a Massachusetts coat and tax the rest. A holiday cap qualifies the
+     * whole item or none of it: at $100 in a $100-cap state the coat is untaxed, at
+     * $100.01 it is taxed in full. Treating a holiday cap as a threshold would
+     * exempt the first $100 of a coat the state charges full tax on.
+     *
+     * CURRENCY MUST MATCH, and a mismatch charges rather than refuses. The caps are
+     * dollar figures in state statutes, so comparing a line billed in another
+     * currency would need an exchange rate on the supply date — the same reason the
+     * threshold path throws. Here it does NOT throw: a holiday is a few days of
+     * relief, and refusing the whole assessment over one would break a checkout for
+     * a supply that is perfectly taxable. It falls through to the ordinary rate,
+     * which is what applies outside the holiday anyway.
+     */
+    private function qualifiesForHoliday(TaxQuery $query, int $cap, bool $capInclusive): bool
+    {
+        if ($query->amount->getCurrency()->getCurrencyCode() !== 'USD') {
+            return false;
+        }
+
+        // ABSOLUTE VALUE, because a credit note carries a negative amount and every
+        // negative is below every cap. Without this a $500 coat refunded inside a
+        // $300 holiday window is assessed exempt, so nothing is credited back
+        // against the tax originally collected and the seller keeps the state's
+        // money. `TaxDetermination::taxableBase()` takes the same precaution for the
+        // permanent thresholds twenty lines away; this path did not.
+        $price = $query->amount->getAmount()->abs();
+
+        // Compared as decimals, not floats — `Money` carries a BigDecimal precisely
+        // so this is exact.
+        //
+        // INCLUSIVE OR NOT IS PER STATUTE. Texas exempts clothing "less than $100",
+        // so an item at exactly $100.00 is taxable; Florida's "$100 or less" exempts
+        // it. Treating every cap as inclusive under-collected on every item landing
+        // exactly on a "less than" line.
+        return $capInclusive
+            ? $price->isLessThanOrEqualTo($cap)
+            : $price->isLessThan($cap);
+    }
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
@@ -61,6 +137,42 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
         if ($subdivision === null) {
             throw JurisdictionNotResolved::needsSubdivision($query->place);
+        }
+
+        // Asked BEFORE the seller's own registration, because the seller's nexus has
+        // nothing to do with it. Where a marketplace is the liable party the tax is
+        // its obligation whether or not this seller has any presence in the state,
+        // and a seller who charges as well double-charges the customer.
+        $facilitated = $query->marketplaceFacilitated
+            && $this->marketplaceLawInForce($subdivision->value, $query->on());
+
+        if ($facilitated) {
+            // Taxability still decides. A marketplace collects nothing on an exempt
+            // supply, and reporting it as facilitated would assert a tax that was
+            // never due — a wrong return under a right charge.
+            $determination = $this->taxability->determine(
+                $query->place,
+                $query->category,
+                $query->amount,
+                $query->on(),
+            );
+
+            if (! $determination->isExemptFor($query->amount)) {
+                return new TaxAssessment(
+                    treatment: TaxTreatment::MarketplaceFacilitated,
+                    net: $query->amount,
+                    tax: $this->zero($query),
+                    gross: $query->amount,
+                    placeOfSupply: $query->place,
+                    rate: null,
+                    reason: sprintf(
+                        'US sales tax: %s holds the marketplace liable to collect on a facilitated sale; '
+                        .'the seller charges nothing and most states still expect the sale reported in gross '
+                        .'receipts and deducted as marketplace-facilitated.',
+                        $subdivision->value,
+                    ),
+                );
+            }
         }
 
         if (! $query->seller->isRegisteredInSubdivision($subdivision, $query->on())) {
@@ -101,6 +213,35 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 placeOfSupply: $query->place,
                 rate: null,
                 reason: $this->exemptReason($query, $subdivision, $determination),
+            );
+        }
+
+        // A holiday is the last gate before a rate, because it does not change the
+        // rate — it removes the supply from tax for a few days. Asked after
+        // taxability so a supply that is already exempt is reported as exempt for
+        // its own reason rather than credited to a weekend it did not need.
+        $holiday = $this->dataset?->salesTaxHoliday(
+            $subdivision->value,
+            $query->category->value,
+            $query->on()->format('Y-m-d'),
+        );
+
+        if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'], $holiday['capInclusive'])) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::Exempt,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf(
+                    'US sales tax: exempt under %s\'s %s, which covers %s at or under $%d per item on %s.',
+                    $subdivision->value,
+                    $holiday['name'],
+                    $query->category->value,
+                    $holiday['cap'],
+                    $query->on()->format('Y-m-d'),
+                ),
             );
         }
 

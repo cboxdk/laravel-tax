@@ -14,7 +14,7 @@ confidence level per jurisdiction, and lists the jurisdictions we deliberately d
 
 - [Supported jurisdictions](supported.md) — regime, rate, source, confidence.
 - [Not yet supported](not-yet-supported.md) — researched but omitted, and why.
-- [EU VAT rate feed](eu-vat-feed.md) — the real, MIT-licensed EU VAT dataset the engine can bind, its source and license.
+- [EU VAT dataset](eu-tax-dataset.md) — dated EU rates from the compiled `cboxdk/eu-tax-dataset`, and what the engine does with a published ambiguity.
 - [US tax dataset](us-tax-dataset.md) — the compiled us-tax-data source behind US rates, taxability, nexus and sourcing (on by default).
 - [US SaaS taxability](us-saas-taxability.md) — the curated, cited per-state SaaS map (the fallback when the dataset is disabled).
 - [US economic-nexus thresholds](us-nexus-thresholds.md) — the cited per-state *Wayfair* threshold table (the fallback when the dataset is disabled).
@@ -28,3 +28,4 @@ Two boundaries to keep in mind:
 - **Tax rate ≠ e-invoicing.** This engine calculates tax. It does **not** handle
   mandatory e-invoicing / clearance mandates (Brazil NF-e, India IRN, Italy SdI,
   Mexico CFDI, Poland KSeF, Saudi ZATCA, …) — that is a separate invoicing concern.
+- **[EU VAT dataset](eu-tax-dataset.md)** — dated EU rates from the compiled dataset, and what the engine does with a published ambiguity.

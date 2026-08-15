@@ -7,6 +7,7 @@ namespace Cbox\Tax\Territories;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\ValueObjects\EuTerritory;
+use DateTimeImmutable;
 
 /**
  * The shipped snapshot of the EU's special VAT territories, matched on postal code.
@@ -19,8 +20,14 @@ use Cbox\Tax\ValueObjects\EuTerritory;
  * Territories excluded from the EU VAT area are listed in Article 6 of the VAT
  * Directive (2006/112/EC) and have not changed in years, which is why a snapshot
  * is honest here in a way a rate snapshot would not be: rates move, the map does
- * not. The territories that keep their own RATES (the Azores, Madeira) carry the
- * standard rate only — their reduced bands belong in a rate source, not here.
+ * The territories that keep their own RATES (the Azores, Madeira) now carry every
+ * level, keyed by the mainland rate each one replaces. That reverses an earlier
+ * decision — "their reduced bands belong in a rate source, not here" — which was
+ * made on the assumption that a rate source would carry them. None does: measured
+ * on 2026-08-14, TEDB returns no Madeira or Azores rows at all, so a Madeira
+ * grocery line was priced at the mainland's 6% with a caveat rather than the 5% (now
+ * 4%) that actually applied. The figures come from the Portuguese tax authority's
+ * Ofício Circulado n.º 25045 (2024-12-06) and its annex table.
  *
  * Postal ranges, and where they come from:
  *
@@ -39,7 +46,7 @@ use Cbox\Tax\ValueObjects\EuTerritory;
  */
 readonly class StaticEuTerritories implements EuTerritories
 {
-    public function for(CountryCode $country, ?string $postalCode): ?EuTerritory
+    public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
     {
         $digits = $postalCode === null ? null : preg_replace('/\D/', '', $postalCode);
 
@@ -52,7 +59,7 @@ readonly class StaticEuTerritories implements EuTerritories
 
         return match ($country->value) {
             'ES' => $this->spain($digits),
-            'PT' => $this->portugal($digits),
+            'PT' => $this->portugal($digits, $at),
             'FI' => str_starts_with($digits, '22')
                 ? EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession')
                 : null,
@@ -83,7 +90,7 @@ readonly class StaticEuTerritories implements EuTerritories
         };
     }
 
-    private function portugal(string $digits): ?EuTerritory
+    private function portugal(string $digits, ?DateTimeImmutable $at): ?EuTerritory
     {
         $prefix = (int) substr($digits, 0, 4);
 
@@ -91,11 +98,27 @@ readonly class StaticEuTerritories implements EuTerritories
         // a different case entirely from Spain's, and the reason this class
         // distinguishes the two rather than treating "special" as one thing.
         if ($prefix >= 9000 && $prefix <= 9400) {
-            return EuTerritory::withOwnRate('PT-30', 'Madeira', '22');
+            // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (Decreto
+            // Legislativo Regional n.º 6/2024/M, art. 21.º, effective under art.
+            // 121.º n.º 2). A back-dated supply must not take today's.
+            $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+
+            return EuTerritory::withOwnRates('PT-30', 'Madeira', '22', [
+                '23' => '22',
+                '13' => '12',
+                '6' => $on >= '2024-10-01' ? '4' : '5',
+            ]);
         }
 
         if ($prefix >= 9500 && $prefix <= 9980) {
-            return EuTerritory::withOwnRate('PT-20', 'Azores', '16');
+            // A flat 30% cut of the national levels since 2021-07-01 (Decreto
+            // Legislativo Regional n.º 15-A/2021/A), which turns 6/13/23 into
+            // 4/9/16.
+            return EuTerritory::withOwnRates('PT-20', 'Azores', '16', [
+                '23' => '16',
+                '13' => '9',
+                '6' => '4',
+            ]);
         }
 
         return null;

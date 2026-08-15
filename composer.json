@@ -50,9 +50,8 @@
             "@analyse",
             "@test",
             "@license-check",
-            "@audit"
+            "@composer audit --no-dev"
         ],
-        "audit": "composer audit --no-dev",
         "sbom-check": [
             "@sbom",
             "git diff --exit-code sbom.json"

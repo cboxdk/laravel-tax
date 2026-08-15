@@ -12,7 +12,7 @@ Bind your own `Contracts\TaxRateSource` to replace the default static rates:
 ```php
 use Cbox\Tax\Contracts\TaxRateSource;
 
-$this->app->singleton(TaxRateSource::class, fn () => new TedbRateSource(/* ... */));
+$this->app->singleton(TaxRateSource::class, fn () => new EuTaxDatasetRateSource(/* ... */));
 ```
 
 A source returns a `TaxRate` (percentage, band, provenance, confidence) for a
@@ -263,67 +263,27 @@ stacks nothing: the rate returned is already all-in for the point. And it needs
 coordinates, which is why the geocoder attaches a point rather than a ZIP+4 for
 these two states.
 
-## The EU VAT feed (`IbericodeVatRateSource`)
+## The EU VAT dataset (`EuTaxDatasetRateSource`)
 
-`IbericodeVatRateSource` binds a **real, public, MIT-licensed** EU VAT-rate dataset
-— the community-maintained
-[`ibericode/vat-rates`](https://github.com/ibericode/vat-rates) feed
-(`https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json`). Its
-source, license, shape and honest-provenance notes are documented in
-[EU VAT rate feed](../coverage/eu-vat-feed.md).
+Reads the compiled `cboxdk/eu-tax-dataset`: 27 member states, dated windows back to
+the start of the Commission's records, and per-band provenance. It replaced two
+earlier adapters — a community-maintained third-party feed, and a hand-built TEDB
+export reader — because it does what both did and carries what neither had: a supply
+date, a published class map, and the source's own ambiguities rather than a guess.
 
-Enable it and the provider composes `ChainTaxRateSource(EU feed → static snapshot)`:
+See [EU VAT dataset](../coverage/eu-tax-dataset.md).
 
-```dotenv
-TAX_EU_VAT_FEED=true
-# Optional: pin to a mirror or a TEDB export.
-# TAX_EU_VAT_URL=https://your-mirror.example/vat-rates.json
-```
+## The live TEDB service
 
-It reads the real dataset shape (`items` keyed by country → date-effective rate
-periods) and selects the period **in force** at the assessment date. The dataset's
-reduced tiers are not category-labelled, so it resolves the **standard** rate by
-default; pass an authoritative `TaxCategory → tier` map to surface a reduced tier:
+`TedbSoapRateSource` calls the Commission's *Taxes in Europe Database*
+(`VatRetrievalService`) directly — no key, no registration, cached per country.
+Enable it with `tax.tedb.live` and the provider adds it to the chain.
 
-```php
-use Cbox\Tax\RateSource\IbericodeVatRateSource;
-
-new IbericodeVatRateSource(
-    $app->make(\Illuminate\Http\Client\Factory::class),
-    config('tax.eu_vat.url'),
-    categoryTiers: ['digital_service' => 'reduced1'], // operator-asserted mapping
-);
-```
-
-## The TEDB adapter
-
-`TedbRateSource` reads a **TEDB-derived dataset** — the EU Commission's *Taxes in
-Europe Database* (`VatRetrievalService`), transformed to the JSON shape below. Its
-location is **config-driven** (`tax.tedb.url`), an `http(s)` URL **or** a local file
-path; the package ships **no endpoint**, so you must point it at a real export.
-
-Set `tax.tedb.url` (env `TAX_TEDB_URL`) and the provider composes
-`ChainTaxRateSource(TEDB → static snapshot)` automatically — TEDB is authoritative,
-the static snapshot is the fallback. Unconfigured, the plain static snapshot stays
-the zero-config default.
-
-Documented dataset shape:
-
-```json
-{
-  "version": "2026-07-01",
-  "rates": {
-    "DK": { "standard": "25" },
-    "FR": { "standard": "20", "bands": { "digital_service": { "rate": "5.5", "kind": "reduced" } } }
-  }
-}
-```
-
-Each country entry's `standard` is the standard rate; an optional `bands` map keys
-reduced/zero rates by `TaxCategory` value (`kind` ∈ `reduced` | `zero`). A missing
-country, an unreadable source, or malformed JSON yields `null` so the engine denies
-(and the chain falls back to the static snapshot) rather than guessing. For a URL
-source, wrap it in `CachingTaxRateSource` to avoid a request per lookup.
+Prefer the [compiled EU dataset](../coverage/eu-tax-dataset.md) above it. The live
+service answers only about a date you name and cannot usefully be asked what a rate
+*was* per request, so a backdated supply cannot be priced from it; the dataset
+carries the answer already resolved, with the source's own ambiguities published
+rather than silently collapsed.
 
 ## Composing sources
 
@@ -332,11 +292,10 @@ fallback:
 
 - **`StaticTaxRateSource`** — the built-in map (default binding); accepts optional
   reduced/zero `bands`.
-- **`IbericodeVatRateSource`** — reads the real MIT-licensed `ibericode/vat-rates`
-  EU dataset (URL or file), date-effective; auto-wired to a `ChainTaxRateSource`
-  fallback when `tax.eu_vat.enabled` is true.
-- **`TedbRateSource`** — reads a normalised TEDB-derived dataset (URL or file);
-  auto-wired to a `ChainTaxRateSource` fallback when `tax.tedb.url` is set.
+- **`EuTaxDatasetRateSource`** — reads the compiled `cboxdk/eu-tax-dataset`: dated
+  windows, a published class map, and the source's own ambiguities.
+- **`TedbSoapRateSource`** — calls the Commission's TEDB service live; added to the
+  chain when `tax.tedb.live` is true.
 - **`RemoteRateSource`** — fetches a generic JSON country→rate feed (number,
   `{standard}`, or `{standard, bands}`); one request per lookup, so wrap it in caching.
 - **`CachingTaxRateSource`** — caches the current rate from an inner source; a
@@ -345,11 +304,14 @@ fallback:
 
 ```php
 use Cbox\Tax\Contracts\TaxRateSource;
-use Cbox\Tax\RateSource\{ChainTaxRateSource, CachingTaxRateSource, TedbRateSource, StaticTaxRateSource};
+use Cbox\Tax\RateSource\{ChainTaxRateSource, CachingTaxRateSource, TedbSoapRateSource, StaticTaxRateSource};
 
 $this->app->singleton(TaxRateSource::class, fn ($app) => new ChainTaxRateSource([
     new CachingTaxRateSource(
-        new TedbRateSource($app->make(\Illuminate\Http\Client\Factory::class), config('tax.tedb.url')),
+        new TedbSoapRateSource(
+            $app->make(\Illuminate\Http\Client\Factory::class),
+            $app->make(\Illuminate\Contracts\Cache\Repository::class),
+        ),
         $app->make(\Illuminate\Contracts\Cache\Repository::class),
     ),
     new StaticTaxRateSource, // fallback

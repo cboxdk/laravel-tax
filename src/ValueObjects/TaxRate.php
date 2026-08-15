@@ -9,6 +9,7 @@ use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Exceptions\ImplausibleTaxRate;
 use Cbox\Tax\Exceptions\RateComponentsDoNotReconcile;
 
@@ -45,6 +46,28 @@ readonly class TaxRate
         public string $source = 'static',
         public Confidence $confidence = Confidence::Authoritative,
         public array $components = [],
+        /**
+         * Why this is the best available answer rather than the exact one, and what
+         * would close the gap. Null when the rate is exact for what was asked.
+         *
+         * ADDED LAST so every existing positional caller keeps working — the same
+         * discipline the territory rates and the scope map were added under.
+         *
+         * It sits beside {@see Confidence} rather than replacing it because they
+         * answer different questions. Confidence decides whether to bill; this
+         * decides what to do about it, and a warning nobody can act on is one
+         * everybody learns to filter out.
+         */
+        public ?RateLimit $limitedBy = null,
+        /**
+         * Which published data answered this, precisely enough to find the
+         * assessment again after that data is corrected.
+         *
+         * Null for a static table or a source that publishes nothing to trace back
+         * to. Added last, like every parameter before it, so positional callers are
+         * unaffected.
+         */
+        public ?RateProvenance $provenance = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
 

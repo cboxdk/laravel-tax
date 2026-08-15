@@ -5,7 +5,47 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
-## [Unreleased]
+## [0.11.0] - 2026-08-15
+
+### Added
+
+- **Marketplace facilitator.** Every US state with a sales tax makes a qualifying
+  marketplace liable to collect on its third-party sellers' supplies. Pass
+  `marketplaceFacilitated` and the engine returns `MarketplaceFacilitated` — nothing
+  charged, kept apart from `Exempt` and `NotRegistered` because all three are a zero
+  and mean opposite things on a return. Checked on the supply's date, so a backdated
+  Missouri sale from 2022 is still the seller's.
+- **Sales tax holidays.** Fifteen states' 2026 back-to-school windows, applied from
+  the supply's date. The cap is all-or-nothing and its inclusivity is per statute —
+  Texas exempts clothing "less than $100", Florida "$100 or less".
+- **`ProductCatalogue`.** Map your SKUs to tax classes once and send `itemCode` per
+  line. An unmapped SKU is reported (`RateLimit::ItemUnmapped`) rather than quietly
+  priced from the fallback.
+- **`RateLimit`.** What limited an answer and the one step that closes it.
+  `Confidence` says how much to trust a figure; this says what to do about it.
+- **`RateProvenance`.** Which published data answered a rate — dataset, version,
+  the dated window, the section hash — so an assessment can be found again after
+  that data is corrected.
+- **`LocalAuthorityResolver`.** The seam a state portal or commercial adapter plugs
+  into for the states the shipped dataset cannot resolve below the state line.
+- **CN/CPA commodity codes.** `EuTaxDatasetRateSource` implements
+  `CommodityRateSource`: a heading the publisher could not settle is answered by the
+  supply's own classification code, which the source scopes each competing rate to.
+- **County resolution for Florida, Pennsylvania, Hawaii and Virginia.** No boundary
+  file and no opt-in — the county is the only authority that can tax there.
+  Address-exact coverage goes from 26 states to 30.
+
+### Fixed
+
+- The document plane lost `postalCode`, `marketplaceFacilitated` and `itemCode` in
+  `TaxOrder::queryFor()`, so a Tenerife invoice was charged mainland Spanish VAT and
+  a marketplace order double-charged. A test now reflects over `TaxQuery`'s
+  constructor and fails if any parameter stops being passed.
+- `assessLine()` skipped classification, so the product catalogue was unreachable
+  from a document and an unmapped SKU raised no flag there.
+- The boundary index — the file deciding *which* authorities apply — reached the
+  engine without being verified against its manifest.
+
 
 ### Fixed — correctness and fail-safe direction
 

@@ -1,0 +1,6703 @@
+{
+  "states": {
+    "DK": [
+      {
+        "standard": "25",
+        "bands": {
+          "UNDERTAKERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "0",
+            "25"
+          ],
+          "SOCIAL_WELLBEING": [
+            "0",
+            "25"
+          ],
+          "SPORTING_EVENTS": [
+            "0",
+            "25"
+          ],
+          "SPORTING_FACILITIES": [
+            "0",
+            "25"
+          ],
+          "TRANSPORT_PASSENGERS": [
+            "0",
+            "25"
+          ]
+        },
+        "effectiveFrom": "2016-01-01",
+        "effectiveTo": "2019-06-30",
+        "situationOn": "2016-12-31",
+        "startsBeforeRecords": true
+      },
+      {
+        "standard": "25",
+        "bands": {
+          "CULTURAL_EVENTS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "SOCIAL_WELLBEING": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2019-07-01",
+        "effectiveTo": "2023-06-30",
+        "situationOn": "2019-12-31"
+      },
+      {
+        "standard": "25",
+        "bands": {
+          "CULTURAL_EVENTS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "SOCIAL_WELLBEING": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2023-07-01",
+        "effectiveTo": null,
+        "situationOn": "2026-08-14"
+      }
+    ],
+    "EE": [
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2016-01-01",
+        "effectiveTo": "2019-06-30",
+        "situationOn": "2016-12-31",
+        "startsBeforeRecords": true
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2019-07-01",
+        "effectiveTo": "2020-06-30",
+        "situationOn": "2019-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "MEDICAL_EQUIPMENT": [
+            "0",
+            "9"
+          ]
+        },
+        "effectiveFrom": "2020-07-01",
+        "effectiveTo": "2022-06-30",
+        "situationOn": "2020-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2022-07-01",
+        "effectiveTo": "2022-12-31",
+        "situationOn": "2022-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2023-01-01",
+        "effectiveTo": "2023-06-30",
+        "situationOn": "2023-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2023-07-01",
+        "effectiveTo": "2023-12-31",
+        "situationOn": "2023-12-31"
+      },
+      {
+        "standard": "22",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2024-01-01",
+        "effectiveTo": "2024-12-31",
+        "situationOn": "2024-06-30"
+      },
+      {
+        "standard": "22",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "13",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2025-06-30",
+        "situationOn": "2025-06-30"
+      },
+      {
+        "standard": "24",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "13",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "9",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "9",
+            "basis": "source"
+          }
+        },
+        "undecided": [],
+        "effectiveFrom": "2025-07-01",
+        "effectiveTo": null,
+        "situationOn": "2026-08-14"
+      }
+    ],
+    "FR": [
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10",
+              "20"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WINDOW_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "DOMESTIC_CARE": [
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "5.5",
+            "10",
+            "20"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "8.5",
+            "13",
+            "0.9",
+            "1.05"
+          ]
+        },
+        "effectiveFrom": "2016-01-01",
+        "effectiveTo": "2016-12-31",
+        "situationOn": "2016-12-31",
+        "startsBeforeRecords": true
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10",
+              "20"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WINDOW_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "DOMESTIC_CARE": [
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "5.5",
+            "10",
+            "20"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ]
+        },
+        "effectiveFrom": "2017-01-01",
+        "effectiveTo": "2018-06-30",
+        "situationOn": "2017-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10",
+              "20"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WINDOW_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "5.5",
+            "10"
+          ],
+          "DOMESTIC_CARE": [
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "5.5",
+            "10",
+            "20"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ]
+        },
+        "effectiveFrom": "2018-07-01",
+        "effectiveTo": "2019-06-30",
+        "situationOn": "2018-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WINDOW_CLEANING": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "5.5",
+            "10"
+          ],
+          "DOMESTIC_CARE": [
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ]
+        },
+        "effectiveFrom": "2019-07-01",
+        "effectiveTo": "2020-12-31",
+        "situationOn": "2019-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "10",
+            "5.5"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "5.5",
+            "0"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2021-01-01",
+        "effectiveTo": "2021-06-30",
+        "situationOn": "2021-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "10",
+            "5.5"
+          ],
+          "FOODSTUFFS": [
+            "10",
+            "5.5"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "5.5",
+            "0"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "13",
+            "8.5",
+            "0.9",
+            "1.05"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2021-07-01",
+        "effectiveTo": "2021-12-31",
+        "situationOn": "2021-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "2.1",
+            "10"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "5.5",
+            "10"
+          ],
+          "FOODSTUFFS": [
+            "10",
+            "5.5"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "5.5",
+            "0"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "8.5",
+            "0.9",
+            "1.05",
+            "13"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2022-01-01",
+        "effectiveTo": "2022-12-31",
+        "situationOn": "2022-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPER_TEMPORARY": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZERO_REDUCED_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "10",
+            "20"
+          ],
+          "CULTURAL_EVENTS": [
+            "2.1",
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "5.5",
+            "2.1"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2023-01-01",
+        "effectiveTo": "2023-06-30",
+        "situationOn": "2023-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "0",
+              "10"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "BROADCASTING_SERVICES": [
+            "10",
+            "20"
+          ],
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "5.5",
+            "2.1"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2023-07-01",
+        "effectiveTo": "2023-12-31",
+        "situationOn": "2023-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "10",
+            "5.5"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "10",
+            "5.5"
+          ],
+          "REGION": [
+            "8.5",
+            "13",
+            "0.9",
+            "1.05"
+          ],
+          "STREET_CLEANING": [
+            "5.5",
+            "10"
+          ]
+        },
+        "effectiveFrom": "2024-01-01",
+        "effectiveTo": "2024-06-30",
+        "situationOn": "2024-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5",
+              "0"
+            ]
+          },
+          "PHOTOGRAPHS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "5.5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "10",
+            "5.5"
+          ],
+          "HOUSING_PROVISION": [
+            "10",
+            "5.5"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "10",
+            "5.5"
+          ],
+          "REGION": [
+            "13",
+            "0.9",
+            "1.05",
+            "8.5"
+          ],
+          "STREET_CLEANING": [
+            "10",
+            "5.5"
+          ]
+        },
+        "effectiveFrom": "2024-07-01",
+        "effectiveTo": "2025-06-30",
+        "situationOn": "2024-12-31"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ANTIQUES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SOLAR_PANELS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "10",
+            "5.5"
+          ],
+          "HOUSING_PROVISION": [
+            "10",
+            "5.5"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "10",
+            "5.5"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "13",
+            "8.5"
+          ],
+          "STREET_CLEANING": [
+            "10",
+            "5.5"
+          ]
+        },
+        "effectiveFrom": "2025-07-01",
+        "effectiveTo": "2026-02-28",
+        "situationOn": "2026-02-28"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ANTIQUES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "5.5",
+              "10"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SOLAR_PANELS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "5.5",
+            "10"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "5.5",
+            "10"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ]
+        },
+        "effectiveFrom": "2026-03-01",
+        "effectiveTo": "2026-06-30",
+        "situationOn": "2026-06-30"
+      },
+      {
+        "standard": "20",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "ANTIQUES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "DOMESTIC_CARE": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "FOODSTUFFS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "MEDICAL_CARE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PERIODICALS": {
+            "rate": "2.1",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "2.1",
+            "basis": "determination",
+            "why": "\"For reimbursed pharmaceutical products (article 281 octies)\" \u2014 a prescribed medicine is the reimbursed one; 10% is non-reimbursed and 5.5% sanitary protection and condoms.",
+            "competing": [
+              "10",
+              "5.5"
+            ]
+          },
+          "RESTAURANT": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "SOLAR_PANELS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5.5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "10",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "10",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "CULTURAL_EVENTS": [
+            "5.5",
+            "10"
+          ],
+          "HOUSING_PROVISION": [
+            "10",
+            "5.5"
+          ],
+          "PRIVATE_DWELLINGS": [
+            "10",
+            "5.5"
+          ],
+          "REGION": [
+            "0.9",
+            "1.05",
+            "8.5",
+            "13"
+          ]
+        },
+        "effectiveFrom": "2026-07-01",
+        "effectiveTo": null,
+        "situationOn": "2026-08-14"
+      }
+    ],
+    "HU": [
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2016-01-01",
+        "effectiveTo": "2016-12-31",
+        "situationOn": "2016-12-31",
+        "startsBeforeRecords": true,
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2017-01-01",
+        "effectiveTo": "2017-12-31",
+        "situationOn": "2017-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "18",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2018-01-01",
+        "effectiveTo": "2018-06-30",
+        "situationOn": "2018-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2018-07-01",
+        "effectiveTo": "2019-06-30",
+        "situationOn": "2018-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2019-07-01",
+        "effectiveTo": "2019-12-31",
+        "situationOn": "2019-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2020-01-01",
+        "effectiveTo": "2020-06-30",
+        "situationOn": "2020-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2020-07-01",
+        "effectiveTo": "2020-12-31",
+        "situationOn": "2020-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2021-01-01",
+        "effectiveTo": "2021-06-30",
+        "situationOn": "2021-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "18",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2021-07-01",
+        "effectiveTo": "2021-12-31",
+        "situationOn": "2021-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2022-01-01",
+        "effectiveTo": "2022-06-30",
+        "situationOn": "2022-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "18",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2022-07-01",
+        "effectiveTo": "2022-12-31",
+        "situationOn": "2022-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2023-01-01",
+        "effectiveTo": "2023-06-30",
+        "situationOn": "2023-06-30",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2023-07-01",
+        "effectiveTo": "2023-12-31",
+        "situationOn": "2023-12-31",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      },
+      {
+        "standard": "27",
+        "bands": {
+          "ACCOMMODATION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "ANTIQUES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "18",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "5",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "18"
+          ]
+        },
+        "effectiveFrom": "2024-01-01",
+        "effectiveTo": null,
+        "situationOn": "2026-08-14",
+        "scopes": {
+          "FOODSTUFFS": {
+            "cn:01022110": "5",
+            "cn:01022130": "5",
+            "cn:01022190": "5",
+            "cn:01022905": "5",
+            "cn:01022910": "5",
+            "cn:01022921": "5",
+            "cn:01022929": "5",
+            "cn:01022941": "5",
+            "cn:01022949": "5",
+            "cn:01022951": "5",
+            "cn:01022959": "5",
+            "cn:01022961": "5",
+            "cn:01022969": "5",
+            "cn:01022991": "5",
+            "cn:01022999": "5",
+            "cn:01031000": "5",
+            "cn:01039110": "5",
+            "cn:01039211": "5",
+            "cn:01039219": "5",
+            "cn:01041010": "5",
+            "cn:01041030": "5",
+            "cn:01041080": "5",
+            "cn:01042010": "5",
+            "cn:01042090": "5",
+            "cn:02011000": "5",
+            "cn:02012020": "5",
+            "cn:02012030": "5",
+            "cn:02012050": "5",
+            "cn:02012090": "5",
+            "cn:02013000": "5",
+            "cn:02021000": "5",
+            "cn:02022010": "5",
+            "cn:02022030": "5",
+            "cn:02022050": "5",
+            "cn:02022090": "5",
+            "cn:02023050": "5",
+            "cn:02023090": "5",
+            "cn:0203": "5",
+            "cn:02031110": "5",
+            "cn:02032110": "5",
+            "cn:02041000": "5",
+            "cn:02042100": "5",
+            "cn:02042210": "5",
+            "cn:02043000": "5",
+            "cn:02044100": "5",
+            "cn:02044210": "5",
+            "cn:02045011": "5",
+            "cn:02045013": "5",
+            "cn:02045051": "5",
+            "cn:02045053": "5",
+            "cn:020610": "5",
+            "cn:02062100": "5",
+            "cn:02062200": "5",
+            "cn:020629": "5",
+            "cn:02063000": "5",
+            "cn:02064100": "5",
+            "cn:02064900": "5",
+            "cn:0207": "5",
+            "cn:0301": "5",
+            "cn:0302": "5",
+            "cn:0303": "5",
+            "cn:0304": "5",
+            "cn:0401": "5",
+            "cn:040110": "5",
+            "cn:040120": "5",
+            "cn:0402": "5",
+            "cn:0403": "5",
+            "cn:040410": "5",
+            "cn:040490": "18",
+            "cn:0405": "5",
+            "cn:0406": "5",
+            "cn:0407": "5",
+            "cn:1806": "18",
+            "cn:1901": "18",
+            "cn:19011000": "5",
+            "cn:19030000": "18",
+            "cn:1904": "18",
+            "cn:19051000": "18",
+            "cn:190540": "18",
+            "cn:190590": "18",
+            "cn:2106": "18",
+            "cn:21069092": "5",
+            "cn:21069098": "5",
+            "cn:220299": "5",
+            "cn:22029991": "18",
+            "cn:22029995": "18",
+            "cn:22029999": "18",
+            "cn:30045000": "5"
+          }
+        }
+      }
+    ],
+    "PL": [
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "LOAN_LIBRARIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2016-01-01",
+        "effectiveTo": "2016-12-31",
+        "situationOn": "2016-12-31",
+        "startsBeforeRecords": true
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "5",
+            "8"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2017-01-01",
+        "effectiveTo": "2018-12-31",
+        "situationOn": "2017-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "8",
+            "5"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2019-01-01",
+        "effectiveTo": "2019-06-30",
+        "situationOn": "2019-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHARMACEUTICAL_PRODUCTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "5",
+            "8"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2019-07-01",
+        "effectiveTo": "2020-06-30",
+        "situationOn": "2019-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "8",
+            "5"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "8",
+            "5"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "8",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2020-07-01",
+        "effectiveTo": "2020-12-31",
+        "situationOn": "2020-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "5",
+            "8"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "8",
+            "23"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "0",
+            "5",
+            "23"
+          ]
+        },
+        "effectiveFrom": "2021-01-01",
+        "effectiveTo": "2021-06-30",
+        "situationOn": "2021-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "8",
+            "5"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "8",
+            "23"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8",
+            "23"
+          ]
+        },
+        "effectiveFrom": "2021-07-01",
+        "effectiveTo": "2021-12-31",
+        "situationOn": "2021-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_GAS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "8",
+            "5"
+          ],
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "8",
+            "5"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "8",
+            "23"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "8",
+            "5",
+            "23"
+          ]
+        },
+        "effectiveFrom": "2022-01-01",
+        "effectiveTo": "2022-06-30",
+        "situationOn": "2022-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_ELECTRICITY": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_HEATING": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "AGRICULTURAL_PRODUCTION": [
+            "5",
+            "8",
+            "23"
+          ],
+          "FOODSTUFFS": [
+            "8",
+            "23"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "MEDICAL_EQUIPMENT": [
+            "8",
+            "23"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8",
+            "23"
+          ]
+        },
+        "effectiveFrom": "2022-07-01",
+        "effectiveTo": "2022-12-31",
+        "situationOn": "2022-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BICYCLES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_FACILITIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZERO_RATE": {
+            "rate": "0",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "8",
+            "23"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2023-01-01",
+        "effectiveTo": "2023-06-30",
+        "situationOn": "2023-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "8",
+            "23"
+          ],
+          "LOAN_LIBRARIES": [
+            "8",
+            "5"
+          ],
+          "PERIODICALS": [
+            "8",
+            "5"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "8",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2023-07-01",
+        "effectiveTo": "2023-12-31",
+        "situationOn": "2023-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "8",
+            "23"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2024-01-01",
+        "effectiveTo": "2024-06-30",
+        "situationOn": "2024-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2024-07-01",
+        "effectiveTo": "2024-12-31",
+        "situationOn": "2024-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TEMPORARY_EXEMPTION_RATE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "8",
+            "5"
+          ],
+          "LOAN_LIBRARIES": [
+            "8",
+            "5"
+          ],
+          "PERIODICALS": [
+            "8",
+            "5"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "8",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2025-06-30",
+        "situationOn": "2025-06-30"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TEMPORARY_EXEMPTION_RATE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "5",
+            "8"
+          ],
+          "PERIODICALS": [
+            "5",
+            "8"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "5",
+            "8"
+          ]
+        },
+        "effectiveFrom": "2025-07-01",
+        "effectiveTo": "2025-12-31",
+        "situationOn": "2025-12-31"
+      },
+      {
+        "standard": "23",
+        "bands": {
+          "100_YEARS_OLD": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ACCOMMODATION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "AGRICULTURAL_PRODUCTION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "BROADCASTING_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CHILDREN_CAR_SEATS": {
+            "rate": "5",
+            "basis": "source"
+          },
+          "CLOTHING_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "CULTURAL_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HAIRDRESSING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "HOUSING_PROVISION": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "IMPRESSIONS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "MEDICAL_EQUIPMENT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "NEWSPAPERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PHOTOGRAPHS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PICTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "POSTAGE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "PRIVATE_DWELLINGS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "RESTAURANT": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SCULPTURE_CASTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SHOES_REPAIR": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SPORTING_EVENTS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "STREET_CLEANING": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "SUPPLY_WATER": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TAPESTRIES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TEMPORARY_EXEMPTION_RATE": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "TRANSPORT_PASSENGERS": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "UNDERTAKERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "WRITERS_SERVICES": {
+            "rate": "8",
+            "basis": "source"
+          },
+          "ZOOLOGICAL": {
+            "rate": "8",
+            "basis": "source"
+          }
+        },
+        "undecided": {
+          "FOODSTUFFS": [
+            "5",
+            "8"
+          ],
+          "LOAN_LIBRARIES": [
+            "8",
+            "5"
+          ],
+          "PERIODICALS": [
+            "8",
+            "5"
+          ],
+          "PHARMACEUTICAL_PRODUCTS": [
+            "8",
+            "5"
+          ]
+        },
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "situationOn": "2026-08-14"
+      }
+    ]
+  }
+}

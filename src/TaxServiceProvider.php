@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\FlatChargeSource;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
@@ -20,15 +23,15 @@ use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\VatIdValidator;
+use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Nexus\StaticNexusThresholds;
 use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\ArcGisRateSource;
-use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
-use Cbox\Tax\RateSource\IbericodeVatRateSource;
+use Cbox\Tax\RateSource\DefersLocalAuthorities;
+use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\TedbRateSource;
 use Cbox\Tax\RateSource\TedbSoapRateSource;
 use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
@@ -67,6 +70,19 @@ class TaxServiceProvider extends ServiceProvider
         // (deny-by-default), exactly as the adapters below do.
         $this->app->singleton(UsTaxDataset::class, static fn (Application $app): ?UsTaxDataset => self::usTaxDataset($app));
 
+        // Deferring by default: this package ships credentials for no state portal
+        // and will not guess an authority it cannot resolve. A host that has better
+        // resolution — Colorado's GIS under its own SUTS key, a commercial adapter,
+        // an internal boundary file — rebinds this one contract and the US rate
+        // source starts stacking what it returns. See docs/extension-points.
+        $this->app->singleton(LocalAuthorityResolver::class, static fn (): LocalAuthorityResolver => new DefersLocalAuthorities);
+
+        // Knows no item codes until a host binds its own. An app that never sends an
+        // item code behaves exactly as it did before the catalogue existed; one that
+        // sends a code with nothing bound gets its lines flagged unmapped, which is
+        // the honest report rather than a silent fallback.
+        $this->app->singleton(ProductCatalogue::class, static fn (): ProductCatalogue => new EmptyProductCatalogue);
+
         $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
             $static = new StaticTaxRateSource;
 
@@ -77,13 +93,25 @@ class TaxServiceProvider extends ServiceProvider
             // engine denies rather than guessing.
             $sources = [];
 
-            $euVatFeed = self::euVatFeedSource($app);
-
-            if ($euVatFeed !== null) {
-                $sources[] = $euVatFeed;
-            }
-
             $config = $app->make(Config::class);
+
+            // The compiled EU dataset, tried before the live service and before any
+            // hand-built export. It carries a dated series, so a back-dated supply is
+            // priced with the rate that applied then rather than today's — which no
+            // live call can do in one request — and it publishes the source's own
+            // ambiguities rather than resolving them silently.
+            $euDataset = $config->get('tax.eu_tax_data.location');
+
+            if (is_string($euDataset) && $euDataset !== '') {
+                $euTtl = $config->get('tax.eu_tax_data.ttl');
+
+                $sources[] = new EuTaxDatasetRateSource(new EuTaxDataset(
+                    $app->make(Factory::class),
+                    $app->make(Cache::class),
+                    $euDataset,
+                    is_int($euTtl) ? $euTtl : 86400,
+                ));
+            }
 
             // The live TEDB service is the authoritative EU source and needs no key,
             // so it is tried before a hand-built export. It is cached per country, not
@@ -96,12 +124,6 @@ class TaxServiceProvider extends ServiceProvider
                     $app->make(Cache::class),
                     is_int($ttl) ? $ttl : 86400,
                 );
-            }
-
-            $tedb = $config->get('tax.tedb.url');
-
-            if (is_string($tedb) && $tedb !== '') {
-                $sources[] = new TedbRateSource($app->make(Factory::class), $tedb);
             }
 
             // Where a state publishes its own rooftop polygons (CA, NM), a point
@@ -122,7 +144,14 @@ class TaxServiceProvider extends ServiceProvider
             $dataset = self::usTaxDataset($app);
 
             if ($dataset !== null) {
-                $sources[] = new UsTaxDatasetRateSource($dataset);
+                // Resolved from the container so a host can bind its own — a state
+                // portal it holds credentials for, a commercial adapter, an
+                // internal boundary file. The default defers on everything, so an
+                // app that binds nothing behaves exactly as before.
+                $sources[] = new UsTaxDatasetRateSource(
+                    $dataset,
+                    $app->make(LocalAuthorityResolver::class),
+                );
             }
 
             if ($sources === []) {
@@ -177,6 +206,8 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(JurisdictionRepository::class),
                 $app->make(NexusThresholds::class),
                 $sourcing,
+                self::usTaxDataset($app),
+                $app->make(EuTerritories::class),
             );
         });
 
@@ -198,6 +229,7 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(TaxRateSource::class),
                 $app->make(FlatChargeSource::class),
                 $app->make(OrderFlatChargeSource::class),
+                $app->make(ProductCatalogue::class),
             );
         });
 
@@ -250,38 +282,6 @@ class TaxServiceProvider extends ServiceProvider
     }
 
     /**
-     * Build the EU VAT live feed (the MIT-licensed ibericode/vat-rates dataset)
-     * when it is enabled, wrapped in the request cache. Returns `null` when the
-     * feed is disabled (the default) so the static snapshot stays the zero-config
-     * default. A URL source is cached to avoid a request per lookup; a local file
-     * path is read directly.
-     */
-    private static function euVatFeedSource(Application $app): ?TaxRateSource
-    {
-        $config = $app->make(Config::class);
-
-        if ($config->get('tax.eu_vat.enabled') !== true) {
-            return null;
-        }
-
-        $url = $config->get('tax.eu_vat.url');
-
-        if (! is_string($url) || $url === '') {
-            return null;
-        }
-
-        $feed = new IbericodeVatRateSource($app->make(Factory::class), $url);
-
-        $isRemote = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
-
-        if (! $isRemote) {
-            return $feed;
-        }
-
-        return new CachingTaxRateSource($feed, $app->make(Cache::class));
-    }
-
-    /**
      * Bind the VAT-ID validator to VIES (EU) + HMRC (UK), adding ABN Lookup (AU)
      * only when a GUID is configured.
      */
@@ -318,7 +318,10 @@ class TaxServiceProvider extends ServiceProvider
         $baseUrl = $config->get('tax.geocodio.base_url');
         $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2';
 
-        // Rooftop county-FIPS capture is opt-in (partial; see tax.us_tax_data.rooftop).
+        // Gates only the paths that resolve BELOW the county line — the ZIP+4 append
+        // and the polygon services. County resolution (FL, PA, HI) runs regardless:
+        // it needs no append, and in those states the county is the whole local
+        // share, so withholding it would just under-charge.
         $rooftop = $config->get('tax.us_tax_data.rooftop') === true;
 
         $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(

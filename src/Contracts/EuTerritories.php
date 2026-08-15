@@ -6,6 +6,7 @@ namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\ValueObjects\EuTerritory;
+use DateTimeImmutable;
 
 /**
  * Resolves the special VAT territory an address falls in, if any.
@@ -27,5 +28,11 @@ use Cbox\Tax\ValueObjects\EuTerritory;
  */
 interface EuTerritories
 {
-    public function for(CountryCode $country, ?string $postalCode): ?EuTerritory;
+    /**
+     * @param  DateTimeImmutable|null  $at  the supply date. Territory rates move —
+     *                                      Madeira's reduced rate went from 5% to 4%
+     *                                      on 2024-10-01 — so a back-dated supply
+     *                                      must not be priced with today's.
+     */
+    public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory;
 }

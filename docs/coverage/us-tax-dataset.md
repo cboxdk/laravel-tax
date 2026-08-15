@@ -23,9 +23,9 @@ most callers get the weaker one.
 | Taxability, nexus, sourcing | Practitioner compilations, cross-checked; see the pages for each | **No** |
 
 So the rooftop path rests on primary sources; the state rate — which is what you
-get in the [16 states with no rooftop path](#the-16-states-with-local-tax-and-no-rooftop-path)
+get in the [12 states with no rooftop path](#the-12-states-with-local-tax-and-no-rooftop-path)
 — rests on a secondary one. That is the same footing the
-[EU VAT feed](eu-vat-feed.md) is on, and it is described the same way there.
+[EU VAT dataset](eu-tax-dataset.md) is on, and it is described the same way there.
 
 Treat the state rates as a good, refreshable default and re-verify against each
 state's own guidance before relying on them for a filing.
@@ -52,7 +52,7 @@ If you are building the latter, set `TAX_US_DATASET=false` and bind your own
 [the disabled-dataset path](#configuration) below, which is a narrow escape hatch
 rather than an equivalent mode.
 
-The [EU VAT feed](eu-vat-feed.md) is a different story — that one is MIT, and
+The [EU VAT dataset](eu-tax-dataset.md) is a different story — that one is ours, and
 documented as such.
 
 ## The four planes it supplies
@@ -130,6 +130,59 @@ it is the right one to use.
 The refusal is scoped to categories whose taxability actually turns on price.
 Everything else is assessed in whatever currency you bill in.
 
+## Sales tax holidays
+
+Fifteen states hold a back-to-school weekend in the 2026 calendar, and the engine
+applies them automatically from the supply's date. A $80 shirt in Texas on 8 August
+is exempt; the same shirt on the 6th is taxed.
+
+**The cap is all-or-nothing, and it is the opposite of the thresholds above.**
+Massachusetts exempts the first $175 of any coat all year and taxes the rest. A
+holiday cap qualifies the whole item or none of it: at a $100 cap, a $100 coat is
+untaxed and a $101 coat is taxed on all $101. Do not read the two figures the same
+way.
+
+Caps are per state, not shared — Ohio caps clothing at $75 the same weekend Texas
+caps it at $100, so an $80 shirt is exempt in one and taxed in the other.
+
+### What is modelled, and what is charged anyway
+
+Only **clothing, footwear and books**. Everything else a holiday covers is charged
+normally, which over-collects for a weekend — refundable and visible, where
+exempting a supply the state taxes is neither. The reasons are recorded per item
+type in the dataset overlay:
+
+| Not modelled | Why |
+| --- | --- |
+| School supplies | No `TaxClass` expresses it |
+| Computers | `TaxClass::Electronics` is broader — it covers televisions, which the holidays tax |
+| Energy Star | Turns on a certification mark, not a product class |
+| Firearms | No class, and those holidays are uncapped, so a wrong mapping exempts without limit |
+| Buyer status | Nevada's National Guard weekend and New Mexico's Small Business Saturday turn on who is buying or selling |
+
+Five states are omitted whole, each with its reason in the overlay — Massachusetts
+because its holiday covers tangible personal property generally, with statutory
+exclusions this has not sourced.
+
+**Illinois is omitted for a different reason, and it is the instructive one.** Its
+back-to-school week is a rate *reduction*, not an exemption: the state share drops
+from 6.25% to 1.25% and every local authority keeps charging in full. Modelled as a
+holiday it would have zeroed the whole line — the remaining state share and the
+entire local stack, which is around nine points in Chicago. A holiday that removes
+the wrong tax under-collects, and that is the direction no later refund fixes. It
+returns when the dataset can express a reduced state share alongside untouched
+locals.
+
+**A line billed in something other than USD is charged, not refused.** The caps are
+dollar figures in state statutes, and comparing another currency needs an exchange
+rate on the supply date. The threshold path throws on that; this one does not,
+because a holiday is a few days of relief and refusing the assessment would break a
+checkout for a perfectly taxable supply.
+
+**The calendar is republished yearly.** A year that has not been sourced yet means
+`null`, and the engine charges normally — the same safe direction as an unmodelled
+item.
+
 ## Rate precision: state level, with reduced-rate and rooftop refinements
 
 The dataset carries every local rate, but the engine resolves jurisdictions to the
@@ -179,7 +232,8 @@ The indexes are published: all 24 member states, **5.4 MB gzipped**, mirrored to
 
 Three limits remain:
 
-**Coverage is the 24 SST member states, plus two resolved by polygon.**
+**Boundary-index coverage is the 24 SST member states**, plus two resolved by
+polygon and four by county.
 
 California and New Mexico publish no boundary file but do publish an official
 ArcGIS service of **polygons** carrying the jurisdiction and its rate, which
@@ -187,19 +241,79 @@ ArcGIS service of **polygons** carrying the jurisdiction and its rate, which
 rather than a postal proxy for it. Verified against both services: Los Angeles City
 Hall resolves 9.75%, San Francisco 8.625%, Albuquerque 7.625%, Santa Fe 8.1875%.
 
-Because a jurisdiction carries exactly one locality, the geocoder emits a **point**
-for those two states and a **ZIP+4** everywhere else.
+Florida, Pennsylvania, Hawaii and Virginia need no index at all — see
+[below](#four-states-need-only-the-county-and-get-an-exact-rate-without-a-boundary-file).
 
-### The 16 states with local tax and no rooftop path
+Because a jurisdiction carries exactly one locality, the key differs by state: a
+**point** for CA/NM, a **county** for FL/PA/HI/VA, and a **ZIP+4** everywhere else.
 
-37 states levy a local sales tax. 26 of them have a rooftop path (the 24 SST
-boundary files plus CA/NM by polygon). That leaves **sixteen** where nothing
-published resolves below the state line:
+### Four states need only the county, and get an exact rate without a boundary file
 
-**AL · AZ · CO · FL · HI · ID · IL · LA · MO · MS · NY · PA · SC · TX · VA**, and
-**AK** (see below).
+**Florida, Pennsylvania, Hawaii and Virginia** are resolved exactly with no boundary
+index at all, because in those four nothing can tax below the county line. Resolve
+the county and you have the whole local share.
 
-In fifteen of those the **state rate applies** at `Confidence::Derived` — an honest
+| State | Local authority | Reach |
+| --- | --- | --- |
+| **FL** | Discretionary sales surtax, 0–2% | all 67 counties |
+| **PA** | Allegheny 1%, Philadelphia 2% | the only two that exist |
+| **HI** | County GET surcharge, 0.5% | 4 of 4 adopters |
+| **VA** | Regional additions, +0.7 / +1.0 / +1.7% | all 39 localities in a band |
+
+**Virginia is on the list for a different reason from the other three.** Its cities
+are not small — they are *independent*: under Virginia law a municipality
+incorporated as a city is not part of any county at all, which is why the Census
+counts all 38 as county-equivalents. So a Virginia city is not something sitting
+below a county; it is one. The 5.3% state rate already contains the mandatory
+statewide 1% local levy, and the 39 records are the regional additions on top,
+checked against the Department of Taxation's own bands.
+
+That creates one trap worth knowing about, because Virginia has both a Fairfax
+County and an independent city of Fairfax — and likewise Franklin, Richmond and
+Roanoke. They tax different ground at different rates. The name match is ordered so
+the full name is tried before any shortened form, which keeps each pair apart; a
+pair it genuinely could not tell apart would resolve to nothing and fall back to the
+state rate rather than putting one authority's rate on the other's territory.
+
+A geocoder returns the county on every US result with no add-on, so this path is
+**not** behind the `rooftop` opt-in: it costs nothing extra and gating it would
+leave those states charging the bare state share for no benefit. A Gainesville
+address prices at 7.5% (6% state + 1.5% county) at `Confidence::Authoritative`.
+
+Two details worth knowing:
+
+**A county that levies nothing is an answer, not a gap.** Citrus County's surtax is
+0%, so a Citrus address prices at the 6% state rate — but `Authoritative`, because
+that IS the all-in rate there. A county that fails to MATCH resolves to the same
+6% at `Derived`, and the confidence is the only thing telling the two apart.
+
+**Hawaii's figure is the legal rate, not the receipt rate.** The GET is a tax on
+the seller's gross receipts, and it may itself be taxed when passed on, so a
+Honolulu customer sees a higher percentage than the 4.5% owed. This package
+computes the liability; the gross-up a seller applies to recover it is a separate
+calculation and is deliberately not modelled.
+
+Most of Virginia levies no regional addition at all, and 5.3% is genuinely the whole
+rate there — but that is reached by the county failing to match, which is "unknown"
+rather than "nothing applies", so it is labelled `Derived`.
+
+**South Carolina looks like it belongs here and does not.** 46 of its 47 local
+authorities are counties — but Myrtle Beach levies a 1% Tourism Development tax on
+top of Horry County's, and the statute lets other qualifying municipalities adopt
+one. Pricing from the county alone there would under-charge, so SC stays on the
+list below. `bin/check-county-resolved.php` in the dataset repo fails the build if
+FL, PA, HI or VA ever grows the same exception — including a Virginia *town*, which
+unlike a Virginia city does sit inside a county.
+
+### The 12 states with local tax and no rooftop path
+
+37 states levy a local sales tax. 30 of them now have a rooftop-accurate path (the
+24 SST boundary files, CA/NM by polygon, and FL/PA/HI/VA by county). That leaves
+**twelve** where nothing published resolves below the state line:
+
+**AL · AZ · CO · ID · IL · LA · MO · MS · NY · SC · TX**, and **AK** (see below).
+
+In eleven of those the **state rate applies** at `Confidence::Derived` — an honest
 floor, but a floor: Louisiana's state share is 4.45% against a combined rate that
 reaches 11.45%, Alabama's 4% against up to ~12.5%, Colorado's 2.9% against ~11.2%.
 **Check `$assessment->rate->confidence` before relying on a US figure in one of
@@ -207,6 +321,12 @@ these states**, and bind a commercial adapter where the local share matters.
 
 New York and Illinois are worth calling out for SaaS sellers specifically: both tax
 digital services, and both are in this list.
+
+Colorado is the most tractable of the twelve: its Department of Revenue runs a
+free address-level GIS service, and CRS 39-26-105.2 holds a vendor that relies on it
+harmless in an audit for errors in the data. Its API key is issued per business, so
+it belongs in a host-configured adapter rather than in the dataset — the same shape
+as `ArcGisRateSource`. Not built yet.
 
 **Alaska is different and now refuses outright.** It levies no *state* sales tax
 while its boroughs and cities levy their own (Juneau 5%, Wrangell 7%). Alaska

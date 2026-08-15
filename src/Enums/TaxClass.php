@@ -300,4 +300,66 @@ enum TaxClass: string
     {
         return array_values(array_filter(self::cases(), static fn (self $c): bool => $c->info()->group === $group));
     }
+
+    /**
+     * The classes matching words a merchant would actually type, best first.
+     *
+     * A picker of 56 options sorted by internal grouping is a picker everyone
+     * abandons on the default, and a product left on `GeneralGoods` is charged the
+     * standard rate everywhere — silently right most of the time and silently wrong
+     * on exactly the supplies a reduced rate exists for. This is what a mapping
+     * screen, a CLI or an import script calls to close that gap.
+     *
+     * Matched against the merchant-facing NAME and the concrete `examples`, not the
+     * enum's own value: somebody selling trainers types "trainers", not
+     * "footwear", and `Footwear`'s examples carry the word. Ranked so an exact
+     * example beats a partial name match, because "shoes" should land on Footwear
+     * rather than on anything whose name happens to contain the letters.
+     *
+     * EMPTY IS A REAL ANSWER AND THE IMPORTANT ONE. Nothing here expresses school
+     * supplies, and a caller searching "notebooks" must learn that here — at
+     * mapping time, where it can be recorded — rather than by being charged the
+     * standard rate through a holiday that exempted them.
+     *
+     * @return list<self>
+     */
+    public static function search(string $query): array
+    {
+        $needle = trim(mb_strtolower($query));
+
+        if ($needle === '') {
+            return [];
+        }
+
+        $scored = [];
+
+        foreach (self::cases() as $case) {
+            $info = $case->info();
+            $name = mb_strtolower($info->name);
+            $examples = array_map(mb_strtolower(...), $info->examples);
+
+            $score = match (true) {
+                $name === $needle => 100,
+                in_array($needle, $examples, true) => 90,
+                str_contains($name, $needle) => 70,
+                (bool) array_filter($examples, static fn (string $e): bool => str_contains($e, $needle)) => 50,
+                // The singular a merchant types against the plural the examples are
+                // written in — "shoe" must still find "shoes".
+                (bool) array_filter($examples, static fn (string $e): bool => str_contains($e, rtrim($needle, 's'))) => 30,
+                default => 0,
+            };
+
+            if ($score > 0) {
+                $scored[] = ['case' => $case, 'score' => $score];
+            }
+        }
+
+        // Stable within a score band: `usort` is not stable across PHP versions for
+        // equal keys, and a picker whose order shuffles between requests looks
+        // broken even when every option is right.
+        usort($scored, static fn (array $a, array $b): int => $b['score'] <=> $a['score']
+            ?: strcmp($a['case']->value, $b['case']->value));
+
+        return array_map(static fn (array $row): self => $row['case'], $scored);
+    }
 }

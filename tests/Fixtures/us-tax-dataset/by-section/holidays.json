@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 4,
+  "version": "2026-08-15",
+  "contentHash": "250d3846cb675fc9360eb9c5d5dc2f8c259f592bada193828a6585e001e11f4c",
+  "section": "holidays",
+  "states": {
+    "US-AK": null,
+    "US-AL": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-07-17",
+        "to": "2026-07-19",
+        "caps": {
+          "book": 47,
+          "clothing": 156,
+          "footwear": 156
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-AR": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-08-01",
+        "to": "2026-08-02",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-AZ": null,
+    "US-CA": null,
+    "US-CO": null,
+    "US-CT": [
+      {
+        "name": "Sales Tax-Free Week",
+        "from": "2026-08-16",
+        "to": "2026-08-22",
+        "caps": {
+          "clothing": 300,
+          "footwear": 300
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-DC": null,
+    "US-DE": null,
+    "US-FL": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-07-20",
+        "to": "2026-08-20",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-GA": null,
+    "US-HI": null,
+    "US-IA": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-08-07",
+        "to": "2026-08-08",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-ID": null,
+    "US-IL": null,
+    "US-IN": null,
+    "US-KS": null,
+    "US-KY": null,
+    "US-LA": null,
+    "US-MA": null,
+    "US-MD": [
+      {
+        "name": "Shop Maryland Tax-Free Week",
+        "from": "2026-08-09",
+        "to": "2026-08-15",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-ME": null,
+    "US-MI": null,
+    "US-MN": null,
+    "US-MO": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-08-07",
+        "to": "2026-08-09",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-MS": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-07-10",
+        "to": "2026-07-12",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-MT": null,
+    "US-NC": null,
+    "US-ND": null,
+    "US-NE": null,
+    "US-NH": null,
+    "US-NJ": null,
+    "US-NM": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-07-31",
+        "to": "2026-08-02",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-NV": null,
+    "US-NY": null,
+    "US-OH": [
+      {
+        "name": "Sales Tax Holiday",
+        "from": "2026-08-07",
+        "to": "2026-08-09",
+        "caps": {
+          "clothing": 75,
+          "footwear": 75
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-OK": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-08-07",
+        "to": "2026-08-09",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-OR": null,
+    "US-PA": null,
+    "US-RI": null,
+    "US-SC": null,
+    "US-SD": null,
+    "US-TN": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-07-31",
+        "to": "2026-08-02",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-TX": [
+      {
+        "name": "Back-to-School",
+        "from": "2026-08-07",
+        "to": "2026-08-09",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-UT": null,
+    "US-VA": [
+      {
+        "name": "Sales Tax Holiday",
+        "from": "2026-08-07",
+        "to": "2026-08-09",
+        "caps": {
+          "clothing": 100,
+          "footwear": 100
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-VT": null,
+    "US-WA": null,
+    "US-WI": null,
+    "US-WV": [
+      {
+        "name": "Sales Tax Holiday",
+        "from": "2026-07-31",
+        "to": "2026-08-03",
+        "caps": {
+          "clothing": 125,
+          "footwear": 125
+        },
+        "capInclusive": false
+      }
+    ],
+    "US-WY": null
+  }
+}

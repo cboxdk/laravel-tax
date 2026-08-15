@@ -14,7 +14,7 @@ From `composer.json`:
 - **`ext-zlib`** — the US boundary indexes are published gzipped (5.4 MB across the
   24 SST states instead of 20 MB) and inflated on read.
 - **Laravel** `^13` (`illuminate/contracts`, `illuminate/support`, `illuminate/http`)
-- **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.5` — the
+- **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.6` — the
   canonical jurisdiction reference every assessment binds to.
 - **[`brick/money`](https://github.com/brick/money)** `^0.14` — exact integer-minor-unit
   money for amounts and rate maths.

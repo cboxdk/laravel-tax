@@ -8,8 +8,10 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use DateTimeImmutable;
 
@@ -92,9 +94,96 @@ readonly class TaxQuery
          * missing postcode as proof of mainland.
          */
         public ?string $postalCode = null,
+        /**
+         * The supply was made through a marketplace that is the party liable to
+         * collect the tax on it.
+         *
+         * Every US state with a sales tax now makes a qualifying marketplace liable
+         * for its third-party sellers' supplies — Missouri was the last, on
+         * 2023-01-01 — and the EU does the same through the Art. 14a deemed supplier
+         * rule. Where that applies, the SELLER charges nothing: the marketplace has
+         * already collected it, and a seller who charges as well double-charges the
+         * customer.
+         *
+         * ONLY THE CALLER KNOWS THIS. Whether a given platform qualifies as a
+         * facilitator, and whether it has taken on collection for this supply, is a
+         * fact about a commercial arrangement — nothing in a rate table can answer
+         * it. The engine takes the assertion and then checks the LAW: it applies the
+         * marketplace treatment only where the jurisdiction's rule was in force on
+         * the supply date, so a backdated Missouri sale from 2022 is still the
+         * seller's to collect.
+         *
+         * False is right for a direct sale, which is most of them.
+         */
+        public bool $marketplaceFacilitated = false,
+        /**
+         * Your own code for what was sold — a SKU, a plan id, a product slug.
+         *
+         * The point of it is that the tax class stops being a decision made while
+         * building an invoice. Resolved through a {@see ProductCatalogue} you
+         * populate once per product, so ten thousand SKUs are ten thousand recorded
+         * facts rather than ten thousand chances to pick differently.
+         *
+         * Resolution is three-deep, most specific first: a `category` stated here
+         * overrides everything, then the catalogue keyed by this code, then the
+         * fallback. A code nothing has mapped still produces an invoice — and says
+         * so, via {@see RateLimit::ItemUnmapped}, so it can be found and fixed
+         * rather than quietly taxed at the standard rate forever.
+         */
+        public ?string $itemCode = null,
     ) {}
 
-    /** The date the assessment resolves against — the supply date, else today. */
+    /**
+     * The same query with the classification filled in from a product catalogue.
+     *
+     * Narrow on purpose. A general `with()` over fifteen constructor parameters is
+     * a method nobody can read and every future field has to be threaded through;
+     * this copies the two fields the catalogue owns and nothing else, so adding a
+     * parameter to the constructor cannot silently drop it here.
+     */
+    public function classifiedAs(TaxClass $category, ?string $commodityCode): self
+    {
+        return new self(
+            $this->amount,
+            $this->pricing,
+            $this->place,
+            $this->customer,
+            $this->seller,
+            $category,
+            $this->customerTaxIdValidated,
+            $this->exemption,
+            $commodityCode,
+            $this->suppliedAt,
+            $this->reportedOn,
+            $this->route,
+            $this->postalCode,
+            $this->marketplaceFacilitated,
+            $this->itemCode,
+        );
+    }
+
+    /**
+     * The date the assessment resolves against — the supply date, else today.
+     *
+     * TREATED AS A CALENDAR DATE IN THE JURISDICTION, not as an instant to be
+     * converted. `2026-08-07` means the seventh of August where the supply happened,
+     * and the engine does not shift it into a timezone: a tax point is a legal fact
+     * the seller determines, and second-guessing a stated date by moving it across a
+     * boundary would exempt a supply a day early.
+     *
+     * THAT PUTS A REAL OBLIGATION ON THE CALLER, so it is stated here rather than
+     * left to be discovered. `suppliedAt` must carry the supply's own date. A bare
+     * `new DateTimeImmutable` picks up the application timezone, and Laravel's
+     * default is UTC — ahead of every US state by four to seven hours. A Texas sale
+     * at 20:00 local on 6 August is 01:00 UTC on the 7th, and passing that instant
+     * unchanged puts it inside a holiday window that had not opened, or on the far
+     * side of a rate change that had not taken effect.
+     *
+     * Where a date boundary decides an outcome — a sales tax holiday, the day a
+     * marketplace-facilitator rule took effect, a rate change at midnight — supply
+     * the date as the jurisdiction reckons it. Null is right for an invoice raised
+     * now in your own jurisdiction and wrong for everything else.
+     */
     public function on(): DateTimeImmutable
     {
         return $this->suppliedAt ?? new DateTimeImmutable;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Registry;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
@@ -18,6 +19,7 @@ use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 
 /**
  * Maps regime-module keys to regime instances. Keys with no entry return `null`,
@@ -40,18 +42,31 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
      * seller's origin jurisdiction for Art. 59c micro-business sourcing; without it
      * the regime falls back to destination taxation. The optional
      * {@see NexusThresholds} lets the US regime annotate a `NotRegistered` outcome
-     * with the state's economic-nexus threshold.
+     * with the state's economic-nexus threshold, and the optional
+     * {@see UsTaxDataset} tells it when each state's marketplace-facilitator rule
+     * took effect — without it the regime never applies that treatment, which
+     * leaves the tax with the seller and is the recoverable direction.
      */
     public static function withDefaults(
         ?ProductTaxability $taxability = null,
         ?JurisdictionRepository $jurisdictions = null,
         ?NexusThresholds $nexusThresholds = null,
         ?SourcingRules $sourcing = null,
+        ?UsTaxDataset $dataset = null,
+        /**
+         * The territory list the EU regime consults.
+         *
+         * Was hardcoded here while the provider also BOUND the contract, so a host
+         * following the documented instruction to rebind it changed nothing — a
+         * silent no-op on a seam the docs explicitly point at, and the failure mode
+         * is mainland VAT charged on a supply outside the VAT area.
+         */
+        ?EuTerritories $territories = null,
     ): self {
         $national = new NationalTaxRegime;
 
         return new self([
-            'eu-vat' => new EuVatRegime($jurisdictions, new StaticEuTerritories),
+            'eu-vat' => new EuVatRegime($jurisdictions, $territories ?? new StaticEuTerritories),
             'uk-vat' => $national,
             'ch-vat' => $national,
             'no-vat' => $national,
@@ -75,7 +90,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing, $dataset),
             'ca-gst' => new CaGstRegime,
         ]);
     }

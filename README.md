@@ -60,7 +60,7 @@ calculation the billing engine supplies per invoice.
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ rooftop for 26 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ address-exact for 30 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -81,12 +81,23 @@ thresholds are supplied by the **us-tax-data dataset**, enabled by default.
 sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
 a Texas in-state sale is charged the seller's rate. Interstate stays
 destination-sourced everywhere, and a supply with no route behaves exactly as
-before. **Rooftop** resolution is live for **26 states** with
+before. **Address-exact** rates are live for **30 states**. Twenty-six need
 `us_tax_data.rooftop` enabled: the 24 Streamlined states resolve by ZIP+4 through the
 published boundary index — Kansas City comes out as 6.5% state + 1.0% county + 1.625%
 city — while California and New Mexico resolve by point against their own polygon
-services. The rest fall back to the state rate
+services. Florida, Pennsylvania, Hawaii and Virginia need no opt-in and no boundary file at
+all, because the county is the only authority that can tax there and a geocoder
+returns it for free. The rest fall back to the state rate
 ([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).
+**Marketplace sales are not the seller's to collect.** Every US state with a sales
+tax now makes a qualifying marketplace the liable party — Missouri closed the set on
+2023-01-01 — so pass `marketplaceFacilitated: true` and the engine returns
+`MarketplaceFacilitated`: nothing charged, because the marketplace already charged
+it. It is kept apart from `Exempt` and `NotRegistered` on purpose. All three are a
+zero and they mean opposite things on a return, and most states still expect the
+sale reported in gross receipts and then deducted. The rule is checked **on the
+supply's date**, so a backdated Missouri sale from 2022 is still the seller's.
+
 **Canada** resolves at province level (no local tax). Rate data plugs in via
 `TaxRateSource`: set `TAX_TEDB_LIVE=true` to resolve EU rates from the
 Commission's own TEDB service (no key, no registration, cached per country), or

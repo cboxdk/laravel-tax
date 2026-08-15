@@ -6,14 +6,17 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
+use DateTimeImmutable;
 
 // Ten territories sit inside a Member State and outside its VAT rules. Before
 // this, a delivery to Tenerife was charged Spanish VAT — which is not a rate
@@ -156,4 +159,91 @@ it('marks the regional rate as derived, not authoritative', function () {
     // exactly the right question.
     expect($this->tax->assess(delivery('PT', '9000-001'))->rate?->confidence)
         ->toBe(Confidence::Derived);
+});
+
+// ---- The territories' own rates, at every level --------------------------------
+
+it('charges Madeira its own reduced rate, not the mainland band', function () {
+    // The gap this closes. The regime substituted the STANDARD rate only, so a
+    // Madeira grocery line kept mainland Portugal's 6% with a caveat saying it might
+    // be two points high. It was: Madeira charges 4%.
+    //
+    // Rates from Ofício Circulado n.º 25045 (2024-12-06), Anexo — the Portuguese tax
+    // authority's own table. CIVA art. 18 n.º 3 deliberately does not carry them; it
+    // delegates to the regional assemblies, which is why reading the tax code alone
+    // finds nothing.
+    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001');
+
+    expect($territory?->name)->toBe('Madeira')
+        ->and($territory?->rateFor('23'))->toBe('22')
+        ->and($territory?->rateFor('13'))->toBe('12')
+        ->and($territory?->rateFor('6'))->toBe('4');
+});
+
+it('prices a Madeira supply with the reduced rate in force on its date', function () {
+    // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (DLR 6/2024/M art.
+    // 21.º, effective under art. 121.º n.º 2). An invoice corrected afterwards must
+    // reprice at what applied then.
+    $before = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-06-01'));
+    $after = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-10-01'));
+
+    expect($before?->rateFor('6'))->toBe('5')
+        ->and($after?->rateFor('6'))->toBe('4');
+});
+
+it('charges the Azores 30% below every national level', function () {
+    // DLR 15-A/2021/A cut the national rates by 30% from 2021-07-01, turning
+    // 6/13/23 into 4/9/16 — one rule, three levels, and the engine must apply it at
+    // whichever level the supply lands on.
+    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9500-001');
+
+    expect($territory?->name)->toBe('Azores')
+        ->and($territory?->rateFor('23'))->toBe('16')
+        ->and($territory?->rateFor('13'))->toBe('9')
+        ->and($territory?->rateFor('6'))->toBe('4');
+});
+
+it('leaves a level it does not carry on the mainland band, and says so', function () {
+    // Deny-by-default at the level lookup: an unknown mainland rate is not silently
+    // mapped to the standard one.
+    expect(new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
+});
+
+it('lets a host rebind the territory list and actually reach the regime', function () {
+    // The provider bound EuTerritories while DefaultRegimeRegistry hardcoded
+    // StaticEuTerritories, so a host following the documented instruction to rebind
+    // it changed nothing. A silent no-op on a seam the docs point at, and the
+    // failure mode is mainland VAT charged on a supply outside the VAT area — which
+    // is the whole reason someone would rebind it.
+    $this->app->instance(EuTerritories::class, new class implements EuTerritories
+    {
+        public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
+        {
+            // Everything in France is outside the VAT area, as far as this says.
+            return $country->value === 'FR'
+                ? new EuTerritory('FR-XX', 'Nowhere', true)
+                : null;
+        }
+    });
+
+    // The registry is a singleton and may already have been resolved, in which case
+    // it is holding the territory list built at that moment. Forgetting it is what
+    // a host does implicitly by binding in a provider before anything resolves.
+    // Both, and in this order. TaxCalculator is a singleton holding the registry,
+    // so forgetting only the registry leaves an already-built calculator pointing
+    // at the old territory list. A host binding in a provider gets this for free
+    // because nothing has resolved yet.
+    $this->app->forgetInstance(RegimeRegistry::class);
+    $this->app->forgetInstance(TaxCalculator::class);
+
+    $assessment = $this->app->make(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $this->app->make(JurisdictionRepository::class)->find(new CountryCode('FR')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('FR')),
+        postalCode: '75001',
+    ));
+
+    expect($assessment->tax->getAmount()->toFloat())->toBe(0.0);
 });

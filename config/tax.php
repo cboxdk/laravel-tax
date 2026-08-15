@@ -82,26 +82,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | EU VAT live rate feed (optional)
-    |--------------------------------------------------------------------------
-    |
-    | A real, public, MIT-licensed feed of EU member-state VAT rates: the
-    | community-maintained ibericode/vat-rates dataset. Enable it to compose
-    | ChainTaxRateSource(EU feed -> static snapshot): the feed is authoritative,
-    | the shipped static rates are the fallback. Disabled by default, so the static
-    | snapshot stays the zero-config default. The URL is config-driven (point it at
-    | a pinned/mirrored copy if you prefer); a URL source is wrapped in the cache
-    | automatically. See docs/coverage/eu-vat-feed.md for the source + license.
-    |
-    */
-
-    'eu_vat' => [
-        'enabled' => env('TAX_EU_VAT_FEED', false),
-        'url' => env('TAX_EU_VAT_URL', 'https://raw.githubusercontent.com/ibericode/vat-rates/master/vat-rates.json'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | EU TEDB rate feed (optional)
     |--------------------------------------------------------------------------
     |
@@ -120,17 +100,41 @@ return [
     | supply is never quietly charged the wrong reduced rate.
     |
     | `url` is the older, file-based path: a TEDB-derived dataset you generated
-    | yourself, in the JSON shape documented on Cbox\Tax\RateSource\TedbRateSource,
+    | yourself and bind your own TaxRateSource,
     | as an http(s) URL or local file. Use it to pin a reviewed snapshot instead of
     | calling the service. Both empty (the default) runs purely on the static
     | snapshot.
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | EU VAT dataset (eu-tax-data)
+    |--------------------------------------------------------------------------
+    |
+    | The compiled EU VAT dataset: 27 member states, dated windows back to the
+    | start of the Commission's records, and per-band provenance saying whether a
+    | rate came straight from the source or was resolved by a cited determination.
+    |
+    | Unset by default. Configured, it is tried BEFORE the live TEDB service and
+    | before any hand-built export, because it answers a question a live call
+    | cannot: what a rate was on the date of the supply.
+    |
+    | INTEGRITY — a remote `location` is verified against the published manifest
+    | (sha256 per section, plus schemaVersion), a local one is trusted. Pin a tag
+    | rather than a branch: `main` moves, and a rate changing underneath a running
+    | system is the failure this dataset exists to prevent.
+    |
+    */
+
+    'eu_tax_data' => [
+        'location' => env('TAX_EU_DATASET_LOCATION'),
+        'ttl' => (int) env('TAX_EU_DATASET_TTL', 86400),
+    ],
+
     'tedb' => [
         'live' => env('TAX_TEDB_LIVE', false),
         'ttl' => (int) env('TAX_TEDB_TTL', 86400),
-        'url' => env('TAX_TEDB_URL'),
     ],
 
     /*
