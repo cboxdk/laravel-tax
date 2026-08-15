@@ -105,18 +105,30 @@ readonly class UsSalesTaxRegime implements TaxRegime
      * a supply that is perfectly taxable. It falls through to the ordinary rate,
      * which is what applies outside the holiday anyway.
      */
-    private function qualifiesForHoliday(TaxQuery $query, int $cap): bool
+    private function qualifiesForHoliday(TaxQuery $query, int $cap, bool $capInclusive): bool
     {
         if ($query->amount->getCurrency()->getCurrencyCode() !== 'USD') {
             return false;
         }
 
-        // Compared as decimals, not floats. The caps are small enough that a float
-        // round-trip would give the right answer today, which is exactly why it
-        // would have survived review — but a tax engine that reaches for a float
-        // anywhere in the money path has already lost the argument about the next
-        // one. `Money` carries a BigDecimal precisely so this comparison is exact.
-        return $query->amount->getAmount()->isLessThanOrEqualTo($cap);
+        // ABSOLUTE VALUE, because a credit note carries a negative amount and every
+        // negative is below every cap. Without this a $500 coat refunded inside a
+        // $300 holiday window is assessed exempt, so nothing is credited back
+        // against the tax originally collected and the seller keeps the state's
+        // money. `TaxDetermination::taxableBase()` takes the same precaution for the
+        // permanent thresholds twenty lines away; this path did not.
+        $price = $query->amount->getAmount()->abs();
+
+        // Compared as decimals, not floats — `Money` carries a BigDecimal precisely
+        // so this is exact.
+        //
+        // INCLUSIVE OR NOT IS PER STATUTE. Texas exempts clothing "less than $100",
+        // so an item at exactly $100.00 is taxable; Florida's "$100 or less" exempts
+        // it. Treating every cap as inclusive under-collected on every item landing
+        // exactly on a "less than" line.
+        return $capInclusive
+            ? $price->isLessThanOrEqualTo($cap)
+            : $price->isLessThan($cap);
     }
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
@@ -210,7 +222,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // its own reason rather than credited to a weekend it did not need.
         $holiday = $this->dataset?->salesTaxHoliday($subdivision->value, $query->category->value, $query->on());
 
-        if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'])) {
+        if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'], $holiday['capInclusive'])) {
             return new TaxAssessment(
                 treatment: TaxTreatment::Exempt,
                 net: $query->amount,

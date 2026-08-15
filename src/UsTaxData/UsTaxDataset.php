@@ -7,6 +7,7 @@ namespace Cbox\Tax\UsTaxData;
 use Brick\Math\BigDecimal;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\TaxabilityTreatment;
+use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -60,6 +61,32 @@ readonly class UsTaxDataset
         }
 
         return $this->fractionToPercent($baseline['stateRate'] ?? null);
+    }
+
+    /**
+     * Where the state rate that answered on this date came from, precisely enough
+     * to find the assessment again after a correction.
+     *
+     * `effectiveFrom` is the window's own start, which is the fact the answer rested
+     * on — the handle a correction names. Null when the state carries no baseline.
+     */
+    public function stateRateProvenance(string $state, ?DateTimeImmutable $at = null): ?RateProvenance
+    {
+        $baseline = $this->currentBaseline($state, $at);
+
+        if ($baseline === null) {
+            return null;
+        }
+
+        $published = $this->published('baseline');
+        $from = $baseline['effectiveFrom'] ?? null;
+
+        return new RateProvenance(
+            'us-tax-data',
+            $published['version'],
+            is_string($from) ? $from : null,
+            $published['sectionHash'],
+        );
     }
 
     /**
@@ -307,7 +334,7 @@ readonly class UsTaxDataset
      * normally — which over-collects for a weekend, and is refundable and visible,
      * where exempting a supply the state taxes is neither.
      *
-     * @return array{name: string, cap: int}|null
+     * @return array{name: string, cap: int, capInclusive: bool}|null
      */
     public function salesTaxHoliday(string $state, string $class, DateTimeImmutable $on): ?array
     {
@@ -336,11 +363,53 @@ readonly class UsTaxDataset
             $name = $holiday['name'] ?? null;
 
             if (is_int($cap) && $cap > 0 && is_string($name)) {
-                return ['name' => $name, 'cap' => $cap];
+                // Whether the cap itself qualifies is per statute, not uniform:
+                // Texas exempts clothing "less than $100" so $100.00 is taxable,
+                // while Florida's "$100 or less" exempts it. Absent, the safe
+                // reading is exclusive — over-collecting a cent-band is refundable.
+                return [
+                    'name' => $name,
+                    'cap' => $cap,
+                    'capInclusive' => ($holiday['capInclusive'] ?? null) === true,
+                ];
             }
         }
 
         return null;
+    }
+
+    /**
+     * What the publisher says this data is, for an assessment to record.
+     *
+     * Read from the manifest, so a LOCAL mirror answers null — there is no manifest
+     * on your own disk and inventing a version for it would make an untraceable
+     * answer look traceable.
+     *
+     * The section hash is the finer handle. A taxability correction moves the
+     * artifact's overall content hash but not the `rates` section's, so an
+     * assessment that only read rates can be ruled out of a reconciliation without
+     * being re-run.
+     *
+     * @return array{version: ?string, sectionHash: ?string}
+     */
+    public function published(string $section): array
+    {
+        $manifest = $this->manifest();
+
+        if (! is_array($manifest)) {
+            return ['version' => null, 'sectionHash' => null];
+        }
+
+        $version = $manifest['version'] ?? null;
+        $files = $manifest['files'] ?? null;
+        $sections = is_array($files) ? ($files['sections'] ?? null) : null;
+        $entry = is_array($sections) ? ($sections[$section] ?? null) : null;
+        $hash = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        return [
+            'version' => is_string($version) ? $version : null,
+            'sectionHash' => is_string($hash) ? $hash : null,
+        ];
     }
 
     /**

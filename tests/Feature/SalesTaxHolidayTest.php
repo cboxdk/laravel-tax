@@ -96,9 +96,29 @@ it('includes both boundary days', function (string $date) {
 // The cap, which is where the two mechanics would be confused
 // ---------------------------------------------------------------------------
 
-it('exempts an item exactly at the cap', function () {
+it('taxes an item exactly at a "less than" cap', function () {
+    // This test asserted the opposite and was WRONG. Tex. Tax Code 151.326(a)(1)
+    // exempts clothing whose sales price is "less than $100" — an item at exactly
+    // $100.00 is taxable. Whether the cap itself qualifies is per statute and is not
+    // uniform, and carrying one integer for both readings under-collected on every
+    // item landing exactly on a "less than" line.
     expect($this->regime->assess(holidayQuery('US-TX', '100.00', '2026-08-08'), $this->rates)->treatment)
+        ->toBe(TaxTreatment::Standard);
+});
+
+it('exempts a cent below it', function () {
+    expect($this->regime->assess(holidayQuery('US-TX', '99.99', '2026-08-08'), $this->rates)->treatment)
         ->toBe(TaxTreatment::Exempt);
+});
+
+it('does not let a credit note qualify on its negative amount', function () {
+    // Every negative is below every cap. Unguarded, a $500 coat refunded inside a
+    // holiday window was assessed exempt — so nothing was credited back against the
+    // tax originally collected and the seller kept the state's money.
+    $assessment = $this->regime->assess(holidayQuery('US-TX', '-500.00', '2026-08-08'), $this->rates);
+
+    expect($assessment->treatment)->toBe(TaxTreatment::Standard)
+        ->and($assessment->tax->getAmount()->isNegative())->toBeTrue();
 });
 
 it('taxes an item over the cap IN FULL, not just the excess', function () {
@@ -159,12 +179,11 @@ it('names the holiday and the cap so the exemption can be defended', function ()
         ->and($assessment->reason)->toContain('2026-08-08');
 });
 
-it('compares the cap as a decimal, not a float', function () {
-    // A cent over the line is over the line. Floats would very likely still get
-    // this right at these magnitudes — which is why the guard is the test rather
-    // than the arithmetic looking careful.
-    expect($this->regime->assess(holidayQuery('US-TX', '100.01', '2026-08-08'), $this->rates)->treatment)
-        ->toBe(TaxTreatment::Standard)
-        ->and($this->regime->assess(holidayQuery('US-TX', '99.99', '2026-08-08'), $this->rates)->treatment)
-        ->toBe(TaxTreatment::Exempt);
+it('no longer carries Illinois, whose holiday is a rate cut rather than an exemption', function () {
+    // Illinois drops the STATE share 6.25% -> 1.25% and leaves every local tax in
+    // force. Modelled as an exemption it zeroed the whole charge — under-collecting
+    // the 1.25% plus the local stack, about nine points in Chicago. Out until the
+    // model can express a reduction; charging normally over-collects and refunds.
+    expect($this->regime->assess(holidayQuery('US-IL', '80.00', '2026-08-10'), $this->rates)->treatment)
+        ->toBe(TaxTreatment::Standard);
 });

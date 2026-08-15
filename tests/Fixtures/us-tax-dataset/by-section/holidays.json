@@ -1,7 +1,7 @@
 {
   "schemaVersion": 4,
   "version": "2026-08-15",
-  "contentHash": "0c93ef70e755f7befe6fe94160779905c08c1b725256a7950c02d96c1be34a58",
+  "contentHash": "250d3846cb675fc9360eb9c5d5dc2f8c259f592bada193828a6585e001e11f4c",
   "section": "holidays",
   "states": {
     "US-AK": null,
@@ -14,7 +14,8 @@
           "book": 47,
           "clothing": 156,
           "footwear": 156
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-AR": [
@@ -25,7 +26,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-AZ": null,
@@ -39,7 +41,8 @@
         "caps": {
           "clothing": 300,
           "footwear": 300
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-DC": null,
@@ -52,7 +55,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-GA": null,
@@ -65,21 +69,12 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-ID": null,
-    "US-IL": [
-      {
-        "name": "Back-to-School",
-        "from": "2026-08-07",
-        "to": "2026-08-16",
-        "caps": {
-          "clothing": 125,
-          "footwear": 125
-        }
-      }
-    ],
+    "US-IL": null,
     "US-IN": null,
     "US-KS": null,
     "US-KY": null,
@@ -93,7 +88,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-ME": null,
@@ -107,7 +103,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-MS": [
@@ -118,7 +115,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-MT": null,
@@ -135,7 +133,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-NV": null,
@@ -148,7 +147,8 @@
         "caps": {
           "clothing": 75,
           "footwear": 75
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-OK": [
@@ -159,7 +159,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-OR": null,
@@ -175,7 +176,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-TX": [
@@ -186,7 +188,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-UT": null,
@@ -198,7 +201,8 @@
         "caps": {
           "clothing": 100,
           "footwear": 100
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-VT": null,
@@ -212,7 +216,8 @@
         "caps": {
           "clothing": 125,
           "footwear": 125
-        }
+        },
+        "capInclusive": false
       }
     ],
     "US-WY": null

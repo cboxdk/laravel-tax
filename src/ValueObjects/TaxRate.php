@@ -59,6 +59,15 @@ readonly class TaxRate
          * everybody learns to filter out.
          */
         public ?RateLimit $limitedBy = null,
+        /**
+         * Which published data answered this, precisely enough to find the
+         * assessment again after that data is corrected.
+         *
+         * Null for a static table or a source that publishes nothing to trace back
+         * to. Added last, like every parameter before it, so positional callers are
+         * unaffected.
+         */
+        public ?RateProvenance $provenance = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
 

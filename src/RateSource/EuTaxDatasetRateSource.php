@@ -11,6 +11,7 @@ use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\EuTaxData\EuTaxDataset;
+use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Throwable;
@@ -82,6 +83,17 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
         }
 
         $code = $this->normalizeCode($commodityCode);
+        $published = $this->dataset->published('rates');
+
+        // Built once and stamped on every outcome below. `effectiveFrom` is the
+        // window's own start — the fact each answer rested on, and the handle a
+        // later correction names.
+        $provenance = new RateProvenance(
+            'eu-tax-dataset',
+            $published['version'],
+            $window['effectiveFrom'],
+            $published['sectionHash'],
+        );
 
         foreach ($this->dataset->headingsFor($category->value) as $heading) {
             $band = $window['bands'][$heading] ?? null;
@@ -95,6 +107,9 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                         RateKind::Reduced,
                         $this->source($country, $heading, $band),
                         Confidence::Authoritative,
+                        [],
+                        null,
+                        $provenance,
                     );
                 } catch (Throwable) {
                     // A band that is not a rate. The publisher refuses to emit one,
@@ -112,6 +127,7 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                         sprintf('eu-tax-dataset (%s %s unreadable, standard rate applied)', $country, $heading),
                         Confidence::LowConfidence,
                         RateLimit::BandUnreadable,
+                        $provenance,
                     );
                 }
             }
@@ -134,6 +150,9 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                             RateKind::Reduced,
                             sprintf('eu-tax-dataset (%s %s, %s)', $country, $heading, $code),
                             Confidence::Authoritative,
+                            [],
+                            null,
+                            $provenance,
                         );
                     } catch (Throwable) {
                         // Same reasoning as an unreadable band: priced at the
@@ -144,6 +163,7 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                             sprintf('eu-tax-dataset (%s %s scope unreadable, standard rate applied)', $country, $heading),
                             Confidence::LowConfidence,
                             RateLimit::BandUnreadable,
+                            $provenance,
                         );
                     }
                 }
@@ -155,6 +175,7 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                     // Actionable, not just flagged: the caller can close this one
                     // themselves by classifying the product, and the remedy says so.
                     RateLimit::HeadingAmbiguous,
+                    $provenance,
                 );
             }
         }
@@ -163,6 +184,8 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
             $window['standard'],
             'eu-tax-dataset ('.$country.' standard)',
             Confidence::Authoritative,
+            null,
+            $provenance,
         );
     }
 
@@ -235,10 +258,15 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
      * back to — so the source denies and the engine refuses the line rather than
      * inventing a percentage.
      */
-    private function standard(string $percentage, string $source, Confidence $confidence, ?RateLimit $limitedBy = null): ?TaxRate
-    {
+    private function standard(
+        string $percentage,
+        string $source,
+        Confidence $confidence,
+        ?RateLimit $limitedBy = null,
+        ?RateProvenance $provenance = null,
+    ): ?TaxRate {
         try {
-            return new TaxRate($percentage, RateKind::Standard, $source, $confidence, [], $limitedBy);
+            return new TaxRate($percentage, RateKind::Standard, $source, $confidence, [], $limitedBy, $provenance);
         } catch (Throwable) {
             return null;
         }

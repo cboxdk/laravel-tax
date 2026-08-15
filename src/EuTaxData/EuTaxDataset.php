@@ -49,7 +49,7 @@ readonly class EuTaxDataset
      * which is the whole reason the history exists. Null when the country is absent
      * or nothing covers the date.
      *
-     * @return array{standard: string, bands: array<array-key, mixed>, undecided: array<array-key, mixed>, scopes: array<array-key, mixed>}|null
+     * @return array{standard: string, effectiveFrom: ?string, bands: array<array-key, mixed>, undecided: array<array-key, mixed>, scopes: array<array-key, mixed>}|null
      */
     public function window(string $country, ?DateTimeImmutable $at = null): ?array
     {
@@ -80,6 +80,11 @@ readonly class EuTaxDataset
 
                 return [
                     'standard' => $standard,
+                    // The window's own start, carried so an assessment can record
+                    // which dated window answered it. That is the handle a later
+                    // correction names; a bare dataset version would put every
+                    // invoice in the blast radius of every republish.
+                    'effectiveFrom' => $from,
                     'bands' => is_array($window['bands'] ?? null) ? $window['bands'] : [],
                     'undecided' => is_array($window['undecided'] ?? null) ? $window['undecided'] : [],
                     // The CN/CPA codes each rate is scoped to, for the headings the
@@ -96,6 +101,34 @@ readonly class EuTaxDataset
         // the archive's start — anything earlier was never observed, and returning
         // the oldest rate would be inventing a boundary the publisher declined to.
         return null;
+    }
+
+    /**
+     * What the publisher says this data is, for an assessment to record.
+     *
+     * Null on a local mirror — there is no manifest on your own disk, and inventing
+     * a version would make an untraceable answer look traceable.
+     *
+     * @return array{version: ?string, sectionHash: ?string}
+     */
+    public function published(string $section): array
+    {
+        $manifest = $this->manifest();
+
+        if (! is_array($manifest)) {
+            return ['version' => null, 'sectionHash' => null];
+        }
+
+        $version = $manifest['version'] ?? null;
+        $files = $manifest['files'] ?? null;
+        $sections = is_array($files) ? ($files['sections'] ?? null) : null;
+        $entry = is_array($sections) ? ($sections[$section] ?? null) : null;
+        $hash = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        return [
+            'version' => is_string($version) ? $version : null,
+            'sectionHash' => is_string($hash) ? $hash : null,
+        ];
     }
 
     /**

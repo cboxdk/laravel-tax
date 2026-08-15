@@ -473,6 +473,9 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
             Confidence::Derived,
             [],
             $this->dataset->hasLocalSalesTax($state) ? RateLimit::NoLocalResolution : null,
+            // Stamped so this assessment can be found again after the data behind
+            // it is corrected. The window's own start is the precise handle.
+            $this->dataset->stateRateProvenance($state, $at),
         );
     }
 
