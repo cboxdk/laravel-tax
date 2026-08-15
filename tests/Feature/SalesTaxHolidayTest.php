@@ -158,3 +158,13 @@ it('names the holiday and the cap so the exemption can be defended', function ()
         ->and($assessment->reason)->toContain('$100')
         ->and($assessment->reason)->toContain('2026-08-08');
 });
+
+it('compares the cap as a decimal, not a float', function () {
+    // A cent over the line is over the line. Floats would very likely still get
+    // this right at these magnitudes — which is why the guard is the test rather
+    // than the arithmetic looking careful.
+    expect($this->regime->assess(holidayQuery('US-TX', '100.01', '2026-08-08'), $this->rates)->treatment)
+        ->toBe(TaxTreatment::Standard)
+        ->and($this->regime->assess(holidayQuery('US-TX', '99.99', '2026-08-08'), $this->rates)->treatment)
+        ->toBe(TaxTreatment::Exempt);
+});

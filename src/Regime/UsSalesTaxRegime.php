@@ -111,7 +111,12 @@ readonly class UsSalesTaxRegime implements TaxRegime
             return false;
         }
 
-        return $query->amount->getAmount()->toFloat() <= (float) $cap;
+        // Compared as decimals, not floats. The caps are small enough that a float
+        // round-trip would give the right answer today, which is exactly why it
+        // would have survived review — but a tax engine that reaches for a float
+        // anywhere in the money path has already lost the argument about the next
+        // one. `Money` carries a BigDecimal precisely so this comparison is exact.
+        return $query->amount->getAmount()->isLessThanOrEqualTo($cap);
     }
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
