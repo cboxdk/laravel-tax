@@ -14,6 +14,8 @@ description: The engine's architecture and the regimes it ships.
 - [Rate breakdown](rate-breakdown.md) — splitting an assessment's tax across the
   state/county/city authorities that levy it, with the parts summing exactly to
   the whole.
+- [Marketplace facilitator](marketplace-facilitator.md) — when the marketplace is
+  liable, the seller charges nothing and still reports the sale.
 - [Return data](return-data.md) — aggregating assessments into per-jurisdiction
   and per-authority totals for a filing period.
 - [Dates](dates.md) — the tax point vs the reporting date, and why one date drives

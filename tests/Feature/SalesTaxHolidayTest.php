@@ -187,3 +187,18 @@ it('no longer carries Illinois, whose holiday is a rate cut rather than an exemp
     expect($this->regime->assess(holidayQuery('US-IL', '80.00', '2026-08-10'), $this->rates)->treatment)
         ->toBe(TaxTreatment::Standard);
 });
+
+it('honours a stated date rather than shifting it across a timezone', function () {
+    // A tax point is a legal fact the seller determines. Given "7 August", the
+    // engine treats it as the seventh where the supply happened and does NOT
+    // reinterpret it — converting a stated date into a jurisdiction's zone would
+    // move a midnight value back a day and exempt a supply before the holiday
+    // opened, which is the unrecoverable direction.
+    //
+    // The obligation this creates on the caller is documented on TaxQuery::on():
+    // pass the supply's own date, because a bare `new DateTimeImmutable` picks up
+    // the app timezone and Laravel's default is UTC, ahead of every US state.
+    $stated = $this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-07'), $this->rates);
+
+    expect($stated->treatment)->toBe(TaxTreatment::Exempt);
+});

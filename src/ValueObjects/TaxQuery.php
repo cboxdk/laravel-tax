@@ -162,7 +162,28 @@ readonly class TaxQuery
         );
     }
 
-    /** The date the assessment resolves against — the supply date, else today. */
+    /**
+     * The date the assessment resolves against — the supply date, else today.
+     *
+     * TREATED AS A CALENDAR DATE IN THE JURISDICTION, not as an instant to be
+     * converted. `2026-08-07` means the seventh of August where the supply happened,
+     * and the engine does not shift it into a timezone: a tax point is a legal fact
+     * the seller determines, and second-guessing a stated date by moving it across a
+     * boundary would exempt a supply a day early.
+     *
+     * THAT PUTS A REAL OBLIGATION ON THE CALLER, so it is stated here rather than
+     * left to be discovered. `suppliedAt` must carry the supply's own date. A bare
+     * `new DateTimeImmutable` picks up the application timezone, and Laravel's
+     * default is UTC — ahead of every US state by four to seven hours. A Texas sale
+     * at 20:00 local on 6 August is 01:00 UTC on the 7th, and passing that instant
+     * unchanged puts it inside a holiday window that had not opened, or on the far
+     * side of a rate change that had not taken effect.
+     *
+     * Where a date boundary decides an outcome — a sales tax holiday, the day a
+     * marketplace-facilitator rule took effect, a rate change at midnight — supply
+     * the date as the jurisdiction reckons it. Null is right for an invoice raised
+     * now in your own jurisdiction and wrong for everything else.
+     */
     public function on(): DateTimeImmutable
     {
         return $this->suppliedAt ?? new DateTimeImmutable;

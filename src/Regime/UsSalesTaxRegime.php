@@ -220,7 +220,11 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // rate — it removes the supply from tax for a few days. Asked after
         // taxability so a supply that is already exempt is reported as exempt for
         // its own reason rather than credited to a weekend it did not need.
-        $holiday = $this->dataset?->salesTaxHoliday($subdivision->value, $query->category->value, $query->on());
+        $holiday = $this->dataset?->salesTaxHoliday(
+            $subdivision->value,
+            $query->category->value,
+            $query->on()->format('Y-m-d'),
+        );
 
         if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'], $holiday['capInclusive'])) {
             return new TaxAssessment(

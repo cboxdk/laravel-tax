@@ -435,3 +435,29 @@ it('still reads a local mirror that has no manifest', function () {
     // break every committed fixture and offline build for no gain in trust.
     expect($this->dataset->stateRatePercent('US-CA'))->toBe('7.25');
 });
+
+it('refuses a remote boundary index whose bytes do not match its manifest', function () {
+    // This file decides WHICH authorities apply to an address, and it was the only
+    // one reaching the engine unverified. BoundaryIndexEncoder's docblock states
+    // that set ORDER is load-bearing — a Kansas ZIP matches both a narrow span and
+    // a whole-ZIP fallback, and only order decides which wins. A tampered or
+    // reordered table therefore returns a real authority set for the WRONG
+    // jurisdiction, sums real rate records, and stamps the total Authoritative.
+    $dir = dirname(__DIR__).'/Fixtures/us-tax-dataset/';
+    $index = (string) file_get_contents($dir.'boundaries/US-KS.json');
+    $compressed = (string) gzencode($index);
+
+    Http::fake([
+        '*/boundaries/manifest.json' => Http::response(json_encode([
+            'schemaVersion' => 4,
+            'states' => ['US-KS' => ['sha256' => str_repeat('0', 64)]],
+        ])),
+        '*/boundaries/US-KS.json.gz' => Http::response($compressed),
+    ]);
+
+    $dataset = new UsTaxDataset(app(Factory::class), app(Cache::class), 'https://example.test/us');
+
+    // Null, not a partial answer: the caller then falls back to the state rate at
+    // Derived confidence rather than pricing an address from an index nobody signed.
+    expect($dataset->localJurisdictions('US-KS', '66101', '3064'))->toBeNull();
+});

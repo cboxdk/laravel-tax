@@ -336,7 +336,7 @@ readonly class UsTaxDataset
      *
      * @return array{name: string, cap: int, capInclusive: bool}|null
      */
-    public function salesTaxHoliday(string $state, string $class, DateTimeImmutable $on): ?array
+    public function salesTaxHoliday(string $state, string $class, string $on): ?array
     {
         $holidays = $this->stateEntry('holidays', $state);
 
@@ -344,7 +344,11 @@ readonly class UsTaxDataset
             return null;
         }
 
-        $date = $on->format('Y-m-d');
+        // Taken as an already-resolved calendar date rather than an instant. The
+        // caller knows the jurisdiction and therefore its clock; rendering here from
+        // a DateTimeImmutable meant rendering in whatever zone it happened to carry,
+        // which for a Laravel default is UTC — ahead of every US state.
+        $date = $on;
 
         foreach ($holidays as $holiday) {
             if (! is_array($holiday)) {
@@ -696,8 +700,32 @@ readonly class UsTaxDataset
         // states instead of 20 MB, and they are rewritten every quarter, so the
         // uncompressed form would dominate the mirror's history. The plain file is
         // still read where a local build wrote one.
-        $raw = $this->readCompressed('boundaries/'.$state.'.json.gz')
-            ?? $this->read('boundaries/'.$state.'.json');
+        // VERIFIED LIKE EVERY OTHER FILE, which it was not.
+        //
+        // This is the file that decides WHICH authorities apply to an address, and
+        // it was the only one reaching the engine unchecked — `read()` straight to
+        // `json_decode`, with the argument in verified()'s own docblock (a mutable
+        // branch head on a third-party host) applying to it exactly as much as to
+        // the sections. BoundaryIndexEncoder's docblock states that set ORDER is
+        // load-bearing: a Kansas ZIP matches both a narrow span and a whole-ZIP
+        // fallback, and only order decides. A reordered table therefore returns a
+        // real authority set for the wrong jurisdiction, sums real records, and
+        // stamps the result Authoritative.
+        $compressed = $this->read('boundaries/'.$state.'.json.gz');
+
+        if ($compressed !== null && $compressed !== '') {
+            if (! $this->verifiedBoundary($state, $compressed)) {
+                return null;
+            }
+
+            $inflated = @gzdecode($compressed);
+            $raw = $inflated === false ? null : $inflated;
+        } else {
+            // The plain file is what a LOCAL build writes; the published mirror
+            // carries only the gzipped one, which is what the manifest hashes. Same
+            // asymmetry as the sections: your own disk is a deliberate choice.
+            $raw = $this->isRemote() ? null : $this->read('boundaries/'.$state.'.json');
+        }
 
         if ($raw === null) {
             return null;
@@ -773,22 +801,61 @@ readonly class UsTaxDataset
      * Read a relative path under the configured location — an HTTP GET for a URL
      * base, a filesystem read for a local directory. Any failure returns null.
      */
-    /**
-     * Read a gzipped part and inflate it. A body that is not valid gzip yields null
-     * rather than a warning-laden empty string, so the caller falls through to the
-     * plain file.
-     */
-    private function readCompressed(string $relative): ?string
-    {
-        $raw = $this->read($relative);
 
-        if ($raw === null || $raw === '') {
+    /**
+     * Whether a boundary index is the one the publisher signed off.
+     *
+     * Hashed over the COMPRESSED bytes, because that is what the boundary manifest
+     * records — the mirror publishes only the gzipped form. A local mirror with no
+     * boundary manifest is trusted, exactly as a local section is.
+     */
+    private function verifiedBoundary(string $state, string $compressed): bool
+    {
+        if (! $this->isRemote()) {
+            return true;
+        }
+
+        $manifest = $this->boundaryManifest();
+
+        if ($manifest === null) {
+            return false;
+        }
+
+        $states = $manifest['states'] ?? null;
+        $entry = is_array($states) ? ($states[$state] ?? null) : null;
+        $expected = is_array($entry) ? ($entry['sha256'] ?? null) : null;
+
+        return is_string($expected) && hash('sha256', $compressed) === $expected;
+    }
+
+    /**
+     * @return array<array-key, mixed>|null
+     */
+    private function boundaryManifest(): ?array
+    {
+        $key = 'cbox-tax:us-dataset:'.substr(hash('sha256', $this->location), 0, 16).':boundary-manifest';
+        $cached = $this->cache->get($key);
+
+        if (is_array($cached)) {
+            /** @var array<array-key, mixed> $cached */
+            return $cached;
+        }
+
+        $raw = $this->read('boundaries/manifest.json');
+        $decoded = $raw === null ? null : json_decode($raw, true);
+
+        if (! is_array($decoded)) {
             return null;
         }
 
-        $inflated = @gzdecode($raw);
+        // Held for a fraction of the index TTL, for the same reason the section
+        // manifest is: it is what makes every boundary read trustworthy, and a
+        // stale one would keep verifying against yesterday's answer after a
+        // quarterly republish.
+        $this->cache->put($key, $decoded, max(60, (int) ($this->ttl / 12)));
 
-        return $inflated === false ? null : $inflated;
+        /** @var array<array-key, mixed> $decoded */
+        return $decoded;
     }
 
     /**
