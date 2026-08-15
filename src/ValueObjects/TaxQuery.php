@@ -8,8 +8,10 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use DateTimeImmutable;
 
@@ -114,7 +116,51 @@ readonly class TaxQuery
          * False is right for a direct sale, which is most of them.
          */
         public bool $marketplaceFacilitated = false,
+        /**
+         * Your own code for what was sold — a SKU, a plan id, a product slug.
+         *
+         * The point of it is that the tax class stops being a decision made while
+         * building an invoice. Resolved through a {@see ProductCatalogue} you
+         * populate once per product, so ten thousand SKUs are ten thousand recorded
+         * facts rather than ten thousand chances to pick differently.
+         *
+         * Resolution is three-deep, most specific first: a `category` stated here
+         * overrides everything, then the catalogue keyed by this code, then the
+         * fallback. A code nothing has mapped still produces an invoice — and says
+         * so, via {@see RateLimit::ItemUnmapped}, so it can be found and fixed
+         * rather than quietly taxed at the standard rate forever.
+         */
+        public ?string $itemCode = null,
     ) {}
+
+    /**
+     * The same query with the classification filled in from a product catalogue.
+     *
+     * Narrow on purpose. A general `with()` over fifteen constructor parameters is
+     * a method nobody can read and every future field has to be threaded through;
+     * this copies the two fields the catalogue owns and nothing else, so adding a
+     * parameter to the constructor cannot silently drop it here.
+     */
+    public function classifiedAs(TaxClass $category, ?string $commodityCode): self
+    {
+        return new self(
+            $this->amount,
+            $this->pricing,
+            $this->place,
+            $this->customer,
+            $this->seller,
+            $category,
+            $this->customerTaxIdValidated,
+            $this->exemption,
+            $commodityCode,
+            $this->suppliedAt,
+            $this->reportedOn,
+            $this->route,
+            $this->postalCode,
+            $this->marketplaceFacilitated,
+            $this->itemCode,
+        );
+    }
 
     /** The date the assessment resolves against — the supply date, else today. */
     public function on(): DateTimeImmutable

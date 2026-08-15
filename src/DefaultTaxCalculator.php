@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Brick\Money\Money;
+use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Concerns\AssessesOrders;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Enums\RateLimit;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
 use Cbox\Tax\ValueObjects\FlatCharge;
@@ -20,6 +24,7 @@ use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
+use Cbox\Tax\ValueObjects\TaxRate;
 
 /**
  * The engine entry point. Reads the place of supply's tax profile (from geo),
@@ -42,6 +47,11 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         private TaxRateSource $rates,
         private ?FlatChargeSource $charges = null,
         private ?OrderFlatChargeSource $documentCharges = null,
+        /**
+         * Resolves your item codes to tax classes. Defaults to one that knows
+         * nothing, so an app that never sets an item code behaves exactly as before.
+         */
+        private ProductCatalogue $catalogue = new EmptyProductCatalogue,
     ) {}
 
     public function assess(TaxQuery $query): TaxAssessment
@@ -49,7 +59,74 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         // Last, and deliberately so: a fixed charge usually turns on the OUTCOME —
         // Colorado's fee is due on a delivery that contains taxable goods — so the
         // source has to see whether tax was charged before it can answer.
-        return $this->applyCharges($query, $this->assessSupply($query));
+        [$query, $unmapped] = $this->classify($query);
+
+        return $this->flagUnmapped($this->applyCharges($query, $this->assessSupply($query)), $unmapped);
+    }
+
+    /**
+     * Fill in the class and commodity code from the product catalogue, and report
+     * whether the item code was one nothing has mapped.
+     *
+     * MOST SPECIFIC WINS, and the order is the whole contract: a class stated on the
+     * query is an override for the line in hand and is never second-guessed; then
+     * the catalogue, keyed by the item code; then whatever the query already
+     * carried, which is the shipped default.
+     *
+     * A stated class is detected by it NOT being the default. That is a real
+     * limitation and it is stated rather than hidden: a caller who explicitly passes
+     * `TaxClass::GeneralGoods` for a line they mean to be general goods will still
+     * have the catalogue consulted. The alternative — a nullable class — would make
+     * every existing caller construct a query differently, and the outcome only
+     * differs for an item whose mapping is also general goods.
+     *
+     * @return array{TaxQuery, bool}
+     */
+    private function classify(TaxQuery $query): array
+    {
+        if ($query->itemCode === null || $query->itemCode === '') {
+            return [$query, false];
+        }
+
+        if ($query->category !== TaxClass::GeneralGoods) {
+            return [$query, false];
+        }
+
+        $mapping = $this->catalogue->find($query->itemCode);
+
+        if ($mapping === null) {
+            // Still priced, still invoiced — and reported, so the SKU can be found
+            // and mapped rather than taxed at the fallback in silence forever.
+            return [$query, true];
+        }
+
+        // The line's own code still wins: a caller who knows this particular supply
+        // is classified differently from the product in general has said so
+        // deliberately.
+        return [$query->classifiedAs($mapping->class, $query->commodityCode ?? $mapping->commodityCode), false];
+    }
+
+    /**
+     * Record on the rate that the class came from a fallback rather than a mapping.
+     *
+     * Only where nothing else already limits the answer. An assessment that is
+     * already flagged ambiguous has a more specific story to tell, and overwriting
+     * it with the coarser one would send a reviewer to the wrong remedy.
+     */
+    private function flagUnmapped(TaxAssessment $assessment, bool $unmapped): TaxAssessment
+    {
+        if (! $unmapped || $assessment->rate === null || $assessment->rate->limitedBy !== null) {
+            return $assessment;
+        }
+
+        return $assessment->with(rate: new TaxRate(
+            $assessment->rate->percentage,
+            $assessment->rate->kind,
+            $assessment->rate->source,
+            $assessment->rate->confidence,
+            $assessment->rate->components,
+            RateLimit::ItemUnmapped,
+        ));
     }
 
     /**

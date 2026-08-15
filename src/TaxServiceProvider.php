@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
@@ -14,6 +15,7 @@ use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
+use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
@@ -74,6 +76,12 @@ class TaxServiceProvider extends ServiceProvider
         // an internal boundary file — rebinds this one contract and the US rate
         // source starts stacking what it returns. See docs/extension-points.
         $this->app->singleton(LocalAuthorityResolver::class, static fn (): LocalAuthorityResolver => new DefersLocalAuthorities);
+
+        // Knows no item codes until a host binds its own. An app that never sends an
+        // item code behaves exactly as it did before the catalogue existed; one that
+        // sends a code with nothing bound gets its lines flagged unmapped, which is
+        // the honest report rather than a silent fallback.
+        $this->app->singleton(ProductCatalogue::class, static fn (): ProductCatalogue => new EmptyProductCatalogue);
 
         $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
             $static = new StaticTaxRateSource;
@@ -220,6 +228,7 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(TaxRateSource::class),
                 $app->make(FlatChargeSource::class),
                 $app->make(OrderFlatChargeSource::class),
+                $app->make(ProductCatalogue::class),
             );
         });
 

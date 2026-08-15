@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\ValueObjects\TaxRate;
@@ -110,6 +111,7 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                         $window['standard'],
                         sprintf('eu-tax-dataset (%s %s unreadable, standard rate applied)', $country, $heading),
                         Confidence::LowConfidence,
+                        RateLimit::BandUnreadable,
                     );
                 }
             }
@@ -141,6 +143,7 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                             $window['standard'],
                             sprintf('eu-tax-dataset (%s %s scope unreadable, standard rate applied)', $country, $heading),
                             Confidence::LowConfidence,
+                            RateLimit::BandUnreadable,
                         );
                     }
                 }
@@ -149,6 +152,9 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
                     $window['standard'],
                     sprintf('eu-tax-dataset (%s %s undecided, standard rate applied)', $country, $heading),
                     Confidence::Derived,
+                    // Actionable, not just flagged: the caller can close this one
+                    // themselves by classifying the product, and the remedy says so.
+                    RateLimit::HeadingAmbiguous,
                 );
             }
         }
@@ -229,10 +235,10 @@ readonly class EuTaxDatasetRateSource implements CommodityRateSource
      * back to — so the source denies and the engine refuses the line rather than
      * inventing a percentage.
      */
-    private function standard(string $percentage, string $source, Confidence $confidence): ?TaxRate
+    private function standard(string $percentage, string $source, Confidence $confidence, ?RateLimit $limitedBy = null): ?TaxRate
     {
         try {
-            return new TaxRate($percentage, RateKind::Standard, $source, $confidence);
+            return new TaxRate($percentage, RateKind::Standard, $source, $confidence, [], $limitedBy);
         } catch (Throwable) {
             return null;
         }

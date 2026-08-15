@@ -13,6 +13,7 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
@@ -462,7 +463,17 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
             return null;
         }
 
-        return new TaxRate($percent, RateKind::Standard, self::SOURCE, Confidence::Derived);
+        // The state share, and the caller is told what it is missing rather than
+        // only that something is. In Louisiana this is 4.45% against a combined rate
+        // reaching 11.45%, and the remedy names the two ways to close it.
+        return new TaxRate(
+            $percent,
+            RateKind::Standard,
+            self::SOURCE,
+            Confidence::Derived,
+            [],
+            $this->dataset->hasLocalSalesTax($state) ? RateLimit::NoLocalResolution : null,
+        );
     }
 
     /**
