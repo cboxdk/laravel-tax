@@ -14,7 +14,7 @@ use RuntimeException;
  * a state). The caller must resolve the address via an {@see AddressGeocoder}
  * first — deny-by-default, never a coarse guess.
  */
-class JurisdictionNotResolved extends RuntimeException
+class JurisdictionNotResolved extends RuntimeException implements Malformed
 {
     public static function needsSubdivision(Jurisdiction $jurisdiction): self
     {

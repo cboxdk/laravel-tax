@@ -29,7 +29,7 @@ use RuntimeException;
  *
  * @see TaxDetermination::taxableBase()
  */
-class ThresholdCurrencyMismatch extends RuntimeException
+class ThresholdCurrencyMismatch extends RuntimeException implements Refusal
 {
     public static function between(string $threshold, string $amount): self
     {

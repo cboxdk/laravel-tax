@@ -13,7 +13,7 @@ use RuntimeException;
  * decision. Deny-by-default: unknown taxability blocks, it does not silently
  * become taxable or exempt.
  */
-class UnresolvedProductTaxability extends RuntimeException
+class UnresolvedProductTaxability extends RuntimeException implements Refusal
 {
     public static function for(Jurisdiction $jurisdiction, TaxClass $category): self
     {

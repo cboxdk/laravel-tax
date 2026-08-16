@@ -11,7 +11,7 @@ use RuntimeException;
  * Raised when no tax regime is modelled for a jurisdiction. Deny-by-default: the
  * engine refuses rather than assuming a supply is tax-free.
  */
-class UnsupportedJurisdiction extends RuntimeException
+class UnsupportedJurisdiction extends RuntimeException implements Refusal
 {
     public static function for(CountryCode $country): self
     {

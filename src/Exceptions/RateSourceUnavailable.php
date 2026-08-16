@@ -31,7 +31,7 @@ use RuntimeException;
  *
  * @see TaxRateSource
  */
-class RateSourceUnavailable extends RuntimeException
+class RateSourceUnavailable extends RuntimeException implements Transient
 {
     private function __construct(
         public readonly string $source,

@@ -12,7 +12,7 @@ use RuntimeException;
  * expected to tax. Deny-by-default: a missing rate blocks, it does not silently
  * become 0%.
  */
-class UnresolvedTaxRate extends RuntimeException
+class UnresolvedTaxRate extends RuntimeException implements Refusal
 {
     public static function for(Jurisdiction $jurisdiction): self
     {

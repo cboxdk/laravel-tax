@@ -16,7 +16,7 @@ use InvalidArgumentException;
  * currencies would fail deep inside `Money::plus` with a message about currency
  * codes rather than about the invoice that is wrong.
  */
-class InvalidTaxOrder extends InvalidArgumentException
+class InvalidTaxOrder extends InvalidArgumentException implements Malformed
 {
     public static function withoutLines(): self
     {
