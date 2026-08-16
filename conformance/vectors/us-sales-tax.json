@@ -1,0 +1,175 @@
+{
+    "corpus": "us-sales-tax",
+    "describes": "US sales tax determination: what is charged, and why.",
+    "regime": "us-sales-tax",
+    "dataset": {
+        "name": "us-tax-dataset",
+        "pinnedTo": "tests/Fixtures/us-tax-dataset",
+        "why": "Eight states — CA, FL, HI, KS, NC, PA, TX, VA — chosen to carry the cases that have actually gone wrong here, not to be representative. Pinned rather than live for the same reason as the EU corpus: a rate that changes in the world must not silently change what a vector asserts."
+    },
+    "vectors": [
+        {
+            "id": "a-state-only-answer-says-it-is-not-address-exact",
+            "pins": "A bare state code gives the state's rate and NOTHING BELOW IT, and the engine says so rather than implying precision it does not have: the confidence is derived, not authoritative, and the rate carries NoLocalResolution. This vector was originally written to assert the opposite — that Florida is county-resolved, which it is — and it proved nothing, because a query with no address detail has no county to resolve. Precision comes from what you ASK, not from which state you are in.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-FL",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-FL"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "taxGreaterThanZero": true,
+                "confidence": "derived",
+                "limitedBy": "no_local_resolution"
+            }
+        },
+        {
+            "id": "marketplace-facilitated-is-not-exempt",
+            "pins": "A facilitated sale charges nothing because the marketplace already collected. The treatment must say MarketplaceFacilitated — Exempt and NotRegistered are the same zero and mean opposite things on a return, and a facilitated sale is none of the others: the tax WAS due and somebody else owed it.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-TX"
+                ],
+                "marketplaceFacilitated": true
+            },
+            "expect": {
+                "treatment": "marketplace_facilitated",
+                "tax": "0.00",
+                "gross": "100.00"
+            }
+        },
+        {
+            "id": "marketplace-liability-does-not-need-the-seller-registered",
+            "pins": "The marketplace's liability is not derived from the seller's presence. A seller with no registration in the state still owes nothing on a facilitated sale — and the reason must say why, because NotRegistered would say something else entirely about the same zero.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "US",
+                "sellerRegistrations": [],
+                "marketplaceFacilitated": true
+            },
+            "expect": {
+                "treatment": "marketplace_facilitated",
+                "tax": "0.00"
+            }
+        },
+        {
+            "id": "unregistered-seller-must-not-collect",
+            "pins": "THE OPPOSITE OF THE EU RULE, AND WORTH STATING BESIDE IT. Without nexus a US seller has no authority to collect, so charging would be collecting tax nobody is owed. In the EU the same empty registration list means a distance seller is non-compliant and must still charge. One engine, two regimes, two answers — which is why the corpus carries both.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "US",
+                "sellerRegistrations": []
+            },
+            "expect": {
+                "treatment": "not_registered",
+                "tax": "0.00"
+            }
+        },
+        {
+            "id": "a-state-only-rate-has-nothing-to-break-down",
+            "pins": "The breakdown exists to show a stack — state, county, city, transit district — and a state-only answer has no stack to show. Emitting a single-component breakdown would dress an unresolved answer up as a resolved one, which is the same lie the confidence field exists to prevent.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-CA",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-CA"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "hasNoBreakdown": true
+            }
+        },
+        {
+            "id": "holiday-cap-is-exclusive-where-the-statute-says-less-than",
+            "pins": "Texas exempts clothing priced 'less than $100', so $99.99 is exempt and exactly $100.00 is taxed. Florida's statute says '$100 or less' and exempts it. The engine defaults caps to EXCLUSIVE because that is the direction that over-collects, and a wrong boundary here is off by the whole line rather than by a rounding unit.",
+            "query": {
+                "amount": "100.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "clothing",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-TX"
+                ],
+                "suppliedAt": "2026-08-08"
+            },
+            "expect": {
+                "taxGreaterThanZero": true
+            }
+        },
+        {
+            "id": "holiday-exempts-below-the-cap",
+            "pins": "The same shirt a cent cheaper, the same weekend, is exempt — and the treatment says Exempt rather than a zero rate, because the state did not set the rate to nothing, it removed the supply from tax for three days.",
+            "query": {
+                "amount": "99.99",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "clothing",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-TX"
+                ],
+                "suppliedAt": "2026-08-08"
+            },
+            "expect": {
+                "tax": "0.00",
+                "gross": "99.99"
+            }
+        },
+        {
+            "id": "the-holiday-does-not-apply-the-week-before",
+            "pins": "Dates are the whole mechanism. The identical shirt on the 1st of August is taxed, because the window had not opened — and a holiday resolved at today's date instead of the supply's would exempt every backdated invoice raised during one.",
+            "query": {
+                "amount": "50.00",
+                "currency": "USD",
+                "pricing": "exclusive",
+                "place": "US-TX",
+                "customer": "consumer",
+                "class": "clothing",
+                "sellerCountry": "US",
+                "sellerRegistrations": [
+                    "US-TX"
+                ],
+                "suppliedAt": "2026-08-01"
+            },
+            "expect": {
+                "treatment": "standard",
+                "taxGreaterThanZero": true
+            }
+        }
+    ]
+}

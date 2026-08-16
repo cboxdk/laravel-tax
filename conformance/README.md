@@ -48,6 +48,22 @@ vector asserts — that would make this a mirror of today's data instead of a
 description of behaviour. When a rate genuinely changes, the fixture is updated
 deliberately and the diff is reviewable.
 
+## Two regimes, two answers to the same question
+
+`vectors/eu-vat.json` and `vectors/us-sales-tax.json`. The corpus carries both
+because the same input gets opposite answers, and neither is a special case:
+
+> A seller with no registration where the customer is. In the **US** that is no
+> nexus, no authority to collect, and charging would be collecting tax nobody is
+> owed. In the **EU** it is a distance seller who is obliged to collect through OSS
+> and simply has not registered — non-compliance, not relief.
+
+Both are in the corpus, side by side, for exactly that reason. Reading one as the
+other is the mistake that produced two of the first wrong vectors here.
+
+New files under `vectors/` are picked up automatically; a corpus declares its
+`regime` and the runner builds the right one.
+
 ## Two shapes, and why
 
 Vectors come as single supplies and as documents. A corpus built from one consumer's
@@ -85,6 +101,12 @@ Then the order shape found three more, and these were real:
 - **The tax was rounded once per line.** Three lines at 5.5% sharing a 10.00 charge
   gave 3.33, 3.33 and 3.34, each taxed to 0.18, totalling 0.54 against the 0.55 that
   10.00 at 5.5% actually is. Apportioning per RATE rather than per line rounds once.
+- **The US vectors assumed a state code buys precision.** Two of them asserted an
+  authoritative, broken-down answer from `US-FL` and `US-CA` alone. A bare state has
+  no county to resolve, and the engine correctly returns a *derived* rate carrying
+  `NoLocalResolution` and no breakdown at all — precision comes from what you ask,
+  not from which state you are in. That is now what those two vectors pin, and it is
+  a better thing to pin than what I meant to write.
 - **The order runner was not pinned to the fixture.** It resolved the calculator from
   the container, which reached for the default rate source, so an order vector
   asserted nothing about the data this corpus claims to pin. The first one passed only

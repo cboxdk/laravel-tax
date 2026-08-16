@@ -5,16 +5,24 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\EuTaxData\EuTaxDataset;
+use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
+use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Regime\EuVatRegime;
+use Cbox\Tax\Regime\UsSalesTaxRegime;
+use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
@@ -45,35 +53,81 @@ use Illuminate\Http\Client\Factory;
 /**
  * @return list<array{0: string, 1: array<string, mixed>}>
  */
-function conformanceVectors(): array
+function conformanceCorpora(): array
 {
-    $path = dirname(__DIR__, 2).'/conformance/vectors/eu-vat.json';
-    $corpus = json_decode((string) file_get_contents($path), true);
-
-    if (! is_array($corpus) || ! is_array($corpus['vectors'] ?? null)) {
-        throw new RuntimeException("No vectors in {$path}.");
-    }
-
     $out = [];
 
-    foreach ($corpus['vectors'] as $vector) {
-        if (! is_array($vector) || ! is_string($vector['id'] ?? null)) {
-            throw new RuntimeException('A vector is missing its id.');
+    foreach (glob(dirname(__DIR__, 2).'/conformance/vectors/*.json') ?: [] as $path) {
+        $corpus = json_decode((string) file_get_contents($path), true);
+
+        if (! is_array($corpus)) {
+            throw new RuntimeException("Unreadable corpus at {$path}.");
         }
 
-        $out[] = [$vector['id'], $vector];
+        $out[] = $corpus;
+    }
+
+    if ($out === []) {
+        throw new RuntimeException('No corpora found. A silently empty suite passes and proves nothing.');
     }
 
     return $out;
 }
 
-function conformanceRegime(): EuVatRegime
+/**
+ * @return list<array{0: string, 1: array<string, mixed>}>
+ */
+function conformanceVectors(): array
 {
+    $out = [];
+
+    foreach (conformanceCorpora() as $corpus) {
+        $regime = is_string($corpus['regime'] ?? null) ? $corpus['regime'] : 'eu-vat';
+
+        foreach ((array) ($corpus['vectors'] ?? []) as $vector) {
+            if (! is_array($vector) || ! is_string($vector['id'] ?? null)) {
+                throw new RuntimeException('A vector is missing its id.');
+            }
+
+            $vector['regime'] = $regime;
+            $out[] = [$regime.'/'.$vector['id'], $vector];
+        }
+    }
+
+    return $out;
+}
+
+function usFixture(): UsTaxDataset
+{
+    return new UsTaxDataset(
+        app(Factory::class),
+        app(Cache::class),
+        dirname(__DIR__).'/Fixtures/us-tax-dataset',
+    );
+}
+
+function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
+{
+    if ($regime === 'us-sales-tax') {
+        $dataset = usFixture();
+
+        return new UsSalesTaxRegime(
+            new UsTaxDatasetTaxability($dataset, new StaticProductTaxability),
+            new UsTaxDatasetNexus($dataset),
+            null,
+            $dataset,
+        );
+    }
+
     return new EuVatRegime(app(JurisdictionRepository::class), new StaticEuTerritories);
 }
 
-function conformanceRates(): EuTaxDatasetRateSource
+function conformanceRates(string $regime = 'eu-vat'): TaxRateSource
 {
+    if ($regime === 'us-sales-tax') {
+        return new UsTaxDatasetRateSource(usFixture());
+    }
+
     return new EuTaxDatasetRateSource(new EuTaxDataset(
         app(Factory::class),
         app(Cache::class),
@@ -92,13 +146,29 @@ function conformanceQuery(array $q): TaxQuery
     $registrations = [];
 
     foreach ((array) ($q['sellerRegistrations'] ?? []) as $code) {
-        if (is_string($code)) {
-            $registrations[] = new SellerRegistration(new CountryCode($code));
+        if (! is_string($code)) {
+            continue;
         }
+
+        // "US-TX" is a registration in a state; "DK" is one in a country. A US seller
+        // registers state by state and an EU one member state by member state, so the
+        // corpus writes both the same way and this is where the two part.
+        $registrations[] = str_contains($code, '-')
+            ? new SellerRegistration(
+                new CountryCode(explode('-', $code)[0]),
+                new SubdivisionCode($code),
+            )
+            : new SellerRegistration(new CountryCode($code));
     }
 
-    $place = app(JurisdictionRepository::class)->find(new CountryCode($country))
-        ?? throw new RuntimeException($country.' is not resolvable.');
+    $place = str_contains($country, '-')
+        ? app(JurisdictionRepository::class)->find(
+            new CountryCode(explode('-', $country)[0]),
+            new SubdivisionCode($country),
+        )
+        : app(JurisdictionRepository::class)->find(new CountryCode($country));
+
+    $place ?? throw new RuntimeException($country.' is not resolvable.');
 
     return new TaxQuery(
         amount: Money::of((string) $q['amount'], (string) $q['currency']),
@@ -110,6 +180,7 @@ function conformanceQuery(array $q): TaxQuery
         customerTaxIdValidated: (bool) ($q['customerTaxIdValidated'] ?? false),
         suppliedAt: is_string($q['suppliedAt'] ?? null) ? new DateTimeImmutable($q['suppliedAt']) : null,
         postalCode: is_string($q['postalCode'] ?? null) ? $q['postalCode'] : null,
+        marketplaceFacilitated: (bool) ($q['marketplaceFacilitated'] ?? false),
     );
 }
 
@@ -167,6 +238,38 @@ function conformanceFailures(TaxAssessment $got, array $expect): array
         $bad[] = 'mentions: expected a legal statement on the invoice, got none';
     }
 
+    if (is_string($expect['confidence'] ?? null) && $got->rate?->confidence->value !== $expect['confidence']) {
+        $bad[] = "confidence: expected {$expect['confidence']}, got ".((string) $got->rate?->confidence->value);
+    }
+
+    if (is_string($expect['limitedBy'] ?? null) && $got->rate?->limitedBy?->value !== $expect['limitedBy']) {
+        $bad[] = "limitedBy: expected {$expect['limitedBy']}, got ".((string) $got->rate?->limitedBy?->value);
+    }
+
+    if (($expect['hasNoBreakdown'] ?? false) === true && ($got->breakdown?->lines ?? []) !== []) {
+        $bad[] = 'breakdown: expected none, got '.count($got->breakdown?->lines ?? []).' component(s)';
+    }
+
+    // The parts of a stacked US rate must add back up to the tax charged. An invoice
+    // whose components do not sum to its total is the first thing an auditor pulls.
+    if (($expect['breakdownReconciles'] ?? false) === true) {
+        $lines = $got->breakdown?->lines ?? [];
+
+        if ($lines === []) {
+            $bad[] = 'breakdown: expected components, got none';
+        } else {
+            $sum = null;
+
+            foreach ($lines as $component) {
+                $sum = $sum === null ? $component->tax : $sum->plus($component->tax);
+            }
+
+            if ($sum === null || ! $sum->isEqualTo($got->tax)) {
+                $bad[] = sprintf('breakdown: components sum to %s, tax is %s', $sum?->getAmount() ?? '0', $money($got->tax));
+            }
+        }
+    }
+
     // A zero-decimal currency must not acquire minor units on the way through.
     if (($expect['taxHasNoFractionalUnits'] ?? false) === true && str_contains($money($got->tax), '.')) {
         $bad[] = 'tax: expected whole units for a zero-decimal currency, got '.$money($got->tax);
@@ -179,7 +282,8 @@ it('answers the published conformance corpus', function (string $id, array $vect
     $expect = is_array($vector['expect'] ?? null) ? $vector['expect'] : [];
     $query = is_array($vector['query'] ?? null) ? $vector['query'] : [];
 
-    $assessment = conformanceRegime()->assess(conformanceQuery($query), conformanceRates());
+    $regime = is_string($vector['regime'] ?? null) ? $vector['regime'] : 'eu-vat';
+    $assessment = conformanceRegime($regime)->assess(conformanceQuery($query), conformanceRates($regime));
 
     $failures = conformanceFailures($assessment, $expect);
 
@@ -199,15 +303,13 @@ it('answers the published conformance corpus', function (string $id, array $vect
  */
 function conformanceOrders(): array
 {
-    $path = dirname(__DIR__, 2).'/conformance/vectors/eu-vat.json';
-    $corpus = json_decode((string) file_get_contents($path), true);
-    $orders = is_array($corpus) && is_array($corpus['orders'] ?? null) ? $corpus['orders'] : [];
-
     $out = [];
 
-    foreach ($orders as $order) {
-        if (is_array($order) && is_string($order['id'] ?? null)) {
-            $out[] = [$order['id'], $order];
+    foreach (conformanceCorpora() as $corpus) {
+        foreach ((array) ($corpus['orders'] ?? []) as $order) {
+            if (is_array($order) && is_string($order['id'] ?? null)) {
+                $out[] = [$order['id'], $order];
+            }
         }
     }
 
@@ -244,7 +346,12 @@ it('answers the published order-shaped vectors', function (string $id, array $ve
     $registrations = [];
 
     foreach ((array) ($spec['sellerRegistrations'] ?? []) as $code) {
-        $registrations[] = new SellerRegistration(new CountryCode((string) $code));
+        $registrations[] = str_contains((string) $code, '-')
+            ? new SellerRegistration(
+                new CountryCode(explode('-', (string) $code)[0]),
+                new SubdivisionCode((string) $code),
+            )
+            : new SellerRegistration(new CountryCode((string) $code));
     }
 
     $document = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
@@ -334,7 +441,7 @@ it('understands every expectation a vector states', function () {
     $known = [
         'treatment', 'treatmentNot', 'net', 'tax', 'gross', 'ratePercentage',
         'ratePercentageBelow', 'taxGreaterThanZero', 'hasInvoiceMention',
-        'taxHasNoFractionalUnits',
+        'taxHasNoFractionalUnits', 'confidence', 'breakdownReconciles', 'limitedBy', 'hasNoBreakdown',
         // Order-shaped
         'lineCount', 'sameRateAcrossLines', 'netTotal', 'taxTotal', 'grossTotal',
         // Documentary: carried for the reader, deliberately not asserted because the
