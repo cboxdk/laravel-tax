@@ -18,7 +18,9 @@
                 "customer": "consumer",
                 "class": "electronics",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatment": "standard",
@@ -39,7 +41,9 @@
                 "customer": "consumer",
                 "class": "electronics",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatment": "standard",
@@ -60,7 +64,9 @@
                 "customer": "consumer",
                 "class": "groceries",
                 "sellerCountry": "FR",
-                "sellerRegistrations": ["FR"]
+                "sellerRegistrations": [
+                    "FR"
+                ]
             },
             "expect": {
                 "treatment": "standard",
@@ -79,7 +85,9 @@
                 "customer": "consumer",
                 "class": "groceries",
                 "sellerCountry": "HU",
-                "sellerRegistrations": ["HU"]
+                "sellerRegistrations": [
+                    "HU"
+                ]
             },
             "expect": {
                 "treatment": "standard",
@@ -98,7 +106,9 @@
                 "customerTaxIdValidated": true,
                 "class": "general_goods",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatment": "reverse_charge",
@@ -119,7 +129,9 @@
                 "customerTaxIdValidated": false,
                 "class": "general_goods",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatmentNot": "reverse_charge",
@@ -137,7 +149,9 @@
                 "customer": "consumer",
                 "class": "electronics",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatment": "standard",
@@ -157,7 +171,9 @@
                 "customer": "consumer",
                 "class": "electronics",
                 "sellerCountry": "PL",
-                "sellerRegistrations": ["PL"],
+                "sellerRegistrations": [
+                    "PL"
+                ],
                 "suppliedAt": "2020-06-15"
             },
             "expect": {
@@ -177,7 +193,9 @@
                 "customer": "consumer",
                 "class": "general_goods",
                 "sellerCountry": "ES",
-                "sellerRegistrations": ["ES"]
+                "sellerRegistrations": [
+                    "ES"
+                ]
             },
             "expect": {
                 "treatmentNot": "standard",
@@ -215,12 +233,58 @@
                 "customer": "consumer",
                 "class": "electronics",
                 "sellerCountry": "DK",
-                "sellerRegistrations": ["DK"]
+                "sellerRegistrations": [
+                    "DK"
+                ]
             },
             "expect": {
                 "treatment": "standard",
                 "taxHasNoFractionalUnits": true
             }
+        }
+    ],
+    "orders": [
+        {
+            "id": "proration-credit-and-charge-on-one-date",
+            "pins": "A mid-period plan change is two lines on one document: a credit for the unused part of the old plan and a charge for the new one. Both are the same supply date, so both must resolve the SAME rate — a credit priced at one rate and its replacement at another leaves a residue that reconciles to nothing. This is the billing shape, and it is in the corpus so billing does not end up being the only consumer v1 was designed around.",
+            "order": {
+                "currency": "DKK",
+                "pricing": "exclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ],
+                "suppliedAt": "2026-08-16",
+                "lines": [
+                    {
+                        "id": "credit-old-plan",
+                        "amount": "-40.00",
+                        "class": "digital_service"
+                    },
+                    {
+                        "id": "charge-new-plan",
+                        "amount": "100.00",
+                        "class": "digital_service"
+                    }
+                ]
+            },
+            "expect": {
+                "lineCount": 2,
+                "sameRateAcrossLines": true,
+                "netTotal": "60.00",
+                "taxTotal": "15.00",
+                "grossTotal": "75.00"
+            }
+        }
+    ],
+    "notModelled": [
+        {
+            "id": "shipping-follows-the-goods",
+            "why": "THE ENGINE CANNOT EXPRESS THIS YET, and it is the most common line in e-commerce. Article 78(b) makes transport charged by the supplier part of the taxable amount of the supply it accompanies — so delivery on a cart of books is taxed at the books' reduced rate, not the standard one. There is no shipping concept here: a caller must pick a TaxClass for the delivery line, and picking GeneralGoods on a French book order charges 20% where 5.5% is due.",
+            "openDecision": "The directive fixes the principle and is silent on MIXED carts. Apportioning the delivery pro-rata by net value is the common practice but it is not directive text, so it would be our determination — the same footing as the eight EU bands already marked basis=determination. That is a decision to take deliberately, not to bury in an implementation.",
+            "notTheSameThing": "Colorado's Retail Delivery Fee is modelled and is a different animal: a fixed levy per delivery, not a rate on a charge."
         }
     ]
 }
