@@ -283,8 +283,9 @@
         {
             "id": "shipping-follows-the-goods",
             "why": "THE ENGINE CANNOT EXPRESS THIS YET, and it is the most common line in e-commerce. Article 78(b) makes transport charged by the supplier part of the taxable amount of the supply it accompanies — so delivery on a cart of books is taxed at the books' reduced rate, not the standard one. There is no shipping concept here: a caller must pick a TaxClass for the delivery line, and picking GeneralGoods on a French book order charges 20% where 5.5% is due.",
-            "openDecision": "The directive fixes the principle and is silent on MIXED carts. Apportioning the delivery pro-rata by net value is the common practice but it is not directive text, so it would be our determination — the same footing as the eight EU bands already marked basis=determination. That is a decision to take deliberately, not to bury in an implementation.",
-            "notTheSameThing": "Colorado's Retail Delivery Fee is modelled and is a different animal: a fixed levy per delivery, not a rate on a charge."
+            "openDecision": "The directive fixes the principle and is silent on MIXED carts — and so, deliberately, are the member states. HMRC's Notice 700/24 permits 'any fair and reasonable apportionment, which doesn't have to be based on price': value, cost, weight or special delivery requirements all qualify. Denmark's VAT act carries no explicit rule at all; the market-price method is the main one, cost-based where separate prices are absent, and a recent styresignal widened the choice further.",
+            "notTheSameThing": "Colorado's Retail Delivery Fee is modelled and is a different animal: a fixed levy per delivery, not a rate on a charge.",
+            "thereforeNotOurChoice": "So the apportionment basis is NOT ours to hardcode. Baking in pro-rata-by-value would impose a choice that belongs to the taxpayer, and it is wrong in real cases: a heavy zero-rated item shipped alongside a light standard-rated one makes weight defensible where value over-allocates. The design is a caller-supplied policy, pro-rata by net value as the documented default, and the basis actually used recorded in the reason — because 'fair and reasonable' requires it to be STATED and consistent, not merely correct."
         }
     ]
 }
