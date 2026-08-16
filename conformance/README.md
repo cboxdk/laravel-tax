@@ -48,6 +48,16 @@ vector asserts — that would make this a mirror of today's data instead of a
 description of behaviour. When a rate genuinely changes, the fixture is updated
 deliberately and the diff is reviewable.
 
+## Two shapes, and why
+
+Vectors come as single supplies and as documents. A corpus built from one consumer's
+cases quietly designs the engine around that consumer — subscriptions have prorations
+and dunning, carts have shipping and returns, and whichever arrives first sets the
+shape the other has to live in. Both are here from the start for that reason.
+
+The document shape earned it immediately. It is where delivery lives, and delivery is
+where the engine turned out to have nothing at all.
+
 ## What the corpus caught on its first run
 
 Two of the first ten vectors were wrong, and both were wrong the same way — a
@@ -64,6 +74,21 @@ foreign intuition applied to EU VAT:
 
 Neither was an engine defect. Both would have shipped as confident wrong answers
 without a corpus to state them out loud.
+
+Then the order shape found three more, and these were real:
+
+- **Delivery had no representation whatsoever.** Article 78(b) makes a delivery charge
+  part of the taxable amount of what it delivers, so postage on a cart of books is
+  charged at the books' rate. There was no way to say a line was delivery, so a caller
+  had to pick a class for it and got 20% where 5.5% was due — on the single most
+  common line in e-commerce.
+- **The tax was rounded once per line.** Three lines at 5.5% sharing a 10.00 charge
+  gave 3.33, 3.33 and 3.34, each taxed to 0.18, totalling 0.54 against the 0.55 that
+  10.00 at 5.5% actually is. Apportioning per RATE rather than per line rounds once.
+- **The order runner was not pinned to the fixture.** It resolved the calculator from
+  the container, which reached for the default rate source, so an order vector
+  asserted nothing about the data this corpus claims to pin. The first one passed only
+  because the default happened to agree about Denmark.
 
 ## Adding one
 

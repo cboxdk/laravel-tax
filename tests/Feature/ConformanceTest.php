@@ -6,6 +6,8 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
+use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
@@ -212,6 +214,15 @@ function conformanceOrders(): array
     return $out;
 }
 
+// The order path resolves the calculator from the container, which reaches for the
+// DEFAULT rate source — not the fixture the single-supply vectors pin. That broke the
+// promise this corpus makes about itself: the first order vector passed only because
+// the default source happened to answer 25% for Denmark too, so it asserted nothing.
+// Binding the fixture here is what makes an order vector mean what a line vector does.
+beforeEach(function () {
+    $this->app->bind(TaxRateSource::class, fn () => conformanceRates());
+});
+
 // The document shape, not the line shape. Some things are only wrong at order level —
 // a per-delivery fee charged once per line, a postcode that never reached the lines —
 // and a corpus of single supplies cannot see any of them.
@@ -226,6 +237,7 @@ it('answers the published order-shaped vectors', function (string $id, array $ve
             id: (string) $line['id'],
             amount: Money::of((string) $line['amount'], (string) $spec['currency']),
             category: TaxClass::from((string) ($line['class'] ?? 'general_goods')),
+            isDeliveryCharge: (bool) ($line['isDeliveryCharge'] ?? false),
         );
     }
 
@@ -243,6 +255,7 @@ it('answers the published order-shaped vectors', function (string $id, array $ve
         pricing: ($spec['pricing'] ?? 'exclusive') === 'inclusive' ? Pricing::Inclusive : Pricing::Exclusive,
         lines: $lines,
         suppliedAt: is_string($spec['suppliedAt'] ?? null) ? new DateTimeImmutable($spec['suppliedAt']) : null,
+        apportionment: ApportionmentBasis::from((string) ($spec['apportionment'] ?? 'net_value')),
     ));
 
     $failures = [];

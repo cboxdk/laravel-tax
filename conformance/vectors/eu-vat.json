@@ -277,15 +277,44 @@
                 "taxTotal": "15.00",
                 "grossTotal": "75.00"
             }
-        }
-    ],
-    "notModelled": [
+        },
         {
-            "id": "shipping-follows-the-goods",
-            "why": "THE ENGINE CANNOT EXPRESS THIS YET, and it is the most common line in e-commerce. Article 78(b) makes transport charged by the supplier part of the taxable amount of the supply it accompanies — so delivery on a cart of books is taxed at the books' reduced rate, not the standard one. There is no shipping concept here: a caller must pick a TaxClass for the delivery line, and picking GeneralGoods on a French book order charges 20% where 5.5% is due.",
-            "openDecision": "The directive fixes the principle and is silent on MIXED carts — and so, deliberately, are the member states. HMRC's Notice 700/24 permits 'any fair and reasonable apportionment, which doesn't have to be based on price': value, cost, weight or special delivery requirements all qualify. Denmark's VAT act carries no explicit rule at all; the market-price method is the main one, cost-based where separate prices are absent, and a recent styresignal widened the choice further.",
-            "notTheSameThing": "Colorado's Retail Delivery Fee is modelled and is a different animal: a fixed levy per delivery, not a rate on a charge.",
-            "thereforeNotOurChoice": "So the apportionment basis is NOT ours to hardcode. Baking in pro-rata-by-value would impose a choice that belongs to the taxpayer, and it is wrong in real cases: a heavy zero-rated item shipped alongside a light standard-rated one makes weight defensible where value over-allocates. The design is a caller-supplied policy, pro-rata by net value as the documented default, and the basis actually used recorded in the reason — because 'fair and reasonable' requires it to be STATED and consistent, not merely correct."
+            "id": "delivery-follows-the-goods-on-a-mixed-cart",
+            "pins": "Article 78(b) makes a delivery charge part of the taxable amount of the supplies it accompanies, so it takes THEIR rates and has none of its own. On a mixed cart it is split, and the basis is the taxpayer's to state rather than ours to assume — HMRC permits any fair and reasonable one, Denmark's act names none. 100 of groceries at 5.5% beside 300 of electronics at 20% puts a quarter of the postage at the reduced rate.",
+            "order": {
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "consumer",
+                "sellerCountry": "FR",
+                "sellerRegistrations": [
+                    "FR"
+                ],
+                "apportionment": "net_value",
+                "lines": [
+                    {
+                        "id": "food",
+                        "amount": "100.00",
+                        "class": "groceries"
+                    },
+                    {
+                        "id": "laptop",
+                        "amount": "300.00",
+                        "class": "electronics"
+                    },
+                    {
+                        "id": "shipping",
+                        "amount": "20.00",
+                        "isDeliveryCharge": true
+                    }
+                ]
+            },
+            "expect": {
+                "lineCount": 3,
+                "netTotal": "420.00",
+                "taxTotal": "68.78",
+                "grossTotal": "488.78"
+            }
         }
     ]
 }

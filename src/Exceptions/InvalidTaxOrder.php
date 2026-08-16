@@ -36,6 +36,15 @@ class InvalidTaxOrder extends InvalidArgumentException
         ));
     }
 
+    public static function deliveryWithNothingDelivered(): self
+    {
+        return new self(
+            'Every line on this order is a delivery charge, so there is nothing for it to be delivering. '
+            .'A delivery charge has no rate of its own — it takes the rates of the supplies it accompanies '
+            .'(Art. 78(b)) — and with no such supply on the document there is nothing to take.'
+        );
+    }
+
     public static function mixedCurrencies(string $expected, string $found, string $lineId): self
     {
         return new self(sprintf(
