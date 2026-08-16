@@ -112,6 +112,34 @@ Then the order shape found three more, and these were real:
   asserted nothing about the data this corpus claims to pin. The first one passed only
   because the default happened to agree about Denmark.
 
+## Running it against an HTTP implementation
+
+```bash
+php conformance/run-http.php --base=https://api.example.com --key=sk_…
+php conformance/run-http.php --base=http://localhost:8000 --corpus=eu-vat
+```
+
+No framework and no dependencies — checking whether we answer what we claim should
+not require installing our stack. Plain curl and json.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Every vector passed |
+| `1` | At least one did not |
+| `2` | **The run could not happen** — unreachable, or no corpus matched |
+
+The third code is the one that matters. A suite that cannot reach the service, or
+that matched nothing, must never look like a suite that found nothing wrong.
+
+**This script was written before the API it tests.** A corpus retrofitted to a
+service documents whatever that service already does; a corpus written first is a
+contract the service has to satisfy. The request shape, the three outcomes and the
+field names in `run-http.php` are the specification, executable.
+
+It also holds one thing the library runner cannot: that every answer carries a
+`reason`. That is the part no competitor returns, and a response without it has
+dropped what makes the number defensible.
+
 ## Adding one
 
 Add it to the relevant file under `vectors/`, write the `pins` sentence first, and
