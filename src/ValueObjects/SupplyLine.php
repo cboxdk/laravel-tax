@@ -52,5 +52,25 @@ readonly class SupplyLine
          * from a document, which is where most real invoices are built.
          */
         public ?string $itemCode = null,
+        /**
+         * This line is what it cost to get the rest of the order there.
+         *
+         * Delivery, packing, insurance, commission — Article 78(b) treats them alike:
+         * charged by the supplier, they become part of the taxable amount of the
+         * supply they accompany. So this line has NO RATE OF ITS OWN. It takes the
+         * rates of the lines it delivers, and on a mixed cart it is split across them
+         * by the document's {@see ApportionmentBasis}.
+         *
+         * Which is why it is a flag rather than a `TaxClass`. A class would mean
+         * "look up the rate for delivery", and there is no such rate to look up —
+         * getting a French book order to the customer is a 5.5% cost, and getting a
+         * laptop there is a 20% one, for the identical courier doing the identical
+         * work.
+         *
+         * Setting it on every line of a document is a contradiction: something has to
+         * be delivered. The order refuses rather than apportioning a charge across
+         * nothing.
+         */
+        public bool $isDeliveryCharge = false,
     ) {}
 }

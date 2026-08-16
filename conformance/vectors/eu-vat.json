@@ -1,0 +1,320 @@
+{
+    "corpus": "eu-vat",
+    "describes": "EU VAT determination: what is charged, and why.",
+    "dataset": {
+        "name": "eu-tax-dataset",
+        "pinnedTo": "tests/Fixtures/eu-tax-dataset",
+        "why": "Vectors pin a committed slice of the published dataset rather than the live mirror. A rate that changes in the world must not silently change what these vectors assert — that would make them a mirror of today's data instead of a description of the engine's behaviour."
+    },
+    "vectors": [
+        {
+            "id": "domestic-b2c-standard",
+            "pins": "A domestic B2C supply of a class the union reduces nowhere is taxed at the member state's standard rate.",
+            "query": {
+                "amount": "100.00",
+                "currency": "DKK",
+                "pricing": "exclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "class": "electronics",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "ratePercentage": "25",
+                "net": "100.00",
+                "tax": "25.00",
+                "gross": "125.00"
+            }
+        },
+        {
+            "id": "domestic-b2c-inclusive-pricing",
+            "pins": "An inclusive price is decomposed, not grossed up. The customer pays what the shelf said.",
+            "query": {
+                "amount": "125.00",
+                "currency": "DKK",
+                "pricing": "inclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "class": "electronics",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "ratePercentage": "25",
+                "net": "100.00",
+                "tax": "25.00",
+                "gross": "125.00"
+            }
+        },
+        {
+            "id": "reduced-band-through-class-map",
+            "pins": "A reduced band is reached through the published class map, not by the caller naming a rate. France reduces foodstuffs to 5.5% and the caller only ever says 'groceries'.",
+            "query": {
+                "amount": "100.00",
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "consumer",
+                "class": "groceries",
+                "sellerCountry": "FR",
+                "sellerRegistrations": [
+                    "FR"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "ratePercentage": "5.5",
+                "tax": "5.50"
+            }
+        },
+        {
+            "id": "no-reduced-band-means-the-standard-rate",
+            "pins": "A class the member state does NOT reduce is charged at standard, and that is an answer rather than a fallback. Hungary taxes groceries at its full 27% — assuming every state reduces food is how a foreign intuition becomes an under-charge.",
+            "query": {
+                "amount": "100.00",
+                "currency": "HUF",
+                "pricing": "exclusive",
+                "place": "HU",
+                "customer": "consumer",
+                "class": "groceries",
+                "sellerCountry": "HU",
+                "sellerRegistrations": [
+                    "HU"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "ratePercentage": "27"
+            }
+        },
+        {
+            "id": "b2b-cross-border-reverse-charge",
+            "pins": "A cross-border B2B supply to a validated VAT number is reverse charged: no tax, and the invoice must say so.",
+            "query": {
+                "amount": "1000.00",
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "business",
+                "customerTaxIdValidated": true,
+                "class": "general_goods",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatment": "reverse_charge",
+                "tax": "0.00",
+                "gross": "1000.00",
+                "hasInvoiceMention": true
+            }
+        },
+        {
+            "id": "b2b-unvalidated-id-is-charged",
+            "pins": "THE FAIL-SAFE DIRECTION. A business customer whose VAT number was NOT conclusively validated is charged, not zero-rated. An unverified number is not evidence of anything, and under-collection here is unrecoverable.",
+            "query": {
+                "amount": "1000.00",
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "business",
+                "customerTaxIdValidated": false,
+                "class": "general_goods",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatmentNot": "reverse_charge",
+                "taxGreaterThanZero": true
+            }
+        },
+        {
+            "id": "credit-note-refunds-the-tax",
+            "pins": "A negative amount is a credit note and must refund the tax that was charged. It is the same determination with the sign carried through — not an untaxed line.",
+            "query": {
+                "amount": "-100.00",
+                "currency": "DKK",
+                "pricing": "exclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "class": "electronics",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "net": "-100.00",
+                "tax": "-25.00",
+                "gross": "-125.00"
+            }
+        },
+        {
+            "id": "dated-rate-resolves-at-the-supply-date",
+            "pins": "The rate is the one that applied on the SUPPLY date, not today's. A backdated invoice is priced under the law that was in force when the supply happened.",
+            "query": {
+                "amount": "100.00",
+                "currency": "PLN",
+                "pricing": "exclusive",
+                "place": "PL",
+                "customer": "consumer",
+                "class": "electronics",
+                "sellerCountry": "PL",
+                "sellerRegistrations": [
+                    "PL"
+                ],
+                "suppliedAt": "2020-06-15"
+            },
+            "expect": {
+                "treatment": "standard",
+                "rateResolvedForDate": "2020-06-15"
+            }
+        },
+        {
+            "id": "territory-outside-the-vat-area",
+            "pins": "The Canary Islands sit inside Spain and outside the VAT area. A postcode is the only thing that distinguishes them, because the addressing reference data carries no subdivision for them.",
+            "query": {
+                "amount": "100.00",
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "ES",
+                "postalCode": "35001",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "ES",
+                "sellerRegistrations": [
+                    "ES"
+                ]
+            },
+            "expect": {
+                "treatmentNot": "standard",
+                "tax": "0.00",
+                "why": "Outside the VAT area entirely — IGIC applies locally and is not ours to charge."
+            }
+        },
+        {
+            "id": "relief-must-be-asserted-not-inferred",
+            "pins": "DENY-BY-DEFAULT, AND THE DIRECTION MATTERS. A Danish seller supplying a French consumer is taxed at DESTINATION unless a below-threshold OSS status is affirmatively asserted. Absent any status the general rule applies — silence is not relief. Reading an empty registration list as 'charge nothing' is US thinking: there, no nexus means you must not collect; here, a distance seller is obliged to collect through OSS and not being registered is non-compliance, not an exemption.",
+            "query": {
+                "amount": "100.00",
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "consumer",
+                "class": "general_goods",
+                "sellerCountry": "DK",
+                "sellerRegistrations": []
+            },
+            "expect": {
+                "treatment": "standard",
+                "ratePercentage": "20",
+                "tax": "20.00"
+            }
+        },
+        {
+            "id": "zero-decimal-currency-rounds-to-whole-units",
+            "pins": "Currency minor units are not universally two. A JPY line must not carry cents.",
+            "query": {
+                "amount": "1000",
+                "currency": "JPY",
+                "pricing": "exclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "class": "electronics",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ]
+            },
+            "expect": {
+                "treatment": "standard",
+                "taxHasNoFractionalUnits": true
+            }
+        }
+    ],
+    "orders": [
+        {
+            "id": "proration-credit-and-charge-on-one-date",
+            "pins": "A mid-period plan change is two lines on one document: a credit for the unused part of the old plan and a charge for the new one. Both are the same supply date, so both must resolve the SAME rate — a credit priced at one rate and its replacement at another leaves a residue that reconciles to nothing. This is the billing shape, and it is in the corpus so billing does not end up being the only consumer v1 was designed around.",
+            "order": {
+                "currency": "DKK",
+                "pricing": "exclusive",
+                "place": "DK",
+                "customer": "consumer",
+                "sellerCountry": "DK",
+                "sellerRegistrations": [
+                    "DK"
+                ],
+                "suppliedAt": "2026-08-16",
+                "lines": [
+                    {
+                        "id": "credit-old-plan",
+                        "amount": "-40.00",
+                        "class": "digital_service"
+                    },
+                    {
+                        "id": "charge-new-plan",
+                        "amount": "100.00",
+                        "class": "digital_service"
+                    }
+                ]
+            },
+            "expect": {
+                "lineCount": 2,
+                "sameRateAcrossLines": true,
+                "netTotal": "60.00",
+                "taxTotal": "15.00",
+                "grossTotal": "75.00"
+            }
+        },
+        {
+            "id": "delivery-follows-the-goods-on-a-mixed-cart",
+            "pins": "Article 78(b) makes a delivery charge part of the taxable amount of the supplies it accompanies, so it takes THEIR rates and has none of its own. On a mixed cart it is split, and the basis is the taxpayer's to state rather than ours to assume — HMRC permits any fair and reasonable one, Denmark's act names none. 100 of groceries at 5.5% beside 300 of electronics at 20% puts a quarter of the postage at the reduced rate.",
+            "order": {
+                "currency": "EUR",
+                "pricing": "exclusive",
+                "place": "FR",
+                "customer": "consumer",
+                "sellerCountry": "FR",
+                "sellerRegistrations": [
+                    "FR"
+                ],
+                "apportionment": "net_value",
+                "lines": [
+                    {
+                        "id": "food",
+                        "amount": "100.00",
+                        "class": "groceries"
+                    },
+                    {
+                        "id": "laptop",
+                        "amount": "300.00",
+                        "class": "electronics"
+                    },
+                    {
+                        "id": "shipping",
+                        "amount": "20.00",
+                        "isDeliveryCharge": true
+                    }
+                ]
+            },
+            "expect": {
+                "lineCount": 3,
+                "netTotal": "420.00",
+                "taxTotal": "68.78",
+                "grossTotal": "488.78"
+            }
+        }
+    ]
+}

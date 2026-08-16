@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
@@ -62,9 +63,24 @@ readonly class TaxOrder
          * fact about the transaction, not about one product on it.
          */
         public bool $marketplaceFacilitated = false,
+        /**
+         * How a delivery charge is spread across the supplies it delivers.
+         *
+         * Document-level because a delivery is: one dispatch, one basis. The default
+         * is the market-price method, which is the main rule everywhere this was
+         * checked — but it IS a default and not a law, and the enum says why.
+         */
+        public ApportionmentBasis $apportionment = ApportionmentBasis::NetValue,
     ) {
         if ($lines === []) {
             throw InvalidTaxOrder::withoutLines();
+        }
+
+        // A document that is nothing but delivery has nothing to deliver, and its
+        // charge has no rate to inherit. Refusing here names it; apportioning across
+        // an empty set would produce a confident zero.
+        if (array_filter($lines, static fn (SupplyLine $line): bool => ! $line->isDeliveryCharge) === []) {
+            throw InvalidTaxOrder::deliveryWithNothingDelivered();
         }
 
         // One document, one currency. Every mature tax API holds this — a document
