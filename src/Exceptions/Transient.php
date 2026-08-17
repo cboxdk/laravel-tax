@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Exceptions;
 
+use Throwable;
+
 /**
  * Something upstream is unavailable. The same request may well succeed later.
  *
@@ -11,4 +13,4 @@ namespace Cbox\Tax\Exceptions;
  * Distinct from a {@see Refusal} precisely because retrying is the right response
  * here and the wrong one there.
  */
-interface Transient {}
+interface Transient extends Throwable {}

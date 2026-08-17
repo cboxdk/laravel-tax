@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Exceptions;
 
+use Throwable;
+
 /**
  * The engine declines to answer. The request was fine; we will not guess.
  *
@@ -17,7 +19,9 @@ namespace Cbox\Tax\Exceptions;
  * it would look transient, and a checkout would retry a question that will never have
  * a different answer.
  *
- * Marker only, and implemented alongside whatever the exception already extends, so
- * nothing that catches the concrete classes today breaks.
+ * Extends Throwable so the marker cannot be put on something that is not an exception,
+ * and so `@throws Refusal` is a claim a static analyser can check. Implemented
+ * alongside whatever the exception already extends, so nothing that catches the
+ * concrete classes today breaks.
  */
-interface Refusal {}
+interface Refusal extends Throwable {}
