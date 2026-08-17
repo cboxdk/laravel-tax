@@ -5,6 +5,46 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.13.0] - 2026-08-17
+
+### Changed — one breaking, narrowly
+
+- **`Refusal` gains a required `reason(): RefusalReason`.** It shipped as a marker in
+  0.12 and that was half the job: a caller catching one got prose and nothing to
+  switch on. The interface is one release old and implemented only by exceptions in
+  this package, so nothing outside can have implemented it yet — but it is an
+  interface change and belongs here rather than under *Added*.
+
+### Added
+
+- **`RefusalReason`** — why there is no answer, and what would produce one.
+  `RateUnavailable`, `TaxabilityUndetermined`, `TaxabilityConditional`,
+  `JurisdictionUnsupported`, `ThresholdCurrencyUnknown`, each carrying `remedy()` and
+  `callerCanClose()`.
+
+  It is deliberately **not** a reuse of `RateLimit`. That one rides on a rate that was
+  produced and says what stopped it being exact; this rides on a refusal, where no
+  number came back at all, and two of its cases are not about rates — a conditional
+  taxability is about a fact the caller withheld, an unsupported jurisdiction about
+  the edge of what this engine claims to know.
+
+  **`callerCanClose()` is the half that matters.** Three of the five the caller cannot
+  fix by sending anything, and telling them to retry would be a lie they would act on:
+  a shop would loop on a jurisdiction we do not model instead of falling back to its
+  own rate and flagging the line. A test holds each remedy's wording to that flag.
+
+- `UnresolvedProductTaxability` carries its reason **per instance**. Its two factories
+  are not the same thing to a caller — one is a disagreement between sources that no
+  request settles, the other a question answered by sending the line amount — and a
+  class-level answer would have to lie about one of them.
+
+### Why this existed
+
+Nothing recovered a refusal's meaning before it. An HTTP layer wanting to tell a shop
+what to do about a 422 tried searching the exception message for a `RateLimit` value,
+and it never once matched, because the messages name no enum. A lookup that always
+falls through is worse than none: it reads as though the codes are wired up.
+
 ## [0.12.0] - 2026-08-17
 
 Additive throughout. New constructor parameters are appended last and default to
