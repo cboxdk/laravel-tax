@@ -99,7 +99,9 @@ function post(string $url, array $body, ?string $key): array
     $raw = curl_exec($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
     $error = curl_error($handle) ?: null;
-    curl_close($handle);
+    // No curl_close(): it has done nothing since PHP 8.0 and is deprecated from 8.5,
+    // which this script has to run cleanly on — it is the thing a consumer runs to
+    // check us, and it must not greet them with a deprecation notice.
 
     if ($raw === false) {
         return ['status' => 0, 'body' => null, 'error' => $error ?? 'the request failed'];
