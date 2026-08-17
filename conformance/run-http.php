@@ -26,7 +26,6 @@ declare(strict_types=1);
  * could not happen. The last matters — a suite that cannot reach the service must
  * not look like a suite that found nothing wrong.
  */
-
 $options = getopt('', ['base:', 'key::', 'corpus::', 'quiet']);
 $base = is_string($options['base'] ?? null) ? rtrim($options['base'], '/') : null;
 

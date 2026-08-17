@@ -5,6 +5,59 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.12.0] - 2026-08-17
+
+Additive throughout. New constructor parameters are appended last and default to
+today's behaviour, so nothing that compiles against 0.11 stops compiling.
+
+### Added
+
+- **Delivery charges take the rates of what they deliver.** Article 78(b) makes
+  transport charged by the supplier part of the taxable amount of the supply it
+  accompanies, so postage on a cart of books is charged at the books' rate. Mark the
+  line with `SupplyLine::$isDeliveryCharge` — a flag rather than a `TaxClass`, because
+  a class would mean looking up a rate for "delivery" and there is no such rate.
+- **`ApportionmentBasis`, on the document.** On a mixed cart the directive fixes the
+  principle and is silent on the split, and so are the member states: HMRC permits
+  "any fair and reasonable apportionment, which doesn't have to be based on price",
+  and Denmark's act names no rule at all. Hardcoding one would impose a choice
+  belonging to the taxpayer — a heavy zero-rated item shipped with a light
+  standard-rated one makes weight defensible where value over-allocates. `NetValue` is
+  the documented default and the basis used is written into the reason, because "fair
+  and reasonable" requires it to be stated.
+- **Every exception declares which of four things it is.** `Refusal` (we will not
+  guess), `Transient` (upstream is down), `Malformed` (send something different), or
+  no marker at all, which means a defect. Markers extend `Throwable` and sit alongside
+  whatever each exception already extended, so existing catches are untouched. A test
+  fails when a new exception carries none, several, or claims a category while listed
+  as a defect.
+- **A published conformance corpus.** `conformance/` holds the determinations this
+  engine is held to as plain JSON with no PHP in it, plus a dependency-free runner
+  that exercises an HTTP implementation. It exists because one engine reached three
+  ways — package, API, embedded integration — drifts apart quietly, and because in a
+  category where no vendor discloses how an answer is reached, the cheapest way to be
+  argued with is to publish the cases you hold yourself to.
+
+### Fixed
+
+- **An order whose lines all reach the same rate lost a minor unit.** Apportioning a
+  delivery charge per line rounded the tax once per line: three lines at 5.5% sharing
+  a 10.00 charge became 3.33, 3.33 and 3.34, each taxed to 0.18, totalling 0.54 where
+  10.00 at 5.5% is 0.55. Shares are taken per rate now, so a single-rate cart rounds
+  once — and that is also how the split reads on an invoice.
+- **An order that is nothing but delivery is refused** rather than apportioned across
+  an empty set, which produced a confident zero.
+
+### Notes
+
+Two vectors in the first corpus were wrong before the engine was, and both the same
+way — a foreign intuition applied to EU VAT. Hungary was assumed to reduce groceries;
+it charges the full 27%. An empty registration list was read as "charge nothing",
+which is US thinking: there no nexus means you must not collect, while in the EU a
+distance seller collects through OSS and relief must be affirmatively asserted.
+Neither was a defect here. Both would have shipped as confident wrong answers without
+a corpus to state them out loud.
+
 ## [0.11.0] - 2026-08-15
 
 ### Added
