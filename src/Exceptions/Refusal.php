@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Exceptions;
 
+use Cbox\Tax\Enums\RefusalReason;
 use Throwable;
 
 /**
@@ -24,4 +25,15 @@ use Throwable;
  * alongside whatever the exception already extends, so nothing that catches the
  * concrete classes today breaks.
  */
-interface Refusal extends Throwable {}
+interface Refusal extends Throwable
+{
+    /**
+     * Which refusal this is, in a form a consumer can switch on.
+     *
+     * Not optional, and that is the point. It was a marker for one release and the
+     * message was all a caller had — an HTTP layer wanting to say what to do about a
+     * 422 had nothing but prose to parse, and parsing it never once worked. A refusal
+     * that cannot name itself is a refusal nobody can act on.
+     */
+    public function reason(): RefusalReason;
+}

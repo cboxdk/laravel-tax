@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Exceptions;
 
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Tax\Enums\RefusalReason;
 use RuntimeException;
 
 /**
@@ -19,5 +20,10 @@ class UnsupportedJurisdiction extends RuntimeException implements Refusal
             'No tax regime is modelled for jurisdiction "%s". Refusing to assess rather than assume tax-free.',
             $country->value,
         ));
+    }
+
+    public function reason(): RefusalReason
+    {
+        return RefusalReason::JurisdictionUnsupported;
     }
 }

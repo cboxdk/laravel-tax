@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Exceptions;
 
+use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use RuntimeException;
 
@@ -41,5 +42,10 @@ class ThresholdCurrencyMismatch extends RuntimeException implements Refusal
             $amount,
             $threshold,
         ));
+    }
+
+    public function reason(): RefusalReason
+    {
+        return RefusalReason::ThresholdCurrencyUnknown;
     }
 }

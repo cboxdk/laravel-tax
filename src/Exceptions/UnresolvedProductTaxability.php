@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Exceptions;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Enums\TaxClass;
 use RuntimeException;
 
@@ -15,6 +16,23 @@ use RuntimeException;
  */
 class UnresolvedProductTaxability extends RuntimeException implements Refusal
 {
+    /**
+     * Two refusals share this class and they are NOT the same to a caller. One is a
+     * disagreement between sources that no request will settle; the other is a
+     * question the caller can answer by sending the line amount. Carrying the reason
+     * per instance is what keeps `callerCanClose()` honest — a single class-level
+     * answer would have to lie about one of them.
+     */
+    private function __construct(string $message, private readonly RefusalReason $reason)
+    {
+        parent::__construct($message);
+    }
+
+    public function reason(): RefusalReason
+    {
+        return $this->reason;
+    }
+
     public static function for(Jurisdiction $jurisdiction, TaxClass $category): self
     {
         $where = $jurisdiction->subdivision !== null
@@ -30,7 +48,7 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
             $where,
             $where,
             $category->value,
-        ));
+        ), RefusalReason::TaxabilityUndetermined);
     }
 
     /**
@@ -50,6 +68,6 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
             'Taxability of "%s" in "%s" is conditional (e.g. a per-item price threshold) and cannot be decided from the category alone. Supply a taxability matrix that resolves the condition, or exclude the category.',
             $category->value,
             $where,
-        ));
+        ), RefusalReason::TaxabilityConditional);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Exceptions;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Enums\RefusalReason;
 use RuntimeException;
 
 /**
@@ -24,5 +25,10 @@ class UnresolvedTaxRate extends RuntimeException implements Refusal
             'No tax rate available for "%s". Refusing to assess rather than assume 0%%.',
             $where,
         ));
+    }
+
+    public function reason(): RefusalReason
+    {
+        return RefusalReason::RateUnavailable;
     }
 }
