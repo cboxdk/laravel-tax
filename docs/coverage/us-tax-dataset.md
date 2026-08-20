@@ -322,11 +322,18 @@ these states**, and bind a commercial adapter where the local share matters.
 New York and Illinois are worth calling out for SaaS sellers specifically: both tax
 digital services, and both are in this list.
 
-Colorado is the most tractable of the twelve: its Department of Revenue runs a
-free address-level GIS service, and CRS 39-26-105.2 holds a vendor that relies on it
-harmless in an audit for errors in the data. Its API key is issued per business, so
-it belongs in a host-configured adapter rather than in the dataset — the same shape
-as `ArcGisRateSource`. Not built yet.
+Colorado is still the most tractable of the twelve, but not from the outside.
+Its Department of Revenue runs an address-level GIS whose answers CRS 39-26-105.2
+holds a relying vendor harmless for in an audit — the right foundation for an
+adapter. What the open web offers, though, is less than it appears (verified
+2026-08-20): the public lookup redirects to a vendor-operated app at
+`colorado.atr.avalara.com` behind a terms-acceptance gate, `tax.colorado.gov`
+CloudFront-blocks every egress we have tested — datacenter and residential alike —
+and the API's method documentation is published only on the logged-in key-issuing
+screen of the SUTS Remittance Portal. The key is issued per business, so the
+adapter belongs host-configured — the same shape as `ArcGisRateSource` — and
+building it starts inside the host's own portal account, where both the key and
+the contract live. Not built yet; blocked on exactly that.
 
 **Alaska is different and now refuses outright.** It levies no *state* sales tax
 while its boroughs and cities levy their own (Juneau 5%, Wrangell 7%). Alaska
