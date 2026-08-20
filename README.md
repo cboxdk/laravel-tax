@@ -89,6 +89,11 @@ services. Florida, Pennsylvania, Hawaii and Virginia need no opt-in and no bound
 all, because the county is the only authority that can tax there and a geocoder
 returns it for free. The rest fall back to the state rate
 ([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).
+**Remote-seller elections close two of those states on request.** Alabama's SSUT
+(flat 8%) and Texas' Single Local Use Tax Rate (6.25% + 1.75% for 2026) are
+statutory schemes a remote seller elects into; give the state registration the
+`remote-election` scheme and the engine prices under them — opt-in, dated, and
+refusing rather than guessing when the published figure lapses.
 **Marketplace sales are not the seller's to collect.** Every US state with a sales
 tax now makes a qualifying marketplace the liable party — Missouri closed the set on
 2023-01-01 — so pass `marketplaceFacilitated: true` and the engine returns

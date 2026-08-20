@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Regime;
 
+use Brick\Math\BigDecimal;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
@@ -12,6 +13,7 @@ use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
+use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\SourcingMode;
 use Cbox\Tax\Enums\TaxTreatment;
@@ -50,6 +52,19 @@ readonly class UsSalesTaxRegime implements TaxRegime
 {
     use AppliesTaxRate;
     use ResolvesRates;
+
+    /**
+     * The registration scheme by which a host asserts that THIS seller elected
+     * the state's remote-seller flat-rate program — an accepted Alabama SSUT
+     * application, a filed Texas Form 01-799. The election rides on the
+     * registration it modifies: its validity window is the election's window,
+     * and asserting the scheme is asserting the program's eligibility terms are
+     * met, which is the seller's fact, not the engine's to infer.
+     */
+    public const string REMOTE_ELECTION_SCHEME = 'remote-election';
+
+    /** Distinct from plain 'us-tax-data' so an audit trail shows the election. */
+    private const string ELECTION_SOURCE = 'us-tax-data:election';
 
     public function __construct(
         private ProductTaxability $taxability,
@@ -245,6 +260,28 @@ readonly class UsSalesTaxRegime implements TaxRegime
             );
         }
 
+        // An elected flat rate replaces RATE RESOLUTION, not the gates above it:
+        // marketplace liability, nexus, taxability and holidays all spoke first.
+        // Shipped from INSIDE the destination state the seller is not remote for
+        // this supply — the physical presence these programs exclude — so the
+        // ordinary path prices it, which is exactly what in-state presence owes.
+        if ($query->seller->holdsSubdivisionScheme($subdivision, self::REMOTE_ELECTION_SCHEME, $query->on())
+            && $query->route->shipFrom?->subdivision?->equals($subdivision) !== true) {
+            $election = $this->dataset?->remoteSellerElection($subdivision->value, $query->on()->format('Y-m-d'));
+
+            if ($election === null) {
+                // The seller asserts an election nothing can price: a state with
+                // no scheme, a dataset too old to carry the section, or a lapsed
+                // annual determination (Texas republishes by each Jan 1). Pricing
+                // as if the seller had never elected would quietly charge rates
+                // the election replaced; assuming last year's figure would charge
+                // one nobody published. Refuse, loudly.
+                throw UnresolvedTaxRate::underElection($subdivision, 'remote-seller election');
+            }
+
+            return $this->assessUnderElection($query, $subdivision, $determination, $election);
+        }
+
         $from = $this->sourcedFrom($query, $subdivision);
         $rate = $this->resolveRate($rates, $query, $from);
 
@@ -287,6 +324,78 @@ readonly class UsSalesTaxRegime implements TaxRegime
             ),
             breakdown: $this->breakdown($rate, $base, $tax),
         );
+    }
+
+    /**
+     * Price under the state's remote-seller scheme the seller elected.
+     *
+     * A category the state prices specially (a reduced grocery rate) is REFUSED
+     * rather than flattened: the published flat figure is for the general base,
+     * and neither over- nor under-collecting a special category is acceptable
+     * to keep the flat rate convenient.
+     *
+     * @param  array{program: string, mechanic: string, ratePercent: string, statute: string}  $election
+     */
+    private function assessUnderElection(TaxQuery $query, SubdivisionCode $subdivision, TaxDetermination $determination, array $election): TaxAssessment
+    {
+        if ($determination->reducedRate !== null) {
+            throw UnresolvedTaxRate::underElection($subdivision, $election['program']);
+        }
+
+        [$percent, $composition] = match ($election['mechanic']) {
+            'flat_total' => [$election['ratePercent'], 'replacing all state and local rates'],
+            'single_local_rate' => $this->composeSingleLocalRate($subdivision, $election, $query->on()),
+            // A mechanic this engine does not know composes in a way it cannot
+            // know — a future dataset speaking past an older engine refuses.
+            default => throw UnresolvedTaxRate::underElection($subdivision, $election['program']),
+        };
+
+        $rate = new TaxRate($percent, RateKind::Standard, self::ELECTION_SOURCE, Confidence::Authoritative);
+        $base = $determination->taxableBase($query->amount);
+        [$net, $tax, $gross] = $this->split($query, $rate, $base);
+
+        return new TaxAssessment(
+            treatment: TaxTreatment::Standard,
+            net: $net,
+            tax: $tax,
+            gross: $gross,
+            placeOfSupply: $query->place,
+            rate: $rate,
+            reason: sprintf(
+                'US sales tax: %s%% in %s under the elected %s (%s), %s.',
+                $rate->percentage,
+                $subdivision->value,
+                $election['program'],
+                $election['statute'],
+                $composition,
+            ),
+            breakdown: $this->breakdown($rate, $base, $tax),
+        );
+    }
+
+    /**
+     * Texas' mechanic: the elected figure replaces the LOCAL use taxes only,
+     * and the state's own share still applies on top — read from the dataset
+     * for the supply's date, never hard-coded.
+     *
+     * @param  array{program: string, mechanic: string, ratePercent: string, statute: string}  $election
+     * @return array{0: string, 1: string}
+     */
+    private function composeSingleLocalRate(SubdivisionCode $subdivision, array $election, DateTimeImmutable $on): array
+    {
+        $statePercent = $this->dataset?->stateRatePercent($subdivision->value, $on);
+
+        if ($statePercent === null) {
+            throw UnresolvedTaxRate::underElection($subdivision, $election['program']);
+        }
+
+        $sum = (string) BigDecimal::of($statePercent)->plus(BigDecimal::of($election['ratePercent']));
+        $percent = str_contains($sum, '.') ? (rtrim(rtrim($sum, '0'), '.') ?: '0') : $sum;
+
+        return [
+            $percent,
+            sprintf('%s%% state plus the %s%% single local rate in lieu of local use taxes', $statePercent, $election['ratePercent']),
+        ];
     }
 
     /**

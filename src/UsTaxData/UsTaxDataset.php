@@ -35,7 +35,7 @@ use Throwable;
 readonly class UsTaxDataset
 {
     /** Sections this loader reads, each a `by-section/<name>.json` file. */
-    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates', 'holidays'];
+    private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates', 'holidays', 'elections'];
 
     /** The only dataset schema this reader understands. See {@see verified()}. */
     private const int SCHEMA_VERSION = 4;
@@ -376,6 +376,55 @@ readonly class UsTaxDataset
                     'cap' => $cap,
                     'capInclusive' => ($holiday['capInclusive'] ?? null) === true,
                 ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The remote-seller flat-rate election a state publishes, if one covers the
+     * date — Alabama's Simplified Sellers Use Tax, Texas' Single Local Use Tax
+     * Rate.
+     *
+     * The scheme is the STATE's; whether this seller elected it is the seller's
+     * own fact, asserted as a registration scheme, and the regime requires both.
+     * Null answers — no section (an older dataset), no scheme in this state, or
+     * no window covering the date (Texas' figure is an annual redetermination
+     * that expires with its calendar year) — all mean "cannot price under an
+     * election". The caller refuses on that; it never assumes last year's figure.
+     *
+     * @return array{program: string, mechanic: string, ratePercent: string, statute: string}|null
+     */
+    public function remoteSellerElection(string $state, string $on): ?array
+    {
+        $elections = $this->stateEntry('elections', $state);
+
+        if (! is_array($elections)) {
+            return null;
+        }
+
+        foreach ($elections as $election) {
+            if (! is_array($election)) {
+                continue;
+            }
+
+            $from = $election['effectiveFrom'] ?? null;
+            $to = $election['effectiveTo'] ?? null;
+
+            // Null bounds are open ends: Alabama's scheme is statutory with no
+            // scheduled end, Texas' closes with its published calendar year.
+            if (($from !== null && (! is_string($from) || $on < $from)) || ($to !== null && (! is_string($to) || $on > $to))) {
+                continue;
+            }
+
+            $program = $election['program'] ?? null;
+            $mechanic = $election['mechanic'] ?? null;
+            $rate = $election['ratePercent'] ?? null;
+            $statute = $election['statute'] ?? null;
+
+            if (is_string($program) && is_string($mechanic) && is_string($rate) && is_numeric($rate) && is_string($statute)) {
+                return ['program' => $program, 'mechanic' => $mechanic, 'ratePercent' => $rate, 'statute' => $statute];
             }
         }
 

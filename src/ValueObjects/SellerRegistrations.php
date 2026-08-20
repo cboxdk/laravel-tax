@@ -72,6 +72,28 @@ readonly class SellerRegistrations
     }
 
     /**
+     * Whether the seller holds a subdivision registration under a specific
+     * scheme on the date — how a US remote-seller election (an Alabama SSUT
+     * account, a Texas Form 01-799 election) rides on the registration it
+     * modifies rather than on a parallel structure. The registration's own
+     * validity window doubles as the election's: elected in March, the February
+     * backfill prices without it.
+     */
+    public function holdsSubdivisionScheme(SubdivisionCode $subdivision, string $scheme, ?DateTimeInterface $on = null): bool
+    {
+        foreach ($this->registrations as $registration) {
+            if ($registration->subdivision !== null
+                && $registration->subdivision->equals($subdivision)
+                && $registration->scheme === $scheme
+                && $this->inForce($registration, $on)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Whether a registration was in force on the date asked about.
      *
      * A null date means "today", which keeps every existing caller working. It is

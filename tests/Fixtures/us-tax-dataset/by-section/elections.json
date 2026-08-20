@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 4,
+  "version": "2026-08-20",
+  "contentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "section": "elections",
+  "states": {
+    "US-AL": [
+      {
+        "program": "Simplified Sellers Use Tax",
+        "mechanic": "flat_total",
+        "ratePercent": "8",
+        "statute": "Ala. Code § 40-23-193",
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "source": {
+          "name": "Ala. Code § 40-23-193(a),(c) with the Alabama DOR SSUT program page",
+          "url": "https://www.revenue.alabama.gov/sales-use/simplified-sellers-use-tax-ssut/",
+          "retrievedAt": "2026-08-20"
+        }
+      }
+    ],
+    "US-TX": [
+      {
+        "program": "Single Local Use Tax Rate",
+        "mechanic": "single_local_rate",
+        "ratePercent": "1.75",
+        "statute": "Tex. Tax Code § 151.0595",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": "2026-12-31",
+        "source": {
+          "name": "Tex. Tax Code § 151.0595 with the Comptroller's 2026 Texas Register determination",
+          "url": "https://comptroller.texas.gov/taxes/sales/remote-sellers.php",
+          "retrievedAt": "2026-08-20"
+        }
+      }
+    ],
+    "US-NY": null
+  }
+}

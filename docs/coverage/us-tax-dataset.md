@@ -335,6 +335,23 @@ adapter belongs host-configured — the same shape as `ArcGisRateSource` — and
 building it starts inside the host's own portal account, where both the key and
 the contract live. Not built yet; blocked on exactly that.
 
+**Two of the twelve have an elective escape hatch — for remote sellers, opt-in.**
+Alabama's Simplified Sellers Use Tax (Ala. Code § 40-23-193) lets an accepted
+remote seller collect a flat **8%** in place of the whole state+local stack, and
+Texas' Single Local Use Tax Rate (Tex. Tax Code § 151.0595, elected via Form
+01-799) replaces the local share with a single published figure — **1.75% for
+2026**, redetermined annually — on top of the 6.25% state rate. The dataset
+carries both schemes in its additive `elections` section, and the engine applies
+one only when the host asserts the seller's own election: a state registration
+whose `scheme` is `UsSalesTaxRegime::REMOTE_ELECTION_SCHEME`. Asserting the
+scheme asserts the program's eligibility terms are met — that is the seller's
+fact (an accepted application, a filed form), never inferred. A supply shipped
+from inside the state is priced on the ordinary path (a seller with in-state
+presence is outside these programs), a category the state prices specially
+refuses rather than flattens, and an asserted election the dataset cannot price
+— Texas after its determination lapses, a state with no scheme — refuses loudly
+rather than charging either the replaced rates or an unpublished figure.
+
 **Alaska is different and now refuses outright.** It levies no *state* sales tax
 while its boroughs and cities levy their own (Juneau 5%, Wrangell 7%). Alaska
 removed its statutory cap on local rates, so **do not hard-code a ceiling**. A
