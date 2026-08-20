@@ -5,6 +5,57 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.14.0] - 2026-08-20
+
+### Added
+
+- **Remote-seller flat-rate elections** — the engine prices under Alabama's
+  Simplified Sellers Use Tax (flat 8%, Ala. Code § 40-23-193) and Texas'
+  Single Local Use Tax Rate (the elected 1.75% in lieu of local use taxes,
+  the 6.25% state rate riding on top, Tex. Tax Code § 151.0595), closing two
+  of the twelve no-rooftop states for the sellers those programs exist for.
+
+  **The election rides on the registration it modifies.** An accepted SSUT
+  application and a filed Form 01-799 are registration facts, so the host
+  asserts one as a registration scheme — `UsSalesTaxRegime::REMOTE_ELECTION_SCHEME`
+  on the seller's state registration — and the registration's validity window
+  doubles as the election's. Asserting the scheme asserts the program's
+  eligibility terms are met; that is the seller's fact, never inferred. A
+  seller without the scheme prices exactly as before.
+
+  **The gates above the rate still speak first**: marketplace liability,
+  nexus, taxability and holidays are all asked before the election, which
+  replaces rate resolution only. A supply shipped from inside the destination
+  state takes the ordinary path (in-state presence is what these programs
+  exclude), and a category the state prices specially refuses rather than
+  flattens.
+
+  **An asserted election nothing can price refuses loudly**
+  (`UnresolvedTaxRate::underElection`): a state with no scheme, a dataset too
+  old to carry the additive `elections` section, or a lapsed Texas
+  determination — the figure is republished in the Texas Register by each
+  Jan 1, and the dataset's window expires with the calendar year on purpose.
+  Pricing as if unelected would charge rates the election replaced; assuming
+  last year's figure would charge one nobody published.
+
+- `UsTaxDataset::remoteSellerElection()` reads the dataset's additive
+  `elections` section (null-tolerant: an older mirror simply has none), and
+  `SellerRegistrations::holdsSubdivisionScheme()` answers the seller side.
+
+### Fixed
+
+- Docs: the Colorado section of the US coverage page described a "free
+  address-level GIS service" one adapter away. Verified 2026-08-20: the
+  public lookup is a vendor-operated app behind a terms gate, and the API
+  contract is published only on the logged-in SUTS key-issuing screen — the
+  page now says what actually gates the adapter.
+
+### Notes
+
+- **Backward compatible.** No signatures changed; the scheme constant, the
+  reader and the registration lookup are additions, and a query that does not
+  assert an election is untouched. Full suite green (552 tests).
+
 ## [0.13.0] - 2026-08-17
 
 ### Changed — one breaking, narrowly
