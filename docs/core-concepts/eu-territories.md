@@ -1,13 +1,13 @@
 ---
 title: EU special territories
 weight: 7
-description: Ten places inside a Member State where its VAT rules do not simply apply.
+description: Eleven places inside a Member State where its VAT rules do not simply apply.
 ---
 
 # EU special territories
 
-A country code is not always enough to know which tax applies. Ten territories sit
-inside an EU Member State and outside its VAT rules, and they fail in two
+A country code is not always enough to know which tax applies. Eleven territories
+sit inside an EU Member State and outside its VAT rules, and they fail in two
 completely different ways.
 
 ## Outside the VAT area
@@ -52,16 +52,25 @@ They are in the VAT area; they simply set their own rates.
 $tax->assess(/* … postalCode: '9500-001' */)->rate->percentage;  // "16"
 ```
 
-Only the **standard** rate is substituted, and the rate carries
-`Confidence::Derived` rather than `Authoritative` to say where it came from. The
-territory map is stable for decades; rates are not, and a snapshot of moving
-figures is exactly what this package avoids elsewhere.
+**Every level is substituted, not just the standard rate.** Portugal sets three
+levels and the regional assemblies set their own value for each, so the engine
+looks up what the territory charges where the mainland charges what the source
+returned: Madeira is 22/12/**4** against the mainland's 23/13/6 (the reduced
+rate was 5% before 2024-10-01, and the substitution is dated), the Azores
+16/9/4. The figures come from the Portuguese tax authority's Ofício Circulado
+n.º 25045 (2024-12-06); the substituted rate carries `Confidence::Derived`
+rather than `Authoritative` to say where it came from.
 
-A **reduced-rate** supply into these regions therefore keeps the mainland band,
-with the shortfall named in the reason. That is a deliberate choice between two
-wrongs: Madeira's reduced rate is 5% against the mainland's 6% and the Azores' is
-4%, so falling back **over**-charges by a point or two — recoverable — where
-refusing the line would lose the sale.
+A supply at a level the territory's figures do not cover keeps the mainland
+band, with the shortfall named in the reason — over-charging is recoverable
+where refusing the line would lose the sale.
+
+Two territory families are **absent on purpose**: Corsica's special rates are
+per-operation rather than per-level, so the substitution mechanism cannot carry
+them ([Corsica](../decisions/corsica.md)), and the Greek islands' 30% reduction
+and Austria's Jungholz/Mittelberg 19% follow the seller's establishment, so for
+the cross-border supplies this map prices the national rate is already correct
+([Seller-scoped territories](../decisions/seller-scoped-territories.md)).
 
 ## Why postal codes
 

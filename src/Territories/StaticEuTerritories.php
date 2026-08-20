@@ -20,14 +20,28 @@ use DateTimeImmutable;
  * Territories excluded from the EU VAT area are listed in Article 6 of the VAT
  * Directive (2006/112/EC) and have not changed in years, which is why a snapshot
  * is honest here in a way a rate snapshot would not be: rates move, the map does
- * The territories that keep their own RATES (the Azores, Madeira) now carry every
+ * not.
+ *
+ * The territories that keep their own RATES (the Azores, Madeira) carry every
  * level, keyed by the mainland rate each one replaces. That reverses an earlier
  * decision — "their reduced bands belong in a rate source, not here" — which was
- * made on the assumption that a rate source would carry them. None does: measured
- * on 2026-08-14, TEDB returns no Madeira or Azores rows at all, so a Madeira
- * grocery line was priced at the mainland's 6% with a caveat rather than the 5% (now
- * 4%) that actually applied. The figures come from the Portuguese tax authority's
- * Ofício Circulado n.º 25045 (2024-12-06) and its annex table.
+ * made on the assumption that a rate source would carry them. It carries half:
+ * TEDB returns the territorial STANDARD rates under its REGION heading (16%
+ * "Azores Autonomous Region", 22% "Madeira Autonomous Region") but not the
+ * reduced and intermediate levels — and those are the ones a grocery or a book
+ * line needs. Before they were sourced, a Madeira grocery line was priced at the
+ * mainland's 6% with a caveat rather than the 5% (now 4%) that actually applied.
+ * The figures come from the Portuguese tax authority's Ofício Circulado
+ * n.º 25045 (2024-12-06) and its annex table.
+ *
+ * Two territory families are ABSENT on purpose, not as gaps. Corsica's special
+ * rates are enumerated per operation rather than per level, so the substitution
+ * mechanism above cannot carry them — the mainland fallback only ever
+ * over-charges there (docs/decisions/corsica.md). The Greek islands with 30%
+ * reduced rates and Austria's Jungholz/Mittelberg key on where the SELLER is
+ * established, so for the cross-border supplies this resolver prices, the
+ * national rate IS the right answer and an entry would under-charge
+ * (docs/decisions/seller-scoped-territories.md).
  *
  * Postal ranges, and where they come from:
  *

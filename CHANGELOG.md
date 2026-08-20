@@ -5,6 +5,28 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.14.1] - 2026-08-20
+
+### Documentation
+
+- **The territory docs caught up with the code.** `eu-territories.md` still said
+  only the standard rate is substituted and called Madeira's reduced rate 5% —
+  the engine substitutes every level (dated: 5% before 2024-10-01, 4% since),
+  and the section now says so, with the Ofício Circulado n.º 25045 citation
+  beside the figures.
+- **A superseded measurement corrected.** The `StaticEuTerritories` docblock
+  claimed TEDB carries no Madeira or Azores rows at all. It carries half: the
+  territorial standard rates under its `REGION` heading — what it lacks is the
+  reduced and intermediate levels, which are the ones the overlay exists for.
+- **New decision record: seller-scoped territories.** The Greek islands' 30%
+  reduction (art. 26 of the VAT Code as amended by ν. 5246/2025, AADE
+  Ε.2113/2025 — including the 2026 population-based expansion) and Austria's
+  Jungholz/Mittelberg 19% (§ 10 Abs. 4 UStG 1994) follow the **seller's
+  establishment**, so for the cross-border supplies the territory map prices,
+  the national rate is already correct and the right entry is no entry. The
+  docblock and `eu-territories.md` now point at the record instead of implying
+  Corsica and the islands are pending work.
+
 ## [0.14.0] - 2026-08-20
 
 ### Added
