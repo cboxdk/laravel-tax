@@ -141,10 +141,12 @@ final readonly class RateResolver
      * The live LOCAL record for a jurisdiction: a component to add to the state
      * share, or an all-in combined total that replaces it.
      *
-     * Read directly rather than through the category ladder, because a local record
-     * is not category-scoped in the way a band is — it carries no category at all in
-     * most states. A category-matched one still wins where it exists, which is how
-     * Tennessee's reduced local food rate is reached.
+     * A local record is not category-scoped the way a band is — in most states it
+     * carries no category at all, and that untyped record is the general local rate.
+     * Where one IS categorised it wins, matched up the category ladder rather than on
+     * exact equality, because the ordinance files at the rung it names and the
+     * invoice sells at a leaf below it. That is how Tennessee's reduced local food
+     * rate is reached from `goods.food.basic`.
      *
      * @param  list<array<string, mixed>>  $rates
      * @return array<string, mixed>|null
@@ -153,6 +155,19 @@ final readonly class RateResolver
     {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
         $live = $this->live($rates, $on);
+
+        // THE SAME LADDER `resolve()` CLIMBS, for the same reason. A local record is
+        // filed at whatever rung the ordinance names, and that is hardly ever the
+        // leaf a catalogue sells at: 11 322 live local records sit on `goods.food`
+        // while the item on the invoice is `goods.food.basic`. Matching only on exact
+        // equality reached none of them and fell through to the untyped general rate
+        // — which is the city's FULL rate, not its reduced grocery one, so the error
+        // ran in the over-charging direction and looked plausible on every receipt.
+        //
+        // Nearest rung wins, so a record on the leaf still beats one on its parent.
+        $ladder = $category === null ? [] : CategoryMap::ladder($category);
+        $best = null;
+        $bestRung = PHP_INT_MAX;
         $fallback = null;
 
         foreach ($live as $rate) {
@@ -162,16 +177,21 @@ final readonly class RateResolver
 
             $its = $rate['category'] ?? null;
 
-            if ($category !== null && $its === $category) {
-                return $rate;
+            if ($its === null) {
+                $fallback ??= $rate;
+
+                continue;
             }
 
-            if ($its === null && $fallback === null) {
-                $fallback = $rate;
+            $rung = array_search($its, $ladder, true);
+
+            if ($rung !== false && $rung < $bestRung) {
+                $best = $rate;
+                $bestRung = $rung;
             }
         }
 
-        return $fallback;
+        return $best ?? $fallback;
     }
 
     /**

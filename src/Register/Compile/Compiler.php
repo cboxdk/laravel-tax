@@ -95,8 +95,7 @@ final readonly class Compiler
         $files = $this->manifest($partial, $version, $release, $wanted, $states, $streets);
 
         $final = $this->layout->version($version);
-        $this->reset($final);
-        rename($partial, $final);
+        $this->install($partial, $final);
 
         return [
             'version' => $version,
@@ -506,6 +505,48 @@ final readonly class Compiler
      * a successful compile is the one way to spend the whole download and end up
      * with nothing live.
      */
+    /**
+     * Move a compiled version into place without ever leaving the destination
+     * missing.
+     *
+     * THE ORDER IS THE WHOLE POINT. Deleting the destination and then renaming into
+     * it reads as "replace", and it is — right up until you re-sync the version that
+     * is currently LIVE. Then the delete uninstalls the running store, and anything
+     * between that and the rename — a full disk, a killed deploy, a container evicted
+     * mid-step — leaves the pointer aimed at a directory that no longer exists. The
+     * swap this class documents as atomic was atomic for every version except the one
+     * that mattered.
+     *
+     * So the existing version is moved ASIDE rather than destroyed, and only deleted
+     * once the new one has landed. A failure in between puts it back.
+     */
+    private function install(string $partial, string $final): void
+    {
+        $superseded = null;
+
+        if (is_dir($final)) {
+            $superseded = $final.'.superseded-'.bin2hex(random_bytes(4));
+
+            if (! @rename($final, $superseded)) {
+                throw DatasetUnreadable::cannotInstall($final, 'the version already installed there could not be moved aside');
+            }
+        }
+
+        if (! @rename($partial, $final)) {
+            // Put back what was there. The sync fails, which is recoverable; the
+            // store stays exactly as it was, which is the part that is not.
+            if ($superseded !== null) {
+                @rename($superseded, $final);
+            }
+
+            throw DatasetUnreadable::cannotInstall($final, 'the compiled version could not be moved into place');
+        }
+
+        if ($superseded !== null) {
+            $this->reset($superseded);
+        }
+    }
+
     private function reset(string $directory): void
     {
         if (! is_dir($directory)) {

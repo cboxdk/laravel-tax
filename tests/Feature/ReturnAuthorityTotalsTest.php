@@ -25,9 +25,9 @@ use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-// A stacked state is not remitted as one number. In Kansas the state takes 6.5%
-// and a city such as authority 36000 adds 1.625%, each paid separately to a
-// different authority. The aggregator reported "US-KS: $81.25" and stopped there,
+// A stacked state is not remitted as one number. In Kansas the state takes 6.5%,
+// Wyandotte County 1% and the city of Kansas City 1.625%, each paid separately to a
+// different authority. The aggregator reported "US-KS: $91.25" and stopped there,
 // so the split — which the engine had already computed, per supply — had to be
 // rebuilt by hand from the individual assessments. That is the one piece of
 // arithmetic on a signed return that should never be done twice.
@@ -71,7 +71,7 @@ it('rolls a period up per authority, not just per jurisdiction', function () {
     $line = $return->lineFor(new CountryCode('US'), 'USD', new SubdivisionCode('US-KS'));
     $authorities = $line?->authorities;
 
-    expect($authorities)->not->toBeNull()->toHaveCount(2);
+    expect($authorities)->not->toBeNull()->toHaveCount(3);
 
     $byLevel = [];
 
@@ -79,11 +79,16 @@ it('rolls a period up per authority, not just per jurisdiction', function () {
         $byLevel[$authority->level->value] = $authority;
     }
 
-    // $2,000 of net across the month: state 6.5% = $130, city 1.625% = $32.50.
+    // $2,000 of net across the month: state 6.5% = $130, county 1% = $20, city
+    // 1.625% = $32.50. THE COUNTY IS THE ONE THIS TEST USED TO MISS. Naming a single
+    // authority does not make it the only one taxing there, and pairing `36000` with
+    // the state alone billed 8.125% where the same address by ZIP+4 bills 9.125% —
+    // an under-charge the return would have carried all the way to a signature.
     expect((string) $byLevel['state']->tax->getAmount())->toBe('130.00')
+        ->and((string) $byLevel['county']->tax->getAmount())->toBe('20.00')
         ->and((string) $byLevel['city']->tax->getAmount())->toBe('32.50')
         // ...and they still reconcile with the jurisdiction total the line reports.
-        ->and((string) $line->tax->getAmount())->toBe('162.50');
+        ->and((string) $line->tax->getAmount())->toBe('182.50');
 });
 
 it('keeps two different local authorities apart', function () {
@@ -124,10 +129,10 @@ it('refuses the split when a taxed supply arrived without a breakdown', function
 
     $line = $return->lineFor(new CountryCode('US'), 'USD', new SubdivisionCode('US-KS'));
 
-    // The jurisdiction totals are still perfectly good — $81.25 from the assessed
+    // The jurisdiction totals are still perfectly good — $91.25 from the assessed
     // supply plus the hand-built $9.13 — and only the split is unknown.
     expect($line?->authorities)->toBeNull()
-        ->and((string) $line?->tax->getAmount())->toBe('90.38');
+        ->and((string) $line?->tax->getAmount())->toBe('100.38');
 });
 
 it('ignores an untaxed supply rather than refusing over it', function () {

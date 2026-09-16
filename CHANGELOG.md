@@ -66,6 +66,35 @@ pricing a Danish invoice touches 12 KB.
 - **The commodity scheme is part of the key.** `32` is a CPA division and a CN
   chapter, and a code now refines the category that was asked about rather than
   answering from another one.
+- **One authority code is not a stack.** Pricing by a named authority paired it with
+  the state and stopped: `sst-fips:36000` billed Kansas City 8.125% and stamped it
+  `Authoritative`, where the same address by ZIP+4 bills 9.125% — Wyandotte County's
+  1% was simply absent. The boundary file's `sets` table now completes the stack
+  where the authority occurs in exactly one of them (82–98% of authorities, by
+  state), and defers where it occurs in several, because a city split across two
+  counties has no single right answer to give.
+- **A local share the state levies everywhere.** Virginia's 1% on groceries is filed
+  under the bare `us:VA` — there is no city or county to file it against — and the
+  stacker read the state member of a resolved set as the standard band and nothing
+  else, dropping it silently, and only on food.
+- **Local rates are matched up the category ladder.** An ordinance files at the rung
+  it names and an invoice sells at a leaf below it: 11 322 live local records sit on
+  `goods.food` while a basket is `goods.food.basic`. Exact-equality matching reached
+  none of them and fell through to the city's full general rate, over-charging
+  wherever a reduced local food rate exists.
+- **A sync no longer uninstalls the version it is replacing.** The swap deleted the
+  destination before renaming into it — harmless for a new version, and for a
+  re-sync of the LIVE one it meant an interruption left the pointer aimed at a
+  directory that no longer existed. The installed version is now moved aside and
+  deleted only once the new one has landed.
+- **A section the register renames reports itself.** The scan for a top-level key
+  never released the bytes it had already passed, so a missing key grew the buffer to
+  the size of the whole document and turned a clear "no such section" into an
+  out-of-memory fatal on the 48.8 MB US region. Peak while seeking dropped from
+  11.5 MB to 4 MB as a side effect.
+- **A string VALUE equal to a section name no longer derails the scan.** Confirming a
+  key also consumed the comma before it, so `{"description":"rates", …}` ate the next
+  key's opening quote and the reader declared the real `rates` section missing.
 
 ### Behaviour worth knowing before you upgrade
 
@@ -77,6 +106,16 @@ pricing a Danish invoice touches 12 KB.
   A jurisdiction the register does not carry still refuses.
 - **A bare US state rate is `Derived` and flagged** `NoLocalResolution`, unless the
   state has no local authority to miss.
+- **Pricing by a single authority code can now defer.** Where the boundary file shows
+  that authority in more than one distinct stack, the engine prices the state share
+  and flags it rather than returning a confident total that is short by a county or a
+  district. Kansas City is one of these: it occurs in 24 distinct sets. Supply a
+  ZIP+4 or an address to get the full stack.
+- **`LocalAuthorityResolver::authoritiesFor()` documents `$at` honestly.** The
+  register's boundary artifacts carry no effective dates, so the shipped resolver
+  answers from the snapshot its release holds; rates are still resolved on the supply
+  date. For a boundary that actually moved, install and activate the release that was
+  current then.
 
 ## [0.14.1] - 2026-08-20
 

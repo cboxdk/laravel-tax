@@ -145,7 +145,7 @@ final class JsonArrayStream
     public function members(string $key, string $what = 'document'): Generator
     {
         if (! $this->seekToValue($key, '{')) {
-            throw DatasetUnreadable::noSuchSection($what, $key);
+            throw DatasetUnreadable::noSuchSection($what, $key, 'object');
         }
 
         while (true) {
@@ -199,6 +199,17 @@ final class JsonArrayStream
         $depth = 0;
 
         while (true) {
+            // NOTHING BEFORE THE CURSOR IS EVER READ AGAIN on this walk, so the
+            // bytes already scanned are dropped rather than accumulated. Without
+            // this the buffer grows to hold everything scanned before the key —
+            // which is survivable when the key is found early and fatal when it is
+            // missing, because then "everything scanned" is the whole document. A
+            // key a release has renamed must surface as a clean "no such section",
+            // not as an out-of-memory in the middle of a sync.
+            if ($this->pos >= $this->chunk) {
+                $this->compact();
+            }
+
             $char = $this->scanTo('"{}[]');
 
             if ($char === null) {
@@ -211,13 +222,23 @@ final class JsonArrayStream
                 $string = $this->readStringBody();
 
                 if ($depth === 1 && $string === $key) {
-                    $this->skipInsignificant();
+                    // ONLY WHITESPACE MAY BE CONSUMED HERE. A string equal to the
+                    // key is not necessarily the key — `{"description":"rates"}`
+                    // holds it as a VALUE — and `skipInsignificant()` also eats
+                    // commas, so on a value it swallowed the separator and the
+                    // following `take()` ate the next key's opening quote. From
+                    // there the scanner reads that key's body as though it were
+                    // structure and every match after it is nonsense. Whitespace is
+                    // the only thing that can sit between a key and its colon, so
+                    // it is the only thing safe to skip before one is confirmed.
+                    $this->skipWhitespace();
 
-                    if ($this->take() !== ':') {
+                    if ($this->peek() !== ':') {
                         continue;
                     }
 
-                    $this->skipInsignificant();
+                    $this->take();
+                    $this->skipWhitespace();
 
                     if ($this->peek() === $opener) {
                         $this->take();
@@ -384,6 +405,26 @@ final class JsonArrayStream
         $this->buffer .= $read;
 
         return true;
+    }
+
+    /**
+     * Whitespace only — never the commas `skipInsignificant()` also drops. Used
+     * where a comma still carries meaning, which is anywhere a key has not yet been
+     * confirmed as a key.
+     */
+    private function skipWhitespace(): void
+    {
+        while (true) {
+            $char = $this->peek();
+
+            if ($char === ' ' || $char === "\n" || $char === "\r" || $char === "\t") {
+                $this->take();
+
+                continue;
+            }
+
+            return;
+        }
     }
 
     private function skipInsignificant(): void

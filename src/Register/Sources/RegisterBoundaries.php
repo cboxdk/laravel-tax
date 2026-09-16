@@ -51,6 +51,21 @@ final class RegisterBoundaries implements LocalAuthorityResolver
     ) {}
 
     /**
+     * `$at` DOES NOT NARROW THIS ANSWER, and the reason is in the data rather than in
+     * the code. The register's boundary artifacts carry no effective dates: each is a
+     * snapshot of where the lines ran when its release was compiled, and one release
+     * holds exactly one such snapshot. There is nothing here to select a date within.
+     *
+     * So an annexation between the supply date and the installed release is answered
+     * with today's lines. That is a real limit and it is narrow — the RATES are dated
+     * and resolved on `$at` correctly, so only a boundary that actually MOVED is
+     * affected. Where it matters, historical boundaries are a store-version question:
+     * sync the release that was current then and `tax:data:activate` it.
+     *
+     * The parameter stays in the signature because the contract is shared with
+     * resolvers that DO have dated sources, and a host binding one of those gets the
+     * date it needs.
+     *
      * @return list<string>|null
      */
     public function authoritiesFor(Jurisdiction $jurisdiction, ?DateTimeImmutable $at = null): ?array
@@ -219,7 +234,100 @@ final class RegisterBoundaries implements LocalAuthorityResolver
             }
         }
 
-        return count($found) === 1 ? ['us:'.$state, $found[0]] : null;
+        if (count($found) !== 1) {
+            return null;
+        }
+
+        $artifact = $this->read($state.'.zip.json');
+        $sets = $artifact['sets'] ?? null;
+
+        if (! is_array($sets) || $sets === []) {
+            // NO BOUNDARY DATA TO CHECK THE CALLER AGAINST. Texas publishes none — it
+            // is not a Streamlined member — and California files geometry rather than
+            // a postal artifact. There the caller's single code is all anybody holds,
+            // and trusting an explicit input is a different act from inventing a
+            // stack around it.
+            return ['us:'.$state, $found[0]];
+        }
+
+        return $this->setContaining($state, $sets, $found[0]);
+    }
+
+    /**
+     * The COMPLETE authority set an authority code sits in, out of the boundary file.
+     *
+     * One authority code is not a stack. `sst-fips:36000` is Kansas City, and pairing
+     * it with the state gave 8.125% — a confident answer missing Wyandotte County's
+     * 1%, where the same address by ZIP+4 gives 9.125%. That is the under-charge
+     * stamped `Authoritative` this contract names as the one outcome to prevent, and
+     * it was being produced by the code that answers when the caller knows the
+     * authority but not the address.
+     *
+     * The boundary file already holds the answer: its `sets` table is every
+     * combination of authorities that occurs in the state. Where the named authority
+     * appears in exactly ONE of them, that set is the stack, complete and provable —
+     * 832 of Kansas' 1 015 authorities are in that position.
+     *
+     * Where it appears in SEVERAL, there is no right answer to give. Kansas City sits
+     * in 24 distinct sets: every one includes Wyandotte County, and they differ by
+     * which special districts reach that part of the city. Returning the part they
+     * agree on would be a floor presented as a total — the same defect one rung
+     * quieter. So this defers, and the engine prices the state share and FLAGS it,
+     * which sends the operator to the address-level lookup that can actually answer.
+     *
+     * A state with no postal artifact (Texas publishes none) reaches neither branch.
+     * There the caller's single code is all anybody holds, and trusting an explicit
+     * input is different from inventing a stack around it.
+     *
+     * @param  array<array-key, mixed>  $sets
+     * @return list<string>|null
+     */
+    private function setContaining(string $state, array $sets, string $authority): ?array
+    {
+        $matched = [];
+
+        foreach ($sets as $set) {
+            if (! is_array($set)) {
+                continue;
+            }
+
+            $codes = [];
+
+            foreach ($set as $entry) {
+                if (! is_array($entry) || ! is_string($entry['level'] ?? null) || ! is_string($entry['code'] ?? null)) {
+                    continue 2;
+                }
+
+                $codes[] = $this->code($state, new Authority(
+                    level: $entry['level'],
+                    code: $entry['code'],
+                    type: is_string($entry['type'] ?? null) ? $entry['type'] : null,
+                    jurisdiction: is_string($entry['jurisdiction'] ?? null) ? $entry['jurisdiction'] : null,
+                ));
+            }
+
+            if (! in_array($authority, $codes, true)) {
+                continue;
+            }
+
+            $matched[implode('|', $codes)] = array_values(array_unique($codes));
+
+            if (count($matched) > 1) {
+                // Two distinct stacks contain it. Nothing below this address-level
+                // distinction can choose between them.
+                return null;
+            }
+        }
+
+        if ($matched === []) {
+            // The file lists sets and none of them mentions this authority. That is
+            // not the file contradicting the caller, it is the file being silent —
+            // a district the postal artifact does not enumerate, say — so the
+            // caller's assertion stands, as it does for a state with no file at all.
+            return ['us:'.$state, $authority];
+        }
+
+        return array_values($matched)[0];
     }
 
     private function fold(string $value): string

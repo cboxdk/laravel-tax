@@ -87,3 +87,56 @@ it('reads an array of arrays, which is what a boundary sets table is', function 
         ->and($sets[0][0]['code'])->toBe('20')
         ->and($sets[1])->toBe([]);
 });
+
+it('does not mistake a string VALUE equal to the key for the key itself', function (): void {
+    // The scan matched any string equal to the key, then skipped "insignificant"
+    // bytes to look for the colon that would confirm it — and commas count as
+    // insignificant. So on a VALUE it swallowed the separator and then ate the
+    // opening quote of the next key, after which it read that key's body as
+    // structure and every match downstream was nonsense. A register document with a
+    // `"description": "rates"` anywhere ahead of the real section reported the
+    // section missing.
+    expect(streamOf('{"description":"rates","rates":[{"percentage":"5"},{"percentage":"7"}]}'))
+        ->toHaveCount(2)
+        ->and(streamOf('{"note":"rates, mostly","rates":[{"percentage":"9"}]}')[0]['percentage'])
+        ->toBe('9');
+});
+
+it('still ignores a key of the same name nested inside a record', function (): void {
+    // The other half of the same problem: depth 1 is the section, and a `rates` key
+    // inside a record is not it. Fixing the value case must not loosen this.
+    expect(streamOf('{"meta":{"rates":[{"no":"nested"}]},"rates":[{"yes":"top"}]}'))
+        ->toBe([['yes' => 'top']]);
+});
+
+it('does not grow its buffer while hunting for a key that is not there', function (): void {
+    // A missing key means scanning to the end of the document, and nothing scanned is
+    // ever read again — but the bytes were being kept anyway. On the 48.8 MB US
+    // region that turned "this release renamed a section" into an out-of-memory
+    // FATAL, which is not a diagnosis anybody can act on.
+    //
+    // Read from a FILE, not `php://memory`: an in-memory stream holds the document
+    // itself in the same heap, which would mask exactly what is being measured. The
+    // padding is many small records rather than one long string, because that is the
+    // shape of the document this actually failed on.
+    $path = tempnam(sys_get_temp_dir(), 'jas');
+    $record = '{"jurisdiction":"us:KS:CITY-36000","percentage":"1.625"},';
+    file_put_contents($path, '{"other":['.str_repeat($record, 60_000).'{"last":true}],"rates":[{"a":1}]}');
+
+    try {
+        // PEAK, reset first, and that detail is the whole test. Measuring usage after
+        // the scan measures nothing: the exception destroys the reader and frees its
+        // buffer on the way out, so a version that retained all 3 MB reports the same
+        // zero as one that retained none.
+        memory_reset_peak_usage();
+        $before = memory_get_peak_usage();
+
+        expect(fn (): array => iterator_to_array(JsonArrayStream::fromFile($path, 'nosuchkey')))
+            ->toThrow(DatasetUnreadable::class);
+
+        // Three megabytes scanned; the buffer holds two 256 KB chunks at most.
+        expect(memory_get_peak_usage() - $before)->toBeLessThan(1_500_000);
+    } finally {
+        @unlink($path);
+    }
+});

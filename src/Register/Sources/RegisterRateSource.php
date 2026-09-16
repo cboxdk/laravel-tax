@@ -171,14 +171,16 @@ final readonly class RegisterRateSource implements CommodityRateSource
         $components = [];
 
         foreach ($authorities as $authority) {
+            $isState = $authority === $this->stateOf($authority);
+
             // The state is IN the set, and it is the one member whose rate is a
             // standard band rather than a local record.
-            $record = $authority === $this->stateOf($authority)
+            $record = $isState
                 ? null
                 : $this->resolver->local($this->dataset->ratesFor($authority), CategoryMap::keyFor($category), $at);
 
             if ($record === null) {
-                $resolved = $authority === $this->stateOf($authority)
+                $resolved = $isState
                     ? $state
                     : $this->resolve($authority, $category, $commodityCode, $at, $version);
 
@@ -191,6 +193,15 @@ final readonly class RegisterRateSource implements CommodityRateSource
 
                 $components[] = new RateComponent($this->levelOf($authority), $resolved->percentage, $authority, $this->nameOf($authority));
                 $total = $total->plus($resolved->percentage);
+
+                if ($isState) {
+                    $statewide = $this->statewideLocal($authority, $category, $at);
+
+                    if ($statewide !== null) {
+                        $components[] = new RateComponent(JurisdictionLevel::Local, $statewide, $authority, $this->nameOf($authority));
+                        $total = $total->plus($statewide);
+                    }
+                }
 
                 continue;
             }
@@ -255,6 +266,38 @@ final readonly class RegisterRateSource implements CommodityRateSource
      * says whether the state's own rate applies there, and Nevada's says it does
      * not on every row.
      */
+    /**
+     * A LOCAL SHARE THAT APPLIES STATEWIDE: a `local_component` filed under the bare
+     * state code rather than under any authority inside the state.
+     *
+     * Virginia is the live example — 1% on groceries, levied across the whole state,
+     * so there is no city or county to file it against. Reading the state member of a
+     * resolved set as "the standard band and nothing else" dropped it silently, and
+     * dropped it only on food: the category a shopping basket is most likely to be
+     * full of.
+     *
+     * Only `local_component` qualifies. A `combined` record is an all-in total that
+     * REPLACES the state share, and adding one here would charge the band twice.
+     */
+    private function statewideLocal(string $state, TaxClass $category, ?DateTimeImmutable $at): ?BigDecimal
+    {
+        $record = $this->resolver->local($this->dataset->ratesFor($state), CategoryMap::keyFor($category), $at);
+
+        if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
+            return null;
+        }
+
+        $percentage = $record['percentage'] ?? null;
+
+        if (! is_string($percentage)) {
+            return null;
+        }
+
+        $value = BigDecimal::of($percentage);
+
+        return $value->isZero() ? null : $value;
+    }
+
     /**
      * The state share, marked as the product of a resolution that did not complete.
      *

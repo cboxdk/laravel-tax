@@ -79,7 +79,12 @@ final readonly class StoreLayout
         $versions = [];
 
         foreach ($found as $entry) {
-            if ($entry === '.' || $entry === '..' || str_ends_with($entry, '.partial')) {
+            // `.partial` is a compile in flight; `.superseded-*` is the version a
+            // re-sync moved aside and did not get to delete. BOTH CARRY A VALID
+            // MANIFEST, so neither is excluded by the integrity check below — and a
+            // leftover counted as installed is one `prune --keep=2` away from
+            // deleting a real version to make room for a corpse.
+            if ($entry === '.' || $entry === '..' || str_ends_with($entry, '.partial') || str_contains($entry, '.superseded-')) {
                 continue;
             }
 

@@ -31,9 +31,14 @@ class DatasetUnreadable extends RuntimeException implements Transient
         return new self(sprintf('Cannot open "%s" for reading.', $path));
     }
 
-    public static function noSuchSection(string $what, string $key): self
+    public static function noSuchSection(string $what, string $key, string $shape = 'array'): self
     {
-        return new self(sprintf('No top-level array "%s" in %s.', $key, $what));
+        return new self(sprintf('No top-level %s "%s" in %s.', $shape, $key, $what));
+    }
+
+    public static function cannotInstall(string $path, string $because): self
+    {
+        return new self(sprintf('Cannot install the compiled register at "%s": %s. The store was left as it was; re-run `tax:data:sync`.', $path, $because));
     }
 
     public static function truncated(string $what, string $key): self

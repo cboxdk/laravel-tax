@@ -57,8 +57,16 @@ interface LocalAuthorityResolver
      *
      * `$at` is the SUPPLY date, not today: an address changes hands between
      * districts, and pricing a backdated credit note needs the authorities that
-     * applied then. Implementations that cannot answer historically should return
-     * null for a past date rather than today's answer.
+     * applied then. An implementation with a dated source — a state portal, a feed
+     * that versions its boundaries — is expected to use it, and to return null for a
+     * date it cannot reach rather than today's answer dressed as that date's.
+     *
+     * An implementation reading an UNDATED SNAPSHOT is in a different position, and
+     * pretending otherwise helps nobody: it has one set of boundaries and no way to
+     * narrow them. Such an implementation answers from the snapshot it holds and must
+     * SAY SO in its own docblock, naming what a caller does to price an older supply
+     * correctly. What it must not do is accept `$at` and quietly ignore it, which
+     * reads from the outside exactly like a resolver that honoured it.
      *
      * @return list<string>|null
      */
