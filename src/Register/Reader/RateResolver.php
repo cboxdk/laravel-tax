@@ -45,7 +45,7 @@ final readonly class RateResolver
 
     /**
      * @param  list<array<string, mixed>>  $rates
-     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool}|null
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, by?: ?string}|null
      */
     public function resolve(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null): ?array
     {
@@ -56,8 +56,18 @@ final readonly class RateResolver
             return null;
         }
 
-        if ($commodityCode !== null) {
-            $byCode = $this->byClassification($live, $commodityCode);
+        if ($commodityCode !== null && trim($commodityCode) !== '') {
+            // SCOPED TO THE CATEGORY LADDER. A code REFINES the question that was
+            // asked; it never moves it somewhere else. Searched across every live
+            // rate, a customs code scoped to foodstuffs answered a question about
+            // hotel accommodation — a wrong rate wearing the shape of a precise one.
+            $within = array_values(array_filter($live, static function (array $rate) use ($category): bool {
+                $its = $rate['category'] ?? null;
+
+                return $its === null || in_array($its, CategoryMap::ladder($category), true);
+            }));
+
+            $byCode = $this->byClassification($within, $commodityCode);
 
             if ($byCode !== null) {
                 return $byCode;
@@ -169,25 +179,43 @@ final readonly class RateResolver
      * that is a prefix of the one asked for.
      *
      * @param  list<array<string, mixed>>  $live
-     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool}|null
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, by?: ?string}|null
      */
     private function byClassification(array $live, string $code): ?array
     {
-        $normalised = strtoupper(str_replace([' ', '.', '-'], '', $code));
+        [$scheme, $wanted] = $this->readCode($code);
+
+        if ($wanted === '') {
+            return null;
+        }
+
         $best = null;
         $bestLength = -1;
 
         foreach ($live as $rate) {
             $classification = $rate['classification'] ?? null;
-            $published = is_array($classification) ? ($classification['code'] ?? null) : null;
 
-            if (! is_string($published) || $published === '') {
+            if (! is_array($classification)) {
                 continue;
             }
 
-            $candidate = strtoupper(str_replace([' ', '.', '-'], '', $published));
+            $published = $classification['code'] ?? null;
+            $itsScheme = $classification['scheme'] ?? null;
 
-            if (! str_starts_with($normalised, $candidate)) {
+            if (! is_string($published) || $published === '' || ! is_string($itsScheme)) {
+                continue;
+            }
+
+            // THE SCHEME IS PART OF THE KEY. `32` is a CPA division and a CN
+            // chapter, and they are about different things — letting one answer for
+            // the other is a wrong rate that looks like a precise one.
+            if (strtolower($itsScheme) !== $scheme) {
+                continue;
+            }
+
+            $candidate = $this->pack($published);
+
+            if (! str_starts_with($wanted, $candidate)) {
                 continue;
             }
 
@@ -201,11 +229,48 @@ final readonly class RateResolver
             return null;
         }
 
+        $classification = $best['classification'] ?? null;
+        $answered = is_array($classification)
+            ? Shape::scalar($classification['scheme'] ?? null).':'.Shape::scalar($classification['code'] ?? null)
+            : null;
+
         return [
             'rate' => $best,
-            'inferred' => $bestLength < strlen($normalised),
+            'inferred' => $bestLength < strlen($wanted),
             'ambiguous' => false,
+            // Which code decided it, so a reader can see WHY this rate and not the
+            // heading's. Two codes under one category give two different right
+            // answers, and the assessment should say which one it took.
+            'by' => $answered,
         ];
+    }
+
+    /**
+     * A commodity code as `[scheme, packed code]`.
+     *
+     * A bare code is assumed to be CN: that is the vocabulary a tariff line is
+     * written in, and the one almost every classified rate in the register is
+     * scoped by.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function readCode(string $code): array
+    {
+        $code = trim($code);
+        $scheme = 'cn';
+
+        if (str_contains($code, ':')) {
+            [$scheme, $code] = explode(':', $code, 2);
+            $scheme = strtolower(trim($scheme));
+        }
+
+        return [$scheme, $this->pack($code)];
+    }
+
+    /** The tariff prints `0102 21 10`; the register files `01022110`. */
+    private function pack(string $code): string
+    {
+        return strtoupper(str_replace([' ', '.', '-'], '', trim($code)));
     }
 
     /**
