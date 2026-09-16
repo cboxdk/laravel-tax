@@ -1,0 +1,161 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cbox\Tax\Tests\Fixtures;
+
+use Cbox\Tax\Testing\FakeRegister;
+
+/**
+ * The register this suite runs against: invented, fixed, and written down here so
+ * every test can see what it is asserting against.
+ *
+ * NONE OF THESE FIGURES IS DATA. They are chosen to exercise the engine — a state
+ * with locals and one without, a holiday inside its window and one outside, an
+ * excess-taxable cap beside a cliff, an election that replaces the whole rate beside
+ * one that replaces only the local share. Where a number happens to match a real
+ * one it is because the real shape is what makes the test meaningful, not because
+ * anything here is maintained.
+ *
+ * Real figures are asserted in the `e2e` group, against the live register.
+ */
+final class SuiteRegister
+{
+    public static function install(string $root): void
+    {
+        $register = FakeRegister::at($root);
+
+        foreach (self::countries() as $code => $percentage) {
+            $register->rate('eu:'.$code, $percentage);
+        }
+
+        foreach (self::states() as $state => $percentage) {
+            $register->rate('us:'.$state, $percentage, 'standard');
+        }
+
+        self::locals($register);
+        self::rules($register);
+
+        // Kansas City: the state, a county and a city all levy at 66101. Atchison's
+        // 66002 carries a narrow span that a whole-ZIP row also covers, so first
+        // match decides which county is paid.
+        $register->boundary('KS', '66101', ['state:20', 'county:209', 'city:36000']);
+        $register->boundary('KS', '66002', ['state:20', 'county:005']);
+        $register->boundary('KS', '66002', ['state:20', 'county:087'], from: '5000', to: '5099');
+        // A ZIP where nothing local applies — an ANSWER, not a gap.
+        $register->boundary('KS', '67002', ['state:20']);
+
+        $register->install();
+    }
+
+    /** @return array<string, string> */
+    public static function countries(): array
+    {
+        return [
+            'DK' => '25', 'FR' => '20', 'DE' => '19', 'GB' => '20', 'PT' => '23', 'HU' => '27',
+            'PL' => '23', 'ES' => '21', 'IE' => '23', 'GR' => '24', 'SE' => '25', 'NL' => '21',
+            'IT' => '22', 'AT' => '20', 'BE' => '21', 'FI' => '25.5', 'LU' => '17', 'CZ' => '21',
+            'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
+            'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
+            'KR' => '10', 'TR' => '20', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
+            'CA' => '5',
+        ];
+    }
+
+    /**
+     * State shares. DE, MT, NH and OR levy no sales tax at all, which is a fact
+     * worth having in the fixture rather than a gap — "no tax here" and "we hold
+     * nothing about here" must not test the same.
+     *
+     * @return array<string, string>
+     */
+    public static function states(): array
+    {
+        return [
+            'AL' => '4', 'AZ' => '5.6', 'CA' => '7.25', 'CO' => '2.9', 'CT' => '6.35',
+            'FL' => '6', 'IL' => '6.25', 'KS' => '6.5', 'MA' => '6.25', 'MO' => '4.225',
+            'NC' => '4.75', 'NJ' => '6.625', 'NY' => '4', 'OH' => '5.75', 'RI' => '7',
+            'TN' => '7', 'TX' => '6.25', 'WA' => '6.5',
+            'DE' => '0', 'MT' => '0', 'NH' => '0', 'OR' => '0',
+        ];
+    }
+
+    private static function locals(FakeRegister $register): void
+    {
+        // Kansas City: a county AND a city both levy, which is the case that proves
+        // a resolver stacks every authority rather than the first one it finds.
+        $register->rate('us:KS:COUNTY-209', '1', 'local_component');
+        $register->rate('us:KS:CITY-36000', '1.625', 'local_component');
+        $register->rate('us:KS:COUNTY-087', '1', 'local_component');
+        $register->rate('us:KS:COUNTY-005', '1', 'local_component');
+
+        // California files ALL-IN totals, so a combined record must never be added
+        // to the state share on top.
+        $register->rate('us:CA:CITY-LOS-ANGELES', '9.5', 'combined');
+    }
+
+    private static function rules(FakeRegister $register): void
+    {
+        // Economic nexus. The four states with no sales tax carry none at all.
+        foreach (['AL' => '250000', 'CA' => '500000', 'CT' => '100000', 'KS' => '100000',
+            'NJ' => '100000', 'NY' => '500000', 'OH' => '100000', 'TX' => '500000',
+            'WA' => '100000', 'MO' => '100000', 'AZ' => '100000'] as $state => $amount) {
+            $register->rule('us:'.$state, 'threshold', [
+                'amount' => $amount.'.00',
+                'currency' => 'USD',
+                'binds' => 'remote_seller',
+                'measuredOver' => 'previous_or_current_calendar_year',
+            ]);
+        }
+
+        // Connecticut is the one that keeps a transaction limb, so the AND/OR
+        // combinator has something to be wrong about.
+        $register->rule('us:CT', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'transactions' => 200, 'combinator' => 'and',
+        ]);
+
+        foreach (['AZ' => '2019-10-01', 'MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01'] as $state => $from) {
+            $register->rule('us:'.$state, 'marketplace_facilitator', ['platformOwes' => true], from: $from);
+        }
+
+        // Two elections with genuinely different mechanics, both landing on 8% of a
+        // $100 sale — which is a coincidence, and the reason `mechanic` is a field.
+        $register->rule('us:AL', 'remote_seller_election', [
+            'program' => 'Simplified Sellers Use Tax', 'mechanic' => 'flat_total',
+            'ratePercent' => '8', 'statute' => 'Ala. Code § 40-23-193',
+        ]);
+        $register->rule('us:TX', 'remote_seller_election', [
+            'program' => 'Single Local Use Tax Rate', 'mechanic' => 'single_local_rate',
+            'ratePercent' => '1.75', 'statute' => 'Tex. Tax Code § 151.0595',
+        ]);
+
+        foreach (['KS' => 'destination', 'TX' => 'origin', 'CA' => 'mixed', 'CO' => 'destination'] as $state => $basis) {
+            $register->rule('us:'.$state, 'sourcing', ['basis' => $basis]);
+        }
+
+        // The pair that reads as one field with opposite meanings.
+        $register->rule('us:MA', 'price_exemption', [
+            'category' => 'goods.clothing', 'capAmount' => '175.00',
+            'capCurrency' => 'USD', 'above' => 'excess_taxable',
+        ]);
+        $register->rule('us:NY', 'price_exemption', [
+            'category' => 'goods.clothing', 'capAmount' => '110.00',
+            'capCurrency' => 'USD', 'above' => 'whole_item_taxable',
+        ]);
+        $register->rule('us:RI', 'price_exemption', [
+            'category' => 'goods.clothing', 'capAmount' => '250.00',
+            'capCurrency' => 'USD', 'above' => 'excess_taxable',
+        ]);
+
+        // A holiday inside a window and nothing outside it.
+        $register->rule('us:TX', 'holiday', [
+            'name' => 'Back-to-School', 'category' => 'goods.clothing',
+            'capAmount' => '100.00', 'capCurrency' => 'USD', 'capIsExclusive' => true,
+        ], from: '2026-08-07', until: '2026-08-09');
+        $register->rule('us:OH', 'holiday', [
+            'name' => 'Sales Tax Holiday', 'category' => 'goods.clothing',
+            'capAmount' => '75.00', 'capCurrency' => 'USD', 'capIsExclusive' => false,
+        ], from: '2026-08-01', until: '2026-08-14');
+    }
+}

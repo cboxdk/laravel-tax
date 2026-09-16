@@ -13,7 +13,7 @@ use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository;
 
 /**
- * Caches the current rate resolved by an inner source (e.g. a {@see RemoteRateSource}
+ * Caches the current rate resolved by an inner source (e.g. a a remote source
  * hitting a live feed on every call). Date-specific lookups (a non-null `$at`)
  * bypass the cache, since a historical rate must not be served from the
  * current-rate cache. A `null` result is not cached — a genuine miss re-queries.

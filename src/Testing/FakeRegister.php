@@ -40,6 +40,9 @@ final class FakeRegister
     /** @var list<array<string, mixed>> */
     private array $categories = [];
 
+    /** @var array<string, array{sets: list<list<array<string, string>>>, zip: array<string, list<array{0: string, 1: string, 2: int}>>}> */
+    private array $boundaries = [];
+
     private function __construct(
         private readonly StoreLayout $layout,
         private readonly string $version,
@@ -102,6 +105,37 @@ final class FakeRegister
         return $this;
     }
 
+    /**
+     * A ZIP that resolves to a set of authorities, written as a formatVersion 3
+     * boundary artifact.
+     *
+     * Authorities are given as `level:code` — `county:209`, `city:36000` — and the
+     * STATE is one of them where the state's own rate applies there. That is the
+     * format's own shape: the boundary file says whether the state share is due,
+     * rather than a consumer adding it on top.
+     *
+     * @param  list<string>  $authorities
+     */
+    public function boundary(string $state, string $zip5, array $authorities, string $from = '0000', string $to = '9999'): self
+    {
+        $set = [];
+
+        foreach ($authorities as $authority) {
+            [$level, $code] = array_pad(explode(':', $authority, 2), 2, '');
+            $set[] = ['level' => $level, 'code' => $code];
+        }
+
+        $this->boundaries[$state] ??= ['sets' => [], 'zip' => []];
+        $this->boundaries[$state]['zip'][$zip5] ??= [];
+        $this->boundaries[$state]['sets'][] = $set;
+        $index = count($this->boundaries[$state]['sets']) - 1;
+        // Narrowest-first, because the format says first match wins and the order is
+        // the whole difference between one county and another inside one ZIP.
+        array_unshift($this->boundaries[$state]['zip'][$zip5], [$from, $to, $index]);
+
+        return $this;
+    }
+
     public function named(string $jurisdiction, string $name): self
     {
         $this->names[$jurisdiction] = $name;
@@ -152,6 +186,18 @@ final class FakeRegister
 
         foreach ($jurisdictions as $writer) {
             $writer->close();
+        }
+
+        foreach ($this->boundaries as $state => $artifact) {
+            $this->put($directory, 'boundaries/'.$state.'.zip.json', [
+                'formatVersion' => 3,
+                'version' => $this->version,
+                'state' => $state,
+                'provenance' => ['sourceKey' => 'fake', 'snapshotHash' => str_repeat('0', 64), 'capturedAt' => '2026-01-01T00:00:00+00:00'],
+                'sets' => $artifact['sets'],
+                'zip' => $artifact['zip'],
+                'ranges' => [],
+            ]);
         }
 
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);
@@ -228,10 +274,14 @@ final class FakeRegister
      */
     private function put(string $directory, string $name, array $payload): void
     {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0o775, true);
+        $path = $directory.'/'.$name;
+
+        // The file's OWN directory, not the version root — `boundaries/KS.zip.json`
+        // lives a level down and silently wrote nothing when only the root existed.
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0o775, true);
         }
 
-        file_put_contents($directory.'/'.$name, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        file_put_contents($path, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 }

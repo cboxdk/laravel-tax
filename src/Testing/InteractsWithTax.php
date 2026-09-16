@@ -10,8 +10,13 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\ExemptionType;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
+use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\RateBand;
@@ -28,15 +33,87 @@ use PHPUnit\Framework\Assert;
 trait InteractsWithTax
 {
     /**
-     * @param  array<string, string>|null  $rates  Country code → percentage; null uses the built-in defaults.
-     * @param  array<string, RateBand>  $bands  "<jurisdiction>:<category>" → reduced/zero band.
+     * A calculator over a register built for this test and nothing else.
+     *
+     * THE RATES BELOW ARE A FIXTURE, NOT DATA. They are a frozen set of headline
+     * figures, maintained by nobody, kept only so an assertion about ARITHMETIC has
+     * a number to work with — that 100.00 at Denmark's rate comes to 125.00, that an
+     * inclusive price divides back correctly, that a breakdown reconciles. Pricing a
+     * real invoice from them would be wrong the first time a state moved, which is
+     * why the engine reads a synced register instead and refuses without one.
+     *
+     * @param  array<string, string>|null  $rates  Country or `US-XX` code → percentage; null uses the fixture below.
+     * @param  array<string, RateBand>  $bands  "<jurisdiction>:<tax class>" → reduced/zero band.
      */
     protected function taxCalculator(?array $rates = null, array $bands = []): TaxCalculator
     {
+        $dataset = $this->registerWith($rates ?? self::fixtureRates(), $bands);
+
         return new DefaultTaxCalculator(
             DefaultRegimeRegistry::withDefaults(null, app(JurisdictionRepository::class)),
-            new StaticTaxRateSource($rates, $bands),
+            new RegisterRateSource($dataset),
         );
+    }
+
+    /**
+     * Write a one-off store and return a reader over it.
+     *
+     * @param  array<string, string>  $rates
+     * @param  array<string, RateBand>  $bands
+     */
+    protected function registerWith(array $rates, array $bands = []): RegisterDataset
+    {
+        $root = sys_get_temp_dir().'/cbox-tax-trait-'.getmypid().'-'.bin2hex(random_bytes(6));
+        $register = FakeRegister::at($root);
+
+        foreach ($rates as $code => $percentage) {
+            $register->rate(self::registerCode($code), $percentage);
+        }
+
+        foreach ($bands as $key => $band) {
+            [$place, $class] = array_pad(explode(':', $key, 2), 2, null);
+            $case = $class === null ? null : TaxClass::tryFrom($class);
+
+            if ($place === null || $case === null) {
+                continue;
+            }
+
+            $register->rate(
+                self::registerCode($place),
+                (string) $band->percentage,
+                $band->kind->value === 'zero' ? 'zero' : 'reduced',
+                CategoryMap::keyFor($case),
+            );
+        }
+
+        $register->install();
+        $layout = new StoreLayout($root);
+
+        return new RegisterDataset($layout, new StorePointer($layout));
+    }
+
+    /** `DK` is a country in the union's regime here; `US-KS` is a state. */
+    private static function registerCode(string $code): string
+    {
+        return str_starts_with($code, 'US-') ? 'us:'.substr($code, 3) : 'eu:'.$code;
+    }
+
+    /**
+     * Frozen headline rates, for arithmetic. See {@see TaxCalculator()}.
+     *
+     * @return array<string, string>
+     */
+    protected static function fixtureRates(): array
+    {
+        return [
+            'DK' => '25', 'FR' => '20', 'DE' => '19', 'GB' => '20', 'PT' => '23', 'HU' => '27',
+            'PL' => '23', 'ES' => '21', 'IE' => '23', 'GR' => '24', 'SE' => '25', 'NL' => '21',
+            'IT' => '22', 'AT' => '20', 'BE' => '21', 'FI' => '25.5', 'LU' => '17', 'CZ' => '21',
+            'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
+            'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
+            'KR' => '10', 'TR' => '20', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
+            'CA' => '5', 'US' => '0',
+        ];
     }
 
     /**

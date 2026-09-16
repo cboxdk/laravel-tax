@@ -18,7 +18,7 @@ use Cbox\Tax\Regime\IndiaGstRegime;
 use Cbox\Tax\Regime\MalaysiaSstRegime;
 use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
-use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\Territories\StaticEuTerritories;
 
 /**
@@ -90,7 +90,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new StaticProductTaxability, $nexusThresholds, $sourcing, $dataset),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new AlwaysTaxable, $nexusThresholds, $sourcing, $dataset),
             'ca-gst' => new CaGstRegime,
         ]);
     }

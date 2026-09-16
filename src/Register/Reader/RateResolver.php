@@ -93,6 +93,43 @@ final readonly class RateResolver
     }
 
     /**
+     * The live LOCAL record for a jurisdiction: a component to add to the state
+     * share, or an all-in combined total that replaces it.
+     *
+     * Read directly rather than through the category ladder, because a local record
+     * is not category-scoped in the way a band is — it carries no category at all in
+     * most states. A category-matched one still wins where it exists, which is how
+     * Tennessee's reduced local food rate is reached.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return array<string, mixed>|null
+     */
+    public function local(array $rates, ?string $category = null, ?DateTimeImmutable $at = null): ?array
+    {
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $live = $this->live($rates, $on);
+        $fallback = null;
+
+        foreach ($live as $rate) {
+            if (! in_array($rate['kind'] ?? null, ['local_component', 'combined'], true)) {
+                continue;
+            }
+
+            $its = $rate['category'] ?? null;
+
+            if ($category !== null && $its === $category) {
+                return $rate;
+            }
+
+            if ($its === null && $fallback === null) {
+                $fallback = $rate;
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
      * The best classification match: exact if published, otherwise the longest code
      * that is a prefix of the one asked for.
      *

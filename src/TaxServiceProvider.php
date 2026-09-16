@@ -22,44 +22,36 @@ use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Contracts\VatIdValidator;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
-use Cbox\Tax\Nexus\StaticNexusThresholds;
-use Cbox\Tax\Nexus\UsTaxDatasetNexus;
-use Cbox\Tax\RateSource\ArcGisRateSource;
-use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\TedbSoapRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Register\Compile\SectionFetcher;
 use Cbox\Tax\Register\Console\ActivateCommand;
 use Cbox\Tax\Register\Console\PruneCommand;
 use Cbox\Tax\Register\Console\StatusCommand;
 use Cbox\Tax\Register\Console\SyncCommand;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterBoundaries;
+use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Sources\RegisterSourcing;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
-use Cbox\Tax\Sourcing\UsTaxDatasetSourcing;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
 use Cbox\Tax\Validators\HmrcVatValidator;
 use Cbox\Tax\Validators\ViesValidator;
-use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\ServiceProvider;
-use RuntimeException;
 
 /**
  * Package entry point. Binds the engine, the shipped regime registry and a default
@@ -74,19 +66,23 @@ class TaxServiceProvider extends ServiceProvider
 
         $this->registerRegister();
 
-        // The typed US dataset accessor, resolvable for consumers that want dataset METADATA
-        // beyond the rate/taxability/nexus/sourcing contracts — notably the curated rate and
-        // baseline notes (rateNote()/baselineNote(), the "see … note" caveats in the coverage
-        // matrix). Null when the dataset is disabled or unconfigured, so callers null-check
-        // (deny-by-default), exactly as the adapters below do.
-        $this->app->singleton(UsTaxDataset::class, static fn (Application $app): ?UsTaxDataset => self::usTaxDataset($app));
+        // The register's own boundary artifacts, where a synced store carries them:
+        // twenty-four Streamlined states by ZIP+4 and California by polygon. Where it
+        // does not, this defers — and deferring is not "no local tax", it is "ask
+        // somebody else", which is why the contract distinguishes null from [].
+        //
+        // A host with better resolution still rebinds this one contract. Colorado's
+        // GIS is the standing example: under CRS 39-26-105.2 the hold-harmless
+        // attaches to the vendor who used it, so it cannot be obtained on a
+        // customer's behalf through somebody else's key.
+        $this->app->singleton(LocalAuthorityResolver::class, static function (Application $app): LocalAuthorityResolver {
+            $dataset = $app->make(RegisterDataset::class);
+            $version = $dataset->version();
 
-        // Deferring by default: this package ships credentials for no state portal
-        // and will not guess an authority it cannot resolve. A host that has better
-        // resolution — Colorado's GIS under its own SUTS key, a commercial adapter,
-        // an internal boundary file — rebinds this one contract and the US rate
-        // source starts stacking what it returns. See docs/extension-points.
-        $this->app->singleton(LocalAuthorityResolver::class, static fn (): LocalAuthorityResolver => new DefersLocalAuthorities);
+            return $version === null
+                ? new DefersLocalAuthorities
+                : new RegisterBoundaries($app->make(StoreLayout::class), $version);
+        });
 
         // Knows no item codes until a host binds its own. An app that never sends an
         // item code behaves exactly as it did before the catalogue existed; one that
@@ -94,146 +90,48 @@ class TaxServiceProvider extends ServiceProvider
         // the honest report rather than a silent fallback.
         $this->app->singleton(ProductCatalogue::class, static fn (): ProductCatalogue => new EmptyProductCatalogue);
 
-        $this->app->singleton(TaxRateSource::class, static function (Application $app): TaxRateSource {
-            $static = new StaticTaxRateSource;
+        // ONE RATE SOURCE. The register covers 80 jurisdictions across eleven
+        // regimes; the compiled datasets it replaces reached two, and the static
+        // snapshot behind them was a hand-maintained overlay of about fifty national
+        // rates. Keeping any of them as a fallback would mean a wrong answer arriving
+        // quietly whenever the register had a gap — and a gap is exactly the thing
+        // that should be visible.
+        //
+        // A host that has something better still rebinds this contract, and
+        // ChainTaxRateSource is still shipped for putting its own source in front.
+        $this->app->singleton(TaxRateSource::class, static fn (Application $app): TaxRateSource => new RegisterRateSource(
+            $app->make(RegisterDataset::class),
+            new RateResolver,
+            // Resolved from the container so a host can bind its own — a state portal
+            // it holds credentials for, a commercial adapter, an internal boundary
+            // file. Without a locality on the jurisdiction none of it is consulted.
+            $app->make(LocalAuthorityResolver::class),
+        ));
 
-            // Authoritative live feeds, tried before the static snapshot. Each only
-            // activates when an operator configures it; unconfigured, the static
-            // snapshot stays the zero-config default. Deny-by-default is preserved:
-            // if no source has a rate, the composed source returns null and the
-            // engine denies rather than guessing.
-            $sources = [];
+        $this->app->singleton(ProductTaxability::class, static fn (Application $app): ProductTaxability => new RegisterTaxability(
+            $app->make(RegisterDataset::class),
+        ));
 
-            $config = $app->make(Config::class);
+        $this->app->singleton(NexusThresholds::class, static fn (Application $app): NexusThresholds => new RegisterNexus(
+            $app->make(RegisterDataset::class),
+        ));
 
-            // The register, and it comes FIRST. It covers 80 jurisdictions across
-            // eleven regimes against the two the compiled datasets below reached,
-            // and it reads local files rather than making a request.
-            //
-            // The old sources stay wired for one release while their tests are
-            // migrated. They are deprecated and go next; nothing new should reach
-            // for them.
-            $dataset = $app->make(RegisterDataset::class);
+        $this->app->singleton(SourcingRules::class, static fn (Application $app): SourcingRules => new RegisterSourcing(
+            $app->make(RegisterDataset::class),
+        ));
 
-            if ($dataset->isInstalled()) {
-                $sources[] = new RegisterRateSource($dataset);
-            }
+        $this->app->singleton(UsTaxFacts::class, static fn (Application $app): UsTaxFacts => new RegisterUsFacts(
+            $app->make(RegisterDataset::class),
+        ));
 
-            // The compiled EU dataset, tried before the live service and before any
-            // hand-built export. It carries a dated series, so a back-dated supply is
-            // priced with the rate that applied then rather than today's — which no
-            // live call can do in one request — and it publishes the source's own
-            // ambiguities rather than resolving them silently.
-            $euDataset = $config->get('tax.eu_tax_data.location');
-
-            if (is_string($euDataset) && $euDataset !== '') {
-                $euTtl = $config->get('tax.eu_tax_data.ttl');
-
-                $sources[] = new EuTaxDatasetRateSource(new EuTaxDataset(
-                    $app->make(Factory::class),
-                    $app->make(Cache::class),
-                    $euDataset,
-                    is_int($euTtl) ? $euTtl : 86400,
-                ));
-            }
-
-            // The live TEDB service is the authoritative EU source and needs no key,
-            // so it is tried before a hand-built export. It is cached per country, not
-            // per lookup, so enabling it costs one request per country per TTL.
-            if ($config->get('tax.tedb.live') === true) {
-                $ttl = $config->get('tax.tedb.ttl');
-
-                $sources[] = new TedbSoapRateSource(
-                    $app->make(Factory::class),
-                    $app->make(Cache::class),
-                    is_int($ttl) ? $ttl : 86400,
-                );
-            }
-
-            // Where a state publishes its own rooftop polygons (CA, NM), a point
-            // resolves finer than the dataset's postal index — so it is tried
-            // first, and returns null everywhere else.
-            if ($config->get('tax.us_tax_data.rooftop') === true) {
-                $ttl = $config->get('tax.us_tax_data.ttl');
-
-                $sources[] = new ArcGisRateSource(
-                    $app->make(Factory::class),
-                    $app->make(Cache::class),
-                    is_int($ttl) ? $ttl : 86400,
-                );
-            }
-
-            // The US dataset owns US rates (the static snapshot carries none). It is
-            // US-only, so it returns null elsewhere and the chain falls through.
-            $dataset = self::usTaxDataset($app);
-
-            if ($dataset !== null) {
-                // Resolved from the container so a host can bind its own — a state
-                // portal it holds credentials for, a commercial adapter, an
-                // internal boundary file. The default defers on everything, so an
-                // app that binds nothing behaves exactly as before.
-                $sources[] = new UsTaxDatasetRateSource(
-                    $dataset,
-                    $app->make(LocalAuthorityResolver::class),
-                );
-            }
-
-            if ($sources === []) {
-                return $static;
-            }
-
-            $sources[] = $static;
-
-            return new ChainTaxRateSource($sources);
-        });
-
-        // US taxability/nexus/sourcing come from the dataset when enabled (the
-        // default), replacing the hardcoded static US tables; the static matrix
-        // stays the fallback for non-US and for US pairs the dataset leaves
-        // undetermined. Disabled, the shipped static US snapshot is used.
-        $this->app->singleton(ProductTaxability::class, static function (Application $app): ProductTaxability {
-            $dataset = self::usTaxDataset($app);
-
-            return $dataset !== null
-                ? new UsTaxDatasetTaxability($dataset, new StaticProductTaxability)
-                : new StaticProductTaxability(StaticProductTaxability::unitedStatesSaas());
-        });
-
-        $this->app->singleton(NexusThresholds::class, static function (Application $app): NexusThresholds {
-            $dataset = self::usTaxDataset($app);
-
-            return $dataset !== null ? new UsTaxDatasetNexus($dataset) : new StaticNexusThresholds;
-        });
-
-        // Intrastate sourcing is a dataset-only plane (no static equivalent shipped):
-        // bound when the dataset is enabled, left unbound otherwise (deny-by-default).
-        $this->app->singleton(SourcingRules::class, static function (Application $app): SourcingRules {
-            $dataset = self::usTaxDataset($app);
-
-            if ($dataset === null) {
-                throw new RuntimeException('Intrastate sourcing requires the us-tax-data dataset (tax.us_tax_data.enabled).');
-            }
-
-            return new UsTaxDatasetSourcing($dataset);
-        });
-
-        $this->app->singleton(RegimeRegistry::class, static function (Application $app): DefaultRegimeRegistry {
-            // Sourcing is a dataset-only plane, and its binding refuses outright
-            // when the dataset is off. Ask the same question the binding asks
-            // rather than resolving it to find out: the regime treats a missing
-            // source as "destination everywhere", which is what it did before
-            // intrastate sourcing was applied at all.
-            $sourcing = self::usTaxDataset($app) !== null ? $app->make(SourcingRules::class) : null;
-
-            return DefaultRegimeRegistry::withDefaults(
-                $app->make(ProductTaxability::class),
-                $app->make(JurisdictionRepository::class),
-                $app->make(NexusThresholds::class),
-                $sourcing,
-                self::usTaxDataset($app),
-                $app->make(EuTerritories::class),
-            );
-        });
+        $this->app->singleton(RegimeRegistry::class, static fn (Application $app): DefaultRegimeRegistry => DefaultRegimeRegistry::withDefaults(
+            $app->make(ProductTaxability::class),
+            $app->make(JurisdictionRepository::class),
+            $app->make(NexusThresholds::class),
+            $app->make(SourcingRules::class),
+            $app->make(UsTaxFacts::class),
+            $app->make(EuTerritories::class),
+        ));
 
         // No fixed charges are shipped: these levies are per-jurisdiction, move on
         // their own schedule, and no authoritative compilation of them sits behind
@@ -311,36 +209,6 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(StoreLayout::class),
             $app->make(StorePointer::class),
         ));
-    }
-
-    /**
-     * Build the shared us-tax-data loader when enabled (the default), reading its
-     * config-driven location. The loader caches fetched sections itself, so it is
-     * shared across the rate/taxability/nexus/sourcing bindings. Returns null when
-     * the dataset is disabled, so those bindings fall back to the static snapshot.
-     */
-    private static function usTaxDataset(Application $app): ?UsTaxDataset
-    {
-        $config = $app->make(Config::class);
-
-        if ($config->get('tax.us_tax_data.enabled') !== true) {
-            return null;
-        }
-
-        $location = $config->get('tax.us_tax_data.location');
-
-        if (! is_string($location) || $location === '') {
-            return null;
-        }
-
-        $ttl = $config->get('tax.us_tax_data.ttl');
-
-        return new UsTaxDataset(
-            $app->make(Factory::class),
-            $app->make(Cache::class),
-            $location,
-            is_int($ttl) ? $ttl : 86400,
-        );
     }
 
     /**
