@@ -1,0 +1,190 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cbox\Tax\Register\Sources;
+
+use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cboxdk\TaxResolver\Accuracy;
+use Cboxdk\TaxResolver\Authority;
+use Cboxdk\TaxResolver\BoundaryData;
+use Cboxdk\TaxResolver\Geometry;
+use Cboxdk\TaxResolver\ParsedAddress;
+use Cboxdk\TaxResolver\Point;
+use Cboxdk\TaxResolver\Resolver;
+use Cboxdk\TaxResolver\UnsupportedFormatVersion;
+use DateTimeImmutable;
+use Throwable;
+
+/**
+ * Which local authorities tax a US address, out of the register's boundary files.
+ *
+ * The walk itself is `cboxdk/tax-resolver`, not code written here, and that is the
+ * point of it: the register runs the SAME resolver over its own artifacts at build
+ * time to prove they resolve its conformance deck. Two readers of one format drift
+ * apart quietly — which is exactly what happened when that package read a
+ * formatVersion 3 artifact as if it were 2 and answered "no local authority levies
+ * here" for every address in all twenty-four Streamlined states, with the suite
+ * green throughout.
+ *
+ * NULL AND EMPTY MEAN OPPOSITE THINGS, and the contract this implements is built on
+ * the difference. Null is "I do not answer for this address" and sends the engine to
+ * the state rate; an empty list is a row saying no local authority levies there, and
+ * is priced as the whole rate. Nothing here collapses them.
+ */
+final readonly class RegisterBoundaries implements LocalAuthorityResolver
+{
+    public function __construct(
+        private StoreLayout $layout,
+        private string $version,
+        private Resolver $resolver = new Resolver,
+    ) {}
+
+    /**
+     * @return list<string>|null
+     */
+    public function authoritiesFor(Jurisdiction $jurisdiction, ?DateTimeImmutable $at = null): ?array
+    {
+        $subdivision = $jurisdiction->subdivision;
+        $locality = $jurisdiction->locality;
+
+        if ($subdivision === null || $locality === null || $jurisdiction->country->value !== 'US') {
+            return null;
+        }
+
+        $state = substr($subdivision->value, 3);
+        $address = $this->address($locality->scheme, $locality->value);
+
+        if ($address === null) {
+            return null;
+        }
+
+        try {
+            $assignment = $this->resolver->resolve($address, $this->postal($state), $this->geometry($state));
+        } catch (UnsupportedFormatVersion) {
+            // The store holds an artifact this resolver cannot read. Deferring sends
+            // the engine to the state rate, which is short but honest; reading it
+            // anyway is how you get a confident answer that is wrong.
+            return null;
+        }
+
+        if (! $assignment->resolved()) {
+            return null;
+        }
+
+        return array_map(
+            fn (Authority $authority): string => $this->code($state, $authority),
+            $assignment->authorities ?? [],
+        );
+    }
+
+    /**
+     * The register's jurisdiction code for a resolved authority.
+     *
+     * `{level, code}` in the state's own space becomes `us:KS:COUNTY-209`. The level
+     * is part of the key and not decoration: a county and a special district can
+     * file under the same number and levy separately, so joining on the bare code
+     * merges two authorities that each want their own share.
+     */
+    private function code(string $state, Authority $authority): string
+    {
+        if ($authority->jurisdiction !== null) {
+            return $authority->jurisdiction;
+        }
+
+        // THE STATE IS IN THE SET, and it is the bare state code, not a child of it.
+        // Element 24 of the boundary file repeats the state FIPS where the state's
+        // own rate applies and reads `00` where it does not — Nevada writes `00` on
+        // every row. So its presence is the answer to "is the state share due here",
+        // and mapping it to a `us:KS:STATE-20` that no rate hangs off would drop the
+        // state's share from every stacked rate in the country.
+        if ($authority->level === 'state') {
+            return 'us:'.$state;
+        }
+
+        return sprintf('us:%s:%s-%s', $state, strtoupper($authority->level), $authority->code);
+    }
+
+    private function address(string $scheme, string $value): ?ParsedAddress
+    {
+        if ($scheme === LocalityScheme::Zip9->value) {
+            $digits = preg_replace('/\D/', '', $value) ?? '';
+
+            if (strlen($digits) < 5) {
+                return null;
+            }
+
+            return new ParsedAddress(
+                zip5: substr($digits, 0, 5),
+                plus4: substr($digits, 5, 4),
+                accuracy: strlen($digits) >= 9 ? Accuracy::Interpolated : Accuracy::Coarse,
+            );
+        }
+
+        if ($scheme === LocalityScheme::LatLng->value) {
+            [$lat, $lng] = array_pad(array_map(trim(...), explode(',', $value)), 2, null);
+
+            if (! is_numeric($lat) || ! is_numeric($lng)) {
+                return null;
+            }
+
+            return new ParsedAddress(zip5: '', point: new Point((float) $lng, (float) $lat));
+        }
+
+        return null;
+    }
+
+    private function postal(string $state): BoundaryData
+    {
+        $main = $this->read($state.'.zip.json');
+
+        if ($main === null) {
+            // No postal artifact for this state. An EMPTY BoundaryData resolves to
+            // null rather than to [], which is what "we hold nothing here" means.
+            return new BoundaryData;
+        }
+
+        return BoundaryData::fromArtifacts($main, $this->read($state.'.street.json'));
+    }
+
+    private function geometry(string $state): ?Geometry
+    {
+        $json = $this->read($state.'.geo.json');
+
+        return $json === null ? null : Geometry::fromFeatureCollection($json);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function read(string $file): ?array
+    {
+        $path = $this->layout->file($this->version, 'boundaries/'.$file);
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        try {
+            $raw = file_get_contents($path);
+            $decoded = $raw === false ? null : json_decode($raw, true);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $out = [];
+
+        foreach ($decoded as $key => $value) {
+            $out[(string) $key] = $value;
+        }
+
+        return $out;
+    }
+}
