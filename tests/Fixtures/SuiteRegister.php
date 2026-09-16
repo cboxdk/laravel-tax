@@ -247,6 +247,16 @@ final class SuiteRegister
             $register->rule('us:'.$state, 'sourcing', ['basis' => $basis]);
         }
 
+        // THE EXEMPT ROW THAT SITS UNDER EVERY ONE OF THESE RULES. The register files
+        // a capped exemption twice over: a `goods.clothing` row at 0% exempt, and the
+        // rule below capping it. Modelling only the rule made this fixture disagree
+        // with the register in the one way that mattered — the suite billed 6.25% on
+        // a Massachusetts coat's excess while a real store billed nothing, in all
+        // three states, because the 0% row answered first.
+        foreach (['MA', 'NY', 'RI'] as $state) {
+            $register->rate('us:'.$state, '0', 'exempt', 'goods.clothing');
+        }
+
         // The pair that reads as one field with opposite meanings.
         $register->rule('us:MA', 'price_exemption', [
             'category' => 'goods.clothing', 'capAmount' => '175.00',

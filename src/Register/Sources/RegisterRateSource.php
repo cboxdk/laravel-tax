@@ -260,6 +260,37 @@ final readonly class RegisterRateSource implements CommodityRateSource
      * not on every row.
      */
     /**
+     * Whether a live `price_exemption` rule caps this category's exemption.
+     *
+     * Matched up the category ladder, as everything category-keyed in this source
+     * is: the rule is filed at the rung the statute names and the invoice sells at a
+     * leaf below it.
+     */
+    private function cappedByPrice(string $code, string $key, ?DateTimeImmutable $at): bool
+    {
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $ladder = CategoryMap::ladder($key);
+
+        foreach ($this->dataset->rulesFor($code, 'price_exemption') as $rule) {
+            $effective = Shape::map($rule['effective'] ?? null);
+            $from = Shape::text($effective['from'] ?? null);
+            $until = Shape::text($effective['until'] ?? null);
+
+            if (($from !== null && $from > $on) || ($until !== null && $until < $on)) {
+                continue;
+            }
+
+            $category = Shape::text(Shape::map($rule['payload'] ?? null)['category'] ?? null);
+
+            if ($category !== null && in_array($category, $ladder, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * A LOCAL SHARE THAT APPLIES STATEWIDE: a `local_component` filed under the bare
      * state code rather than under any authority inside the state.
      *
@@ -453,13 +484,35 @@ final readonly class RegisterRateSource implements CommodityRateSource
             return null;
         }
 
-        $resolved = $this->resolver->resolve($records, CategoryMap::keyFor($category), $commodityCode, $at);
+        $key = CategoryMap::keyFor($category);
+        $resolved = $this->resolver->resolve($records, $key, $commodityCode, $at);
 
         if ($resolved === null) {
             return null;
         }
 
         $rate = $resolved['rate'];
+
+        if (in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && $this->cappedByPrice($code, $key, $at)) {
+            // A PRICE-CAPPED EXEMPTION IS NOT A RATE OF ZERO. Massachusetts files
+            // clothing two ways at once: a `goods.clothing` row at 0% exempt, and a
+            // `price_exemption` rule capping that exemption at $175 with the excess
+            // taxable. Read alone the row says clothing is free; read together they
+            // say clothing is free UP TO $175.
+            //
+            // By the time a rate is asked for, the cap has already been applied —
+            // below it the supply is exempt and no rate is consulted at all, so the
+            // only question left is what the part ABOVE the cap is taxed at. It is
+            // taxed at the standard rate. Answering 0% billed nothing on a $200 coat
+            // in Massachusetts, New York and Rhode Island alike: every live
+            // `price_exemption` rule in the register sits behind an exempt row.
+            $standard = $this->resolver->resolve($records, CategoryMap::keyFor(TaxClass::GeneralGoods), null, $at);
+
+            if ($standard !== null && is_string($standard['rate']['percentage'] ?? null)) {
+                $resolved = $standard;
+                $rate = $standard['rate'];
+            }
+        }
         $percentage = $rate['percentage'] ?? null;
 
         if (! is_string($percentage)) {
