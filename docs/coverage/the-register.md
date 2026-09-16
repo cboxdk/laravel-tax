@@ -50,7 +50,7 @@ Two details that decide real invoices:
 | --- | --- | --- |
 | Street range | 15 states, with `--streets` | House number |
 | ZIP+4 | 24 Streamlined states | Add-on |
-| Polygon | California (New Mexico next release) | The point |
+| Polygon | California, New Mexico | The point |
 | County name | Florida, Pennsylvania, Hawaii, Virginia | The county |
 | State rate | everywhere else | The state share, flagged |
 
@@ -66,10 +66,21 @@ and the aggregate local share, because a return is filed against authorities.
 **Texas gets no boundary data.** It is not a Streamlined member and publishes no
 polygons, so an address there resolves at the state rate, visibly.
 
+## Proved against the register's own deck
+
+The register publishes a conformance deck — addresses in, expected authority set and
+rate out — cut from the artifacts a release actually ships and read back through the
+same shared resolver this engine uses. `RegisterConformanceTest` runs it.
+
+That is the only cross-check that means anything here. Two readers of one format drift
+apart quietly: it is exactly what happened when the resolver package read a
+formatVersion 3 artifact as a v2 one and answered "no local authority levies here" for
+every address in twenty-four states, with its own suite green throughout.
+
+It is not SST's certification deck, and passing it is not certification.
+
 ## Known gaps
 
-- **New Mexico's geometry** lands in the next register build; until then NM resolves at
-  the state rate.
 - **Street indexes are opt-in** and fifteen states publish one. The other nine
   Streamlined states top out at ZIP+4, which is the state's own choice rather than a
   hole.

@@ -101,15 +101,85 @@ final class JsonArrayStream
                 return;
             }
 
-            if ($next !== '{') {
-                // The shape this reader knows is an array of OBJECTS. A scalar here
-                // means the document is not what the caller thinks it is, and
-                // skipping it quietly would return a section short by however many
-                // elements it happened to contain.
+            // An array of OBJECTS or an array of ARRAYS — the rate sections are the
+            // first and a boundary `sets` table is the second. A SCALAR here means
+            // the document is not what the caller thinks it is, and skipping it
+            // quietly would return a section short by however many it contained.
+            if ($next !== '{' && $next !== '[') {
                 throw DatasetUnreadable::unexpectedElement($what, $key, $next);
             }
 
             yield $index++ => $this->readObject($what, $key);
+        }
+    }
+
+    /**
+     * Open a file and walk one top-level OBJECT in it, as `name => value`.
+     *
+     * @return Generator<string, array<string, mixed>>
+     */
+    public static function membersOfFile(string $path, string $key): Generator
+    {
+        $handle = @fopen($path, 'rb');
+
+        if ($handle === false) {
+            throw DatasetUnreadable::cannotOpen($path);
+        }
+
+        try {
+            yield from new self($handle)->members($key, $path);
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Every member of the OBJECT at a top-level key, as `name => value`.
+     *
+     * The street artifacts are keyed by ZIP rather than listed, and Georgia's is
+     * 38 MB — the same reason the arrays are streamed applies here, one ZIP at a
+     * time instead of one record.
+     *
+     * @return Generator<string, array<string, mixed>>
+     */
+    public function members(string $key, string $what = 'document'): Generator
+    {
+        if (! $this->seekToValue($key, '{')) {
+            throw DatasetUnreadable::noSuchSection($what, $key);
+        }
+
+        while (true) {
+            $this->skipInsignificant();
+            $next = $this->peek();
+
+            if ($next === null) {
+                throw DatasetUnreadable::truncated($what, $key);
+            }
+
+            if ($next === '}') {
+                return;
+            }
+
+            if ($next !== '"') {
+                throw DatasetUnreadable::unexpectedElement($what, $key, $next);
+            }
+
+            $this->take();
+            $name = $this->readStringBody();
+
+            $this->skipInsignificant();
+
+            if ($this->take() !== ':') {
+                throw DatasetUnreadable::truncated($what, $key);
+            }
+
+            $this->skipInsignificant();
+
+            if ($this->peek() !== '{') {
+                throw DatasetUnreadable::unexpectedElement($what, $key, (string) $this->peek());
+            }
+
+            yield $name => $this->readObject($what, $key);
         }
     }
 
@@ -119,6 +189,12 @@ final class JsonArrayStream
      * section, and matching it would start reading in the middle of one.
      */
     private function seekToArray(string $key): bool
+    {
+        return $this->seekToValue($key, '[');
+    }
+
+    /** Position the cursor just inside the `[` or `{` belonging to `$key`. */
+    private function seekToValue(string $key, string $opener): bool
     {
         $depth = 0;
 
@@ -143,7 +219,7 @@ final class JsonArrayStream
 
                     $this->skipInsignificant();
 
-                    if ($this->peek() === '[') {
+                    if ($this->peek() === $opener) {
                         $this->take();
 
                         return true;
@@ -178,7 +254,7 @@ final class JsonArrayStream
         $depth = 0;
 
         while (true) {
-            $char = $this->scanTo('"{}');
+            $char = $this->scanTo('"{}[]');
 
             if ($char === null) {
                 throw DatasetUnreadable::truncated($what, $key);
@@ -192,9 +268,13 @@ final class JsonArrayStream
                 continue;
             }
 
-            if ($char === '{') {
+            if ($char === '{' || $char === '[') {
                 $depth++;
-            } elseif ($depth-- === 1) {
+
+                continue;
+            }
+
+            if ($depth-- === 1) {
                 break;
             }
         }

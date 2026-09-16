@@ -260,7 +260,7 @@ final readonly class Compiler
             // 228 MB across fifteen states, against 20 MB for every ZIP index in the
             // register. It buys one rung of the ladder — a house number instead of a
             // ZIP+4 — so it is asked for by name, never assumed.
-            if (in_array($state, $streets, true) && $this->boundaryArtifact($artifacts, 'street', $partial, $base, $state, 'street')) {
+            if (in_array($state, $streets, true) && $this->streetIndex($artifacts, $partial, $base, $state)) {
                 $street++;
             }
         }
@@ -303,6 +303,65 @@ final readonly class Compiler
         $to = $partial.'/boundaries/'.$state.'.'.$suffix.'.json';
 
         return $this->fetcher->download($address, $to) !== null;
+    }
+
+    /**
+     * The street layer, SHARDED BY ZIP rather than written whole.
+     *
+     * Georgia's street artifact is 38 MB and there are fifteen of them. Reading one
+     * as a document costs hundreds of megabytes to answer a question about a single
+     * postcode — the same reason the rates are sharded, one rung further down. The
+     * sets table is small and shared, so it is written once beside the shard.
+     *
+     * @param  array<array-key, mixed>  $artifacts
+     */
+    private function streetIndex(array $artifacts, string $partial, string $base, string $state): bool
+    {
+        $entry = $artifacts['street'] ?? null;
+
+        if (! is_array($entry)) {
+            return false;
+        }
+
+        $url = $entry['url'] ?? null;
+        $artifact = $entry['artifact'] ?? null;
+        $address = match (true) {
+            is_string($url) && $url !== '' => $url,
+            is_string($artifact) && $artifact !== '' => $base.'/'.$artifact,
+            default => null,
+        };
+
+        if ($address === null) {
+            return false;
+        }
+
+        $download = $partial.'/.download/'.$state.'.streets.json';
+
+        if ($this->fetcher->download($address, $download) === null) {
+            return false;
+        }
+
+        $sets = [];
+
+        foreach (JsonArrayStream::fromFile($download, 'sets') as $set) {
+            $sets[] = $set;
+        }
+
+        $this->put($partial, 'boundaries/'.$state.'.street.sets.json', [
+            'formatVersion' => 3,
+            'sets' => $sets,
+        ]);
+
+        $writer = new ShardWriter($partial.'/boundaries/'.$state.'.street');
+
+        foreach (JsonArrayStream::membersOfFile($download, 'street') as $zip => $streets) {
+            $writer->append((string) $zip, $streets);
+        }
+
+        $writer->close();
+        @unlink($download);
+
+        return true;
     }
 
     /**

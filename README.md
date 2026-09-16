@@ -61,7 +61,7 @@ calculation the billing engine supplies per invoice.
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 29 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 30 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -82,11 +82,11 @@ thresholds come from **the register**.
 sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
 a Texas in-state sale is charged the seller's rate. Interstate stays
 destination-sourced everywhere, and a supply with no route behaves exactly as
-before. **Address-exact** rates are live for 29 states. The 24 Streamlined states resolve by
+before. **Address-exact** rates are live for 30 states. The 24 Streamlined states resolve by
 ZIP+4 through the published boundary index — Kansas City comes out as 6.5% state + 1.0%
 county + 1.625% city — fifteen of them go finer still with a street index
-(`tax:data:sync --streets=KS`), and California resolves by point against its own
-polygon layer. Florida, Pennsylvania, Hawaii and Virginia need no boundary file at all,
+(`tax:data:sync --streets=KS`), and California and New Mexico resolve by point against their own
+polygon layers. Florida, Pennsylvania, Hawaii and Virginia need no boundary file at all,
 because the county is the only authority that can tax there and a geocoder returns it
 for free. The rest fall back to the state share, flagged
 ([details](docs/coverage/the-register.md)).

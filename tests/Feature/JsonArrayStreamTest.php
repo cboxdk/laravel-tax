@@ -72,6 +72,18 @@ it('refuses a truncated document instead of returning what it managed to read', 
 });
 
 it('refuses an array of scalars, which is not the shape it knows', function (): void {
-    expect(fn (): array => streamOf('{"rates":["25","10"]}'))
-        ->toThrow(DatasetUnreadable::class);
+    // Objects and arrays are both read — the rate sections are the first, a boundary
+    // `sets` table the second. A scalar means the document is not what the caller
+    // thinks it is, and skipping it would return a section short by however many it
+    // happened to contain.
+    expect(fn (): array => streamOf('{"rates":["25","10"]}'))->toThrow(DatasetUnreadable::class)
+        ->and(fn (): array => streamOf('{"rates":[1, 2]}'))->toThrow(DatasetUnreadable::class);
+});
+
+it('reads an array of arrays, which is what a boundary sets table is', function (): void {
+    $sets = streamOf('{"sets":[[{"level":"state","code":"20"}],[],[{"level":"city","code":"36000"}]]}', 'sets');
+
+    expect($sets)->toHaveCount(3)
+        ->and($sets[0][0]['code'])->toBe('20')
+        ->and($sets[1])->toBe([]);
 });

@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Territories\UsLocalStructure;
 use Cboxdk\TaxResolver\Accuracy;
@@ -37,8 +38,11 @@ use Throwable;
  * the state rate; an empty list is a row saying no local authority levies there, and
  * is priced as the whole rate. Nothing here collapses them.
  */
-final readonly class RegisterBoundaries implements LocalAuthorityResolver
+final class RegisterBoundaries implements LocalAuthorityResolver
 {
+    /** @var array<string, ShardReader> */
+    private array $streetShards = [];
+
     public function __construct(
         private StoreLayout $layout,
         private string $version,
@@ -74,8 +78,28 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return null;
         }
 
+        $authorities = $this->resolveParsed($state, $address);
+
+        return $authorities === null
+            ? null
+            : array_map(fn (Authority $authority): string => $this->code($state, $authority), $authorities);
+    }
+
+    /**
+     * The authorities at a parsed address, as the shared resolver reports them.
+     *
+     * Public because the format document makes this the conformance surface: the
+     * register runs the SAME resolver over its own artifacts at build time and cuts
+     * a deck from the result, and an engine proves it agrees by feeding that deck
+     * through here. Everything above translates a locality into one of these; this
+     * is the walk itself.
+     *
+     * @return list<Authority>|null
+     */
+    public function resolveParsed(string $state, ParsedAddress $address): ?array
+    {
         try {
-            $assignment = $this->resolver->resolve($address, $this->postal($state), $this->geometry($state));
+            $assignment = $this->resolver->resolve($address, $this->postal($state, $address->zip5), $this->geometry($state));
         } catch (UnsupportedFormatVersion) {
             // The store holds an artifact this resolver cannot read. Deferring sends
             // the engine to the state rate, which is short but honest; reading it
@@ -83,14 +107,7 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return null;
         }
 
-        if (! $assignment->resolved()) {
-            return null;
-        }
-
-        return array_map(
-            fn (Authority $authority): string => $this->code($state, $authority),
-            $assignment->authorities ?? [],
-        );
+        return $assignment->resolved() ? ($assignment->authorities ?? []) : null;
     }
 
     /**
@@ -266,7 +283,7 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
         return null;
     }
 
-    private function postal(string $state): BoundaryData
+    private function postal(string $state, string $zip5): BoundaryData
     {
         $main = $this->read($state.'.zip.json');
 
@@ -276,7 +293,42 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return new BoundaryData;
         }
 
-        return BoundaryData::fromArtifacts($main, $this->read($state.'.street.json'));
+        return BoundaryData::fromArtifacts($main, $this->streets($state, $zip5));
+    }
+
+    /**
+     * The street layer for ONE postcode, rebuilt from the shard.
+     *
+     * Never the whole layer: Georgia's is 38 MB on disk and hundreds of megabytes
+     * decoded, to answer a question about one ZIP. The shard holds the spans per
+     * ZIP and the sets table sits beside it, so this reads two small things and
+     * hands the resolver the shape it expects.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function streets(string $state, string $zip5): ?array
+    {
+        $reader = $this->streetShards[$state] ??= new ShardReader(
+            $this->layout->file($this->version, 'boundaries/'.$state.'.street'),
+        );
+
+        if (! $reader->exists()) {
+            return null;
+        }
+
+        $spans = $reader->read($zip5);
+
+        if ($spans === []) {
+            return null;
+        }
+
+        $sets = $this->read($state.'.street.sets.json');
+
+        return [
+            'formatVersion' => 3,
+            'sets' => $sets['sets'] ?? [],
+            'street' => [$zip5 => $spans[0]],
+        ];
     }
 
     private function geometry(string $state): ?Geometry

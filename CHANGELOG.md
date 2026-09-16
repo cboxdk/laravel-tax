@@ -71,8 +71,6 @@ pricing a Danish invoice touches 12 KB.
   by classification, with no per-category verdict for that marker to be. Taxable is
   the over-charge direction and therefore recoverable, but it is a real difference.
   A jurisdiction the register does not carry still refuses.
-- **New Mexico resolves at the state rate** until the register ships its geometry.
-  California's is live.
 - **A bare US state rate is `Derived` and flagged** `NoLocalResolution`, unless the
   state has no local authority to miss.
 

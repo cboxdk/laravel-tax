@@ -71,7 +71,7 @@ enabled the adapter attaches whichever key that state is actually resolved by:
 
 | State | Locality attached | Resolved by |
 | --- | --- | --- |
-| California (New Mexico next release) | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from the state's own GIS |
+| California, New Mexico | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from each state's own GIS |
 | the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the dataset's boundary index, via `UsTaxDatasetRateSource` |
 | everywhere else | none | the state rate applies |
 
