@@ -247,6 +247,13 @@ final class SuiteRegister
             $register->rule('us:'.$state, 'sourcing', ['basis' => $basis]);
         }
 
+        // THE FOUR STATES WITH NO SALES TAX AT ALL. Each publishes exactly one row —
+        // untyped, 0%, exempt — and nothing else. That is the register's clearest
+        // possible answer and it has to price as 0%, not refuse.
+        foreach (['DE', 'MT', 'NH', 'OR'] as $state) {
+            $register->rate('us:'.$state, '0', 'exempt');
+        }
+
         // THE EXEMPT ROW THAT SITS UNDER EVERY ONE OF THESE RULES. The register files
         // a capped exemption twice over: a `goods.clothing` row at 0% exempt, and the
         // rule below capping it. Modelling only the rule made this fixture disagree

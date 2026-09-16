@@ -79,3 +79,21 @@ it('does not stack at all without a locality', function (): void {
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->hasComponents())->toBeFalse();
 });
+
+it('prices a state with no sales tax at zero rather than refusing', function (): void {
+    // Delaware, Montana, New Hampshire and Oregon levy no sales tax, and the register
+    // says so the only way it can: one untyped row at 0% exempt, and nothing else.
+    // The resolver looked for a `standard` band, found none, and refused — turning
+    // the clearest answer the register can give into `UnresolvedTaxRate` on every
+    // line sold into those four states, with a remedy telling the operator to go and
+    // configure a rate source for a tax that does not exist.
+    foreach (['US-OR', 'US-DE', 'US-MT', 'US-NH'] as $state) {
+        $rate = stackedAt($state, null);
+
+        expect((string) $rate?->percentage)->toBe('0')
+            ->and($rate?->confidence)->toBe(Confidence::Authoritative)
+            // A positive finding, not a fallback: no caveat to send anyone looking
+            // for a local share that does not exist.
+            ->and($rate?->limitedBy)->toBeNull();
+    }
+});

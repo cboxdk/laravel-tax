@@ -389,6 +389,21 @@ final readonly class RateResolver
             }
         }
 
+        // A STATE THAT LEVIES NO SALES TAX AT ALL says so with a single untyped row
+        // at 0% exempt. Delaware, Montana, New Hampshire and Oregon each publish
+        // exactly one, and nothing else. Refusing it turned the register's clearest
+        // possible answer — there is no tax here — into `UnresolvedTaxRate` on every
+        // line a shop sold into those four states, with the remedy naming a rate
+        // source to go and configure for a tax that does not exist.
+        //
+        // It is checked LAST so that a jurisdiction carrying both a standard band and
+        // an exempt row still answers with the band.
+        foreach ($rates as $rate) {
+            if (in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && ($rate['category'] ?? null) === null) {
+                return $rate;
+            }
+        }
+
         // A jurisdiction whose only records are local components has no standard
         // band of its own — the state above it does. Null, so the caller stacks.
         return null;
