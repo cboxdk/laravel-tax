@@ -64,6 +64,10 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return $this->byName($state, $locality->value);
         }
 
+        if ($locality->scheme === LocalityScheme::Authority->value) {
+            return $this->byAuthorityCode($state, $locality->value);
+        }
+
         $address = $this->address($locality->scheme, $locality->value);
 
         if ($address === null) {
@@ -138,6 +142,42 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
         }
 
         return ['us:'.$state, $loose[0]];
+    }
+
+    /**
+     * An authority the caller already resolved, named by the source's own code.
+     *
+     * Matched on the code SEGMENT rather than by building a jurisdiction code, so a
+     * county and a city filing under different prefixes both resolve without this
+     * having to know which prefix a state uses. Two authorities under one code in
+     * one state refuse rather than guess — the same rule the name match follows.
+     *
+     * @return list<string>|null
+     */
+    private function byAuthorityCode(string $state, string $code): ?array
+    {
+        if ($this->dataset === null) {
+            return null;
+        }
+
+        $wanted = strtoupper(trim($code));
+        $found = [];
+
+        foreach (array_keys($this->dataset->namesIn('us/'.$state)) as $jurisdiction) {
+            $segment = explode(':', $jurisdiction)[2] ?? null;
+
+            if ($segment === null) {
+                continue;
+            }
+
+            $tail = str_contains($segment, '-') ? substr($segment, (int) strpos($segment, '-') + 1) : $segment;
+
+            if (strtoupper($tail) === $wanted) {
+                $found[] = $jurisdiction;
+            }
+        }
+
+        return count($found) === 1 ? ['us:'.$state, $found[0]] : null;
     }
 
     private function fold(string $value): string

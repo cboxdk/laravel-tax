@@ -97,6 +97,7 @@ final class SuiteRegister
         $register->rate('eu:HU', '18', 'reduced', 'services.accommodation');
 
         $register->rate('eu:FR', '5.5', 'reduced', 'goods.publications.book');
+        $register->rate('eu:FR', '5.5', 'reduced', 'goods.food');
         $register->rate('eu:FR', '10', 'reduced', 'services.accommodation');
         $register->rate('eu:DE', '7', 'reduced', 'goods.food');
         $register->rate('eu:DK', '0', 'zero', 'services.passenger_transport');
@@ -116,6 +117,14 @@ final class SuiteRegister
         $register->rate('us:KS:CITY-36000', '1.625', 'local_component');
         $register->rate('us:KS:COUNTY-087', '1', 'local_component');
         $register->rate('us:KS:COUNTY-005', '1', 'local_component');
+
+        // Texas, for the sourcing cases: an origin state where the seller's
+        // authority and the buyer's are different places.
+        // Texas is ORIGIN-sourced, so the seller's authority decides and the
+        // buyer's is the fallback. The two carry different rates on purpose: if
+        // sourcing were ignored the totals would be indistinguishable.
+        $register->rate('us:TX:CITY-4109000', '0.5', 'local_component')->named('us:TX:CITY-4109000', 'Austin');
+        $register->rate('us:TX:CITY-2109064', '1.5', 'local_component')->named('us:TX:CITY-2109064', 'Dallas');
 
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.

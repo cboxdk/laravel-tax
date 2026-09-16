@@ -41,9 +41,8 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
 
         return new self(sprintf(
             'No product taxability available for "%s" in "%s". Refusing to assess rather than guess. '
-            .'Either enable the us-tax-data dataset (tax.us_tax_data.enabled), which carries a determination '
-            .'for this pair unless its sources disagreed, or bind a ProductTaxability with an explicit '
-            .'"%s:%s" override.',
+            .'Sync the register (`php artisan tax:data:sync`) so it carries this jurisdiction, or bind a '
+            .'ProductTaxability with an explicit "%s:%s" override.',
             $category->value,
             $where,
             $where,

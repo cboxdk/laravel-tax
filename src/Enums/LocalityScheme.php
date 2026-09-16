@@ -41,4 +41,14 @@ enum LocalityScheme: string
      * resolve finer than any postal key can.
      */
     case LatLng = 'latlng';
+
+    /**
+     * A taxing authority's own code, as the source files it — the Streamlined FIPS
+     * that a member state publishes its rates under.
+     *
+     * Not a place to be resolved but an authority already resolved, by whatever
+     * knew better: a host's own boundary data, a certification test deck, a
+     * seller's ship-from that is recorded as a jurisdiction rather than an address.
+     */
+    case Authority = 'sst-fips';
 }

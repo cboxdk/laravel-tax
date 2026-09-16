@@ -76,7 +76,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
             // Every place this country could be is in a regime nobody compiled. The
             // store cannot answer, and pretending otherwise is the failure this
             // whole design exists to avoid.
-            throw new DatasetNotInstalled(Shape::text($this->dataset->manifest()['version'] ?? null) ?? $version);
+            throw new DatasetNotInstalled($this->dataset->storeRoot());
         }
 
         foreach ($carried as $code) {

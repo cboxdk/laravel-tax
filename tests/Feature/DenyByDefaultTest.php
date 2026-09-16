@@ -21,8 +21,11 @@ use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\AlwaysTaxable;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -40,26 +43,21 @@ beforeEach(function () {
  * the engine's handling of incomplete data can be tested against data that really
  * is incomplete rather than against a mock that says it is.
  */
-function datasetWithout(string $field): RegisterDataset
+function registerWithBrokenCap(string $missing): RegisterDataset
 {
-    $dir = sys_get_temp_dir().'/tax-partial-'.bin2hex(random_bytes(5));
-    mkdir($dir.'/by-section', 0o755, true);
+    $root = sys_get_temp_dir().'/tax-partial-'.bin2hex(random_bytes(5));
 
-    $conditions = ['exemptBelowCents' => 17500, 'thresholdRule' => 'excess_taxable'];
-    unset($conditions[$field]);
+    $payload = ['category' => 'goods.clothing', 'capAmount' => '175.00', 'capCurrency' => 'USD', 'above' => 'excess_taxable'];
+    unset($payload[$missing]);
 
-    file_put_contents($dir.'/by-section/taxability.json', json_encode(['states' => [
-        'US-MA' => [[
-            'category' => 'clothing',
-            'taxable' => true,
-            'treatment' => 'conditional',
-            'conditions' => $conditions,
-            'effectiveFrom' => null,
-            'effectiveTo' => null,
-        ]],
-    ]], JSON_THROW_ON_ERROR));
+    FakeRegister::at($root)
+        ->rate('us:MA', '6.25')
+        ->rule('us:MA', 'price_exemption', $payload)
+        ->install();
 
-    return app(RegisterDataset::class);
+    $layout = new StoreLayout($root);
+
+    return new RegisterDataset($layout, new StorePointer($layout));
 }
 
 function denyPlace(string $state): Jurisdiction
@@ -72,15 +70,20 @@ function denyPlace(string $state): Jurisdiction
 it('refuses a US category the dataset leaves undetermined', function () {
     // The dataset omits these pairs DELIBERATELY — its sources disagree. Inheriting
     // that as "taxable" turns a documented gap into a silent over-collection.
-    $undetermined = [
-        ['US-CA', TaxClass::SoftwarePrewritten],
-        ['US-CA', TaxClass::DietarySupplements],
-        ['US-KS', TaxClass::Candy],
-        ['US-AL', TaxClass::Groceries],
-        ['US-RI', TaxClass::RepairService],
+    // WHAT CHANGED, AND IT IS A REAL LOSS. The retired us-tax-data dataset carried
+    // an explicit UNDETERMINED marker per (state, category), set where its own
+    // sources disagreed, and the engine refused on it rather than guessing. The
+    // register has no equivalent — its taxability lives in sworn Streamlined answers
+    // keyed by classification, not in a per-category verdict — so an undetermined
+    // PAIR now resolves to taxable, which is the over-charge direction and therefore
+    // recoverable. What still refuses is a jurisdiction the register does not carry
+    // at all, because there the engine knows nothing rather than knowing a default.
+    $unknown = [
+        ['US-WY', TaxClass::SoftwarePrewritten],
+        ['US-SD', TaxClass::DietarySupplements],
     ];
 
-    foreach ($undetermined as [$state, $category]) {
+    foreach ($unknown as [$state, $category]) {
         expect(fn () => $this->taxability->determine(denyPlace($state), $category, anyAmount()))
             ->toThrow(UnresolvedProductTaxability::class);
     }
@@ -113,7 +116,7 @@ it('refuses a threshold rule that does not say how the threshold applies', funct
     // $175; New York taxes the whole item once it reaches $110. A rule carrying
     // the figure without the mechanic is refused rather than guessed, because
     // guessing wrong under-collects on every garment over the line in New York.
-    $incomplete = new RegisterTaxability(datasetWithout('thresholdRule'));
+    $incomplete = new RegisterTaxability(registerWithBrokenCap('above'));
 
     expect(fn () => $incomplete->determine(denyPlace('US-MA'), TaxClass::Clothing, anyAmount('200.00')))
         ->toThrow(UnresolvedProductTaxability::class, 'conditional');
@@ -159,7 +162,15 @@ it('refuses Alaska rather than reporting an affirmative 0%', function () {
 it('still returns the state share where it is a genuine floor', function () {
     // Every other state's share under-states the total but is a real number a
     // caller can reason about at Derived confidence.
-    $rate = app(TaxRateSource::class)->rateFor(denyPlace('US-TX'), TaxClass::GeneralGoods);
+    // WITH an address, because that is what makes it a floor rather than the whole
+    // answer: a caller who supplied only a state asked a state-level question and
+    // got a state-level answer, and flagging that would caveat every one of them.
+    $rate = app(TaxRateSource::class)->rateFor(
+        denyPlace('US-TX')->withLocality(
+            new LocalityCode(new SubdivisionCode('US-TX'), LocalityScheme::Zip9->value, '78701-0001'),
+        ),
+        TaxClass::GeneralGoods,
+    );
 
     expect((string) $rate?->percentage)->toBe('6.25')
         ->and($rate?->confidence->value)->toBe('derived');
@@ -310,7 +321,7 @@ it('caches today but never serves a historical rate from the current-rate cache'
 
 // ---- The calculator refuses, it does not guess ----------------------------
 
-it('refuses to assess rather than over-collect on an undetermined category', function () {
+it('refuses to assess in a jurisdiction the register does not carry', function () {
     $calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults($this->taxability, $this->geo),
         app(TaxRateSource::class),
@@ -319,10 +330,10 @@ it('refuses to assess rather than over-collect on an undetermined category', fun
     $query = new TaxQuery(
         amount: Money::of('1000.00', 'USD'),
         pricing: Pricing::Exclusive,
-        place: denyPlace('US-CA'),
+        place: denyPlace('US-WY'),
         customer: CustomerType::Consumer,
         seller: new SellerRegistrations(new CountryCode('US'), [
-            new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-CA')),
+            new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-WY')),
         ]),
         category: TaxClass::SoftwarePrewritten,
     );

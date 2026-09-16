@@ -28,12 +28,33 @@ use DateTimeImmutable;
  */
 final readonly class AlwaysTaxable implements ProductTaxability
 {
+    /**
+     * `$overrides` is the seam for a host that knows better about a specific pair,
+     * keyed `"<place>:<tax class>"` — `'US-CA:software_prewritten' => false`.
+     *
+     * Deliberately an override and not a table: a handful of decisions somebody made
+     * and can point at, rather than a compilation maintained beside the register.
+     *
+     * @param  array<string, bool>  $overrides
+     */
+    public function __construct(private array $overrides = []) {}
+
     public function determine(
         Jurisdiction $jurisdiction,
         TaxClass $category,
         Money $amount,
         ?DateTimeImmutable $at = null,
     ): TaxDetermination {
+        $where = $jurisdiction->subdivision !== null
+            ? $jurisdiction->subdivision->value
+            : $jurisdiction->country->value;
+
+        $override = $this->overrides[$where.':'.$category->value] ?? null;
+
+        if ($override === false) {
+            return TaxDetermination::exempt();
+        }
+
         return TaxDetermination::taxable();
     }
 }

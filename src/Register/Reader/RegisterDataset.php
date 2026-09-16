@@ -47,6 +47,12 @@ final class RegisterDataset
         private readonly StorePointer $pointer,
     ) {}
 
+    /** Where the store lives, for a refusal that can name it. */
+    public function storeRoot(): string
+    {
+        return $this->layout->root();
+    }
+
     public function isInstalled(): bool
     {
         return $this->version() !== null;
