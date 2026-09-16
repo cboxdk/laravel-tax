@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
@@ -197,6 +198,17 @@ it('defers rather than guess when one authority sits in two different stacks', f
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
 
+function ladderStateRate(string $state)
+{
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+
+    return new RegisterRateSource($dataset, new RateResolver)->rateFor(
+        app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode($state)),
+        TaxClass::GeneralGoods,
+    );
+}
+
 function ladderCountryRate(string $country)
 {
     $layout = new StoreLayout(ladderStore());
@@ -262,4 +274,49 @@ it('takes the headline band, not a category-scoped rate that happens to come fir
         ->install();
 
     expect((string) ladderRateFor('US-AZ', '85001-0001', TaxClass::GeneralGoods)?->percentage)->toBe('5.6');
+});
+
+it('prices a bracket schedule at its own per-dollar rate, flagged', function (): void {
+    // Alabama, Idaho, Maryland and Pennsylvania publish a table in cents instead of a
+    // percentage — 11 to 17 cents is one cent of tax, 18 to 34 is two — with a
+    // per-dollar figure for anything above a dollar. $0.06 per dollar is six per
+    // cent, and it sits in the data rather than being inferred.
+    //
+    // It used to be refused, which priced NOTHING in four states. A rate within a
+    // cent of the table, flagged as being within a cent, is worth more to a shop than
+    // an exception.
+    ladderRegister()
+        ->rate('us:PA', '0', extra: [
+            'basis' => 'bracket',
+            'percentage' => null,
+            'brackets' => [
+                'rows' => [['from' => '0.00', 'upTo' => '0.10', 'tax' => '0.00']],
+                'above' => ['perWholeUnit' => ['amount' => '0.06', 'currency' => 'USD', 'per' => 'dollar']],
+            ],
+        ])
+        ->install();
+
+    // Asked at state level, so the flag the assessment carries is the bracket one.
+    // With an address it would be `NoLocalResolution` instead — Pennsylvania has
+    // locals and publishes no boundary file — and a rate carries one limit, the
+    // nearest thing to act on.
+    $rate = ladderStateRate('US-PA');
+
+    expect((string) $rate?->percentage)->toBe('6')
+        ->and($rate?->confidence)->toBe(Confidence::Derived)
+        ->and($rate?->limitedBy)->toBe(RateLimit::BracketSchedule);
+});
+
+it('still refuses a per-unit amount that has no percentage to give', function (): void {
+    // A schedule expressed per litre or per item is a different kind of tax. There is
+    // no percentage in it, and inventing one is exactly what this source does not do.
+    ladderRegister()
+        ->rate('us:PA', '0', extra: [
+            'basis' => 'per_unit',
+            'percentage' => null,
+            'perUnit' => ['amount' => '0.25', 'currency' => 'USD', 'per' => 'litre'],
+        ])
+        ->install();
+
+    expect(ladderStateRate('US-PA'))->toBeNull();
 });

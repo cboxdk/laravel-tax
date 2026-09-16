@@ -260,6 +260,28 @@ final readonly class RegisterRateSource implements CommodityRateSource
      * not on every row.
      */
     /**
+     * The per-dollar rate a bracket schedule works out to above one whole unit, as a
+     * percentage.
+     *
+     * `{"amount": "0.06", "currency": "USD", "per": "dollar"}` is six per cent. Only
+     * a per-DOLLAR figure converts: a schedule expressed per litre or per item is a
+     * different kind of tax and has no percentage to give.
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    private function perWholeUnit(array $rate): ?string
+    {
+        $unit = Shape::map(Shape::map(Shape::map($rate['brackets'] ?? null)['above'] ?? null)['perWholeUnit'] ?? null);
+        $amount = Shape::text($unit['amount'] ?? null);
+
+        if ($amount === null || Shape::text($unit['per'] ?? null) !== 'dollar') {
+            return null;
+        }
+
+        return BigDecimal::of($amount)->multipliedBy(100)->strippedOfTrailingZeros()->__toString();
+    }
+
+    /**
      * Whether a live `price_exemption` rule caps this category's exemption.
      *
      * Matched up the category ladder, as everything category-keyed in this source
@@ -513,13 +535,30 @@ final readonly class RegisterRateSource implements CommodityRateSource
                 $rate = $standard['rate'];
             }
         }
+
         $percentage = $rate['percentage'] ?? null;
+        $bracketed = false;
 
         if (! is_string($percentage)) {
-            // A bracket schedule or a per-unit amount: a real published rate this
-            // source cannot express as a percentage. Maryland's tax is a table, and
-            // rounding it to six per cent disagrees on 48 of the 100 cent endings.
-            return null;
+            // A BRACKET SCHEDULE CARRIES ITS OWN PER-DOLLAR RATE, and that rate is
+            // the answer for a price. Alabama, Idaho, Maryland and Pennsylvania each
+            // publish a table in cents instead of a percentage — 11 to 17 cents is
+            // one cent of tax, 18 to 34 is two — with `above.perWholeUnit` giving
+            // what applies past one unit: $0.06 per dollar, which is six per cent.
+            //
+            // Rounding the table to that figure disagrees by up to a cent on the
+            // remainder, which is why it is FLAGGED. It used to be refused instead,
+            // and refusing priced nothing at all in those four states — a rate within
+            // a cent that says so is worth more to a shop than an exception.
+            $percentage = $this->perWholeUnit($rate);
+
+            if ($percentage === null) {
+                // A per-unit amount with no percentage equivalent: a real published
+                // rate this source cannot express. Not a number to invent.
+                return null;
+            }
+
+            $bracketed = true;
         }
 
         $effective = $rate['effective'] ?? null;
@@ -531,9 +570,9 @@ final readonly class RegisterRateSource implements CommodityRateSource
             $percentage,
             $this->kind($rate),
             is_string($by) ? self::SOURCE.':'.$by : self::SOURCE,
-            $resolved['inferred'] || $resolved['ambiguous'] ? Confidence::Derived : Confidence::Authoritative,
+            $resolved['inferred'] || $resolved['ambiguous'] || $bracketed ? Confidence::Derived : Confidence::Authoritative,
             [],
-            $this->limit($resolved),
+            $this->limit($resolved) ?? ($bracketed ? RateLimit::BracketSchedule : null),
             new RateProvenance(
                 self::SOURCE,
                 $version,

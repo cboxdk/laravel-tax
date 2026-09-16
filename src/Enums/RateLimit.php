@@ -62,6 +62,21 @@ enum RateLimit: string
      */
     case ClassificationInferred = 'classification_inferred';
 
+    /**
+     * The jurisdiction levies by a BRACKET SCHEDULE and the rate returned is the
+     * per-dollar figure that schedule works out to above one unit.
+     *
+     * Alabama, Idaho, Maryland and Pennsylvania each publish a table in cents rather
+     * than a percentage: 11 to 17 cents is one cent of tax, 18 to 34 is two, and so
+     * on, with a per-dollar rate above a dollar. The percentage is exact on whole
+     * units and disagrees with the table by up to a cent on the remainder, so it is
+     * the right answer for a price and the wrong one for a cent-level reconciliation.
+     *
+     * It is flagged rather than refused because refusing priced NOTHING in four
+     * states, and a rate within a cent — that says so — beats an exception.
+     */
+    case BracketSchedule = 'bracket_schedule';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -79,6 +94,9 @@ enum RateLimit: string
             self::ClassificationInferred => 'Supply the code at the length the register publishes it. Codes run to '
                 .'two, four, six and eight digits, and a chapter can disagree with a subheading beneath it — '
                 .'so `04` is not a safe stand-in for `0401 10`.',
+            self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
+                .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
+                .'return means applying the published table, which the assessment carries the citation for.',
         };
     }
 
