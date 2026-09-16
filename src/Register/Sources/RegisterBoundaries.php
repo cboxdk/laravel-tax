@@ -135,6 +135,25 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return ['us:'.$state, $exact];
         }
 
+        // THE UNIT WORD IS PART OF THE NAME, and Virginia is why. A Virginia city is
+        // independent of every county, and the register stores it BARE — so
+        // `Fairfax City` must reach `Fairfax` while `Fairfax County` reaches
+        // `Fairfax County`. Matching both stripped finds two and refuses, costing
+        // Fairfax its regional rate for nothing.
+        if (preg_match('/\s+city$/i', $county) === 1) {
+            $bareOnly = [];
+
+            foreach ($names as $jurisdiction => $name) {
+                if ($this->fold($name) === $bare) {
+                    $bareOnly[] = $jurisdiction;
+                }
+            }
+
+            if (count($bareOnly) === 1) {
+                return ['us:'.$state, $bareOnly[0]];
+            }
+        }
+
         // Two localities answer to the same bare name and nothing said which. Refusing
         // sends the caller to the state rate; guessing bills the wrong authority.
         if (count($loose) !== 1) {

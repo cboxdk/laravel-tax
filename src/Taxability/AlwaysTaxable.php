@@ -7,6 +7,7 @@ namespace Cbox\Tax\Taxability;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\ProductTaxability;
+use Cbox\Tax\Enums\TaxCategory;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\ValueObjects\TaxDetermination;
@@ -28,6 +29,9 @@ use DateTimeImmutable;
  */
 final readonly class AlwaysTaxable implements ProductTaxability
 {
+    /** @var array<string, bool> */
+    private array $overrides;
+
     /**
      * `$overrides` is the seam for a host that knows better about a specific pair,
      * keyed `"<place>:<tax class>"` — `'US-CA:software_prewritten' => false`.
@@ -37,7 +41,49 @@ final readonly class AlwaysTaxable implements ProductTaxability
      *
      * @param  array<string, bool>  $overrides
      */
-    public function __construct(private array $overrides = []) {}
+    public function __construct(array $overrides = [])
+    {
+        $this->overrides = self::normalise($overrides);
+    }
+
+    /**
+     * Accept override keys written against the superseded {@see TaxCategory}.
+     *
+     * Seventeen of its twenty-five values changed name when the taxonomy was rebuilt
+     * — `grocery` became `groceries`, `books` became `book` — and an override is
+     * exactly the kind of thing an operator wrote once, put in a config file and
+     * forgot. Left to break, the failure is the worst shape available: the key stops
+     * matching, the override silently stops applying, and a category somebody
+     * deliberately configured falls back to the default.
+     *
+     * A key already written against a class is left exactly as it is, and one that
+     * matches neither is kept verbatim so it fails visibly rather than vanishing.
+     *
+     * @param  array<string, bool>  $overrides
+     * @return array<string, bool>
+     */
+    private static function normalise(array $overrides): array
+    {
+        $normalised = [];
+
+        foreach ($overrides as $key => $taxable) {
+            $separator = strrpos($key, ':');
+
+            if ($separator === false) {
+                $normalised[$key] = $taxable;
+
+                continue;
+            }
+
+            $where = substr($key, 0, $separator);
+            $what = substr($key, $separator + 1);
+            $class = TaxClass::tryFrom($what) ?? TaxCategory::tryFrom($what)?->toClass();
+
+            $normalised[$where.':'.($class === null ? $what : $class->value)] = $taxable;
+        }
+
+        return $normalised;
+    }
 
     public function determine(
         Jurisdiction $jurisdiction,

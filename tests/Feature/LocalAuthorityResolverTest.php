@@ -95,8 +95,9 @@ it('falls back to the honest state rate when the resolver defers on an address',
         ->and($rate?->confidence)->toBe(Confidence::Derived)
         ->and($rate?->limitedBy)->toBe(RateLimit::NoLocalResolution);
 
-    // And without one, no caveat at all.
-    expect($this->source->rateFor(resolverPlace('US-KS'), TaxClass::GeneralGoods)?->limitedBy)->toBeNull();
+    // And a state with nothing below it carries no caveat, because there is
+    // nothing there to miss.
+    expect($this->source->rateFor(resolverPlace('US-DE'), TaxClass::GeneralGoods)?->limitedBy)->toBeNull();
 });
 
 it('refuses the whole stack when one authority is not in the dataset', function () {

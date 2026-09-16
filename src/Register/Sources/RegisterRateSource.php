@@ -131,12 +131,18 @@ final readonly class RegisterRateSource implements CommodityRateSource
             // a caveat on every state-level assessment, and a caveat on everything
             // is one nobody reads.
             if ($jurisdiction->locality === null) {
-                // A US state share is rarely the whole rate — locals apply almost
-                // everywhere — so it is DERIVED even though nothing is wrong. No
-                // RateLimit, because the caller asked a state-level question and got
-                // a state-level answer; there is nothing for them to close.
-                return $jurisdiction->country->value === 'US'
-                    ? new TaxRate($state->percentage, $state->kind, self::SOURCE, Confidence::Derived, [], $state->limitedBy, $state->provenance)
+                // A US STATE SHARE IS RARELY THE WHOLE RATE — locals apply almost
+                // everywhere — so it is Derived and it is FLAGGED. The remedy is
+                // real and the operator's to act on: sync the state's boundary
+                // index, or bind a resolver. Outside the US a country rate is the
+                // whole answer and carries no caveat.
+                // ...unless the state HAS no locals to miss. Delaware, Montana, New
+                // Hampshire and Oregon levy no sales tax at all, and four more carry
+                // no sub-state authority; there the state share is the whole rate and
+                // a caveat would send somebody looking for something that is not
+                // missing.
+                return $jurisdiction->country->value === 'US' && $this->hasLocals($code)
+                    ? $this->unstacked($state)
                     : null;
             }
 
@@ -296,6 +302,30 @@ final readonly class RegisterRateSource implements CommodityRateSource
         }
 
         return str_contains($segment, '-') ? substr($segment, (int) strpos($segment, '-') + 1) : $segment;
+    }
+
+    /**
+     * Whether the register carries any authority BELOW this state.
+     *
+     * Read off the jurisdictions the store holds rather than asserted, so a state
+     * that adopts a local tax stops being a special case the day the register says
+     * so.
+     */
+    private function hasLocals(string $code): bool
+    {
+        $parts = explode(':', $code);
+
+        if (($parts[0] ?? null) !== 'us' || ! isset($parts[1])) {
+            return false;
+        }
+
+        foreach (array_keys($this->dataset->namesIn('us/'.$parts[1])) as $jurisdiction) {
+            if (substr_count($jurisdiction, ':') > 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The bare state code a local authority sits under. */

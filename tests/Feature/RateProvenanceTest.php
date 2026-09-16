@@ -95,10 +95,16 @@ it('still records the version from a local MIRROR of the published data', functi
         ->and($rate?->provenance?->version)->toBeString();
 });
 
-it('records nothing for a source that publishes nothing to trace back to', function () {
+it('records provenance on every answer, because there is always a version to name', function () {
+    // This used to test the opposite: a local dataset directory had no manifest, so
+    // a rate read from one was untraceable. The engine reads a COMPILED store now
+    // and the compiler writes a manifest, so there is no such thing as an answer
+    // that cannot be traced to a release.
     $rate = rateSourceFor([])->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
-    expect($rate?->provenance)->toBeNull();
+    expect($rate?->provenance)->not->toBeNull()
+        ->and($rate?->provenance?->version)->not->toBeNull()
+        ->and($rate?->provenance?->isTraceable())->toBeTrue();
 });
 
 it('serializes flat, for a column on an invoice line', function () {

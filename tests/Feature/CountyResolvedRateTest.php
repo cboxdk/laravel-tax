@@ -166,7 +166,7 @@ it('matches county names through punctuation and the governing-unit suffix', fun
 ]);
 
 it('refuses a county the state does not carry rather than guessing a neighbour', function () {
-    expect($this->dataset->localCodeForCounty('US-FL', 'Nonesuch County'))->toBeNull();
+    expect(app(LocalAuthorityResolver::class)->authoritiesFor(atCounty('US-FL', 'Nonesuch County')))->toBeNull();
 });
 
 it('falls back to the honest state rate when the county does not resolve', function () {

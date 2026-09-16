@@ -170,6 +170,9 @@ final class SuiteRegister
         // are different authorities over different ground.
         $register->rate('us:FL:COUNTY-ALACHUA', '1.5', 'local_component')->named('us:FL:COUNTY-ALACHUA', 'Alachua County');
         $register->rate('us:FL:COUNTY-MARTIN', '0.5', 'local_component')->named('us:FL:COUNTY-MARTIN', 'Martin County');
+        // Citrus levies nothing. That is a RESOLVED answer equal to the state share,
+        // not a failure to resolve, and the confidence has to tell them apart.
+        $register->rate('us:FL:COUNTY-CITRUS', '0', 'local_component')->named('us:FL:COUNTY-CITRUS', 'Citrus County');
         $register->rate('us:HI:HONOLULU', '0.5', 'local_component')->named('us:HI:HONOLULU', 'Honolulu County');
         $register->rate('us:PA:ALLEGHENY', '1', 'local_component')->named('us:PA:ALLEGHENY', 'Allegheny County');
         $register->rate('us:PA:PHILADELPHIA', '2', 'local_component')->named('us:PA:PHILADELPHIA', 'Philadelphia');
