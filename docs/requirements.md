@@ -11,7 +11,7 @@ From `composer.json`:
 - **PHP** `^8.4`
 - **`ext-zlib`** — the register is served gzipped (1.8 MB against 54 MB of JSON) and
   inflated on read.
-- **[`cboxdk/tax-resolver`](https://github.com/cboxdk/tax-resolver)** `^0.2` — the
+- **[`cboxdk/tax-resolver`](https://github.com/cboxdk/tax-resolver)** `^1.0` — the
   shared address-to-jurisdiction resolver. The register runs the SAME code over its
   own artifacts at build time, which is the only thing that keeps two readers of one
   format from drifting apart.
