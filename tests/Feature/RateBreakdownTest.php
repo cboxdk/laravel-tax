@@ -22,6 +22,7 @@ use Cbox\Tax\Exceptions\RateComponentsDoNotReconcile;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\AlwaysTaxable;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\SellerRegistration;
@@ -173,7 +174,7 @@ it('refuses a combined-basis rooftop with no local record rather than reporting 
     // A combined record IS the all-in rate, so "no record applies here" leaves no
     // all-in rate to report — unlike a component-basis state, where the state
     // share genuinely is the whole rate. Falling back to Derived says so.
-    $directory = fixtureWithEmptyBoundarySet('US-CA');
+    $directory = registerWithEmptyBoundarySet('US-CA');
 
     $dataset = app(RegisterDataset::class);
 
@@ -350,29 +351,20 @@ it('labels a line by name, then code, then level', function () {
 });
 
 /**
- * A copy of the dataset fixture whose boundary index positively answers "no local
- * authority applies" for the given state — the shape a state with no local sales
- * tax publishes.
+ * A register whose boundary index positively answers "no local authority applies"
+ * for the given state — the shape a state with no local sales tax publishes, and a
+ * different claim from "we found nothing".
  */
-function fixtureWithEmptyBoundarySet(string $state): string
+function registerWithEmptyBoundarySet(string $state): string
 {
-    $source = dirname(__DIR__).'/Fixtures/us-tax-dataset';
-    $directory = sys_get_temp_dir().'/cbox-tax-breakdown-'.bin2hex(random_bytes(4));
+    $root = sys_get_temp_dir().'/cbox-tax-breakdown-'.bin2hex(random_bytes(4));
 
-    mkdir($directory.'/boundaries', 0o755, true);
-    mkdir($directory.'/by-section', 0o755, true);
+    FakeRegister::at($root)
+        ->rate('us:'.$state, '6.5')
+        ->boundary($state, '66101', [])
+        ->install();
 
-    foreach (['rates', 'baseline', 'taxability', 'nexus', 'sourcing'] as $section) {
-        copy($source.'/by-section/'.$section.'.json', $directory.'/by-section/'.$section.'.json');
-    }
-
-    file_put_contents($directory.'/boundaries/'.$state.'.json', json_encode([
-        'sets' => [[]],
-        'zip' => (object) [],
-        'ranges' => [['00000', '99999', '0000', '9999', 0]],
-    ]));
-
-    return $directory;
+    return $root;
 }
 
 // ---- A reduced category is a reduced STATE share, not an all-in rate ------

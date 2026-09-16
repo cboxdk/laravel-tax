@@ -7,31 +7,30 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\RateProvenance;
-use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
-/** The EU source reading a LOCAL fixture — no manifest, so nothing to trace to. */
-function euLocalSource(): EuTaxDatasetRateSource
+/**
+ * The register's EU rates.
+ *
+ * There is no local-versus-remote split any more: the engine reads a COMPILED store
+ * whose manifest is written at sync time, so every answer is traceable to a version
+ * whether or not the machine has a network. That distinction used to matter because
+ * a local dataset directory had no manifest to name.
+ */
+function euLocalSource(): RegisterRateSource
 {
-    return app(TaxRateSource::class);
+    return new RegisterRateSource(app(RegisterDataset::class));
 }
 
-/** The same fixture served over a faked HTTP client, so the manifest is read. */
-function euRemoteSource(): EuTaxDatasetRateSource
+function euRemoteSource(): RegisterRateSource
 {
-    $dir = dirname(__DIR__).'/Fixtures/eu-tax-dataset/';
-
-    Http::fake([
-        '*/manifest.json' => Http::response((string) file_get_contents($dir.'manifest.json')),
-        '*/by-section/rates.json' => Http::response((string) file_get_contents($dir.'by-section/rates.json')),
-        '*/by-section/class-map.json' => Http::response((string) file_get_contents($dir.'by-section/class-map.json')),
-    ]);
-
-    return app(TaxRateSource::class);
+    return euLocalSource();
 }
 
 // ---------------------------------------------------------------------------

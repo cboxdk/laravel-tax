@@ -14,14 +14,13 @@ use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxExemption;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Http\Client\Factory;
 
 // The dated windows the coverage docs record are the real vectors here: Türkiye
 // 18% → 20% on 10 July 2023, verified from the Revenue Administration's own
@@ -220,11 +219,7 @@ it('refuses a rooftop stack whose records do not cover the supply date', functio
 
 function ksDataset(): RegisterDataset
 {
-    return new RegisterDataset(
-        app(Factory::class),
-        app(Repository::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    return app(RegisterDataset::class);
 }
 
 function kansasCity(): Jurisdiction

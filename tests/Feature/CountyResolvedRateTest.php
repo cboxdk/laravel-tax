@@ -14,7 +14,9 @@ use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Territories\UsLocalStructure;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -192,27 +194,25 @@ it('only claims county resolution where nothing can tax below the county', funct
 });
 
 it('carries no authority below the county in any county-resolved state', function () {
-    $rates = json_decode(
-        (string) file_get_contents(dirname(__DIR__).'/Fixtures/us-tax-dataset/by-section/rates.json'),
-        true,
-    );
-
+    // The claim the list rests on: in these four states nothing sits under the
+    // county line. A city record that is not coterminous with its county would make
+    // county-only resolution an UNDER-charge, which is the error a refund cannot fix.
+    $dataset = app(RegisterDataset::class);
     $coterminous = UsLocalStructure::coterminousCityCounties();
     $cityStates = UsLocalStructure::countyEquivalentCityStates();
 
     foreach (UsLocalStructure::countyResolvedStates() as $state) {
-        foreach ($rates['states'][$state]['local'] ?? [] as $code => $records) {
-            foreach ($records as $record) {
-                $ok = $record['level'] === 'county'
-                    || in_array($code, $coterminous, true)
-                    // Virginia: every city is independent of any county by law, so
-                    // a city-level record there is a county-equivalent. A TOWN is
-                    // not — towns do sit inside counties — and would fail here.
-                    || ($record['level'] === 'city' && in_array($state, $cityStates, true));
+        $short = substr($state, 3);
 
-                expect($ok)
-                    ->toBeTrue("{$code} taxes below the county line — {$state} cannot be county-resolved.");
-            }
+        if (in_array($state, $cityStates, true)) {
+            continue;   // every city there is a county-equivalent by law
+        }
+
+        foreach (array_keys($dataset->namesIn('us/'.$short)) as $code) {
+            $segment = explode(':', $code)[2] ?? '';
+
+            expect(str_starts_with($segment, 'CITY-') && ! in_array($state.':'.substr($segment, 5), $coterminous, true))
+                ->toBeFalse("{$code} sits below the county line in {$state}");
         }
     }
 });

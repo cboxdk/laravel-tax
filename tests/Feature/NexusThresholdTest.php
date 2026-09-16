@@ -12,6 +12,7 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -62,15 +63,12 @@ it('describes a threshold for display', function () {
         ->and($this->thresholds->for(new SubdivisionCode('US-CT'))->describe())->toBe('$100,000 and 200 transactions');
 });
 
-it('is bound to the dataset-backed NexusThresholds by default', function () {
-    // The us-tax-data dataset is the default US nexus source; disabling it falls
-    // back to the static table.
-    expect($this->app->make(NexusThresholds::class))->toBeInstanceOf(UsTaxDatasetNexus::class);
-
-    config()->set('tax.us_tax_data.enabled', false);
-    $this->app->forgetInstance(NexusThresholds::class);
-
-    expect($this->app->make(NexusThresholds::class))->toBeInstanceOf(StaticNexusThresholds::class);
+it('is bound to the register-backed NexusThresholds', function () {
+    // There is no longer a static table behind it to fall back to: the register is
+    // the source, and a state it holds no threshold for answers null rather than a
+    // figure somebody typed.
+    expect($this->app->make(NexusThresholds::class))->toBeInstanceOf(RegisterNexus::class)
+        ->and($this->thresholds->for(new SubdivisionCode('US-MT')))->toBeNull();
 });
 
 it('flags the economic-nexus threshold on a not-registered US assessment', function () {

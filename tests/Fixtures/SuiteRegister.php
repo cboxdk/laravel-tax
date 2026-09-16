@@ -59,7 +59,7 @@ final class SuiteRegister
             'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
             'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
             'KR' => '10', 'TR' => '20', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
-            'CA' => '5',
+            'CA' => '5', 'BH' => '10', 'CL' => '19', 'OM' => '5', 'TW' => '5', 'UA' => '20',
         ];
     }
 
@@ -144,8 +144,8 @@ final class SuiteRegister
     private static function rules(FakeRegister $register): void
     {
         // Economic nexus. The four states with no sales tax carry none at all.
-        foreach (['AL' => '250000', 'CA' => '500000', 'CT' => '100000', 'KS' => '100000',
-            'NJ' => '100000', 'NY' => '500000', 'OH' => '100000', 'TX' => '500000',
+        foreach (['AL' => '250000', 'CA' => '500000', 'KS' => '100000',
+            'OH' => '100000', 'TX' => '500000',
             'WA' => '100000', 'MO' => '100000', 'AZ' => '100000'] as $state => $amount) {
             $register->rule('us:'.$state, 'threshold', [
                 'amount' => $amount.'.00',
@@ -155,11 +155,19 @@ final class SuiteRegister
             ]);
         }
 
-        // Connecticut is the one that keeps a transaction limb, so the AND/OR
-        // combinator has something to be wrong about.
+        // Connecticut and New Jersey keep a transaction limb, and they combine it
+        // differently — which is the whole reason the combinator is a field.
         $register->rule('us:CT', 'threshold', [
             'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
             'transactions' => 200, 'combinator' => 'and',
+        ]);
+        $register->rule('us:NJ', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'transactions' => 200, 'combinator' => 'or',
+        ]);
+        $register->rule('us:NY', 'threshold', [
+            'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'transactions' => 100, 'combinator' => 'and',
         ]);
 
         foreach (['AZ' => '2019-10-01', 'MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01'] as $state => $from) {

@@ -14,34 +14,9 @@ use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-});
-
-it('resolves a rate from a remote JSON feed (number or {standard})', function () {
-    $http = new Factory;
-    $http->fake(['*' => $http->response(['DK' => 25, 'DE' => ['standard' => 19]])]);
-
-    $source = new RemoteRateSource($http, 'https://feed.example/rates.json', 'tedb');
-
-    $dk = $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
-    $de = $source->rateFor($this->geo->find(new CountryCode('DE')), TaxClass::GeneralGoods);
-
-    expect((string) $dk->percentage)->toBe('25')
-        ->and($dk->source)->toBe('tedb')
-        ->and((string) $de->percentage)->toBe('19');
-});
-
-it('reports a failed remote feed as unavailable rather than as no rate', function () {
-    $http = new Factory;
-    $http->fake(['*' => $http->response('', 503)]);
-
-    $source = new RemoteRateSource($http, 'https://feed.example/rates.json');
-
-    expect(fn () => $source->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))
-        ->toThrow(RateSourceUnavailable::class);
 });
 
 it('chains sources and returns the first hit', function () {
