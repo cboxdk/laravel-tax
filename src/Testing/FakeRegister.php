@@ -60,6 +60,12 @@ final class FakeRegister
      * a supplier-borne levy has to be asked for explicitly, which is the right way
      * round — it is the case that must never be summed into a cart by accident.
      *
+     * `mayBePassedOn` is written even though the default never changes the answer,
+     * because the register always carries it and the pair is what decides whether a
+     * rate can be charged. Pass `['borneBy' => 'supplier', 'mayBePassedOn' => true]`
+     * for a transaction privilege or gross receipts tax — Arizona, Hawaii and New
+     * Mexico are all that shape — and `false` for a digital services tax.
+     *
      * @param  array<string, mixed>  $extra
      */
     public function rate(
@@ -76,6 +82,7 @@ final class FakeRegister
             'jurisdiction' => $jurisdiction,
             'taxType' => 'vat',
             'borneBy' => 'customer',
+            'mayBePassedOn' => false,
             'kind' => $kind,
             'basis' => 'ad_valorem',
             'percentage' => $percentage,

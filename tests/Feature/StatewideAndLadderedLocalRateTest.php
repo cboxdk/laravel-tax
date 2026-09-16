@@ -225,3 +225,41 @@ it('does not answer for a country with a US state that shares its letters', func
     expect((string) ladderCountryRate('CA')?->percentage)->toBe('5')
         ->and((string) ladderCountryRate('GA')?->percentage)->toBe('18');
 });
+
+it('charges a seller-borne tax the statute lets the seller pass on', function (): void {
+    // A transaction privilege tax, a general excise tax and a gross receipts tax are
+    // all legally the SELLER's, and all are passed on as a matter of course — it is
+    // why a Honolulu receipt shows the rate at all. Reading `borneBy` alone and
+    // stopping there left Arizona, Hawaii, New Mexico, Guam, the US Virgin Islands,
+    // Malaysia, Aruba and Curaçao with no rate, so the engine refused on every
+    // supply into eight jurisdictions.
+    ladderRegister()
+        ->rate('us:NM', '4.875', extra: ['borneBy' => 'supplier', 'mayBePassedOn' => true])
+        ->install();
+
+    expect((string) ladderRateFor('US-NM', '87501-0001', TaxClass::GeneralGoods)?->percentage)->toBe('4.875');
+});
+
+it('still refuses to charge a levy the seller may not pass on', function (): void {
+    // The case the filter was written for, and the only one it should catch: a
+    // digital services tax is a levy on the supplier's turnover that the statute does
+    // NOT let them recover on the invoice. Summing it into a cart overcharges the
+    // customer and under-declares the liability in one step.
+    ladderRegister()
+        ->rate('us:NM', '2', extra: ['borneBy' => 'supplier', 'mayBePassedOn' => false])
+        ->install();
+
+    expect(ladderRateFor('US-NM', '87501-0001', TaxClass::GeneralGoods))->toBeNull();
+});
+
+it('takes the headline band, not a category-scoped rate that happens to come first', function (): void {
+    // Arizona files a per-unit standard rate on telecommunications ahead of its 5.6%
+    // band. Taking the first `standard` row returned that one, which has no
+    // percentage at all, so the state resolved to nothing and the engine refused.
+    ladderRegister()
+        ->rate('us:AZ', '0', 'standard', 'services.telecom', extra: ['basis' => 'per_unit', 'perUnit' => ['amount' => '0.02', 'currency' => 'USD', 'per' => 'line'], 'percentage' => null])
+        ->rate('us:AZ', '5.6')
+        ->install();
+
+    expect((string) ladderRateFor('US-AZ', '85001-0001', TaxClass::GeneralGoods)?->percentage)->toBe('5.6');
+});

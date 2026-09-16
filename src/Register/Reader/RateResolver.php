@@ -294,13 +294,30 @@ final readonly class RateResolver
     }
 
     /**
+     * The rates in force on a date that a customer can actually be charged.
+     *
+     * TWO FIELDS, NOT ONE. `borneBy` says whose liability it is and `mayBePassedOn`
+     * says whether the statute lets the seller recover it on the invoice, and only
+     * the pair decides anything. A digital services tax is the case worth excluding:
+     * a levy on the supplier's turnover that may NOT be passed on, and summing it
+     * into a cart overcharges the customer and under-declares the liability at once.
+     *
+     * Reading `borneBy` alone excluded far more than that. A transaction privilege
+     * tax, a general excise tax and a gross receipts tax are all legally the
+     * seller's and all are passed on as a matter of course — it is why a Honolulu
+     * receipt shows 4.712%. Filtering them out left Arizona, Hawaii, New Mexico,
+     * Guam, the US Virgin Islands, Malaysia, Aruba and Curaçao with no rate at all,
+     * so the engine refused on every supply into eight jurisdictions. There is not
+     * one row in the register today that this filter was meant to catch: all
+     * nineteen supplier-borne rows may be passed on.
+     *
      * @param  list<array<string, mixed>>  $rates
      * @return list<array<string, mixed>>
      */
     private function live(array $rates, string $on): array
     {
         return array_values(array_filter($rates, static function (array $rate) use ($on): bool {
-            if (($rate['borneBy'] ?? null) !== 'customer') {
+            if (($rate['borneBy'] ?? null) !== 'customer' && ($rate['mayBePassedOn'] ?? null) !== true) {
                 return false;
             }
 
@@ -373,8 +390,14 @@ final readonly class RateResolver
      */
     private function standard(array $rates): ?array
     {
+        // THE BAND CARRIES NO CATEGORY, which is the whole of what makes it the
+        // headline rate — and taking the first `standard` row without checking meant
+        // a category-scoped one could stand in for it. Arizona files a per-unit
+        // standard rate on telecommunications ahead of its 5.6% band; that row has no
+        // percentage at all, so the state resolved to nothing and the engine refused
+        // on every Arizona supply.
         foreach ($rates as $rate) {
-            if (($rate['kind'] ?? null) === 'standard') {
+            if (($rate['kind'] ?? null) === 'standard' && ($rate['category'] ?? null) === null) {
                 return $rate;
             }
         }
