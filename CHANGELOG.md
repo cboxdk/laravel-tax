@@ -41,6 +41,10 @@ pricing a Danish invoice touches 12 KB.
 - `tax:data:sync`, `tax:data:status`, `tax:data:activate`, `tax:data:verify` and
   `tax:data:prune`. `activate` is the rollback and costs one `rename`; `status`
   answers offline on purpose.
+- **`cboxdk/tax-resolver` `^1.0`** — the shared address-to-jurisdiction resolver. The
+  register runs the SAME code over its own artifacts at build time and cuts a
+  conformance deck from the result, so two readers of one format cannot drift apart
+  unnoticed. `RegisterConformanceTest` runs that deck.
 - `Testing\FakeRegister` — build a register in three lines, for hosts testing their
   own tax logic without a network call.
 - `Contracts\UsTaxFacts`, so the US regime depends on the four facts it asks for
