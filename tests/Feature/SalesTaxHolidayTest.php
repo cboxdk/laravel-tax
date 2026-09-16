@@ -15,6 +15,7 @@ use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -27,7 +28,7 @@ beforeEach(function () {
         new RegisterTaxability($this->dataset),
         new RegisterNexus($this->dataset),
         null,
-        $this->dataset,
+        new RegisterUsFacts($this->dataset),
     );
 });
 

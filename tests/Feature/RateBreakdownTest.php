@@ -13,6 +13,7 @@ use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
@@ -20,6 +21,7 @@ use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\RateComponentsDoNotReconcile;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\SellerRegistration;
@@ -69,7 +71,7 @@ function breakdownQuery(
 }
 
 /** The calculator wired to the dataset rate source, which decomposes what it stacks. */
-function datasetCalculator(UsTaxDataset $dataset): DefaultTaxCalculator
+function datasetCalculator(RegisterDataset $dataset): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(new AlwaysTaxable),

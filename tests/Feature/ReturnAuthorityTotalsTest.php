@@ -18,6 +18,7 @@ use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\ReturnPeriod;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;

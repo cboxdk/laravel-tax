@@ -12,6 +12,7 @@ use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\ImplausibleTaxRate;
@@ -21,6 +22,7 @@ use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -38,7 +40,7 @@ beforeEach(function () {
  * the engine's handling of incomplete data can be tested against data that really
  * is incomplete rather than against a mock that says it is.
  */
-function datasetWithout(string $field): UsTaxDataset
+function datasetWithout(string $field): RegisterDataset
 {
     $dir = sys_get_temp_dir().'/tax-partial-'.bin2hex(random_bytes(5));
     mkdir($dir.'/by-section', 0o755, true);
@@ -89,7 +91,7 @@ it('still taxes general tangible goods by default, which is the one honest defau
     // law rather than guessing. Alaska is the only state the dataset leaves
     // undetermined for it.
     expect($this->taxability->determine(denyPlace('US-CA'), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse()
-        ->and(new StaticProductTaxability()->determine(denyPlace('US-TX'), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
+        ->and(new AlwaysTaxable()->determine(denyPlace('US-TX'), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
 it('keeps the goods default outside the US', function () {
@@ -98,7 +100,7 @@ it('keeps the goods default outside the US', function () {
 });
 
 it('honours an explicit override instead of refusing', function () {
-    $configured = new StaticProductTaxability(['US-CA:software_prewritten' => false]);
+    $configured = new AlwaysTaxable(['US-CA:software_prewritten' => false]);
 
     expect($configured->determine(denyPlace('US-CA'), TaxClass::SoftwarePrewritten, anyAmount())->isExemptFor(anyAmount()))->toBeTrue();
 });
@@ -179,7 +181,7 @@ it('forwards a commodity code through a chain to a source that can use one', fun
         }
     };
 
-    $chain = new ChainTaxRateSource([$aware, new StaticTaxRateSource]);
+    $chain = new ChainTaxRateSource([$aware, rateSourceFor([])]);
     $place = $this->geo->find(new CountryCode('PL'));
 
     expect((string) $chain->rateForCommodity($place, TaxClass::Groceries, '0201')?->percentage)->toBe('5')
@@ -226,7 +228,7 @@ it('resolves the commodity code through the calculator, not just the source', fu
 it('composes a chain that advertises the capability', function () {
     // Guards the contract itself: ResolvesRates branches on instanceof.
     expect(new ChainTaxRateSource([]))->toBeInstanceOf(CommodityRateSource::class)
-        ->and(new CachingTaxRateSource(new StaticTaxRateSource, $this->app->make(Cache::class)))
+        ->and(new CachingTaxRateSource(rateSourceFor([]), $this->app->make(Cache::class)))
         ->toBeInstanceOf(CommodityRateSource::class);
 });
 

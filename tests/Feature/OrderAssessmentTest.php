@@ -13,6 +13,7 @@ use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;

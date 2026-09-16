@@ -11,7 +11,6 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
-use Cbox\Tax\RateSource\RemoteRateSource;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;

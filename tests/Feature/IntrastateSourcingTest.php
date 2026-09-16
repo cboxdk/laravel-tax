@@ -15,6 +15,7 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterSourcing;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyRoute;
@@ -38,7 +39,7 @@ function atAuthority(string $state, string $code): Jurisdiction
         ->withLocality(new LocalityCode(new SubdivisionCode($state), 'sst-fips', $code));
 }
 
-function sourcingCalculator(UsTaxDataset $dataset): DefaultTaxCalculator
+function sourcingCalculator(RegisterDataset $dataset): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(

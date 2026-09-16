@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Illuminate\Http\Client\Factory;
 

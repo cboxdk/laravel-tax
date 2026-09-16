@@ -11,9 +11,10 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -33,7 +34,7 @@ beforeEach(function () {
 });
 
 /** A dataset whose only taxability rule for groceries changed on 2026-01-01. */
-function datedTaxabilityDataset(): UsTaxDataset
+function datedTaxabilityDataset(): RegisterDataset
 {
     $dir = sys_get_temp_dir().'/tax-dated-'.bin2hex(random_bytes(5));
     mkdir($dir.'/by-section', 0o755, true);
@@ -137,7 +138,7 @@ it('is honest that the static matrix has no dated windows to consult', function 
     // It accepts the date and ignores it, because it is a hand-maintained snapshot
     // that only knows one answer. Stating that plainly beats pretending the
     // parameter does something.
-    $static = new StaticProductTaxability(['US-KS:groceries' => true]);
+    $static = new AlwaysTaxable(['US-KS:groceries' => true]);
     $place = $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'));
 
     expect($static->determine($place, TaxClass::Groceries, anyAmount(), new DateTimeImmutable('1999-01-01'))->isExemptFor(anyAmount()))->toBeFalse()

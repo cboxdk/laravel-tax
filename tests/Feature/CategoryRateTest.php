@@ -10,7 +10,6 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -20,7 +19,7 @@ beforeEach(function () {
 });
 
 it('ships no reduced bands by default — every category resolves the standard rate', function () {
-    $source = new StaticTaxRateSource;
+    $source = rateSourceFor([]);
     $fr = $this->geo->find(new CountryCode('FR'));
 
     $standard = $source->rateFor($fr, TaxClass::GeneralGoods);

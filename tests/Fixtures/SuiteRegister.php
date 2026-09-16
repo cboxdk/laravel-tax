@@ -33,6 +33,7 @@ final class SuiteRegister
             $register->rate('us:'.$state, $percentage, 'standard');
         }
 
+        self::bands($register);
         self::locals($register);
         self::rules($register);
 
@@ -79,6 +80,33 @@ final class SuiteRegister
             'VA' => '5.3', 'PA' => '6', 'HI' => '4',
             'DE' => '0', 'MT' => '0', 'NH' => '0', 'OR' => '0',
         ];
+    }
+
+    /**
+     * Reduced bands, including the classification-scoped ones.
+     *
+     * Hungary carries the shape that matters: a category with TWO live answers, each
+     * scoped to a different customs code. On the category alone the band is refused
+     * and the standard rate applies; with a code it resolves exactly. That is the
+     * whole resolution rule in one country.
+     */
+    private static function bands(FakeRegister $register): void
+    {
+        $register->rate('eu:HU', '5', 'reduced', 'goods.food', classification: '01022110');
+        $register->rate('eu:HU', '18', 'reduced', 'goods.food', classification: '1806');
+        $register->rate('eu:HU', '5', 'reduced', 'goods.food', classification: '18063100');
+        $register->rate('eu:HU', '18', 'reduced', 'services.accommodation');
+
+        $register->rate('eu:FR', '5.5', 'reduced', 'goods.publications.book');
+        $register->rate('eu:FR', '10', 'reduced', 'services.accommodation');
+        $register->rate('eu:DE', '7', 'reduced', 'goods.food');
+        $register->rate('eu:DK', '0', 'zero', 'services.passenger_transport');
+        $register->rate('eu:IE', '0', 'zero', 'goods.publications.book');
+        $register->rate('eu:SE', '6', 'reduced', 'goods.publications.newspaper');
+        $register->rate('eu:PT', '6', 'reduced', 'goods.food');
+        $register->rate('eu:ES', '10', 'reduced', 'services.accommodation');
+        $register->rate('eu:PL', '5', 'reduced', 'goods.food');
+        $register->rate('eu:GR', '13', 'reduced', 'services.accommodation');
     }
 
     private static function locals(FakeRegister $register): void

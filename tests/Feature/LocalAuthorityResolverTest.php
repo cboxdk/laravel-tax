@@ -11,6 +11,7 @@ use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Reader\RateResolver;

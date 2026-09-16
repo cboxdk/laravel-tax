@@ -18,6 +18,7 @@ use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\FlatCharge;
 use Cbox\Tax\ValueObjects\OrderAssessment;
 use Cbox\Tax\ValueObjects\SellerRegistration;

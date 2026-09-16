@@ -15,6 +15,11 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Regime\EuVatRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterNexus;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -102,7 +107,7 @@ function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
             new RegisterTaxability($dataset),
             new RegisterNexus($dataset),
             null,
-            $dataset,
+            new RegisterUsFacts($dataset),
         );
     }
 

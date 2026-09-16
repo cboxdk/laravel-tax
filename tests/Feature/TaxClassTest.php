@@ -8,7 +8,7 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Enums\TaxCategory;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxClassGroup;
-use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 
 // A merchant maps a product once. Everything after that — which US state exempts
 // it, which EU band it falls in — is a mapping the DATA owns.
@@ -143,7 +143,7 @@ it('keeps an override written against the old names working', function () {
     // break, the failure is the worst shape available: the key stops matching, the
     // override silently stops applying, and a category somebody deliberately
     // configured falls back to the default.
-    $legacy = new StaticProductTaxability([
+    $legacy = new AlwaysTaxable([
         'US-CA:grocery' => false,          // the superseded name
         'US-TX:groceries' => false,        // the current one
     ]);

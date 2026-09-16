@@ -5,9 +5,8 @@ declare(strict_types=1);
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\ValueObjects\RateProvenance;
 use Illuminate\Support\Facades\Http;
 
@@ -98,7 +97,7 @@ it('still records the version from a local MIRROR of the published data', functi
 });
 
 it('records nothing for a source that publishes nothing to trace back to', function () {
-    $rate = new StaticTaxRateSource()->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
+    $rate = rateSourceFor([])->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
     expect($rate?->provenance)->toBeNull();
 });

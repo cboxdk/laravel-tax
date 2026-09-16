@@ -10,10 +10,11 @@ use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxAssessment;
@@ -217,9 +218,9 @@ it('refuses a rooftop stack whose records do not cover the supply date', functio
         ->and($rate?->confidence->value)->toBe('derived');
 });
 
-function ksDataset(): UsTaxDataset
+function ksDataset(): RegisterDataset
 {
-    return new UsTaxDataset(
+    return new RegisterDataset(
         app(Factory::class),
         app(Repository::class),
         dirname(__DIR__).'/Fixtures/us-tax-dataset',

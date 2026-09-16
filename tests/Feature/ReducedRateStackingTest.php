@@ -12,6 +12,9 @@ use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -29,7 +32,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  * A state with BOTH a reduced grocery rate and a local authority, and a state rate
  * that changed on 2026-01-01.
  */
-function stackingDataset(): UsTaxDataset
+function stackingDataset(): RegisterDataset
 {
     $dir = sys_get_temp_dir().'/tax-stack-'.bin2hex(random_bytes(5));
     mkdir($dir.'/by-section', 0o755, true);

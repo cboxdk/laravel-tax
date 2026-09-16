@@ -14,9 +14,8 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
+use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -63,9 +62,9 @@ it('does not collect where the seller has no nexus', function () {
 
 it('exempts a product that is not taxable in the state', function () {
     $registry = DefaultRegimeRegistry::withDefaults(
-        new StaticProductTaxability(['US-CA:digital_service' => false]),
+        new AlwaysTaxable(['US-CA:digital_service' => false]),
     );
-    $calc = new DefaultTaxCalculator($registry, new StaticTaxRateSource);
+    $calc = new DefaultTaxCalculator($registry, rateSourceFor([]));
 
     $a = $calc->assess(usBuyer('US-CA', 'US-CA', TaxClass::DigitalService));
 
@@ -86,7 +85,7 @@ it('charges taxable US SaaS at the dataset state rate', function () {
 
 it('charges taxable US SaaS when an explicit SaaS category rate is bound', function () {
     $registry = DefaultRegimeRegistry::withDefaults(
-        new StaticProductTaxability(['US-NY:digital_service' => true]),
+        new AlwaysTaxable(['US-NY:digital_service' => true]),
     );
     $calc = new DefaultTaxCalculator($registry, rateSourceFor([], [
         'US-NY:digital_service' => new RateBand('8.875'),
