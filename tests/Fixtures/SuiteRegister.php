@@ -110,6 +110,11 @@ final class SuiteRegister
         $register->rate('eu:PT', '6', 'reduced', 'goods.food');
         $register->rate('eu:ES', '10', 'reduced', 'services.accommodation');
         $register->rate('eu:PL', '5', 'reduced', 'goods.food');
+
+        // A US exemption, so a facilitated supply that is exempt reports exempt
+        // rather than facilitated — a marketplace collects nothing on either, and
+        // calling it facilitated asserts a tax that was never due.
+        $register->rate('us:WA', '0', 'exempt', 'goods.medicine.prescription');
         $register->rate('eu:GR', '13', 'reduced', 'services.accommodation');
     }
 
@@ -183,7 +188,9 @@ final class SuiteRegister
             'transactions' => 100, 'combinator' => 'and',
         ]);
 
-        foreach (['AZ' => '2019-10-01', 'MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01'] as $state => $from) {
+        // Arizona is absent on purpose: its published commencement is not trusted, and
+        // a state with no date leaves the tax with the seller.
+        foreach (['MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01'] as $state => $from) {
             $register->rule('us:'.$state, 'marketplace_facilitator', ['platformOwes' => true], from: $from);
         }
 

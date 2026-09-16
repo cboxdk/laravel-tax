@@ -67,10 +67,11 @@ final readonly class RegisterUsFacts implements UsTaxFacts
 
             return [
                 'name' => Shape::text($payload['name'] ?? null) ?? 'Sales tax holiday',
-                // Minor units, because the engine compares against Money. The register
-                // publishes the figure as a decimal string precisely so nobody parses
-                // it into a float on the way through.
-                'cap' => (int) round(((float) $amount) * 100),
+                // WHOLE UNITS, because that is what the regime compares a price
+                // against — `Money::getAmount()` is 100.00, not 10000. Returning
+                // minor units made every cap a hundred times too big, so a $100
+                // Texas holiday exempted a $9,999 coat.
+                'cap' => (int) round((float) $amount),
                 // `capIsExclusive` settles whether an item priced EXACTLY at the
                 // ceiling is exempt. One word in a statute, one boundary case, and
                 // read wrong in four states by the compilation this replaced. Null

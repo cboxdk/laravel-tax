@@ -34,9 +34,11 @@ interface UsTaxFacts
     /**
      * The sales-tax holiday covering a class of supply on a date, if one does.
      *
-     * `cap` is in MINOR units and `capInclusive` settles whether an item priced
-     * exactly at the ceiling is exempt — one word in a statute, one boundary case,
-     * and read wrong in four states by the compilation this package used to read.
+     * `cap` is in WHOLE currency units, the same scale a price is compared at, and
+     * `capInclusive` settles whether an item priced exactly at the ceiling is exempt
+     * — one word in a statute, one boundary case, and read wrong in four states by
+     * the compilation this package used to read. Texas exempts clothing "less than
+     * $100", so $100.00 is taxable; Florida's "$100 or less" exempts it.
      *
      * @return array{name: string, cap: int, capInclusive: bool}|null
      */

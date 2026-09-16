@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Brick\Money\Money;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Tests\Fixtures\SuiteRegister;
 use Cbox\Tax\Tests\TestCase;
 use Cbox\Tax\ValueObjects\RateBand;
 
@@ -31,5 +32,12 @@ function anyAmount(string $amount = '50.00', string $currency = 'USD'): Money
  */
 function rateSourceFor(array $rates, array $bands = []): RegisterRateSource
 {
-    return new RegisterRateSource(test()->registerWith($rates, $bands));
+    // An empty map means "the suite's ordinary world, plus these bands" — the same
+    // thing passing null to the retired static source used to mean. Handing back a
+    // register with nothing in it made every lookup refuse, which is a different
+    // test from the one anybody was writing.
+    return new RegisterRateSource(test()->registerWith(
+        $rates === [] ? SuiteRegister::countries() : $rates,
+        $bands,
+    ));
 }

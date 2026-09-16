@@ -13,8 +13,11 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\AlwaysTaxable;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -36,31 +39,20 @@ beforeEach(function () {
 /** A dataset whose only taxability rule for groceries changed on 2026-01-01. */
 function datedTaxabilityDataset(): RegisterDataset
 {
-    $dir = sys_get_temp_dir().'/tax-dated-'.bin2hex(random_bytes(5));
-    mkdir($dir.'/by-section', 0o755, true);
+    $root = sys_get_temp_dir().'/tax-dated-'.bin2hex(random_bytes(5));
 
-    file_put_contents($dir.'/by-section/taxability.json', json_encode(['states' => [
-        'US-KS' => [
-            [
-                'category' => 'grocery',
-                'taxable' => false,
-                'treatment' => 'exempt',
-                'conditions' => null,
-                'effectiveFrom' => null,
-                'effectiveTo' => '2025-12-31',
-            ],
-            [
-                'category' => 'grocery',
-                'taxable' => true,
-                'treatment' => 'taxable',
-                'conditions' => null,
-                'effectiveFrom' => '2026-01-01',
-                'effectiveTo' => null,
-            ],
-        ],
-    ]], JSON_THROW_ON_ERROR));
+    // Kansas exempted groceries until the end of 2025 and taxes them from 2026 — the
+    // same state, the same category, two windows. Read as "the current answer" a
+    // 2025 credit note prices against a law that had not arrived yet.
+    FakeRegister::at($root)
+        ->rate('us:KS', '6.5', from: '1990-01-01')
+        ->rate('us:KS', '0', 'exempt', 'goods.food.basic', from: '1990-01-01', until: '2025-12-31')
+        ->rate('us:KS', '6.5', 'standard', 'goods.food.basic', from: '2026-01-01')
+        ->install();
 
-    return app(RegisterDataset::class);
+    $layout = new StoreLayout($root);
+
+    return new RegisterDataset($layout, new StorePointer($layout));
 }
 
 function datedGrocerySupply(string $suppliedAt): TaxQuery
