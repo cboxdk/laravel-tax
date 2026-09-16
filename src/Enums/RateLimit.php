@@ -50,19 +50,35 @@ enum RateLimit: string
      */
     case BandUnreadable = 'band_unreadable';
 
+    /**
+     * The rate was found by walking UP to a broader classification than the one
+     * supplied, because nothing was published at the code that was asked for.
+     *
+     * A broader code is an inference, never a published fact, and the register has
+     * 95 live cases where a shorter code and a longer one beneath it carry different
+     * rates in the same country. Austria taxes food at 10% under CN 04 and carves
+     * CN 0401 10 out at 4.9%; answering the chapter rate for the subheading is
+     * wrong by more than half.
+     */
+    case ClassificationInferred = 'classification_inferred';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
         return match ($this) {
             self::HeadingAmbiguous => 'Supply the line\'s CN code (goods) or CPA code (services) as commodityCode; '
                 .'the source scopes each competing rate to codes, and most codes resolve to exactly one.',
-            self::NoLocalResolution => 'Resolve the address below the state line: enable us_tax_data.rooftop for a '
-                .'ZIP+4, or bind a LocalAuthorityResolver for a state the shipped dataset cannot resolve.',
+            self::NoLocalResolution => 'Resolve the address below the state line: sync the state\'s boundary index '
+                .'(`tax:data:sync --state=KS`) so a ZIP+4 expands into its authorities, or bind a '
+                .'LocalAuthorityResolver for a state the register cannot resolve.',
             self::ItemUnmapped => 'Map the item code to a tax class in your ProductCatalogue. '
                 .'TaxClass::search() finds the class from the words you already use for the product; '
                 .'an empty result means nothing here expresses it, which is itself worth recording.',
             self::BandUnreadable => 'Nothing you can do in your application — the published dataset carries a band '
                 .'that is not a rate. Report it against the dataset repository.',
+            self::ClassificationInferred => 'Supply the code at the length the register publishes it. Codes run to '
+                .'two, four, six and eight digits, and a chapter can disagree with a subheading beneath it — '
+                .'so `04` is not a safe stand-in for `0401 10`.',
         };
     }
 
@@ -76,6 +92,8 @@ enum RateLimit: string
      */
     public function callerCanClose(): bool
     {
-        return $this === self::HeadingAmbiguous || $this === self::ItemUnmapped;
+        return $this === self::HeadingAmbiguous
+            || $this === self::ItemUnmapped
+            || $this === self::ClassificationInferred;
     }
 }

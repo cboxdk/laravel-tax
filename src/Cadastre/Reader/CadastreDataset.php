@@ -1,0 +1,292 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cbox\Tax\Cadastre\Reader;
+
+use Cbox\Tax\Cadastre\Store\ShardKey;
+use Cbox\Tax\Cadastre\Store\ShardReader;
+use Cbox\Tax\Cadastre\Store\StoreLayout;
+use Cbox\Tax\Cadastre\Store\StorePointer;
+use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use DateTimeImmutable;
+
+/**
+ * The typed way into a compiled store: what a jurisdiction charges, what rules scope
+ * it, and what the register says about its own coverage.
+ *
+ * It reads local files and makes no network call. Everything it opens is opened
+ * lazily and kept for the life of the object — a request that prices one line
+ * usually prices the next one in the same jurisdiction, and the shard readers hold
+ * an index, not records.
+ *
+ * The live version is resolved ONCE per instance. A sync that lands mid-request must
+ * not move the answer under a half-priced invoice: two lines of one order have to be
+ * priced by the same register, or the totals do not reconcile with either.
+ */
+final class CadastreDataset
+{
+    private ?string $version = null;
+
+    private bool $resolved = false;
+
+    /** @var array<string, ShardReader> */
+    private array $rates = [];
+
+    /** @var array<string, ShardReader> */
+    private array $jurisdictions = [];
+
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $documents = null;
+
+    /** @var array<string, list<array<string, mixed>>>|null */
+    private ?array $rulesByJurisdiction = null;
+
+    public function __construct(
+        private readonly StoreLayout $layout,
+        private readonly StorePointer $pointer,
+    ) {}
+
+    public function isInstalled(): bool
+    {
+        return $this->version() !== null;
+    }
+
+    /** The live version, pinned for the life of this instance. */
+    public function version(): ?string
+    {
+        if (! $this->resolved) {
+            $this->version = $this->pointer->current();
+            $this->resolved = true;
+        }
+
+        return $this->version;
+    }
+
+    /**
+     * @throws DatasetNotInstalled
+     */
+    public function requireVersion(): string
+    {
+        $version = $this->version();
+
+        if ($version === null) {
+            throw new DatasetNotInstalled($this->layout->root());
+        }
+
+        return $version;
+    }
+
+    /**
+     * Every rate record the register holds for a jurisdiction, unfiltered.
+     *
+     * Dating, category and taxType are the resolver's job, not this one's — a reader
+     * that filtered would have to decide what "current" means, and the register is
+     * explicit that the test is containment rather than a null end date.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function ratesFor(string $jurisdiction): array
+    {
+        $shard = ShardKey::of($jurisdiction);
+
+        $this->rates[$shard] ??= new ShardReader(
+            $this->layout->file($this->requireVersion(), 'rates/'.$shard),
+        );
+
+        return $this->rates[$shard]->read($jurisdiction);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function jurisdiction(string $code): ?array
+    {
+        $shard = ShardKey::of($code);
+
+        $this->jurisdictions[$shard] ??= new ShardReader(
+            $this->layout->file($this->requireVersion(), 'jurisdictions/'.$shard),
+        );
+
+        return $this->jurisdictions[$shard]->read($code)[0] ?? null;
+    }
+
+    /**
+     * Whether the store actually carries this regime, as opposed to carrying it and
+     * finding nothing.
+     *
+     * The distinction is the whole reason per-region and per-state opt-in is safe. A
+     * store compiled with `--region=eu` holds no answer for Japan, and answering
+     * "no tax in Japan" would be a fabrication; the manifest says which regimes were
+     * compiled, so the engine can refuse with a remedy instead.
+     */
+    public function carries(string $jurisdiction): bool
+    {
+        $manifest = $this->document('manifest');
+        $regions = $manifest['regions'] ?? null;
+        $regime = ShardKey::regime($jurisdiction);
+
+        if (is_array($regions) && ! in_array($regime, $regions, true)) {
+            return false;
+        }
+
+        if ($regime !== 'us') {
+            return true;
+        }
+
+        $states = $manifest['states'] ?? null;
+        $parts = explode(':', $jurisdiction);
+
+        return ! is_array($states) || ($parts[1] ?? null) === null || in_array($parts[1], $states, true);
+    }
+
+    /**
+     * Rules of one kind that apply to a jurisdiction, in publication order.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rulesFor(string $jurisdiction, ?string $kind = null): array
+    {
+        if ($this->rulesByJurisdiction === null) {
+            $index = [];
+
+            foreach (Shape::records($this->document('rules')['rules'] ?? null) as $rule) {
+                $code = Shape::text($rule['jurisdiction'] ?? null);
+
+                if ($code !== null) {
+                    $index[$code][] = $rule;
+                }
+            }
+
+            $this->rulesByJurisdiction = $index;
+        }
+
+        $rules = $this->rulesByJurisdiction[$jurisdiction] ?? [];
+
+        if ($kind === null) {
+            return $rules;
+        }
+
+        return array_values(array_filter($rules, static fn (array $rule): bool => ($rule['kind'] ?? null) === $kind));
+    }
+
+    /**
+     * The standard-rate backbone: every jurisdiction that sets one, worldwide.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function standardRates(string $jurisdiction): array
+    {
+        $rows = [];
+
+        foreach (Shape::records($this->document('standard-rates')['standardRates'] ?? null) as $rate) {
+            if (($rate['jurisdiction'] ?? null) === $jurisdiction) {
+                $rows[] = $rate;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The category vocabulary, keyed by its own key, so a resolver can walk `parent`
+     * upward without a second lookup.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function categories(): array
+    {
+        $byKey = [];
+
+        foreach (Shape::records($this->document('meta')['categories'] ?? null) as $category) {
+            $key = Shape::text($category['key'] ?? null);
+
+            if ($key !== null) {
+                $byKey[$key] = $category;
+            }
+        }
+
+        return $byKey;
+    }
+
+    /**
+     * The jurisdiction codes a country could be addressed by, best first.
+     *
+     * A country is not one code. Regimes are membership over TIME, so the United
+     * Kingdom is `eu:GB` while it was a member and `europe:GB` after — and the
+     * register is explicit that its RATES sit at `europe:GB` for every date,
+     * including 1994. Following membership alone for a 2019 British invoice finds
+     * four exemptions and no standard rate at all.
+     *
+     * So this returns candidates rather than an answer: the regime whose membership
+     * covers the date first, then every other regime that ever claimed the country.
+     * The caller takes the first that actually carries a rate, which is the only
+     * test that cannot be wrong about this.
+     *
+     * @return list<string>
+     */
+    public function codesForCountry(string $iso, ?DateTimeImmutable $at = null): array
+    {
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $current = [];
+        $other = [];
+
+        foreach (Shape::records($this->document('meta')['regimes'] ?? null) as $regime) {
+            foreach (Shape::records($regime['members'] ?? null) as $member) {
+                $code = Shape::text($member['code'] ?? null);
+
+                if ($code === null || ! str_ends_with($code, ':'.$iso)) {
+                    continue;
+                }
+
+                $from = $member['from'] ?? null;
+                $until = $member['until'] ?? null;
+                $covers = (! is_string($from) || $from <= $on) && (! is_string($until) || $until >= $on);
+
+                if ($covers) {
+                    $current[] = $code;
+
+                    continue;
+                }
+
+                $other[] = $code;
+            }
+        }
+
+        return array_values(array_unique([...$current, ...$other]));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function manifest(): array
+    {
+        return $this->document('manifest');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function coverage(): array
+    {
+        return $this->document('coverage');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function document(string $name): array
+    {
+        if (isset($this->documents[$name])) {
+            return $this->documents[$name];
+        }
+
+        $raw = @file_get_contents($this->layout->file($this->requireVersion(), $name.'.json'));
+        $decoded = $raw === false ? null : json_decode($raw, true);
+
+        /** @var array<string, mixed> $document */
+        $document = is_array($decoded) ? $decoded : [];
+
+        return $this->documents[$name] = $document;
+    }
+}
