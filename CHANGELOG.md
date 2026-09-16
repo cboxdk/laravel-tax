@@ -92,6 +92,23 @@ pricing a Danish invoice touches 12 KB.
   the size of the whole document and turned a clear "no such section" into an
   out-of-memory fatal on the 48.8 MB US region. Peak while seeking dropped from
   11.5 MB to 4 MB as a side effect.
+- **A US state was the answer for twenty-five countries.** Gabon priced at
+  Georgia's rate, Israel at Illinois', Canada at California's, each stamped
+  `Authoritative`. Country candidates were matched on a code's trailing ISO alone
+  and the register lists all fifty-four states as members of the `us` regime; which
+  one won came down to the order regimes happened to appear in, so the EU escaped
+  and every regime after `us` did not. Candidates are now filtered on the
+  register's own `level`, and a `state` is never the answer to what a country
+  charges.
+- **Eight jurisdictions had no rate at all.** A transaction privilege tax, a general
+  excise tax and a gross receipts tax are all legally the seller's and all are
+  passed on — it is why a Honolulu receipt shows 4.712%. Reading `borneBy` without
+  `mayBePassedOn` discarded them, leaving Arizona, Hawaii, New Mexico, Guam, the US
+  Virgin Islands, Malaysia, Aruba and Curaçao unpriceable. A levy the seller may
+  NOT pass on — a digital services tax — is still excluded.
+- **A category-scoped row could stand in for the headline band.** Arizona files a
+  per-unit standard rate on telecommunications ahead of its 5.6% band; the band is
+  the row carrying no category, and that is now what the lookup requires.
 - **A price-capped exemption is not a rate of zero.** A $200 Massachusetts coat
   billed $0.00. The register files a capped exemption twice — a `goods.clothing` row
   at 0% exempt, and a `price_exemption` rule capping it at $175 with the excess
@@ -111,6 +128,16 @@ pricing a Danish invoice touches 12 KB.
 - **A string VALUE equal to a section name no longer derails the scan.** Confirming a
   key also consumed the comma before it, so `{"description":"rates", …}` ate the next
   key's opening quote and the reader declared the real `rates` section missing.
+
+### Added
+
+- **Bracket schedules price at their own per-dollar rate.** Alabama, Idaho,
+  Maryland and Pennsylvania publish a table in cents rather than a percentage, and
+  the engine refused outright — pricing nothing in four states. The figure comes
+  from the schedule's own `above.perWholeUnit` ($0.06 per dollar is six per cent),
+  returned `Derived` and flagged `RateLimit::BracketSchedule`, which says plainly
+  that it is exact for a price and up to a cent out against the published table. A
+  per-unit amount with no per-dollar equivalent still refuses.
 
 ### Behaviour worth knowing before you upgrade
 
