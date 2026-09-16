@@ -7,7 +7,9 @@ description: Install the engine, understand what it binds, and test against it.
 # Getting started
 
 The package auto-registers `TaxServiceProvider`, which binds the calculator, the
-shipped regime registry and a default rate source. Nothing to migrate.
+shipped regime registry and the register-backed sources. Nothing to migrate — but the
+register has to be synced before the engine will price anything.
 
-- [Installation](installation.md)
-- [Testing](testing.md)
+- [Installation](installation.md) — composer require, then `tax:data:sync`.
+- [The register](the-register.md) — where the data comes from, the commands, the licence.
+- [Testing](testing.md) — build a register in three lines with `FakeRegister`.

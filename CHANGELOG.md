@@ -5,6 +5,77 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [Unreleased]
+
+### Changed — the register is the only data source
+
+`laravel-tax` now reads one published register, **[data.cboxtax.com](https://data.cboxtax.com)**,
+covering 80 jurisdictions across eleven regimes where the retired datasets reached
+two. It is **not fetched while pricing**: `php artisan tax:data:sync` compiles a
+release into a local store, and the engine reads that store without a network call.
+
+**Add `tax:data:sync` to your deploy.** Until it has run the engine refuses rather
+than guessing, and the refusal names the command. No rate data ships inside the
+package — it is MIT and the register is PolyForm Internal Use, and bundling one
+inside the other would mislabel it.
+
+Two things made the local store non-negotiable. The register publishes several times
+a day, so a rate fetched per request can move under a half-priced order; and the US
+region is 48.8 MB of JSON that `json_decode` turns into 315 MB of PHP arrays, which
+blows the *default* memory limit. Records are sharded and offset-indexed instead, so
+pricing a Danish invoice touches 12 KB.
+
+### Removed
+
+- `UsTaxDataset`, `EuTaxDataset` and their rate, taxability, nexus and sourcing
+  adapters; `TedbSoapRateSource`, `ArcGisRateSource`, `RemoteRateSource`,
+  `StaticTaxRateSource`, `StaticProductTaxability`, `StaticNexusThresholds`.
+- Config `tax.us_tax_data`, `tax.eu_tax_data` and `tax.tedb`, replaced by
+  `tax.register`.
+- `resources/rates.json`, the hand-maintained overlay of ~50 national rates, with its
+  watcher and monthly workflow. The register watches those pages now, per source,
+  with quotation verdicts.
+
+### Added
+
+- `tax:data:sync`, `tax:data:status`, `tax:data:activate`, `tax:data:verify` and
+  `tax:data:prune`. `activate` is the rollback and costs one `rename`; `status`
+  answers offline on purpose.
+- `Testing\FakeRegister` — build a register in three lines, for hosts testing their
+  own tax logic without a network call.
+- `Contracts\UsTaxFacts`, so the US regime depends on the four facts it asks for
+  rather than on a concrete dataset class.
+- `Enums\LocalityScheme` and `Territories\UsLocalStructure`, so the geocoder no
+  longer imports a rate source to name a scheme it emits.
+- `RateLimit::ClassificationInferred`, raised when a rate was found by shortening a
+  commodity code. The register has 95 live cases where a chapter and a subheading
+  beneath it carry different rates.
+
+### Fixed
+
+- **Containment, not a null end date.** 4 863 live rates end `2078-12-31` — the
+  Streamlined matrix's way of writing "no end" — and reading `until === null` as
+  "current" dropped every one of them, Oklahoma's own state rate among them.
+- **Only what the customer bears.** A digital services tax is a levy on the
+  supplier's turnover; summed into a cart it overcharged the customer and
+  under-declared the liability in one step.
+- **The commodity scheme is part of the key.** `32` is a CPA division and a CN
+  chapter, and a code now refines the category that was asked about rather than
+  answering from another one.
+
+### Behaviour worth knowing before you upgrade
+
+- **An undetermined (state, category) pair now resolves to taxable.** The retired
+  dataset carried an explicit marker where its sources disagreed and the engine
+  refused on it; the register's taxability lives in sworn Streamlined answers keyed
+  by classification, with no per-category verdict for that marker to be. Taxable is
+  the over-charge direction and therefore recoverable, but it is a real difference.
+  A jurisdiction the register does not carry still refuses.
+- **New Mexico resolves at the state rate** until the register ships its geometry.
+  California's is live.
+- **A bare US state rate is `Derived` and flagged** `NoLocalResolution`, unless the
+  state has no local authority to miss.
+
 ## [0.14.1] - 2026-08-20
 
 ### Documentation

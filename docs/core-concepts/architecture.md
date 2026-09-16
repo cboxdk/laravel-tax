@@ -30,7 +30,7 @@ already-exempt — untouched. See [exemptions](exemptions.md).
 - **Logic (owned):** place-of-supply, B2B/B2C reverse-charge determination,
   inclusive/exclusive handling, rate application and rounding, and the assessment
   itself all live in the engine.
-- **Data (sourced):** the rate number comes from a `TaxRateSource` — an EU TEDB
+- **Data (sourced):** the rate number comes from a `TaxRateSource` — the register, or
   feed, the SST files, or a commercial adapter. The engine decides *whether and
   how* to apply it.
 

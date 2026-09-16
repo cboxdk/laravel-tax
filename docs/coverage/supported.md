@@ -7,23 +7,17 @@ description: Regime, standard rate, authoritative source and confidence for each
 # Supported jurisdictions
 
 Each row is modelled by a regime and resolves a rate. **Confidence** reflects how
-well the *rate/rules* are grounded in primary sources. US rates come from the
-[us-tax-data dataset](us-tax-dataset.md) by default; elsewhere the shipped default
-rates are illustrative starting points unless a live source is bound.
+well the *rate/rules* are grounded in primary sources. Every rate comes from
+[the register](the-register.md), which reads the authorities directly — there is no
+shipped snapshot behind it and nothing illustrative to fall back to.
 
 ## EU — VAT (`eu-vat`)
 
 All 27 member states. Destination VAT for B2C digital (Art. 58); intra-EU B2B to a
-VIES-validated customer reverse-charges (Art. 44). Rate sources: the EU
-Commission's **TEDB**, called live via
-[`TedbSoapRateSource`](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)
-(`tax.tedb.live`, no API key — TEDB publishes no downloadable export, so the SOAP
-service is how you consume it), or a **real, public, MIT-licensed EU VAT dataset**
-via the [`EuTaxDatasetRateSource`](eu-tax-dataset.md) adapter, reading the compiled `cboxdk/eu-tax-dataset`.
-Either composes `ChainTaxRateSource(feed → static snapshot)`. Confidence: **high**
-— the regime and threshold are grounded in EU primary law, and with the live TEDB
-source bound the rates come from the Commission's own database rather than a
-community compilation. Reduced bands are the caveat: TEDB resolves them for some
+VIES-validated customer reverse-charges (Art. 44). Rates come from the register, which reads the Commission's **TEDB** among its
+sources and records which publisher stated each figure. Confidence: **high** — the
+regime and threshold are grounded in EU primary law, and the rates carry the
+publisher's own provenance rather than a community compilation. Reduced bands are the caveat: TEDB resolves them for some
 member states and splits them across sub-scopes for others, where the standard rate
 applies instead. Re-verify against member-state guidance before filing.
 
@@ -38,7 +32,7 @@ rule. B2B reverse-charge is unaffected.
 
 | Countries | Regime | Rate source |
 | --- | --- | --- |
-| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | live EU TEDB (`TedbSoapRateSource`, optional) → static fallback |
+| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | the register (TEDB among its sources, with per-fact provenance) |
 
 ### Reduced / zero rates
 
@@ -46,8 +40,8 @@ The rate-source contract resolves rates by **taxability category**, so a supply
 that legally carries a reduced or zero band (e-books, food, etc.) resolves one
 **when the bound source supplies it**. The shipped static snapshot carries **no
 reduced-rate table** — the package will not fabricate national reduced bands.
-Enable the live TEDB source (`tax.tedb.live`) to resolve them from the Commission's
-own database, or supply bands to `StaticTaxRateSource` yourself. TEDB bands are
+Enable the live TEDB source (`tax.register`) to resolve them from the Commission's
+own database, or bind your own source. TEDB bands are
 deliberately conservative: where a member state carries a category at several rates
 at once, the band is refused and the standard rate applies rather than guessing
 which sub-scope a supply falls in (see
@@ -138,12 +132,12 @@ Confidence: **high**.
 ## United States — sales tax (`us-sales-tax`) — dataset-backed, state-level precision
 
 > **Rates, taxability, nexus and sourcing are supplied by the
-> [us-tax-data dataset](us-tax-dataset.md), enabled by default** across all 51
+> [the register](the-register.md)** across all 51
 > jurisdictions — it replaces the hardcoded US entries the static tables used to
 > ship. The remaining limitation is **precision, not coverage**: jurisdictions
 > resolve to the **state**, so a rate is the state share unless a rooftop locality
 > is resolved. Four states (FL, PA, HI, VA) resolve from the county with no opt-in;
-> the rest need `us_tax_data.rooftop`. Taxability and nexus data remain a
+> the rest need `tax:data:sync --streets`. Taxability and nexus data remain a
 > decision aid to verify with a tax advisor.
 
 Sub-federal. Three gates before a rate applies: the **state** must be resolved
@@ -156,7 +150,7 @@ versus what you must supply:
 | Sourcing / nexus / taxability **logic** | ✅ the regime | — |
 | Per-state **taxability** (25 categories, incl. SaaS) | ✅ from the dataset; the curated, cited `digital_service` map for 44 jurisdictions is the fallback when the dataset is disabled — [details](us-saas-taxability.md) | verify with a tax advisor; a pair neither source determines throws `UnresolvedProductTaxability` until you configure it |
 | **State rates** | ✅ dataset baseline for all 51 jurisdictions, at `Confidence::Derived` — honestly the state share | — |
-| **Local rates** | ✅ address-exact for **30 states**. Twenty-six need `us_tax_data.rooftop` enabled: 24 Streamlined states by ZIP+4 through the published boundary index, California and New Mexico by point against their own polygon services. Florida, Pennsylvania, Hawaii and Virginia need **no opt-in and no boundary file** — the county is the only authority that can tax there and a geocoder returns it for free, so they resolve at `Confidence::Authoritative` — [details](us-tax-dataset.md#rooftop-zip4-into-the-boundary-index) | a geocoder (the shipped Geocodio adapter). **12 states** have local tax and no path below the state line — AL, AZ, CO, ID, IL, LA, MO, MS, NY, SC, TX resolve to the state share at `Confidence::Derived`, and AK refuses outright. Texas' address file sits behind an audited portal that forbids redistribution; see [the full list and what it costs](us-tax-dataset.md#the-12-states-with-local-tax-and-no-rooftop-path) |
+| **Local rates** | ✅ address-exact for **30 states**. Twenty-six need `tax:data:sync --streets` enabled: 24 Streamlined states by ZIP+4 through the published boundary index, California and New Mexico by point against their own polygon services. Florida, Pennsylvania, Hawaii and Virginia need **no opt-in and no boundary file** — the county is the only authority that can tax there and a geocoder returns it for free, so they resolve at `Confidence::Authoritative` — [details](the-register.md) | a geocoder (the shipped Geocodio adapter). **12 states** have local tax and no path below the state line — AL, AZ, CO, ID, IL, LA, MO, MS, NY, SC, TX resolve to the state share at `Confidence::Derived`, and AK refuses outright. Texas' address file sits behind an audited portal that forbids redistribution; see [the full list and what it costs](the-register.md) |
 | **Economic-nexus thresholds** | ✅ from the dataset (cited static table as fallback); flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the thresholds advise, they do not auto-register or evaluate per invoice |
 
 So a US assessment is **state-precision** unless rooftop resolution is enabled — a
@@ -168,7 +162,7 @@ department directly). The **51 state-level rates do not** — they come from a s
 Tax Foundation compilation. That is the number you get in the 12 states with no
 rooftop path, so treat it as a good, refreshable default rather than an
 authority's own figure, and re-verify before filing. See
-[the dataset's provenance table](us-tax-dataset.md#where-the-numbers-come-from-honestly).
+[the dataset's provenance table](the-register.md).
 
 Confidence: **high on logic; local rates primary-sourced; state rates, taxability
 and nexus from cited secondary compilations (advisor-verify); rooftop precision

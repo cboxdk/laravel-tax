@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:1a5c68f1-5418-4ed0-8650-9dda2d485fb4",
+    "serialNumber": "urn:uuid:377c64d1-c34b-43ee-9306-35903f2d6f30",
     "version": 1,
     "metadata": {
         "tools": [
@@ -75,6 +75,22 @@
             "version": "v0.6.1",
             "purl": "pkg:composer/cboxdk/laravel-geo@v0.6.1",
             "description": "Cbox Geo \u2014 a canonical ISO 3166 country/subdivision and ISO 4217 currency reference for Laravel: data-driven jurisdiction lookups and structured addresses bound to stable codes, carrying the tax-relevant attributes downstream billing and tax engines need.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/tax-resolver@v0.2.0",
+            "group": "cboxdk",
+            "name": "tax-resolver",
+            "version": "v0.2.0",
+            "purl": "pkg:composer/cboxdk/tax-resolver@v0.2.0",
+            "description": "Pure address\u2192jurisdiction resolver over the Cbox Tax boundary dataset. No framework, no I/O, no geocoder \u2014 the shared brain the register verifies with and the tax engines resolve with.",
             "licenses": [
                 {
                     "license": {

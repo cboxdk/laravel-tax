@@ -7,7 +7,7 @@ description: The curated per-state SaaS taxability map the engine ships, with a 
 # US SaaS taxability
 
 > **Now dataset-backed.** SaaS (`digital_service`) taxability — and 24 other product
-> categories — comes from the [us-tax-data dataset](us-tax-dataset.md) by default,
+> categories — comes from the [the register](the-register.md) by default,
 > across all states. The curated `StaticProductTaxability` map described below is the
 > fallback used when the dataset is disabled (or for US pairs it leaves undetermined).
 
@@ -29,7 +29,7 @@ boolean cannot represent, are **deliberately absent** and throw
 > rate source returns the **state** rate at `Confidence::Derived`; local
 > city/county/special-district components are stacked only when a rooftop locality
 > is resolved (experimental, off by default). With the dataset disabled, the
-> `StaticTaxRateSource` instead refuses `US:*:digital_service` unless a
+> The engine instead refuses `US:*:digital_service` unless a
 > category-specific rate band is bound.
 
 ## Sources, and what they are not

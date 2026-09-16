@@ -34,10 +34,11 @@ $assessment->tax;         // Money 0.00 EUR
 $assessment->reason;      // human-readable explanation for the audit trail
 ```
 
-The engine decides *whether and how* to tax; the **`TaxRateSource`** contract
-supplies the rate number — the EU Commission's TEDB called live (no API key), the
-compiled US dataset, or a commercial adapter. A missing rate is **refused, never
-assumed 0%**.
+The engine decides *whether and how* to tax; the rate number comes from
+**[the register](https://data.cboxtax.com)** — 80 jurisdictions across eleven regimes,
+compiled to local disk by `php artisan tax:data:sync` and read without a network call.
+A missing rate is **refused, never assumed 0%**, and that includes the first run: until
+the register is synced the engine refuses and says so.
 
 ## Multi-entity / seller-of-record routing
 
@@ -56,11 +57,11 @@ calculation the billing engine supplies per invoice.
 
 | | Regime | Status |
 | --- | --- | --- |
-| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply (general B2C services source at the supplier; goods and electronic services at the customer), intra-EU B2B reverse charge, Art. 59c €10k micro-business relief scoped to the supplies it covers; rates live from the Commission's TEDB | ✅ |
+| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply (general B2C services source at the supplier; goods and electronic services at the customer), intra-EU B2B reverse charge, Art. 59c €10k micro-business relief scoped to the supplies it covers; rates from the register, which reads the Commission's TEDB among its sources | ✅ |
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from the **us-tax-data dataset** (all 51 jurisdictions, on by default) | ✅ address-exact for 30 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 29 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
 See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
@@ -72,23 +73,23 @@ rate we cannot stand behind.
 The **US** regime gates on three things before applying a rate — the state must be
 resolved (via the `AddressGeocoder`), the seller must have **nexus** in it, and the
 product must be **taxable** there — otherwise it returns `NotRegistered` or
-`Exempt`, never a wrong charge. A category the dataset leaves undetermined, or one
+`Exempt`, never a wrong charge. A category whose rule is conditional, or one
 whose rule is conditional on the line amount (the MA/NY/RI clothing thresholds),
 **refuses** rather than defaulting to taxable — over-collecting from a consumer is
 a failure too. State rates, per-state taxability (25 categories) and economic-nexus
-thresholds are supplied by the **us-tax-data dataset**, enabled by default.
+thresholds come from **the register**.
 **Intrastate sourcing is applied**, not just supplied: nine states tax an in-state
 sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
 a Texas in-state sale is charged the seller's rate. Interstate stays
 destination-sourced everywhere, and a supply with no route behaves exactly as
-before. **Address-exact** rates are live for **30 states**. Twenty-six need
-`us_tax_data.rooftop` enabled: the 24 Streamlined states resolve by ZIP+4 through the
-published boundary index — Kansas City comes out as 6.5% state + 1.0% county + 1.625%
-city — while California and New Mexico resolve by point against their own polygon
-services. Florida, Pennsylvania, Hawaii and Virginia need no opt-in and no boundary file at
-all, because the county is the only authority that can tax there and a geocoder
-returns it for free. The rest fall back to the state rate
-([details](docs/coverage/us-tax-dataset.md#rooftop-zip4-into-the-boundary-index)).
+before. **Address-exact** rates are live for 29 states. The 24 Streamlined states resolve by
+ZIP+4 through the published boundary index — Kansas City comes out as 6.5% state + 1.0%
+county + 1.625% city — fifteen of them go finer still with a street index
+(`tax:data:sync --streets=KS`), and California resolves by point against its own
+polygon layer. Florida, Pennsylvania, Hawaii and Virginia need no boundary file at all,
+because the county is the only authority that can tax there and a geocoder returns it
+for free. The rest fall back to the state share, flagged
+([details](docs/coverage/the-register.md)).
 **Remote-seller elections close two of those states on request.** Alabama's SSUT
 (flat 8%) and Texas' Single Local Use Tax Rate (6.25% + 1.75% for 2026) are
 statutory schemes a remote seller elects into; give the state registration the
@@ -103,10 +104,9 @@ zero and they mean opposite things on a return, and most states still expect the
 sale reported in gross receipts and then deducted. The rule is checked **on the
 supply's date**, so a backdated Missouri sale from 2022 is still the seller's.
 
-**Canada** resolves at province level (no local tax). Rate data plugs in via
-`TaxRateSource`: set `TAX_TEDB_LIVE=true` to resolve EU rates from the
-Commission's own TEDB service (no key, no registration, cached per country), or
-bind a commercial adapter — see [`docs/coverage`](docs/coverage/_index.md).
+**Canada** resolves at province level (no local tax). Every regime reads the same
+register; to put your own source in front of it, bind `TaxRateSource` — see
+[`docs/coverage`](docs/coverage/_index.md).
 
 **EU** place of supply follows the Directive rather than a single rule: goods
 (Art. 33(a)) and electronically-supplied services (Art. 58) are taxed at the

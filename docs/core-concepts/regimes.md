@@ -49,10 +49,10 @@ destination tax is charged.
   `NotRegistered` or `Exempt` — never a wrong charge; a jurisdiction with no resolved
   state raises `JurisdictionNotResolved`. Rates, per-state taxability, nexus
   thresholds and intrastate sourcing come from the
-  [us-tax-data dataset](../coverage/us-tax-dataset.md), bound by default. Rooftop
-  (city/district) precision is **partial and opt-in** — Geocodio resolves
-  state-level only — so absent a resolved locality the state rate applies; see
-  [coverage](../coverage/supported.md).
+  [register](../coverage/the-register.md). Address-level precision depends on what
+  the register publishes for the state — a street index, a ZIP+4 boundary file, a
+  polygon layer or a county name — and absent a resolved locality the state share
+  applies, flagged; see [coverage](../coverage/the-register.md).
 - **`CaGstRegime`** (`ca-gst`) — Canada has no local sales tax, so a province
   (subdivision) fully determines the combined GST/HST(/PST/QST) rate. A cross-border
   non-resident B2B supply to a registered customer is self-assessed (reverse charge).

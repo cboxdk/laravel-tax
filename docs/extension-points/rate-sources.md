@@ -1,323 +1,100 @@
 ---
 title: Rate sources
 weight: 1
-description: Bind a live TaxRateSource — TEDB, SST or a commercial adapter.
+description: How the engine gets a rate, what it refuses to guess, and how to put your own source in front.
 ---
 
 # Rate sources
 
-The engine owns the calculation; the **rate number** is the one thing it sources.
-Bind your own `Contracts\TaxRateSource` to replace the default static rates:
+The engine owns the calculation and sources only the rate **data**, behind one
+contract:
 
 ```php
-use Cbox\Tax\Contracts\TaxRateSource;
-
-$this->app->singleton(TaxRateSource::class, fn () => new EuTaxDatasetRateSource(/* ... */));
+interface TaxRateSource
+{
+    public function rateFor(Jurisdiction $jurisdiction, TaxClass $category, ?DateTimeImmutable $at = null): ?TaxRate;
+}
 ```
 
-A source returns a `TaxRate` (percentage, band, provenance, confidence) for a
-jurisdiction and category, or `null` when it has no rate — in which case the
-engine raises `UnresolvedTaxRate` rather than assuming 0%.
+Out of the box it is bound to `RegisterRateSource`, which reads the compiled register
+off local disk — see [The register](../getting-started/the-register.md) for how that
+gets there. It is the only rate source this package ships.
 
 ## Having no rate, and being unable to answer
 
-These are different facts and a source must not report them the same way.
+These are different, and the difference decides what a caller does next.
 
-- **`null`** — "I have no rate for this jurisdiction." A normal answer from a
-  source with limited scope. A composed `ChainTaxRateSource` moves on to the next.
-- **`throw RateSourceUnavailable`** — "my endpoint was unreachable, refused, or
-  returned something I cannot read." Not an answer at all.
+- **`null`** — "I have no rate for this jurisdiction." A normal answer from a source
+  with limited scope. A chain moves on to the next source.
+- **`RateSourceUnavailable`** — "my endpoint timed out." Not an answer at all. Returned
+  as `null` it was indistinguishable from a source that simply does not cover the
+  jurisdiction, and the chain moved on and billed from whatever was behind it.
+- **`DatasetNotInstalled`** — nothing has been synced, so there is no data to read. The
+  message names the command.
 
-The distinction is what stops a timed-out feed from quietly billing off the static
-snapshot. When a source fails, the chain still tries the rest — the snapshot is
-real, reviewed data and falling back to it is usually right — but the rate that
-comes back is marked `Confidence::LowConfidence` with the failure recorded in its
-`source`, so a caller can decide whether to bill on it. If *nothing* answers and
-something was broken, the chain rethrows rather than returning `null`: "we could
-not find out" must not reach the caller as "there is no rate here".
+A jurisdiction in a regime the store was **not compiled with** refuses rather than
+returning null. A store built `--region=eu` knows nothing about Japan, and answering
+"no tax in Japan" from an absence would be a fabrication — that refusal is what makes
+per-region and per-state opt-in safe to offer at all.
 
-Throw it only for operational failure. A jurisdiction you do not cover is `null`.
-A single unusable value inside an otherwise good payload is also `null` — that is
-bad data, not a broken source, and something else may be able to answer.
+## What a rate carries
 
-Recommended defaults per region:
+`TaxRate` is a percentage plus everything needed to defend it:
 
-| Region | Source |
-| --- | --- |
-| EU | the EU Commission's TEDB, called live (shipped adapter, no API key), or the MIT-licensed `ibericode/vat-rates` dataset |
-| US (SST states) | the SST Rate & Boundary files |
-| US (non-SST / home-rule), Canada provinces | a commercial adapter |
+- **`kind`** — standard, reduced or zero.
+- **`confidence`** — `Authoritative` when the answer is exact, `Derived` when it is the
+  best available.
+- **`limitedBy`** — a `RateLimit` saying *why* it is not exact and what would close the
+  gap. Null when nothing is missing, which is the common case and stays cheap.
+- **`components`** — the authorities the rate is made of, where the source can
+  decompose it. An **empty** list means "this source cannot decompose this rate", not
+  "one authority takes it all".
+- **`provenance`** — the release, the window the answer stood on, and the source's own
+  snapshot hash. The window matters more than the version: a version alone puts every
+  invoice in the blast radius of every republish, while the window's start is what a
+  correction actually names.
 
-Rates are **data that changes** — treat them as versioned/refreshable, never
-hard-coded. Record the `source` and `confidence` on each assessment so a coarse
-fallback is never mistaken for an authoritative rate.
+## Commodity codes
 
-## Emitting the authorities behind a stacked rate
-
-If your source builds a rate by stacking several authorities — a US state share
-plus county/city/special-district records — pass them as `RateComponent`s and the
-engine will split the assessed tax across them ([rate
-breakdown](../core-concepts/rate-breakdown.md)):
+`CommodityRateSource` extends the contract with a code:
 
 ```php
-return new TaxRate('9.125', RateKind::Standard, 'my-source', components: [
-    new RateComponent(JurisdictionLevel::State, '6.5'),
-    new RateComponent(JurisdictionLevel::County, '1', code: '209'),
-    new RateComponent(JurisdictionLevel::City, '1.625', code: '36000'),
-]);
+$source->rateForCommodity($place, TaxClass::Groceries, 'cn:0401 10');
 ```
 
-Only the source that summed the rate knows how it decomposes; the split cannot be
-recovered from the total downstream. Two rules apply:
+Three rules, and each one was a real defect before it was a rule:
 
-- **They must sum to the rate.** A `TaxRate` whose components do not reconcile
-  throws `RateComponentsDoNotReconcile` at construction — a not-quite-right split
-  looks authoritative and gets remitted on.
-- **Emit none rather than approximate ones.** An empty list means "not
-  decomposable", which callers handle; it is not read as one authority taking
-  everything.
+- **The scheme is part of the key.** `32` is a CPA division and a CN chapter, and they
+  are about different things. A bare code is read as CN.
+- **A code refines the question, never moves it.** The search stays inside the category
+  that was asked about, so a customs code scoped to foodstuffs cannot answer a question
+  about hotel accommodation.
+- **The longest match wins, and a shortened one is an inference.** It comes back
+  `Derived` with `RateLimit::ClassificationInferred`, because the register has 95 live
+  cases where a chapter and a subheading beneath it disagree.
 
-## Category-aware rates (reduced / zero bands)
+The answer names the code that decided it: `source` reads `cbox-tax:cn:040110`.
 
-`rateFor()` receives the supply's **`TaxCategory`**, and the shipped sources honour
-it: a source may carry per-(jurisdiction, category) **reduced or zero bands** and
-return one instead of the standard rate. Pass bands to `StaticTaxRateSource` keyed
-by `"<jurisdiction>:<category>"`:
+## Local authorities
 
-```php
-use Cbox\Tax\Enums\RateKind;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\ValueObjects\RateBand;
+For an address below the state line, the rate source consults
+`LocalAuthorityResolver` — see [Local authorities](local-authorities.md). It is bound
+to the register's own boundary resolver, and **every authority that applies is summed
+or none of them**: a rate short by one authority's share is an under-charge stamped
+authoritative, which is the one outcome this package works hardest to prevent.
 
-new StaticTaxRateSource(rates: null, bands: [
-    'FR:digital_service' => new RateBand('5.5', RateKind::Reduced),
-    'DK:digital_service' => new RateBand('0', RateKind::Zero),
-]);
-```
+## Putting your own source in front
 
-> **No national reduced-rate table ships.** The default snapshot carries **only
-> standard rates** — the package will not fabricate reduced bands, which are DATA
-> that must come from an authoritative feed. Enable the [live TEDB
-> source](#the-eu-tedb-service-tedbsoapratesource) for EU bands, supply your own,
-> or bind a TEDB export whose entries carry a `bands` map. A category with no band
-> resolves the standard rate.
-
-## The EU TEDB service (`TedbSoapRateSource`)
-
-The Commission's **Taxes in Europe Database** is the authoritative EU rate source,
-and this adapter calls it directly. **There is nothing to download** — TEDB
-publishes no CSV/JSON export, and its `VatRetrievalService` SOAP endpoint plus the
-web UI are the only ways to get the data. The service needs **no API key and no
-registration**:
+Rebind the contract. `ChainTaxRateSource` tries sources in order and takes the first
+that answers:
 
 ```php
-// config/tax.php  (or .env: TAX_TEDB_LIVE=true)
-'tedb' => [
-    'live' => env('TAX_TEDB_LIVE', false),
-    'ttl'  => (int) env('TAX_TEDB_TTL', 86400),
-],
-```
-
-Enabled, the engine composes `ChainTaxRateSource(TEDB → static snapshot)` and
-caches each member state's parsed rate table for `ttl` seconds — one request per
-country per TTL, not one per assessment.
-
-### What it resolves, and what it refuses
-
-- **Standard rates** for all 27 member states, from the single `DEFAULT` entry.
-- **Reduced and zero bands** for `grocery`, `prepared_food`, `books`, `newspapers`,
-  `magazines`, `medical_devices` and `prescription_drugs` — but **only where TEDB
-  resolves that category to one rate for that country**.
-
-That last condition carries the weight. TEDB routinely carries a category at
-several rates at once because the sub-scopes differ: French pharmaceuticals sit at
-2.1%, 5.5% **and** 10%, and Irish books are zero-rated in print while their
-electronic form is 9%. Nothing in the response says which applies to a given
-supply, so the band is dropped and the **standard rate** applies. Over-charging is
-recoverable; silently applying the wrong reduced rate is not.
-
-Where a state splits a category itself, its own split wins: Poland rates newspapers
-separately at 8%, so that survives, while Sweden files newspapers under the broader
-"books, newspapers and periodicals" heading and resolves from there.
-
-### Determinations for the splits TEDB resolves in prose
-
-Some splits are only apparent. Ireland's 9% "foodstuffs" rate is *restaurant,
-canteen and takeaway food*; its 13.5% "medical equipment" rate is *repairs* to
-equipment. The competing rate belongs to a different product class, and TEDB's own
-scope note says so — so the band is determined, with that note as the basis:
-
-| Country | Category | Rate | Because TEDB's note says |
-| --- | --- | --- | --- |
-| IE | `grocery` | 0% | the competing 9% is "Restaurant food, food served in canteens, and take away food" |
-| IE | `books` | 0% | "The Zero Rate applies to newspapers, printed books, e-books, audiobooks"; 9% is brochures and catalogues |
-| IE | `newspapers` | 0% | the zero rate names newspapers explicitly |
-| IE | `magazines` | 9% | "9% applies to periodicals (in printed form or electronically supplied)" — unlike books and newspapers |
-| IE | `medical_devices` | 0% | the competing 13.5% is "Repairs to medical equipment" — a service |
-| IE | `prescription_drugs` | 0% | 0% is "Human Oral Medicine…"; 13.5% is non-oral contraceptives |
-| FR | `prescription_drugs` | 2.1% | "For reimbursed pharmaceutical products"; 10% is non-reimbursed, 5.5% sanitary protection |
-| HR | `prescription_drugs` | 5% | "medicines which have the approval of the competent authority"; 13% is menstrual products |
-| BE | `prescription_drugs` | 6% | "medicinal products registered as medicines"; the 0% is human organs and blood |
-| EL | `prescription_drugs` | 6% | "medicaments … of tariff heading 3003 and 3004 and vaccines"; the 0% is Covid-19 vaccines only |
-| BE | `books` `newspapers` `magazines` | 6% | "Newspapers, periodicals and books (digital and on paper)"; the 0% entries are library loans by non-profits |
-
-Two properties keep these honest. A determination is consulted **only when TEDB is
-ambiguous** — a state reporting one rate is never overridden. And it is applied only
-while the rate it names is **still one TEDB returns**: if a member state changes the
-split, the determination stops matching and the band is refused rather than shipped
-stale. It self-invalidates instead of quietly going wrong.
-
-### The splits that stay open
-
-The rest are not curatable at this granularity, because the category genuinely spans
-several rates by product type. Hungary rates meat, fish, milk and eggs at 5% and
-dairy desserts, flavoured milk and cereals at 18% — both are groceries, and no
-single number is right:
-
-`grocery` in **AT BE EL HU IT PL PT SK** · `prepared_food` in **SK** ·
-`medical_devices` in **CY EL IT** · `prescription_drugs` in **IT MT PL** ·
-`newspapers` in **HR** · `books` and `magazines` in **PL**
-
-These resolve to the standard rate from the category alone — and this is what a
-**commodity code** closes.
-
-### Commodity codes: CN and CPA
-
-TEDB scopes its own rates by **CN codes** (goods) and **CPA codes** (services) —
-92% of its reduced and exempt entries carry them, most at full 8-digit depth. So
-the finer product model is not something to invent: it is the classification the
-authority already speaks, published free and machine-readable by the Commission.
-
-Pass one on the query and the split resolves:
-
-```php
-new TaxQuery(
-    amount: Money::of('100.00', 'EUR'),
-    pricing: Pricing::Exclusive,
-    place: $geo->find(new CountryCode('PL')),
-    customer: CustomerType::Consumer,
-    seller: new SellerRegistrations(new CountryCode('PL')),
-    category: TaxCategory::Grocery,
-    commodityCode: '0201',        // beef, fresh or chilled
-);
-```
-
-| Country | Category | Category alone | With a CN code |
-| --- | --- | --- | --- |
-| PL | `grocery` | 23% (split 5/8) | **5%** for `0201` beef |
-| HU | `grocery` | 27% (split 5/18) | **5%** for `0403` yoghurt |
-| AT | `grocery` | 20% (split 0/4.9/10/13) | **10%** for `0302` fresh fish |
-
-Measured across the nineteen open splits, disjoint CN scopes resolve **seven of
-them outright** — Austrian, Belgian and Hungarian groceries, Italian medical
-devices, Italian and Polish pharmaceuticals, Polish books — and narrow the rest to
-a handful of overlapping codes.
-
-Four rules keep it safe:
-
-- The code **refines, never restricts**. Absent or unrecognised, the category alone
-  decides, exactly as before.
-- A code TEDB itself lists at **several rates** within a category is dropped — it is
-  no more decisive than the category.
-- Spacing is irrelevant: `0504 00 00`, `05040000` and `0504.00.00` are the same code.
-- A code is tried at successively shallower depths (8 → 6 → 4 → 2), since a member
-  state may scope a rate to a whole heading rather than one subheading.
-
-Sources opt in by implementing `Contracts\CommodityRateSource`; a source that cannot
-use codes is called exactly as before, so existing implementations are untouched.
-
-Categories with no confident equivalent — digital services and e-publications above
-all, which several states fold into other headings — are **not mapped at all**
-rather than guessed.
-
-### Two quirks worth knowing
-
-- TEDB spells Greece **`EL`**, not the ISO `GR`, and rejects the *entire* request
-  with `TEDB-ERR-2` if any code is unknown. The adapter translates before calling.
-- A SOAP fault answers HTTP 500. Any fault, timeout or unparseable body yields
-  `null`, so a composed chain falls through instead of guessing.
-
-## US rooftop by polygon (`ArcGisRateSource`)
-
-Two states publish rooftop geography as **polygons** rather than as a boundary
-file, and both services are official and unauthenticated:
-
-| State | Service | A point returns |
-| --- | --- | --- |
-| California | CDTFA's `California_Sales_and_Use_Tax_Rates` | the jurisdiction and its all-in `RATE` |
-| New Mexico | the TRD gross-receipts service — the one the compiled dataset already reads for rates, queried *with* geometry | the location code and its combined `grt_rate` |
-
-It is bound automatically when `us_tax_data.rooftop` is enabled, ahead of the
-dataset source, and returns `null` for every other state so the chain falls through.
-Verified against both services: Los Angeles City Hall resolves **9.75%**, San
-Francisco **8.625%**, Albuquerque **7.625%**, Santa Fe **8.1875%**.
-
-This is **finer** than the ZIP+4 index — a polygon is real geography where a ZIP+4
-is a postal proxy for it — and it is a live query per point rather than a shipped
-file, cached like the TEDB source. Misses are cached too, so an address in the sea
-does not re-query on every assessment.
-
-Three things it does not do. It carries no category-specific rates, because neither
-service publishes any, so a reduced band must come from elsewhere in the chain. It
-stacks nothing: the rate returned is already all-in for the point. And it needs
-coordinates, which is why the geocoder attaches a point rather than a ZIP+4 for
-these two states.
-
-## The EU VAT dataset (`EuTaxDatasetRateSource`)
-
-Reads the compiled `cboxdk/eu-tax-dataset`: 27 member states, dated windows back to
-the start of the Commission's records, and per-band provenance. It replaced two
-earlier adapters — a community-maintained third-party feed, and a hand-built TEDB
-export reader — because it does what both did and carries what neither had: a supply
-date, a published class map, and the source's own ambiguities rather than a guess.
-
-See [EU VAT dataset](../coverage/eu-tax-dataset.md).
-
-## The live TEDB service
-
-`TedbSoapRateSource` calls the Commission's *Taxes in Europe Database*
-(`VatRetrievalService`) directly — no key, no registration, cached per country.
-Enable it with `tax.tedb.live` and the provider adds it to the chain.
-
-Prefer the [compiled EU dataset](../coverage/eu-tax-dataset.md) above it. The live
-service answers only about a date you name and cannot usefully be asked what a rate
-*was* per request, so a backdated supply cannot be priced from it; the dataset
-carries the answer already resolved, with the source's own ambiguities published
-rather than silently collapsed.
-
-## Composing sources
-
-The package ships composable sources so you can assemble a live feed with a safe
-fallback:
-
-- **`StaticTaxRateSource`** — the built-in map (default binding); accepts optional
-  reduced/zero `bands`.
-- **`EuTaxDatasetRateSource`** — reads the compiled `cboxdk/eu-tax-dataset`: dated
-  windows, a published class map, and the source's own ambiguities.
-- **`TedbSoapRateSource`** — calls the Commission's TEDB service live; added to the
-  chain when `tax.tedb.live` is true.
-- **`RemoteRateSource`** — fetches a generic JSON country→rate feed (number,
-  `{standard}`, or `{standard, bands}`); one request per lookup, so wrap it in caching.
-- **`CachingTaxRateSource`** — caches the current rate from an inner source; a
-  date-specific lookup bypasses the cache.
-- **`ChainTaxRateSource`** — tries sources in order, first hit wins.
-
-```php
-use Cbox\Tax\Contracts\TaxRateSource;
-use Cbox\Tax\RateSource\{ChainTaxRateSource, CachingTaxRateSource, TedbSoapRateSource, StaticTaxRateSource};
-
 $this->app->singleton(TaxRateSource::class, fn ($app) => new ChainTaxRateSource([
-    new CachingTaxRateSource(
-        new TedbSoapRateSource(
-            $app->make(\Illuminate\Http\Client\Factory::class),
-            $app->make(\Illuminate\Contracts\Cache\Repository::class),
-        ),
-        $app->make(\Illuminate\Contracts\Cache\Repository::class),
-    ),
-    new StaticTaxRateSource, // fallback
+    new MyCommercialAdapter(...),
+    $app->make(RegisterRateSource::class),
 ]));
 ```
 
-> The adapters implement the documented feed shape; point them at a source you
-> trust (the EU TEDB feed, the SST files transformed to JSON, a commercial adapter)
-> and verify the data before relying on it in production.
+`CachingTaxRateSource` wraps any source that costs a request per lookup. The register
+source needs neither — it reads local files, and there is nothing to expire because the
+store holds one pinned release.

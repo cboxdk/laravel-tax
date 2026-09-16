@@ -9,10 +9,12 @@ description: PHP and Laravel versions and the direct dependencies the engine enf
 From `composer.json`:
 
 - **PHP** `^8.4`
-- **`ext-dom`** — the live [EU TEDB source](extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)
-  parses the Commission's SOAP responses with `DOMDocument`/`DOMXPath`.
-- **`ext-zlib`** — the US boundary indexes are published gzipped (5.4 MB across the
-  24 SST states instead of 20 MB) and inflated on read.
+- **`ext-zlib`** — the register is served gzipped (1.8 MB against 54 MB of JSON) and
+  inflated on read.
+- **[`cboxdk/tax-resolver`](https://github.com/cboxdk/tax-resolver)** `^0.2` — the
+  shared address-to-jurisdiction resolver. The register runs the SAME code over its
+  own artifacts at build time, which is the only thing that keeps two readers of one
+  format from drifting apart.
 - **Laravel** `^13` (`illuminate/contracts`, `illuminate/support`, `illuminate/http`)
 - **[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo)** `^0.6` — the
   canonical jurisdiction reference every assessment binds to.

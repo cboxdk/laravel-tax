@@ -13,20 +13,20 @@ laravel-tax      the engine             Decides whether and how to tax. MIT.
    ↑  ↑
    │  laravel-nexus                     Has this seller crossed a state's threshold?
    │
-   ├─ eu-tax-dataset    (published)     What each EU member state charges.
-   └─ us-tax-dataset    (published)     What each US state and locality charges.
-          ↑                    ↑
-      eu-tax-data          us-tax-data  The ETL that builds and publishes them.
+   └─ data.cboxtax.com  (published)    One register: 80 jurisdictions, 11 regimes.
+          ↑
+      cadastre                          The engine that reads the authorities.
 ```
 
-**The engine owns the logic; the datasets own the numbers.** That line is load-bearing
-in two directions. Legally, `laravel-tax` is MIT and the datasets are **PolyForm
-Internal Use** — you may compute your own tax with them, you may not resell a rate
+**The engine owns the logic; the register owns the numbers.** That line is load-bearing
+in two directions. Legally, `laravel-tax` is MIT and the register is **PolyForm
+Internal Use** — you may compute your own tax with it, you may not resell a rate
 lookup. Practically, it means a rate change is a data release, not a code release.
 
-**The ETL repos are not the datasets.** `eu-tax-data` and `us-tax-data` are private
-pipelines; they compile and push to the public mirrors `cboxdk/eu-tax-dataset` and
-`cboxdk/us-tax-dataset`, which is what a consumer's `location` config points at.
+**The compiler is not the register.** `cadastre` is the private pipeline that reads
+the authorities and publishes; `data.cboxtax.com` is what a consumer syncs from. The
+two compiled datasets it replaced — `eu-tax-dataset` and `us-tax-dataset` — are
+retired, each on a measurement rather than a decision to stop looking.
 
 ## What each repo actually does
 
@@ -35,8 +35,7 @@ pipelines; they compile and push to the public mirrors `cboxdk/eu-tax-dataset` a
 | **laravel-geo** | Countries, subdivisions, localities as typed value objects | Any tax rate or rule |
 | **laravel-tax** | Place of supply, reverse charge, taxability gates, rate application, returns aggregation | The rates themselves |
 | **laravel-nexus** | Measuring a seller's sales against a state's economic-nexus threshold | Deciding the rate once nexus exists |
-| **eu-tax-data** | Querying the Commission's TEDB service, resolving ambiguity, publishing dated windows | Anything US |
-| **us-tax-data** | SST boundary files, per-state revenue departments, ArcGIS polygons, curated overlays | Anything EU |
+| **cadastre** | Reading the authorities directly — statutes, revenue departments, SST boundary files, ArcGIS polygons — and publishing one register with per-fact provenance | Serving determinations; anything that is a tax engine |
 
 ## The five ideas everything else follows from
 
@@ -70,8 +69,7 @@ owner's call** — do not tag, do not cut releases.
 | Repo | Branch | Carries |
 | --- | --- | --- |
 | laravel-tax | `eu-dataset-source` | EU dataset source, county resolution, CN/CPA commodity scopes, marketplace facilitator, sales tax holidays, `ProductCatalogue`, `RateLimit`. Would be **v0.11.0** — breaking: two third-party rate sources removed, `EuTerritories::for()` signature changed |
-| eu-tax-data | `territory-rates` | Territory rates (Madeira, the Azores), `REGION` excluded from the product pipeline, CN/CPA scopes published |
-| us-tax-data | `county-resolution` | County-resolution guard, marketplace-facilitator dates, the sales tax holiday section |
+| cadastre | `the-deck-resolves` | Conformance deck cut from the artifacts a release actually ships, read back through the shared resolver |
 | laravel-nexus | `main` | — |
 | laravel-geo | `main` | — |
 
@@ -95,9 +93,9 @@ that discipline; the docblocks say so where it applies.
 numeric-looking string must be annotated `array<array-key, …>`. This has cost three
 gate failures.
 
-**The guards are not decoration.** `us-tax-data` fails its build if a county-resolved
+**The guards are not decoration.** `cadastre` fails its build if a county-resolved
 state gains an authority below the county line, if a material share of a state's rates
-is about to expire, or if the published mirror is behind the sources. `eu-tax-data`
+is about to expire, or if the published register is behind the sources. It
 has equivalents for ambiguity drift and schedule health. A red guard means the world
 moved, not that the guard is wrong.
 

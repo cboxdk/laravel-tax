@@ -6,7 +6,7 @@ description: Bind a LocalAuthorityResolver to resolve US addresses below the sta
 
 # Local authorities
 
-In [12 US states](../coverage/us-tax-dataset.md#the-12-states-with-local-tax-and-no-rooftop-path)
+In [12 US states](../coverage/the-register.md)
 nothing this package ships resolves an address below the state line, so the state
 share applies at `Confidence::Derived` — an honest floor, but a floor. Louisiana's
 state share is 4.45% against a combined rate reaching 11.45%.
@@ -57,7 +57,7 @@ under-charge.
 **List every authority that applies.** The engine sums them; a short list is an
 under-charge stamped `Authoritative`, which is the outcome this package works
 hardest to prevent. Codes are the dataset's own local authority codes for the state
-— see the `rates` section of [the dataset](../coverage/us-tax-dataset.md). A code
+— see the `rates` section of [the register](../coverage/the-register.md). A code
 the dataset does not carry makes the whole stack refuse and fall back to the state
 rate, rather than silently dropping that authority's share.
 

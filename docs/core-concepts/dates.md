@@ -81,6 +81,6 @@ ignores it, because it is a hand-maintained snapshot that only knows one answer;
 `UsTaxDatasetTaxability` reads the dataset's dated windows and honours it.
 
 A source that cannot answer for a past date at all should return `null` rather than
-quietly serve today's figure. `ArcGisRateSource` does exactly this: the state
+quietly serve today's figure. A live polygon service does exactly this: the state
 polygon services publish only the current boundaries, so it declines a historical
 question instead of answering a different one.
