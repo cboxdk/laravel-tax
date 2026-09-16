@@ -25,19 +25,19 @@ use Cbox\Tax\Testing\FakeRegister;
  * register.
  */
 
-function register(): FakeRegister
+function fakeRegister(): FakeRegister
 {
     return FakeRegister::at(test()->store);
 }
 
-function source(): RegisterRateSource
+function fakeSource(): RegisterRateSource
 {
     $layout = new StoreLayout(test()->store);
 
     return new RegisterRateSource(new RegisterDataset($layout, new StorePointer($layout)));
 }
 
-function jurisdiction(string $country)
+function fakePlace(string $country)
 {
     return app(JurisdictionRepository::class)->find(new CountryCode($country));
 }
@@ -63,13 +63,13 @@ it('takes a rate whose window contains the date, not one that merely has no end'
     // 4 863 live rates in the real register end 2078-12-31 — the Streamlined matrix's
     // way of writing "no end". Filtering on `until === null` drops every one of them,
     // Oklahoma's own state rate among them.
-    register()
+    fakeRegister()
         ->rate('eu:DK', '20', from: '2000-01-01', until: '2019-12-31')
         ->rate('eu:DK', '25', from: '2020-01-01', until: '2078-12-31')
         ->install();
 
-    $old = source()->rateFor(jurisdiction('DK'), TaxClass::GeneralGoods, new DateTimeImmutable('2015-06-01'));
-    $now = source()->rateFor(jurisdiction('DK'), TaxClass::GeneralGoods, new DateTimeImmutable('2026-06-01'));
+    $old = fakeSource()->rateFor(fakePlace('DK'), TaxClass::GeneralGoods, new DateTimeImmutable('2015-06-01'));
+    $now = fakeSource()->rateFor(fakePlace('DK'), TaxClass::GeneralGoods, new DateTimeImmutable('2026-06-01'));
 
     expect((string) $old?->percentage)->toBe('20')
         ->and((string) $now?->percentage)->toBe('25');
@@ -78,23 +78,23 @@ it('takes a rate whose window contains the date, not one that merely has no end'
 it('ignores a levy the supplier bears', function (): void {
     // A digital services tax is a charge on the supplier's turnover. Summed into a
     // cart it overcharges the customer and under-declares the liability at once.
-    register()
+    fakeRegister()
         ->rate('eu:DK', '25')
         ->rate('eu:DK', '3', category: 'services.digital', extra: ['borneBy' => 'supplier'])
         ->install();
 
-    $rate = source()->rateFor(jurisdiction('DK'), TaxClass::DigitalService);
+    $rate = fakeSource()->rateFor(fakePlace('DK'), TaxClass::DigitalService);
 
     expect((string) $rate?->percentage)->toBe('25');
 });
 
 it('climbs to a parent category, and does not call that an inference', function (): void {
-    register()
+    fakeRegister()
         ->rate('eu:DK', '25')
         ->rate('eu:DK', '6', kind: 'reduced', category: 'goods.publications')
         ->install();
 
-    $rate = source()->rateFor(jurisdiction('DK'), TaxClass::Book);
+    $rate = fakeSource()->rateFor(fakePlace('DK'), TaxClass::Book);
 
     expect((string) $rate?->percentage)->toBe('6')
         ->and($rate?->confidence)->toBe(Confidence::Authoritative)
@@ -102,13 +102,13 @@ it('climbs to a parent category, and does not call that an inference', function 
 });
 
 it('refuses a band when a category has two live answers, and takes the standard rate', function (): void {
-    register()
+    fakeRegister()
         ->rate('eu:DK', '25')
         ->rate('eu:DK', '10', kind: 'reduced', category: 'goods.food')
         ->rate('eu:DK', '5', kind: 'reduced', category: 'goods.food')
         ->install();
 
-    $rate = source()->rateFor(jurisdiction('DK'), TaxClass::Groceries);
+    $rate = fakeSource()->rateFor(fakePlace('DK'), TaxClass::Groceries);
 
     // Never the lower of the two: the standard rate is the direction a customer can
     // be refunded from.
@@ -119,15 +119,15 @@ it('refuses a band when a category has two live answers, and takes the standard 
 it('takes the longest classification, and marks a shortened one as inferred', function (): void {
     // The real register has 95 live cases where a chapter and a subheading beneath it
     // disagree. Austria taxes food at 10% under CN 04 and carves CN 0401 10 out.
-    register()
+    fakeRegister()
         ->rate('eu:DK', '25')
         ->rate('eu:DK', '10', kind: 'reduced', category: 'goods.food', classification: '04')
         ->rate('eu:DK', '5', kind: 'reduced', category: 'goods.food', classification: '040110')
         ->install();
 
-    $exact = source()->rateForCommodity(jurisdiction('DK'), TaxClass::Groceries, '0401 10');
-    $chapter = source()->rateForCommodity(jurisdiction('DK'), TaxClass::Groceries, '04');
-    $deeper = source()->rateForCommodity(jurisdiction('DK'), TaxClass::Groceries, '0499 99 00');
+    $exact = fakeSource()->rateForCommodity(fakePlace('DK'), TaxClass::Groceries, '0401 10');
+    $chapter = fakeSource()->rateForCommodity(fakePlace('DK'), TaxClass::Groceries, '04');
+    $deeper = fakeSource()->rateForCommodity(fakePlace('DK'), TaxClass::Groceries, '0499 99 00');
 
     expect((string) $exact?->percentage)->toBe('5')
         ->and($exact?->limitedBy)->toBeNull()
@@ -143,7 +143,7 @@ it('takes the longest classification, and marks a shortened one as inferred', fu
 it('reads a price exemption the way the statute writes it', function (): void {
     $layout = new StoreLayout(test()->store);
 
-    register()
+    fakeRegister()
         ->rate('us:MA', '6.25')
         ->rate('us:NY', '4')
         ->rule('us:MA', 'price_exemption', ['category' => 'goods.clothing', 'capAmount' => '175.00', 'capCurrency' => 'USD', 'above' => 'excess_taxable'])
@@ -153,8 +153,8 @@ it('reads a price exemption the way the statute writes it', function (): void {
     $taxability = new RegisterTaxability(new RegisterDataset($layout, new StorePointer($layout)));
     $coat = Money::of('200.00', 'USD');
 
-    $ma = $taxability->determine(usPlace('US-MA'), TaxClass::Clothing, $coat);
-    $ny = $taxability->determine(usPlace('US-NY'), TaxClass::Clothing, $coat);
+    $ma = $taxability->determine(fakeUsPlace('US-MA'), TaxClass::Clothing, $coat);
+    $ny = $taxability->determine(fakeUsPlace('US-NY'), TaxClass::Clothing, $coat);
 
     // The same field with opposite meanings: Massachusetts taxes the excess, New York
     // taxes the whole garment once it reaches the line.
@@ -162,7 +162,7 @@ it('reads a price exemption the way the statute writes it', function (): void {
         ->and((string) $ny->taxableBase($coat)->getAmount())->toBe('200.00');
 });
 
-function usPlace(string $state)
+function fakeUsPlace(string $state)
 {
     return app(JurisdictionRepository::class)->find(
         new CountryCode('US'),
