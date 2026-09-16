@@ -92,6 +92,22 @@ pricing a Danish invoice touches 12 KB.
   the size of the whole document and turned a clear "no such section" into an
   out-of-memory fatal on the 48.8 MB US region. Peak while seeking dropped from
   11.5 MB to 4 MB as a side effect.
+- **A price-capped exemption is not a rate of zero.** A $200 Massachusetts coat
+  billed $0.00. The register files a capped exemption twice — a `goods.clothing` row
+  at 0% exempt, and a `price_exemption` rule capping it at $175 with the excess
+  taxable — and the rate source read the row alone. Every live `price_exemption`
+  rule sits behind an exempt row, so clothing over the threshold was billed nothing
+  in Massachusetts, New York and Rhode Island alike. The excess is now taxed at the
+  standard rate, which is the state's own worked example: $1.56 on that coat.
+- **A state with no sales tax prices at zero instead of refusing.** Delaware,
+  Montana, New Hampshire and Oregon each publish one untyped row at 0% exempt and
+  nothing else. The headline-rate lookup accepted a `standard` band or a `combined`
+  total, found neither, and refused — `UnresolvedTaxRate` on every line sold into
+  those four states.
+- **The statewide local share reaches states that actually have one.** It was
+  applied inside the stacking loop, which only runs where a boundary file resolves
+  an authority set — and Virginia, the one state it was written for, publishes no
+  boundary file. It now applies to the finished rate on every path.
 - **A string VALUE equal to a section name no longer derails the scan.** Confirming a
   key also consumed the comma before it, so `{"description":"rates", …}` ate the next
   key's opening quote and the reader declared the real `rates` section missing.
