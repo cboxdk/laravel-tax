@@ -151,6 +151,23 @@ final class FakeRegister
     }
 
     /**
+     * The level the register would publish for a code.
+     *
+     * `us:CA` is a state and `ca:CA` is a country, and telling them apart is the
+     * whole reason this field exists — see the note on members, above.
+     */
+    private function levelOf(string $code): string
+    {
+        $parts = explode(':', $code);
+
+        if (count($parts) > 2) {
+            return str_starts_with($parts[2], 'COUNTY-') ? 'county' : 'city';
+        }
+
+        return $parts[0] === 'us' ? 'state' : 'country';
+    }
+
+    /**
      * Write the store and point the engine at it. Returns the version.
      */
     public function install(): string
@@ -174,7 +191,7 @@ final class FakeRegister
             $jurisdictions[$shard]->append($code, [
                 'code' => $code,
                 'name' => $this->names[$code] ?? $code,
-                'level' => 'country',
+                'level' => $this->levelOf($code),
                 'parent' => null,
                 'inTaxArea' => true,
             ]);
@@ -240,14 +257,13 @@ final class FakeRegister
                 continue;
             }
 
-            // A US STATE IS NOT A COUNTRY MEMBER. `us:CA` is California and it ends
-            // in the same two letters as Canada — listing it as a member made a
-            // Canadian supply resolve to California's rate. The United States is
-            // addressed by subdivision and never by country code, so its regime
-            // contributes no members at all.
-            if ($parts[0] === 'us') {
-                continue;
-            }
+            // US STATES ARE LISTED, because the register lists them — all fifty-four
+            // of them, `us:CA` among them. Leaving them out here made this double
+            // kinder than the thing it doubles: `us:CA` ends in the same two letters
+            // as Canada, and the engine picked it for a Canadian supply for as long
+            // as this fixture hid the collision. What keeps them apart is the `level`
+            // on the jurisdiction, which is the register's own signal, so that is
+            // what the fixture must reproduce.
 
             $members[$parts[0]][] = [
                 'code' => $parts[0].':'.$parts[1],

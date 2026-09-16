@@ -196,3 +196,32 @@ it('defers rather than guess when one authority sits in two different stacks', f
     expect((string) $rate?->percentage)->toBe('6.5')
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
+
+function ladderCountryRate(string $country)
+{
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+
+    return new RegisterRateSource($dataset, new RateResolver)
+        ->rateFor(app(JurisdictionRepository::class)->find(new CountryCode($country)), TaxClass::GeneralGoods);
+}
+
+it('does not answer for a country with a US state that shares its letters', function (): void {
+    // `us:CA` is California and `ca:CA` is Canada. The register lists all fifty-four
+    // states as regime members, and matching a member by its trailing ISO alone made
+    // a US state the answer for twenty-five countries — Gabon priced at Georgia's
+    // rate, Israel at Illinois', Canada at California's, each stamped Authoritative.
+    // Which one won came down to the order regimes happened to appear in.
+    //
+    // The register labels every jurisdiction's level, and a `state` is never the
+    // answer to what a COUNTRY charges.
+    ladderRegister()
+        ->rate('us:CA', '7.25')
+        ->rate('ca:CA', '5')
+        ->rate('us:GA', '4')
+        ->rate('africa:GA', '18')
+        ->install();
+
+    expect((string) ladderCountryRate('CA')?->percentage)->toBe('5')
+        ->and((string) ladderCountryRate('GA')?->percentage)->toBe('18');
+});

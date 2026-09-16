@@ -258,6 +258,18 @@ final class RegisterDataset
      * The caller takes the first that actually carries a rate, which is the only
      * test that cannot be wrong about this.
      *
+     * A MEMBER IS ONLY A CANDIDATE IF IT IS A COUNTRY. The `us` regime lists all
+     * fifty-four states as members, and matching a code by its trailing ISO alone
+     * made `us:GA` an answer for Gabon, `us:IL` for Israel and `us:CA` for Canada —
+     * twenty-five countries priced at a US state's rate and stamped `Authoritative`.
+     * Which one won came down to the order regimes happened to appear in, so the EU
+     * escaped and everything listed after `us` did not. The register labels each
+     * jurisdiction's `level`, and a `state` is never the answer to "what does this
+     * COUNTRY charge".
+     *
+     * Where the level cannot be read the member is kept, because an unlabelled
+     * jurisdiction is a gap in what we know and not evidence that it is sub-national.
+     *
      * @return list<string>
      */
     public function codesForCountry(string $iso, ?DateTimeImmutable $at = null): array
@@ -271,6 +283,12 @@ final class RegisterDataset
                 $code = Shape::text($member['code'] ?? null);
 
                 if ($code === null || ! str_ends_with($code, ':'.$iso)) {
+                    continue;
+                }
+
+                $level = Shape::text($this->jurisdiction($code)['level'] ?? null);
+
+                if ($level !== null && $level !== 'country') {
                     continue;
                 }
 
