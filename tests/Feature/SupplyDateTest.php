@@ -14,8 +14,11 @@ use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxAssessment;
@@ -199,8 +202,12 @@ it('matches a sentinel-closed record on an UNDATED lookup', function () {
     //
     // Passing an explicit date here would prove nothing: the old code took the
     // date branch and worked. The null is the whole point.
-    $rate = new RegisterRateSource(ksDataset())
-        ->rateFor(kansasCity(), TaxClass::GeneralGoods);
+    $dataset = ksDataset();
+    $rate = new RegisterRateSource(
+        $dataset,
+        new RateResolver,
+        new RegisterBoundaries(new StoreLayout($dataset->storeRoot()), (string) $dataset->version(), $dataset),
+    )->rateFor(kansasCity(), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.125')
         ->and($rate?->confidence->value)->toBe('authoritative');

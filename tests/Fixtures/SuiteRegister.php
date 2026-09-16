@@ -130,6 +130,9 @@ final class SuiteRegister
         // rather than facilitated — a marketplace collects nothing on either, and
         // calling it facilitated asserts a tax that was never due.
         $register->rate('us:WA', '0', 'exempt', 'goods.medicine.prescription');
+        // California does not tax SaaS. The gate order is the point: an elected
+        // scheme must never turn an exempt category into a charge.
+        $register->rate('us:CA', '0', 'exempt', 'services.digital');
 
         // Missouri reduces the STATE share on groceries and its localities still
         // levy on food — which is why a reduced category is not an all-in rate.
@@ -161,6 +164,10 @@ final class SuiteRegister
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.
         $register->rate('us:CA:CITY-LOS-ANGELES', '9.5', 'combined');
+        // New York City levies its own 4.5%, so New York State has locals to miss —
+        // which is what makes a bare state answer there a floor rather than the whole
+        // rate.
+        $register->rate('us:NY:CITY-NEW-YORK', '4.5', 'local_component')->named('us:NY:CITY-NEW-YORK', 'New York City');
         $register->rate('us:CA:CITY-ALAMEDA', '10.75', 'combined')->named('us:CA:CITY-ALAMEDA', 'Alameda');
 
         // The four states where the county is the only local authority that can
@@ -217,7 +224,7 @@ final class SuiteRegister
 
         // Arizona is absent on purpose: its published commencement is not trusted, and
         // a state with no date leaves the tax with the seller.
-        foreach (['MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01'] as $state => $from) {
+        foreach (['MO' => '2023-01-01', 'WA' => '2018-01-01', 'CA' => '2019-10-01', 'TX' => '2019-10-01'] as $state => $from) {
             $register->rule('us:'.$state, 'marketplace_facilitator', ['platformOwes' => true], from: $from);
         }
 
@@ -227,10 +234,14 @@ final class SuiteRegister
             'program' => 'Simplified Sellers Use Tax', 'mechanic' => 'flat_total',
             'ratePercent' => '8', 'statute' => 'Ala. Code § 40-23-193',
         ]);
+        // Texas republishes its single local rate every year, so the determination
+        // EXPIRES. A supply dated past it must refuse rather than price with a
+        // figure nobody published, or price as if unelected and charge the rates the
+        // election replaced.
         $register->rule('us:TX', 'remote_seller_election', [
             'program' => 'Single Local Use Tax Rate', 'mechanic' => 'single_local_rate',
             'ratePercent' => '1.75', 'statute' => 'Tex. Tax Code § 151.0595',
-        ]);
+        ], from: '2026-01-01', until: '2026-12-31');
 
         foreach (['KS' => 'destination', 'TX' => 'origin', 'CA' => 'mixed', 'CO' => 'destination'] as $state => $basis) {
             $register->rule('us:'.$state, 'sourcing', ['basis' => $basis]);

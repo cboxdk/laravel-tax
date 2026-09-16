@@ -315,7 +315,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
     {
         $parts = explode(':', $code);
 
-        if (($parts[0] ?? null) !== 'us' || ! isset($parts[1])) {
+        if ($parts[0] !== 'us' || ! isset($parts[1])) {
             return false;
         }
 

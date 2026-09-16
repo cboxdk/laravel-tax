@@ -107,14 +107,14 @@ it('refuses outright when nothing answered and something was broken', function (
     // when the truth is "we could not find out", a statement about us. The engine
     // then denies for the wrong stated reason, and the operator never learns their
     // feed is down.
-    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor([])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DE' => '19'])]);
 
     expect(fn () => $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))
         ->toThrow(RateSourceUnavailable::class);
 });
 
 it('names the source that failed, not just that something did', function () {
-    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor([])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DE' => '19'])]);
 
     try {
         $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
