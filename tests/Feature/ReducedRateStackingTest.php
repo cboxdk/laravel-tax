@@ -7,15 +7,19 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
-use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -34,61 +38,23 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  */
 function stackingDataset(): RegisterDataset
 {
-    $dir = sys_get_temp_dir().'/tax-stack-'.bin2hex(random_bytes(5));
-    mkdir($dir.'/by-section', 0o755, true);
+    $root = sys_get_temp_dir().'/tax-stack-'.bin2hex(random_bytes(5));
 
-    $window = static fn (float $rate, ?string $from, ?string $to): array => [
-        'level' => 'state',
-        'jurisdictionName' => null,
-        'generalRate' => $rate,
-        'generalRateIntrastate' => $rate,
-        'foodDrugRate' => 0,
-        'effectiveFrom' => $from,
-        'effectiveTo' => $to,
-    ];
+    // The state share moved from 5.5% to 6.5% on 2026-01-01, and the city levies
+    // 1.625% throughout. Stacking today's state share onto a historical local
+    // produces a percentage that was never in force anywhere.
+    FakeRegister::at($root)
+        ->rate('us:KS', '5.5', from: '1990-01-01', until: '2025-12-31')
+        ->rate('us:KS', '6.5', from: '2026-01-01')
+        ->rate('us:KS', '2', 'reduced', 'goods.food.basic', from: '1990-01-01')
+        ->rate('us:KS:CITY-36000', '1', 'local_component', from: '1990-01-01')
+        ->rate('us:KS:CITY-36000', '1', 'local_component', 'goods.food.basic', from: '1990-01-01')
+        ->boundary('KS', '66101', ['state:20', 'city:36000'])
+        ->install();
 
-    file_put_contents($dir.'/by-section/rates.json', json_encode(['states' => [
-        'US-KS' => [
-            'stateFips' => '20',
-            'rateBasis' => 'component',
-            'sourceMode' => 'test',
-            // The state share moved from 5.5% to 6.5% on 2026-01-01.
-            'stateRate' => ['20' => [$window(0.055, null, '2025-12-31'), $window(0.065, '2026-01-01', null)]],
-            'state' => [],
-            'local' => ['36000' => [[
-                'level' => 'city',
-                'jurisdictionName' => 'Test City',
-                'generalRate' => 0.01,
-                'generalRateIntrastate' => 0.01,
-                'foodDrugRate' => 0.01,
-                'effectiveFrom' => null,
-                'effectiveTo' => null,
-            ]]],
-        ],
-    ]], JSON_THROW_ON_ERROR));
+    $layout = new StoreLayout($root);
 
-    // Groceries taxed at a reduced STATE share of 2%.
-    file_put_contents($dir.'/by-section/taxability.json', json_encode(['states' => [
-        'US-KS' => [[
-            'category' => 'grocery',
-            'taxable' => true,
-            'treatment' => 'reduced_rate',
-            'conditions' => ['rate' => 0.02],
-            'effectiveFrom' => null,
-            'effectiveTo' => null,
-        ]],
-    ]], JSON_THROW_ON_ERROR));
-
-    // The state share lives in the BASELINE section, not the rate section — and a
-    // fixture without it is how the missing-state-share refusal below was found.
-    file_put_contents($dir.'/by-section/baseline.json', json_encode(['states' => [
-        'US-KS' => ['coverage' => 'locals', 'baseline' => [
-            ['stateRate' => 0.055, 'noSalesTax' => false, 'localsExist' => true, 'effectiveFrom' => null, 'effectiveTo' => '2025-12-31'],
-            ['stateRate' => 0.065, 'noSalesTax' => false, 'localsExist' => true, 'effectiveFrom' => '2026-01-01', 'effectiveTo' => null],
-        ]],
-    ]], JSON_THROW_ON_ERROR));
-
-    return app(RegisterDataset::class);
+    return new RegisterDataset($layout, new StorePointer($layout));
 }
 
 beforeEach(function () {
@@ -100,7 +66,13 @@ beforeEach(function () {
             new RegisterTaxability($dataset),
             $this->geo,
         ),
-        app(TaxRateSource::class),
+        // The SAME register the taxability reads, or the two halves of the answer
+        // come from different worlds and the arithmetic is nobody's.
+        new RegisterRateSource(
+            $dataset,
+            new RateResolver,
+            new RegisterBoundaries(new StoreLayout($dataset->storeRoot()), (string) $dataset->version(), $dataset),
+        ),
     );
 });
 
@@ -158,40 +130,27 @@ it('keeps the parts summing to the whole on a stacked reduced rate', function ()
 });
 
 it('refuses a rooftop rate rather than returning the locals alone', function () {
-    // Found by a fixture that forgot the baseline section, which is exactly the
-    // shape of a real failure: a state missing from the baseline overlay, or a
-    // section that would not load. On a component-basis state the local records
-    // are only the ADDEND, so skipping the state share quietly returned 1% where
-    // 7.5% was due — four fifths of the tax gone, on an answer stamped
-    // authoritative. Refusing sends the caller to the state rate, which is
-    // unavailable for the same reason, so the engine denies.
-    $dir = sys_get_temp_dir().'/tax-nobase-'.bin2hex(random_bytes(5));
-    mkdir($dir.'/by-section', 0o755, true);
+    // On a component-basis state the local records are only the ADDEND, so skipping
+    // the state share quietly returns 1% where 7.5% is due — four fifths of the tax
+    // gone, on an answer stamped authoritative. With no state share to stack onto,
+    // the engine has to deny.
+    $root = sys_get_temp_dir().'/tax-nobase-'.bin2hex(random_bytes(5));
 
-    file_put_contents($dir.'/by-section/rates.json', json_encode(['states' => [
-        'US-KS' => [
-            'stateFips' => '20',
-            'rateBasis' => 'component',
-            'sourceMode' => 'test',
-            'stateRate' => [],
-            'state' => [],
-            'local' => ['36000' => [[
-                'level' => 'city',
-                'jurisdictionName' => 'Test City',
-                'generalRate' => 0.01,
-                'generalRateIntrastate' => 0.01,
-                'foodDrugRate' => 0.01,
-                'effectiveFrom' => null,
-                'effectiveTo' => null,
-            ]]],
-        ],
-    ]], JSON_THROW_ON_ERROR));
+    FakeRegister::at($root)
+        ->rate('us:KS:CITY-36000', '1', 'local_component', from: '1990-01-01')
+        ->boundary('KS', '66101', ['state:20', 'city:36000'])
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
 
     $source = new RegisterRateSource(
-        app(RegisterDataset::class),
+        $dataset,
+        new RateResolver,
+        new RegisterBoundaries($layout, (string) $dataset->version(), $dataset),
     );
 
-    $place = $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'))
+    $place = test()->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'))
         ->withLocality(new LocalityCode(new SubdivisionCode('US-KS'), 'sst-fips', '36000'));
 
     expect($source->rateFor($place, TaxClass::GeneralGoods))->toBeNull();

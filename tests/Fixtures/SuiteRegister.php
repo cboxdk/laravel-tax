@@ -35,6 +35,7 @@ final class SuiteRegister
             $register->rate('us:'.$state, $percentage, 'standard');
         }
 
+        self::windows($register);
         self::bands($register);
         self::locals($register);
         self::rules($register);
@@ -58,9 +59,9 @@ final class SuiteRegister
             'DK' => '25', 'FR' => '20', 'DE' => '19', 'GB' => '20', 'PT' => '23',             'PL' => '23', 'ES' => '21', 'IE' => '23', 'GR' => '24', 'SE' => '25', 'NL' => '21',
             'IT' => '22', 'AT' => '20', 'BE' => '21', 'FI' => '25.5', 'LU' => '17', 'CZ' => '21',
             'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
-            'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
-            'KR' => '10', 'TR' => '20', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
-            'BH' => '10', 'CL' => '19', 'OM' => '5', 'TW' => '5', 'UA' => '20',
+            'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'MX' => '16',
+            'KR' => '10', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
+            'CL' => '19', 'OM' => '5', 'TW' => '5', 'UA' => '20',
         ];
     }
 
@@ -91,6 +92,20 @@ final class SuiteRegister
      * and the standard rate applies; with a code it resolves exactly. That is the
      * whole resolution rule in one country.
      */
+    /**
+     * Rates that MOVED, so a supply either side of the change prices differently.
+     * A window that never closes cannot show that a date was honoured.
+     */
+    private static function windows(FakeRegister $register): void
+    {
+        $register->rate('apac:TR', '18', from: '1990-01-01', until: '2023-07-09');
+        $register->rate('apac:TR', '20', from: '2023-07-10');
+        $register->rate('gcc:SA', '5', from: '1990-01-01', until: '2020-06-30');
+        $register->rate('gcc:SA', '15', from: '2020-07-01');
+        $register->rate('gcc:BH', '5', from: '1990-01-01', until: '2021-12-31');
+        $register->rate('gcc:BH', '10', from: '2022-01-01');
+    }
+
     private static function bands(FakeRegister $register): void
     {
         // Hungary's standard rate carries a window a correction could name, which is
