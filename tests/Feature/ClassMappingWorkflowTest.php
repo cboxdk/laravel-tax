@@ -14,15 +14,9 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\ProductTaxMapping;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 /** The shipped calculator with a catalogue bound over the empty default. */
 function calculatorWithCatalogue(ProductCatalogue $catalogue): TaxCalculator
@@ -100,11 +94,7 @@ it('carries what a picker needs to render a row', function () {
 // ---------------------------------------------------------------------------
 
 it('names the gap AND the remedy when a heading is ambiguous', function () {
-    $source = new EuTaxDatasetRateSource(new EuTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-    ));
+    $source = app(TaxRateSource::class);
 
     $rate = $source->rateFor($this->geo->find(new CountryCode('HU')), TaxClass::Groceries);
 
@@ -116,11 +106,7 @@ it('names the gap AND the remedy when a heading is ambiguous', function () {
 });
 
 it('drops the limit once the code resolves it', function () {
-    $source = new EuTaxDatasetRateSource(new EuTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-    ));
+    $source = app(TaxRateSource::class);
 
     $rate = $source->rateForCommodity(
         $this->geo->find(new CountryCode('HU')),
@@ -134,11 +120,7 @@ it('drops the limit once the code resolves it', function () {
 });
 
 it('names the local gap where the address stopped at the state line', function () {
-    $source = new UsTaxDatasetRateSource(new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    ));
+    $source = app(TaxRateSource::class);
 
     $rate = $source->rateFor(
         $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-TX')),
@@ -154,11 +136,7 @@ it('names the local gap where the address stopped at the state line', function (
 });
 
 it('reports no limit in a state with no local tax to miss', function () {
-    $source = new UsTaxDatasetRateSource(new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    ));
+    $source = app(TaxRateSource::class);
 
     // The state rate IS the whole rate in a state whose locals levy nothing, so
     // flagging it would train the operator to ignore the flag.

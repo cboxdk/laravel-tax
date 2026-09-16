@@ -6,35 +6,28 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
-use Cbox\Tax\Nexus\UsTaxDatasetNexus;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterNexus;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyRoute;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
-    $this->rates = new UsTaxDatasetRateSource($this->dataset);
+    $this->dataset = app(RegisterDataset::class);
+    $this->rates = app(TaxRateSource::class);
     $this->regime = new UsSalesTaxRegime(
-        new UsTaxDatasetTaxability($this->dataset, new StaticProductTaxability),
-        new UsTaxDatasetNexus($this->dataset),
+        new RegisterTaxability($this->dataset),
+        new RegisterNexus($this->dataset),
         null,
         $this->dataset,
     );

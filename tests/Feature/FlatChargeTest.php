@@ -17,9 +17,7 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\ValueObjects\FlatCharge;
 use Cbox\Tax\ValueObjects\OrderAssessment;
 use Cbox\Tax\ValueObjects\SellerRegistration;
@@ -68,8 +66,8 @@ function deliveryFeeSource(string $amount = '0.31', bool $passedToBuyer = true):
 function chargedCalculator(FlatChargeSource $charges): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability, test()->geo),
-        new StaticTaxRateSource(['US-CO' => '2.9']),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable, test()->geo),
+        rateSourceFor(['US-CO' => '2.9']),
         $charges,
     );
 }
@@ -212,8 +210,8 @@ function deliveryFeeOnOrder(string $amount = '0.31'): OrderFlatChargeSource
 function orderCalculator(?FlatChargeSource $perSupply, ?OrderFlatChargeSource $perOrder): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability, test()->geo),
-        new StaticTaxRateSource(['US-CO' => '2.9']),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable, test()->geo),
+        rateSourceFor(['US-CO' => '2.9']),
         $perSupply,
         $perOrder,
     );

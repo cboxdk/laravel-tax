@@ -13,20 +13,12 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->source = new EuTaxDatasetRateSource(new EuTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-    ));
+    $this->source = app(TaxRateSource::class);
 });
 
 function hungary(): Jurisdiction

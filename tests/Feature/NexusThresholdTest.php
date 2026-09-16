@@ -12,15 +12,13 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\Nexus\StaticNexusThresholds;
-use Cbox\Tax\Nexus\UsTaxDatasetNexus;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->thresholds = new StaticNexusThresholds;
+    $this->thresholds = app(NexusThresholds::class);
 });
 
 it('exposes the published dollar threshold per state', function (string $state, int $dollars, ?int $transactions, NexusCombinator $combinator) {

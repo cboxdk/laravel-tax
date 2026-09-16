@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
-use Cbox\Tax\RateSource\ArcGisRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
@@ -114,7 +112,7 @@ it('attaches a ZIP+4 locality from the zip4 append when rooftop is enabled', fun
     expect($jurisdiction)->not->toBeNull()
         ->and($jurisdiction->subdivision->value)->toBe('US-WA')
         ->and($jurisdiction->locality)->not->toBeNull()
-        ->and($jurisdiction->locality->scheme)->toBe(UsTaxDatasetRateSource::ZIP9_SCHEME)
+        ->and($jurisdiction->locality->scheme)->toBe(LocalityScheme::Zip9->value)
         ->and($jurisdiction->locality->value)->toBe('98109-4607')
         ->and($jurisdiction->needsRooftop())->toBeFalse();
 });
@@ -217,7 +215,7 @@ it('attaches a point locality for the states resolved by polygon', function () {
     $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
         ->locate(['line1' => '200 N Spring St', 'city' => 'Los Angeles', 'country' => 'US']);
 
-    expect($jurisdiction?->locality?->scheme)->toBe(ArcGisRateSource::LATLNG_SCHEME)
+    expect($jurisdiction?->locality?->scheme)->toBe(LocalityScheme::LatLng->value)
         ->and($jurisdiction?->locality?->value)->toBe('34.052200,-118.243700');
 });
 
@@ -238,6 +236,6 @@ it('keeps the ZIP+4 key for states resolved by the boundary index', function () 
     $jurisdiction = new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true)
         ->locate(['line1' => '701 N 7th St', 'city' => 'Kansas City', 'country' => 'US']);
 
-    expect($jurisdiction?->locality?->scheme)->toBe(UsTaxDatasetRateSource::ZIP9_SCHEME)
+    expect($jurisdiction?->locality?->scheme)->toBe(LocalityScheme::Zip9->value)
         ->and($jurisdiction?->locality?->value)->toBe('66101-3064');
 });

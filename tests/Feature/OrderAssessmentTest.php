@@ -17,7 +17,6 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\LineAssessment;
 use Cbox\Tax\ValueObjects\OrderAssessment;
@@ -147,7 +146,7 @@ it('rolls the document tax up per taxing authority', function () {
     $kansasCity = $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'))
         ->withLocality(new LocalityCode(
             new SubdivisionCode('US-KS'),
-            UsTaxDatasetRateSource::ZIP9_SCHEME,
+            LocalityScheme::Zip9->value,
             '66101-6200',
         ));
 
@@ -190,7 +189,7 @@ it('refuses a partial roll-up rather than quietly omitting a line', function () 
     $plain = $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'));
     $rooftop = $plain->withLocality(new LocalityCode(
         new SubdivisionCode('US-KS'),
-        UsTaxDatasetRateSource::ZIP9_SCHEME,
+        LocalityScheme::Zip9->value,
         '66101-6200',
     ));
 

@@ -6,14 +6,9 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\RateProvenance;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -23,11 +18,7 @@ beforeEach(function () {
 /** The EU source reading a LOCAL fixture — no manifest, so nothing to trace to. */
 function euLocalSource(): EuTaxDatasetRateSource
 {
-    return new EuTaxDatasetRateSource(new EuTaxDataset(
-        app(Factory::class),
-        app(Cache::class),
-        dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-    ));
+    return app(TaxRateSource::class);
 }
 
 /** The same fixture served over a faked HTTP client, so the manifest is read. */
@@ -41,11 +32,7 @@ function euRemoteSource(): EuTaxDatasetRateSource
         '*/by-section/class-map.json' => Http::response((string) file_get_contents($dir.'by-section/class-map.json')),
     ]);
 
-    return new EuTaxDatasetRateSource(new EuTaxDataset(
-        app(Factory::class),
-        app(Cache::class),
-        'https://example.test/eu',
-    ));
+    return app(TaxRateSource::class);
 }
 
 // ---------------------------------------------------------------------------
@@ -87,11 +74,7 @@ it('stamps every outcome, including the ones that fell back', function () {
 });
 
 it('records the US state window too', function () {
-    $rate = new UsTaxDatasetRateSource(new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    ))->rateFor(
+    $rate = app(TaxRateSource::class)->rateFor(
         $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-TX')),
         TaxClass::GeneralGoods,
     );

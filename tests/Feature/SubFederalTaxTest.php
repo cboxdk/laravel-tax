@@ -88,7 +88,7 @@ it('charges taxable US SaaS when an explicit SaaS category rate is bound', funct
     $registry = DefaultRegimeRegistry::withDefaults(
         new StaticProductTaxability(['US-NY:digital_service' => true]),
     );
-    $calc = new DefaultTaxCalculator($registry, new StaticTaxRateSource(null, [
+    $calc = new DefaultTaxCalculator($registry, rateSourceFor([], [
         'US-NY:digital_service' => new RateBand('8.875'),
     ]));
 

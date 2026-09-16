@@ -8,20 +8,17 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterSourcing;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Sourcing\UsTaxDatasetSourcing;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyRoute;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 // Nine states tax an IN-STATE sale at the seller's location, not the buyer's.
 // Texas is one, and it is the volume case: a Houston seller shipping across
@@ -31,11 +28,7 @@ use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    $this->dataset = app(RegisterDataset::class);
 });
 
 /** A US place at a named taxing authority, supplied directly rather than via ZIP+4. */
@@ -49,12 +42,12 @@ function sourcingCalculator(UsTaxDataset $dataset): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
-            new StaticProductTaxability,
+            new AlwaysTaxable,
             test()->geo,
             null,
-            new UsTaxDatasetSourcing($dataset),
+            new RegisterSourcing($dataset),
         ),
-        new UsTaxDatasetRateSource($dataset),
+        app(TaxRateSource::class),
     );
 }
 
@@ -128,7 +121,7 @@ it('leaves a mixed-sourcing state on destination until the split is modelled', f
     // destination-sourced. One place cannot express that, and picking either would
     // be wrong for half the stack — so it stays where it was and the note in the
     // dataset says why.
-    $sourcing = new UsTaxDatasetSourcing($this->dataset);
+    $sourcing = new RegisterSourcing($this->dataset);
 
     expect($sourcing->for(new SubdivisionCode('US-CA'))?->mode->value)->toBe('mixed')
         ->and($sourcing->for(new SubdivisionCode('US-TX'))?->mode->value)->toBe('origin');
@@ -138,8 +131,8 @@ it('falls back to destination when no sourcing source is bound at all', function
     // The dataset can be disabled, and then there are no intrastate rules to read.
     // That must degrade to the previous behaviour, not refuse.
     $calculator = new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability, $this->geo),
-        new UsTaxDatasetRateSource($this->dataset),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable, $this->geo),
+        app(TaxRateSource::class),
     );
 
     expect((string) $calculator->assess(intrastate('US-TX', '4109000', '2109064'))->rate?->percentage)

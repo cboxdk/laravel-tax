@@ -7,20 +7,15 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 // Two arithmetic defects that every other test in this suite walked straight past,
 // because no shipped fixture puts the conditions together: the states with a
@@ -90,7 +85,7 @@ function stackingDataset(): UsTaxDataset
         ]],
     ]], JSON_THROW_ON_ERROR));
 
-    return new UsTaxDataset(app(Factory::class), app(Cache::class), $dir);
+    return app(RegisterDataset::class);
 }
 
 beforeEach(function () {
@@ -99,10 +94,10 @@ beforeEach(function () {
 
     $this->calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
-            new UsTaxDatasetTaxability($dataset, new StaticProductTaxability),
+            new RegisterTaxability($dataset),
             $this->geo,
         ),
-        new UsTaxDatasetRateSource($dataset),
+        app(TaxRateSource::class),
     );
 });
 
@@ -189,8 +184,8 @@ it('refuses a rooftop rate rather than returning the locals alone', function () 
         ],
     ]], JSON_THROW_ON_ERROR));
 
-    $source = new UsTaxDatasetRateSource(
-        new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), $dir),
+    $source = new RegisterRateSource(
+        app(RegisterDataset::class),
     );
 
     $place = $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'))

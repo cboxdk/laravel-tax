@@ -9,23 +9,20 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxCalculator;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\ReturnPeriod;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 // A stacked state is not remitted as one number. In Kansas the state takes 6.5%
 // and a city such as authority 36000 adds 1.625%, each paid separately to a
@@ -36,15 +33,11 @@ use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    $this->dataset = app(RegisterDataset::class);
     $this->returns = new DefaultReturnAggregator;
     $this->calculator = new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability, $this->geo),
-        new UsTaxDatasetRateSource($this->dataset),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable, $this->geo),
+        app(TaxRateSource::class),
     );
 });
 

@@ -6,20 +6,15 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
-use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxOrder;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 /**
  * Delivery takes the rates of what it delivers — Article 78(b).
@@ -31,14 +26,6 @@ use Illuminate\Http\Client\Factory;
  */
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-
-    $this->app->bind(TaxRateSource::class, fn () => new EuTaxDatasetRateSource(
-        new EuTaxDataset(
-            app(Factory::class),
-            app(Cache::class),
-            dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-        ),
-    ));
 
     $this->order = function (array $lines, ApportionmentBasis $basis = ApportionmentBasis::NetValue): TaxOrder {
         return new TaxOrder(

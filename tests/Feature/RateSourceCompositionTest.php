@@ -12,7 +12,6 @@ use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
 use Cbox\Tax\RateSource\RemoteRateSource;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
@@ -47,7 +46,7 @@ it('reports a failed remote feed as unavailable rather than as no rate', functio
 });
 
 it('chains sources and returns the first hit', function () {
-    $chain = new ChainTaxRateSource([new StaticTaxRateSource([]), new StaticTaxRateSource(['DK' => '25'])]);
+    $chain = new ChainTaxRateSource([rateSourceFor([]), rateSourceFor(['DK' => '25'])]);
 
     expect((string) $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods)->percentage)->toBe('25');
 });
@@ -100,7 +99,7 @@ function brokenSource(): TaxRateSource
 it('still answers from a fallback when the preferred source is down', function () {
     // Falling back is right — the snapshot is real, reviewed data. What was wrong
     // was doing it invisibly.
-    $chain = new ChainTaxRateSource([brokenSource(), new StaticTaxRateSource(['DK' => '25'])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DK' => '25'])]);
 
     $rate = $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
@@ -108,7 +107,7 @@ it('still answers from a fallback when the preferred source is down', function (
 });
 
 it('marks that fallback as degraded, so it cannot pass for a clean answer', function () {
-    $chain = new ChainTaxRateSource([brokenSource(), new StaticTaxRateSource(['DK' => '25'])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DK' => '25'])]);
 
     $rate = $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
 
@@ -122,7 +121,7 @@ it('leaves a clean fallback alone', function () {
     // A source with nothing to say is not a fault, and the chain moving past it is
     // the behaviour that has always been correct. Nothing about that result is
     // degraded, and marking it so would cry wolf on every normal lookup.
-    $chain = new ChainTaxRateSource([new StaticTaxRateSource([]), new StaticTaxRateSource(['DK' => '25'])]);
+    $chain = new ChainTaxRateSource([rateSourceFor([]), rateSourceFor(['DK' => '25'])]);
 
     expect($chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods)?->confidence)
         ->not->toBe(Confidence::LowConfidence);
@@ -134,14 +133,14 @@ it('refuses outright when nothing answered and something was broken', function (
     // when the truth is "we could not find out", a statement about us. The engine
     // then denies for the wrong stated reason, and the operator never learns their
     // feed is down.
-    $chain = new ChainTaxRateSource([brokenSource(), new StaticTaxRateSource([])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor([])]);
 
     expect(fn () => $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))
         ->toThrow(RateSourceUnavailable::class);
 });
 
 it('names the source that failed, not just that something did', function () {
-    $chain = new ChainTaxRateSource([brokenSource(), new StaticTaxRateSource([])]);
+    $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor([])]);
 
     try {
         $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);

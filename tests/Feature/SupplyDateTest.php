@@ -13,7 +13,6 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -200,7 +199,7 @@ it('matches a sentinel-closed record on an UNDATED lookup', function () {
     //
     // Passing an explicit date here would prove nothing: the old code took the
     // date branch and worked. The null is the whole point.
-    $rate = new UsTaxDatasetRateSource(ksDataset())
+    $rate = new RegisterRateSource(ksDataset())
         ->rateFor(kansasCity(), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.125')
@@ -211,7 +210,7 @@ it('refuses a rooftop stack whose records do not cover the supply date', functio
     // A 2004 supply predates Wyandotte County's 2005 record. Rather than quietly
     // summing a record that did not yet exist — which the deleted file-order
     // fallback did — the stack refuses and the caller drops to the state rate.
-    $rate = new UsTaxDatasetRateSource(ksDataset())
+    $rate = new RegisterRateSource(ksDataset())
         ->rateFor(kansasCity(), TaxClass::GeneralGoods, new DateTimeImmutable('2004-01-01'));
 
     expect((string) $rate?->percentage)->toBe('6.5')
@@ -232,7 +231,7 @@ function kansasCity(): Jurisdiction
     return test()->geo->find(new CountryCode('US'), new SubdivisionCode('US-KS'))
         ->withLocality(new LocalityCode(
             new SubdivisionCode('US-KS'),
-            UsTaxDatasetRateSource::ZIP9_SCHEME,
+            LocalityScheme::Zip9->value,
             '66101-6200',
         ));
 }

@@ -33,7 +33,7 @@ it('ships no reduced bands by default — every category resolves the standard r
 
 it('resolves a configured reduced band for a category, else the standard rate', function () {
     // Test-source band, not shipped national data: a reduced digital-service rate in FR.
-    $source = new StaticTaxRateSource(null, [
+    $source = rateSourceFor([], [
         'FR:digital_service' => new RateBand('5.5', RateKind::Reduced),
     ]);
     $fr = $this->geo->find(new CountryCode('FR'));
@@ -48,7 +48,7 @@ it('resolves a configured reduced band for a category, else the standard rate', 
 });
 
 it('resolves a zero band and leaves other jurisdictions on standard', function () {
-    $source = new StaticTaxRateSource(null, [
+    $source = rateSourceFor([], [
         'DK:digital_service' => new RateBand('0', RateKind::Zero),
     ]);
 

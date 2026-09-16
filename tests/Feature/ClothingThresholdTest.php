@@ -6,22 +6,19 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\ThresholdCurrencyMismatch;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 // Three states exempt clothing below a per-item price, and they do NOT work alike.
 // Massachusetts and Rhode Island tax only the amount OVER the threshold; New York
@@ -40,17 +37,10 @@ beforeEach(function () {
 
     $this->calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
-            new UsTaxDatasetTaxability(
-                new UsTaxDataset(
-                    $this->app->make(Factory::class),
-                    $this->app->make(Cache::class),
-                    dirname(__DIR__).'/Fixtures/us-tax-dataset',
-                ),
-                new StaticProductTaxability,
-            ),
+            new RegisterTaxability(app(RegisterDataset::class)),
             $this->geo,
         ),
-        new StaticTaxRateSource(['US-MA' => '6.25', 'US-NY' => '4', 'US-RI' => '7']),
+        app(TaxRateSource::class),
     );
 });
 
@@ -149,17 +139,10 @@ it('does not disturb a state that taxes clothing outright', function () {
     // California has no threshold: the whole price is taxed, as it always was.
     $calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
-            new UsTaxDatasetTaxability(
-                new UsTaxDataset(
-                    $this->app->make(Factory::class),
-                    $this->app->make(Cache::class),
-                    dirname(__DIR__).'/Fixtures/us-tax-dataset',
-                ),
-                new StaticProductTaxability,
-            ),
+            new RegisterTaxability(app(RegisterDataset::class)),
             $this->geo,
         ),
-        new StaticTaxRateSource(['US-CA' => '7.25']),
+        rateSourceFor(['US-CA' => '7.25']),
     );
 
     expect((string) $calculator->assess(garment('US-CA', '200.00'))->tax->getAmount())->toBe('14.50');

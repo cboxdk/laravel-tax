@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
@@ -17,11 +18,8 @@ use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\RateComponentsDoNotReconcile;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\SellerRegistration;
@@ -29,16 +27,10 @@ use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    $this->dataset = app(RegisterDataset::class);
 });
 
 /** A US place, optionally at a rooftop locality. */
@@ -52,7 +44,7 @@ function breakdownPlace(string $state, ?LocalityCode $locality = null): Jurisdic
 /** A ZIP+4 locality, the postal key the boundary index expands into authorities. */
 function zip9(string $state, string $zip): LocalityCode
 {
-    return new LocalityCode(new SubdivisionCode($state), UsTaxDatasetRateSource::ZIP9_SCHEME, $zip);
+    return new LocalityCode(new SubdivisionCode($state), LocalityScheme::Zip9->value, $zip);
 }
 
 /** A domestic US B2C supply the seller is registered for, at the given place. */
@@ -80,8 +72,8 @@ function breakdownQuery(
 function datasetCalculator(UsTaxDataset $dataset): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability),
-        new UsTaxDatasetRateSource($dataset),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable),
+        app(TaxRateSource::class),
     );
 }
 
@@ -124,7 +116,7 @@ it('treats no components as "not decomposable", not as a single authority', func
 
 it('keeps every stacked authority as a component', function () {
     // 66101-6200 is a Kansas City address: state 6.5% + county 1% + city 1.625%.
-    $rate = new UsTaxDatasetRateSource($this->dataset)
+    $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-KS', zip9('US-KS', '66101-6200')), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('9.125')
@@ -145,7 +137,7 @@ it('splits a combined-basis rate into the state share and the aggregate local sh
     // levelled `local`, never attributed to the named city.
     $locality = new LocalityCode(new SubdivisionCode('US-CA'), 'ca-place', '06:ALAMEDA');
 
-    $rate = new UsTaxDatasetRateSource($this->dataset)
+    $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-CA', $locality), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('10.75')
@@ -160,7 +152,7 @@ it('splits a combined-basis rate into the state share and the aggregate local sh
 it('carries no components on a bare state rate', function () {
     // The state share is not a breakdown of an all-in rate — it is the absence of
     // one. Emitting a single "state" component would claim the locals are zero.
-    $rate = new UsTaxDatasetRateSource($this->dataset)
+    $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-CA'), TaxClass::GeneralGoods);
 
     expect($rate?->hasComponents())->toBeFalse();
@@ -168,7 +160,7 @@ it('carries no components on a bare state rate', function () {
 
 it('carries no components on a reduced-rate category rule', function () {
     // Missouri's 1.225% grocery rate is a product rule, not a stack of authorities.
-    $rate = new UsTaxDatasetRateSource($this->dataset)
+    $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-MO'), TaxClass::Groceries);
 
     expect((string) $rate?->percentage)->toBe('1.225')
@@ -181,9 +173,9 @@ it('refuses a combined-basis rooftop with no local record rather than reporting 
     // share genuinely is the whole rate. Falling back to Derived says so.
     $directory = fixtureWithEmptyBoundarySet('US-CA');
 
-    $dataset = new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), $directory);
+    $dataset = app(RegisterDataset::class);
 
-    $rate = new UsTaxDatasetRateSource($dataset)
+    $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-CA', zip9('US-CA', '94501-1234')), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('7.25')
@@ -256,8 +248,8 @@ it('leaves the breakdown null when the source cannot decompose the rate', functi
     // The static source ships flat percentages with no authority split. Null says
     // "unknown", which a caller must not read as "the state takes all of it".
     $calculator = new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability),
-        new StaticTaxRateSource(['US-CA' => '7.25']),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable),
+        rateSourceFor(['US-CA' => '7.25']),
     );
 
     $assessment = $calculator->assess(breakdownQuery(breakdownPlace('US-CA')));
@@ -393,8 +385,8 @@ it('stacks a reduced category on the locality food rate, not the general one', f
     // generally and 2.25% on food.
     $directory = datasetWithFoodRate();
 
-    $dataset = new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), $directory);
-    $source = new UsTaxDatasetRateSource($dataset);
+    $dataset = app(RegisterDataset::class);
+    $source = app(TaxRateSource::class);
 
     $place = breakdownPlace('US-KS', zip9('US-KS', '66101-6200'));
 
@@ -408,9 +400,9 @@ it('stacks a reduced category on the locality food rate, not the general one', f
 });
 
 it('decomposes a reduced rooftop rate into its authorities too', function () {
-    $dataset = new UsTaxDataset($this->app->make(Factory::class), $this->app->make(Cache::class), datasetWithFoodRate());
+    $dataset = app(RegisterDataset::class);
 
-    $grocery = new UsTaxDatasetRateSource($dataset)
+    $grocery = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-KS', zip9('US-KS', '66101-6200')), TaxClass::Groceries);
 
     expect(array_map(fn (RateComponent $c): array => [

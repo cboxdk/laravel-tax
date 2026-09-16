@@ -13,21 +13,16 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Register\Reader\RateResolver;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Testing\FakeLocalAuthorityResolver;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    $this->dataset = app(RegisterDataset::class);
     $this->resolver = new FakeLocalAuthorityResolver;
-    $this->source = new UsTaxDatasetRateSource($this->dataset, $this->resolver);
+    $this->source = new RegisterRateSource($this->dataset, new RateResolver, $this->resolver);
 });
 
 function resolverPlace(string $state): Jurisdiction
@@ -36,7 +31,7 @@ function resolverPlace(string $state): Jurisdiction
 }
 
 it('defers by default, so an app that binds nothing is unchanged', function () {
-    $shipped = new UsTaxDatasetRateSource($this->dataset);
+    $shipped = app(TaxRateSource::class);
 
     // Kansas with no locality: the state share, exactly as before the seam existed.
     expect((string) $shipped->rateFor(resolverPlace('US-KS'), TaxClass::GeneralGoods)?->percentage)->toBe('6.5');
@@ -119,7 +114,7 @@ it('wins over the shipped resolution where both could answer', function () {
     $place = resolverPlace('US-KS')->withLocality(
         new LocalityCode(
             new SubdivisionCode('US-KS'),
-            UsTaxDatasetRateSource::ZIP9_SCHEME,
+            LocalityScheme::Zip9->value,
             '66101-3064',
         ),
     );

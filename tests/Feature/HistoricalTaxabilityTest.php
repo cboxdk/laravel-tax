@@ -11,16 +11,12 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 // Taxability is dated law, not a standing fact. States move categories in and out
 // of tax on their own schedule, and the dataset already carried those rules as
@@ -63,7 +59,7 @@ function datedTaxabilityDataset(): UsTaxDataset
         ],
     ]], JSON_THROW_ON_ERROR));
 
-    return new UsTaxDataset(app(Factory::class), app(Cache::class), $dir);
+    return app(RegisterDataset::class);
 }
 
 function datedGrocerySupply(string $suppliedAt): TaxQuery
@@ -85,10 +81,10 @@ function datedCalculator(): DefaultTaxCalculator
 {
     return new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
-            new UsTaxDatasetTaxability(datedTaxabilityDataset(), new StaticProductTaxability),
+            new RegisterTaxability(datedTaxabilityDataset()),
             test()->geo,
         ),
-        new StaticTaxRateSource(['US-KS' => '6.5']),
+        rateSourceFor(['US-KS' => '6.5']),
     );
 }
 

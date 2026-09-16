@@ -18,27 +18,19 @@ use Cbox\Tax\Exceptions\ImplausibleTaxRate;
 use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
 use Cbox\Tax\RateSource\ChainTaxRateSource;
-use Cbox\Tax\RateSource\StaticTaxRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
-    $this->taxability = new UsTaxDatasetTaxability($this->dataset, new StaticProductTaxability);
+    $this->dataset = app(RegisterDataset::class);
+    $this->taxability = new RegisterTaxability($this->dataset);
 });
 
 /**
@@ -65,7 +57,7 @@ function datasetWithout(string $field): UsTaxDataset
         ]],
     ]], JSON_THROW_ON_ERROR));
 
-    return new UsTaxDataset(app(Factory::class), app(Cache::class), $dir);
+    return app(RegisterDataset::class);
 }
 
 function denyPlace(string $state): Jurisdiction
@@ -119,10 +111,7 @@ it('refuses a threshold rule that does not say how the threshold applies', funct
     // $175; New York taxes the whole item once it reaches $110. A rule carrying
     // the figure without the mechanic is refused rather than guessed, because
     // guessing wrong under-collects on every garment over the line in New York.
-    $incomplete = new UsTaxDatasetTaxability(
-        datasetWithout('thresholdRule'),
-        new StaticProductTaxability,
-    );
+    $incomplete = new RegisterTaxability(datasetWithout('thresholdRule'));
 
     expect(fn () => $incomplete->determine(denyPlace('US-MA'), TaxClass::Clothing, anyAmount('200.00')))
         ->toThrow(UnresolvedProductTaxability::class, 'conditional');
@@ -160,7 +149,7 @@ it('refuses Alaska rather than reporting an affirmative 0%', function () {
     // noSalesTax and already resolve null — Alaska's baseline is stateRate 0 with
     // localsExist true, which used to produce a real 0% Standard rate: a confident
     // "no tax due" on a supply that is taxed.
-    $rate = new UsTaxDatasetRateSource($this->dataset)->rateFor(denyPlace('US-AK'), TaxClass::GeneralGoods);
+    $rate = app(TaxRateSource::class)->rateFor(denyPlace('US-AK'), TaxClass::GeneralGoods);
 
     expect($rate)->toBeNull();
 });
@@ -168,7 +157,7 @@ it('refuses Alaska rather than reporting an affirmative 0%', function () {
 it('still returns the state share where it is a genuine floor', function () {
     // Every other state's share under-states the total but is a real number a
     // caller can reason about at Derived confidence.
-    $rate = new UsTaxDatasetRateSource($this->dataset)->rateFor(denyPlace('US-TX'), TaxClass::GeneralGoods);
+    $rate = app(TaxRateSource::class)->rateFor(denyPlace('US-TX'), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('6.25')
         ->and($rate?->confidence->value)->toBe('derived');
@@ -216,7 +205,7 @@ it('resolves the commodity code through the calculator, not just the source', fu
     };
 
     $calculator = new DefaultTaxCalculator(
-        DefaultRegimeRegistry::withDefaults(new StaticProductTaxability, $this->geo),
+        DefaultRegimeRegistry::withDefaults(new AlwaysTaxable, $this->geo),
         new ChainTaxRateSource([$aware]),
     );
 
@@ -244,11 +233,11 @@ it('composes a chain that advertises the capability', function () {
 // ---- The rate cache must not serve one rooftop's rate for another ---------
 
 it('keys the rate cache by rooftop locality', function () {
-    $inner = new UsTaxDatasetRateSource($this->dataset);
+    $inner = app(TaxRateSource::class);
     $caching = new CachingTaxRateSource($inner, $this->app->make(Cache::class));
 
     $kansasCity = denyPlace('US-KS')->withLocality(
-        new LocalityCode(new SubdivisionCode('US-KS'), UsTaxDatasetRateSource::ZIP9_SCHEME, '66101-6200'),
+        new LocalityCode(new SubdivisionCode('US-KS'), LocalityScheme::Zip9->value, '66101-6200'),
     );
 
     // Warm the cache at the rooftop, then ask for the bare state. Without the
@@ -322,7 +311,7 @@ it('caches today but never serves a historical rate from the current-rate cache'
 it('refuses to assess rather than over-collect on an undetermined category', function () {
     $calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults($this->taxability, $this->geo),
-        new UsTaxDatasetRateSource($this->dataset),
+        app(TaxRateSource::class),
     );
 
     $query = new TaxQuery(

@@ -13,24 +13,15 @@ use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
-use Cbox\Tax\EuTaxData\EuTaxDataset;
-use Cbox\Tax\Nexus\UsTaxDatasetNexus;
-use Cbox\Tax\RateSource\EuTaxDatasetRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
 use Cbox\Tax\Regime\EuVatRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
-use Cbox\Tax\Taxability\StaticProductTaxability;
-use Cbox\Tax\Taxability\UsTaxDatasetTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
 
 /**
  * Runs the published conformance corpus against the engine.
@@ -97,13 +88,9 @@ function conformanceVectors(): array
     return $out;
 }
 
-function usFixture(): UsTaxDataset
+function usFixture(): RegisterDataset
 {
-    return new UsTaxDataset(
-        app(Factory::class),
-        app(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
+    return app(RegisterDataset::class);
 }
 
 function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
@@ -112,8 +99,8 @@ function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
         $dataset = usFixture();
 
         return new UsSalesTaxRegime(
-            new UsTaxDatasetTaxability($dataset, new StaticProductTaxability),
-            new UsTaxDatasetNexus($dataset),
+            new RegisterTaxability($dataset),
+            new RegisterNexus($dataset),
             null,
             $dataset,
         );
@@ -125,14 +112,12 @@ function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
 function conformanceRates(string $regime = 'eu-vat'): TaxRateSource
 {
     if ($regime === 'us-sales-tax') {
-        return new UsTaxDatasetRateSource(usFixture());
+        return new RegisterRateSource(usFixture());
     }
 
-    return new EuTaxDatasetRateSource(new EuTaxDataset(
-        app(Factory::class),
-        app(Cache::class),
-        dirname(__DIR__).'/Fixtures/eu-tax-dataset',
-    ));
+    // NOT app(TaxRateSource::class): this function is what that binding resolves
+    // to, so asking the container for it recurses until the process dies.
+    return new RegisterRateSource(app(RegisterDataset::class));
 }
 
 /**
