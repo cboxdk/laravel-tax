@@ -26,7 +26,9 @@ final class SuiteRegister
         $register = FakeRegister::at($root);
 
         foreach (self::countries() as $code => $percentage) {
-            $register->rate('eu:'.$code, $percentage);
+            // Dated from far enough back that a backdated supply still finds a rate;
+            // the window matters to provenance, not to most of these cases.
+            $register->rate('eu:'.$code, $percentage, from: '1990-01-01');
         }
 
         foreach (self::states() as $state => $percentage) {
@@ -53,8 +55,7 @@ final class SuiteRegister
     public static function countries(): array
     {
         return [
-            'DK' => '25', 'FR' => '20', 'DE' => '19', 'GB' => '20', 'PT' => '23', 'HU' => '27',
-            'PL' => '23', 'ES' => '21', 'IE' => '23', 'GR' => '24', 'SE' => '25', 'NL' => '21',
+            'DK' => '25', 'FR' => '20', 'DE' => '19', 'GB' => '20', 'PT' => '23',             'PL' => '23', 'ES' => '21', 'IE' => '23', 'GR' => '24', 'SE' => '25', 'NL' => '21',
             'IT' => '22', 'AT' => '20', 'BE' => '21', 'FI' => '25.5', 'LU' => '17', 'CZ' => '21',
             'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
             'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
@@ -92,6 +93,9 @@ final class SuiteRegister
      */
     private static function bands(FakeRegister $register): void
     {
+        // Hungary's standard rate carries a window a correction could name, which is
+        // what provenance records rather than the release version alone.
+        $register->rate('eu:HU', '27', 'standard', from: '2024-01-01');
         $register->rate('eu:HU', '5', 'reduced', 'goods.food', classification: '01022110');
         $register->rate('eu:HU', '18', 'reduced', 'goods.food', classification: '1806');
         $register->rate('eu:HU', '18', 'reduced', 'services.accommodation');

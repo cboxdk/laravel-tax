@@ -99,7 +99,8 @@ it('keeps two different local authorities apart', function () {
         $return->lineFor(new CountryCode('US'), 'USD', new SubdivisionCode('US-KS'))?->authorities ?? [],
     );
 
-    expect($codes)->toContain('36000')->toContain('209');
+    // The register's own jurisdiction codes, which is what a component carries now.
+    expect($codes)->toContain('us:KS:CITY-36000')->toContain('us:KS:COUNTY-209');
 });
 
 it('refuses the split when a taxed supply arrived without a breakdown', function () {
@@ -198,9 +199,12 @@ it('does not merge authorities across different states', function () {
 
     foreach ($return->lines as $line) {
         foreach ($line->authorities ?? [] as $authority) {
-            // Every state share must name its own state, never the other one.
+            // Every state share must name its own state, never the other one. The
+            // code is the register's — `us:KS` — because every other component
+            // carries one too, and a breakdown that mixed two vocabularies would be
+            // worse than one that picked the less familiar.
             if ($authority->level === JurisdictionLevel::State) {
-                expect($authority->code)->toBe($line->subdivision?->value);
+                expect($authority->code)->toBe('us:'.substr((string) $line->subdivision?->value, 3));
             }
         }
     }

@@ -43,7 +43,7 @@ it('records the window the answer stood on, not just which dataset answered', fu
     // The version alone would put every invoice in the blast radius of every
     // republish. The window's start is what a correction actually names.
     expect($rate?->provenance)->toBeInstanceOf(RateProvenance::class)
-        ->and($rate?->provenance?->dataset)->toBe('eu-tax-dataset')
+        ->and($rate?->provenance?->dataset)->toBe('cbox-tax')
         ->and($rate?->provenance?->effectiveFrom)->toBe('2024-01-01')
         ->and($rate?->provenance?->version)->not->toBeNull()
         ->and($rate?->provenance?->isTraceable())->toBeTrue();
@@ -77,7 +77,7 @@ it('records the US state window too', function () {
         TaxClass::GeneralGoods,
     );
 
-    expect($rate?->provenance?->dataset)->toBe('us-tax-data');
+    expect($rate?->provenance?->dataset)->toBe('cbox-tax');
 });
 
 // ---------------------------------------------------------------------------
@@ -102,10 +102,10 @@ it('records nothing for a source that publishes nothing to trace back to', funct
 });
 
 it('serializes flat, for a column on an invoice line', function () {
-    $provenance = new RateProvenance('us-tax-data', '2026-08-15', '2022-01-01', str_repeat('a', 64));
+    $provenance = new RateProvenance('cbox-tax', '2026-08-15', '2022-01-01', str_repeat('a', 64));
 
     expect($provenance->toArray())->toBe([
-        'dataset' => 'us-tax-data',
+        'dataset' => 'cbox-tax',
         'version' => '2026-08-15',
         'effectiveFrom' => '2022-01-01',
         'sectionHash' => str_repeat('a', 64),
