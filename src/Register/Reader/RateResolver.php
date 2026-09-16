@@ -359,6 +359,16 @@ final readonly class RateResolver
             }
         }
 
+        // A COMBINED ROW IS AN ALL-IN STANDARD RATE for the place it names. Where a
+        // jurisdiction is addressed directly rather than stacked under one — Ontario's
+        // harmonised 13%, California's per-place total — that row is the answer, and
+        // refusing it sent the caller up to the federal share alone.
+        foreach ($rates as $rate) {
+            if (($rate['kind'] ?? null) === 'combined' && ($rate['category'] ?? null) === null) {
+                return $rate;
+            }
+        }
+
         // A jurisdiction whose only records are local components has no standard
         // band of its own — the state above it does. Null, so the caller stacks.
         return null;

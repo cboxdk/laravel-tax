@@ -60,7 +60,7 @@ final class SuiteRegister
             'RO' => '19', 'NO' => '25', 'CH' => '8.1', 'JP' => '10', 'SG' => '9', 'IN' => '18',
             'MY' => '8', 'AU' => '10', 'NZ' => '15', 'AE' => '5', 'SA' => '15', 'MX' => '16',
             'KR' => '10', 'TR' => '20', 'TH' => '7', 'ID' => '11', 'PH' => '12', 'VN' => '10',
-            'CA' => '5', 'BH' => '10', 'CL' => '19', 'OM' => '5', 'TW' => '5', 'UA' => '20',
+            'BH' => '10', 'CL' => '19', 'OM' => '5', 'TW' => '5', 'UA' => '20',
         ];
     }
 
@@ -138,6 +138,10 @@ final class SuiteRegister
         // sourcing were ignored the totals would be indistinguishable.
         $register->rate('us:TX:CITY-4109000', '0.5', 'local_component')->named('us:TX:CITY-4109000', 'Austin');
         $register->rate('us:TX:CITY-2109064', '1.5', 'local_component')->named('us:TX:CITY-2109064', 'Dallas');
+
+        // Canada: the federal GST plus a province that files one harmonised total.
+        $register->rate('ca:CA', '5', from: '1990-01-01');
+        $register->rate('ca:ON', '13', 'combined', from: '1990-01-01')->named('ca:ON', 'Ontario');
 
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.

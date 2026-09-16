@@ -160,9 +160,13 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return null;
         }
 
-        // `06:ALAMEDA` carries the state FIPS in front of the place; the authority is
-        // the last segment, and the prefix is context the register already has.
-        $wanted = strtoupper(trim(substr($code, (int) strrpos($code, ':') + 1)));
+        // `06:ALAMEDA` carries the state FIPS in front of the place; the authority
+        // is the last segment, and the prefix is context the register already has.
+        // A plain code has no colon, and `strrpos` returns FALSE there — cast to an
+        // int that is a perfectly good offset, which quietly ate the first digit of
+        // every Streamlined FIPS.
+        $separator = strrpos($code, ':');
+        $wanted = strtoupper(trim($separator === false ? $code : substr($code, $separator + 1)));
         $found = [];
 
         foreach (array_keys($this->dataset->namesIn('us/'.$state)) as $jurisdiction) {

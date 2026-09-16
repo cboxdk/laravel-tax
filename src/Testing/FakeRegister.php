@@ -240,6 +240,15 @@ final class FakeRegister
                 continue;
             }
 
+            // A US STATE IS NOT A COUNTRY MEMBER. `us:CA` is California and it ends
+            // in the same two letters as Canada — listing it as a member made a
+            // Canadian supply resolve to California's rate. The United States is
+            // addressed by subdivision and never by country code, so its regime
+            // contributes no members at all.
+            if ($parts[0] === 'us') {
+                continue;
+            }
+
             $members[$parts[0]][] = [
                 'code' => $parts[0].':'.$parts[1],
                 'name' => $this->names[$parts[0].':'.$parts[1]] ?? $parts[1],

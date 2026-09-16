@@ -131,7 +131,13 @@ final readonly class RegisterRateSource implements CommodityRateSource
             // a caveat on every state-level assessment, and a caveat on everything
             // is one nobody reads.
             if ($jurisdiction->locality === null) {
-                return null;
+                // A US state share is rarely the whole rate — locals apply almost
+                // everywhere — so it is DERIVED even though nothing is wrong. No
+                // RateLimit, because the caller asked a state-level question and got
+                // a state-level answer; there is nothing for them to close.
+                return $jurisdiction->country->value === 'US'
+                    ? new TaxRate($state->percentage, $state->kind, self::SOURCE, Confidence::Derived, [], $state->limitedBy, $state->provenance)
+                    : null;
             }
 
             // Nobody resolved the address below the state line. The state share is
