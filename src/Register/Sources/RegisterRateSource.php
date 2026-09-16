@@ -86,7 +86,9 @@ final readonly class RegisterRateSource implements CommodityRateSource
                 continue;
             }
 
-            return $this->stacked($jurisdiction, $code, $rate, $category, $commodityCode, $at, $version) ?? $rate;
+            $stacked = $this->stacked($jurisdiction, $code, $rate, $category, $commodityCode, $at, $version) ?? $rate;
+
+            return $this->withStatewideLocal($stacked, $code, $category, $at);
         }
 
         return null;
@@ -194,15 +196,6 @@ final readonly class RegisterRateSource implements CommodityRateSource
                 $components[] = new RateComponent($this->levelOf($authority), $resolved->percentage, $authority, $this->nameOf($authority));
                 $total = $total->plus($resolved->percentage);
 
-                if ($isState) {
-                    $statewide = $this->statewideLocal($authority, $category, $at);
-
-                    if ($statewide !== null) {
-                        $components[] = new RateComponent(JurisdictionLevel::Local, $statewide, $authority, $this->nameOf($authority));
-                        $total = $total->plus($statewide);
-                    }
-                }
-
                 continue;
             }
 
@@ -271,31 +264,63 @@ final readonly class RegisterRateSource implements CommodityRateSource
      * state code rather than under any authority inside the state.
      *
      * Virginia is the live example — 1% on groceries, levied across the whole state,
-     * so there is no city or county to file it against. Reading the state member of a
-     * resolved set as "the standard band and nothing else" dropped it silently, and
-     * dropped it only on food: the category a shopping basket is most likely to be
-     * full of.
+     * so there is no city or county to file it against. It is the whole local story
+     * for that category, and the register files it against the state itself.
+     *
+     * APPLIED ON EVERY PATH, and that is the correction this carries. Put inside the
+     * stacking loop it only ran where a boundary file resolved an authority set —
+     * and Virginia, the one state it was written for, is not a Streamlined member and
+     * publishes no boundary file at all. It never ran once in production. A share
+     * that applies everywhere in a state by statute needs no address resolved to
+     * reach it, which is exactly why it must not sit behind one.
      *
      * Only `local_component` qualifies. A `combined` record is an all-in total that
-     * REPLACES the state share, and adding one here would charge the band twice.
+     * REPLACES the state share — Virginia files one of those too, for general goods —
+     * and adding to it would charge the band twice.
      */
-    private function statewideLocal(string $state, TaxClass $category, ?DateTimeImmutable $at): ?BigDecimal
+    private function withStatewideLocal(TaxRate $rate, string $code, TaxClass $category, ?DateTimeImmutable $at): TaxRate
     {
-        $record = $this->resolver->local($this->dataset->ratesFor($state), CategoryMap::keyFor($category), $at);
+        if ($code !== $this->stateOf($code)) {
+            return $rate;
+        }
+
+        $record = $this->resolver->local($this->dataset->ratesFor($code), CategoryMap::keyFor($category), $at);
 
         if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
-            return null;
+            return $rate;
         }
 
         $percentage = $record['percentage'] ?? null;
 
-        if (! is_string($percentage)) {
-            return null;
+        if (! is_string($percentage) || BigDecimal::of($percentage)->isZero()) {
+            return $rate;
         }
 
-        $value = BigDecimal::of($percentage);
+        $share = BigDecimal::of($percentage);
+        $components = $rate->components;
 
-        return $value->isZero() ? null : $value;
+        foreach ($components as $component) {
+            if ($component->code === $code && $component->level === JurisdictionLevel::Local) {
+                return $rate;
+            }
+        }
+
+        // An incomplete breakdown stays incomplete: where the stack could not be
+        // resolved the component list is deliberately empty, and one entry would
+        // read as the whole of it.
+        if ($components !== []) {
+            $components[] = new RateComponent(JurisdictionLevel::Local, $share, $code, $this->nameOf($code));
+        }
+
+        return new TaxRate(
+            $rate->percentage->plus($share)->strippedOfTrailingZeros(),
+            $rate->kind,
+            self::SOURCE,
+            $rate->confidence,
+            $components,
+            $rate->limitedBy,
+            $rate->provenance,
+        );
     }
 
     /**

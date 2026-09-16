@@ -69,27 +69,44 @@ afterEach(function (): void {
     $remove($this->ladderStore);
 });
 
-it('adds a local share the state levies everywhere, filed under the bare state code', function (): void {
+it('adds a local share the state levies everywhere, with no boundary file in sight', function (): void {
     // Virginia's grocery tax: 1%, levied across the whole state, so there is no city
-    // or county to file it against and the register files it under `us:VA`. The state
-    // is a member of every resolved authority set, and the stacker treated that
-    // member as "the standard band and nothing else" — dropping the 1% silently, and
-    // dropping it only on food.
+    // or county to file it against and the register files it under `us:VA`.
+    //
+    // AND VIRGINIA PUBLISHES NO BOUNDARY FILE — it is not a Streamlined member, so
+    // nothing ever resolves an authority set there. The first version of this fix sat
+    // inside the stacking loop, which only runs when a set resolves, so it never ran
+    // once for the one state it was written for. The test hid that by inventing a
+    // boundary Virginia does not have. A share that applies everywhere in a state by
+    // statute needs no address resolved to reach it.
     ladderRegister()
-        ->rate('us:VA', '4.3')
+        ->rate('us:VA', '5.3')
+        ->rate('us:VA', '0', 'exempt', 'goods.food')
         ->rate('us:VA', '1', 'local_component', 'goods.food')
-        ->boundary('VA', '23219', ['state:51'])
         ->install();
 
     $groceries = ladderRateFor('US-VA', '23219-0001', TaxClass::Groceries);
     $general = ladderRateFor('US-VA', '23219-0001', TaxClass::GeneralGoods);
 
-    expect((string) $groceries?->percentage)->toBe('5.3')
-        ->and($groceries?->confidence)->toBe(Confidence::Authoritative)
-        ->and(array_map(fn ($c): string => $c->level->value, $groceries?->components ?? []))
-        ->toBe(['state', 'local'])
+    // The state exempts food and the locality still takes its 1%.
+    expect((string) $groceries?->percentage)->toBe('1')
         // ...and nothing else picks it up: the row is scoped to food.
-        ->and((string) $general?->percentage)->toBe('4.3');
+        ->and((string) $general?->percentage)->toBe('5.3');
+});
+
+it('adds the statewide share on top of a resolved stack too', function (): void {
+    ladderRegister()
+        ->rate('us:VA', '5.3')
+        ->rate('us:VA', '1', 'local_component', 'goods.food')
+        ->rate('us:VA:COUNTY-041', '0.7', 'local_component')
+        ->boundary('VA', '23219', ['state:51', 'county:041'])
+        ->install();
+
+    $rate = ladderRateFor('US-VA', '23219-0001', TaxClass::Groceries);
+
+    expect((string) $rate?->percentage)->toBe('7')
+        ->and(array_map(fn ($c): string => $c->level->value, $rate?->components ?? []))
+        ->toBe(['state', 'county', 'local']);
 });
 
 it('reaches a local rate filed at a parent category from the leaf an invoice sells at', function (): void {
