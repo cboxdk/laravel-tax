@@ -269,20 +269,40 @@ final readonly class Compiler
     }
 
     /**
+     * Fetch one boundary file, preferring the address the listing gives absolutely.
+     *
+     * The listing offers `url` and `artifact` for every file and THEY DISAGREE for
+     * the ZIP layer: `url` answers 200 while the `artifact` path 404s. Reading
+     * `artifact` first — which is the field that reads like a path — silently
+     * fetched nothing for every state, and the compile reported "0 ZIP" as if the
+     * release shipped none. So `url` leads and `artifact` is the fallback.
+     *
      * @param  array<array-key, mixed>  $artifacts
      */
     private function boundaryArtifact(array $artifacts, string $kind, string $partial, string $base, string $state, string $suffix): bool
     {
         $entry = $artifacts[$kind] ?? null;
-        $path = is_array($entry) ? ($entry['artifact'] ?? null) : null;
 
-        if (! is_string($path)) {
+        if (! is_array($entry)) {
+            return false;
+        }
+
+        $url = $entry['url'] ?? null;
+        $artifact = $entry['artifact'] ?? null;
+
+        $address = match (true) {
+            is_string($url) && $url !== '' => $url,
+            is_string($artifact) && $artifact !== '' => $base.'/'.$artifact,
+            default => null,
+        };
+
+        if ($address === null) {
             return false;
         }
 
         $to = $partial.'/boundaries/'.$state.'.'.$suffix.'.json';
 
-        return $this->fetcher->download("{$base}/{$path}", $to) !== null;
+        return $this->fetcher->download($address, $to) !== null;
     }
 
     /**

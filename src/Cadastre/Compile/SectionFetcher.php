@@ -149,8 +149,20 @@ final readonly class SectionFetcher
         return $size === false ? 0 : $size;
     }
 
+    /**
+     * An absolute URL is taken as it stands; anything else hangs off the base.
+     *
+     * The register's boundary listing gives both an absolute `url` and a relative
+     * `artifact` for each file, and for the ZIP artifacts the two do not agree: the
+     * `url` answers 200 and the `artifact` path 404s. Accepting either here lets the
+     * caller prefer whichever the publisher actually serves.
+     */
     private function url(string $path): string
     {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
         return rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
     }
 }
