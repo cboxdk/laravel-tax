@@ -146,7 +146,7 @@ it('names the local gap where the address stopped at the state line', function (
     );
 
     expect($rate?->limitedBy)->toBe(RateLimit::NoLocalResolution)
-        ->and($rate?->limitedBy?->remedy())->toContain('rooftop')
+        ->and($rate?->limitedBy?->remedy())->toContain('boundary index')
         // NOT the caller's to close by classifying anything — it is the operator's,
         // by configuration. Sorting a review by this is what lets one decision fix
         // a hundred products instead of investigating each.

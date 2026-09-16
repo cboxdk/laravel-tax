@@ -5,6 +5,15 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Cadastre\Compile\SectionFetcher;
+use Cbox\Tax\Cadastre\Console\ActivateCommand;
+use Cbox\Tax\Cadastre\Console\PruneCommand;
+use Cbox\Tax\Cadastre\Console\StatusCommand;
+use Cbox\Tax\Cadastre\Console\SyncCommand;
+use Cbox\Tax\Cadastre\Reader\CadastreDataset;
+use Cbox\Tax\Cadastre\Sources\CadastreRateSource;
+use Cbox\Tax\Cadastre\Store\StoreLayout;
+use Cbox\Tax\Cadastre\Store\StorePointer;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
@@ -63,6 +72,8 @@ class TaxServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/tax.php', 'tax');
 
+        $this->registerRegister();
+
         // The typed US dataset accessor, resolvable for consumers that want dataset METADATA
         // beyond the rate/taxability/nexus/sourcing contracts — notably the curated rate and
         // baseline notes (rateNote()/baselineNote(), the "see … note" caveats in the coverage
@@ -94,6 +105,19 @@ class TaxServiceProvider extends ServiceProvider
             $sources = [];
 
             $config = $app->make(Config::class);
+
+            // The register, and it comes FIRST. It covers 80 jurisdictions across
+            // eleven regimes against the two the compiled datasets below reached,
+            // and it reads local files rather than making a request.
+            //
+            // The old sources stay wired for one release while their tests are
+            // migrated. They are deprecated and go next; nothing new should reach
+            // for them.
+            $dataset = $app->make(CadastreDataset::class);
+
+            if ($dataset->isInstalled()) {
+                $sources[] = new CadastreRateSource($dataset);
+            }
 
             // The compiled EU dataset, tried before the live service and before any
             // hand-built export. It carries a dated series, so a back-dated supply is
@@ -252,6 +276,44 @@ class TaxServiceProvider extends ServiceProvider
     }
 
     /**
+     * The register: where it lives, how it is reached, and the commands that fill it.
+     *
+     * Everything here is a singleton because the dataset pins the live version for
+     * its own lifetime — two lines of one order have to be priced by the same
+     * register, or the totals reconcile with neither.
+     */
+    private function registerRegister(): void
+    {
+        $this->app->singleton(StoreLayout::class, static function (Application $app): StoreLayout {
+            $configured = $app->make(Config::class)->get('tax.cadastre.store');
+
+            return new StoreLayout(
+                is_string($configured) && $configured !== ''
+                    ? $configured
+                    : $app->storagePath('app/cbox-tax/cadastre'),
+            );
+        });
+
+        $this->app->singleton(StorePointer::class, static fn (Application $app): StorePointer => new StorePointer(
+            $app->make(StoreLayout::class),
+        ));
+
+        $this->app->singleton(SectionFetcher::class, static function (Application $app): SectionFetcher {
+            $url = $app->make(Config::class)->get('tax.cadastre.url');
+
+            return new SectionFetcher(
+                $app->make(Factory::class),
+                is_string($url) && $url !== '' ? $url : 'https://data.cboxtax.com',
+            );
+        });
+
+        $this->app->singleton(CadastreDataset::class, static fn (Application $app): CadastreDataset => new CadastreDataset(
+            $app->make(StoreLayout::class),
+            $app->make(StorePointer::class),
+        ));
+    }
+
+    /**
      * Build the shared us-tax-data loader when enabled (the default), reading its
      * config-driven location. The loader caches fetched sections itself, so it is
      * shared across the rate/taxability/nexus/sourcing bindings. Returns null when
@@ -339,6 +401,13 @@ class TaxServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/tax.php' => $this->app->configPath('tax.php'),
             ], 'tax-config');
+
+            $this->commands([
+                SyncCommand::class,
+                StatusCommand::class,
+                ActivateCommand::class,
+                PruneCommand::class,
+            ]);
         }
     }
 }

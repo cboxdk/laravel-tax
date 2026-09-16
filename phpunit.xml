@@ -18,5 +18,15 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!--
+            Pinned, because Laravel's own default for this is `database` and a package
+            suite that inherits it dies on `no such table: cache` in whichever tests
+            happen to touch a cache — 235 of them here, all at once, and none of them
+            about caching. What a host configures is the host's business; what this
+            suite measures must not depend on it.
+        -->
+        <env name="CACHE_STORE" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
     </php>
 </phpunit>

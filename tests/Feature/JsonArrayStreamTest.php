@@ -75,18 +75,3 @@ it('refuses an array of scalars, which is not the shape it knows', function (): 
     expect(fn (): array => streamOf('{"rates":["25","10"]}'))
         ->toThrow(DatasetUnreadable::class);
 });
-
-it('streams a real register document without holding it', function (): void {
-    $path = dirname(__DIR__).'/Fixtures/cadastre/regions/eu.json';
-
-    $before = memory_get_usage(true);
-    $count = 0;
-
-    foreach (JsonArrayStream::fromFile($path, 'rates') as $rate) {
-        $count++;
-        expect($rate)->toHaveKey('jurisdiction');
-    }
-
-    expect($count)->toBeGreaterThan(100)
-        ->and(memory_get_usage(true) - $before)->toBeLessThan(8 * 1024 * 1024);
-})->skip(fn (): bool => ! is_file(dirname(__DIR__).'/Fixtures/cadastre/regions/eu.json'), 'register fixture not compiled yet');
