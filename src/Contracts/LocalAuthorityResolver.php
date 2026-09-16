@@ -40,10 +40,15 @@ use DateTimeImmutable;
  *    short list is an under-charge stamped `Authoritative`, which is the one
  *    outcome this package works hardest to prevent.
  *
- * Codes are the dataset's own local authority codes for the state (`US-CO:DENVER`
- * and so on) — see the `rates` section. A code the dataset does not carry makes the
- * whole stack refuse and fall back to the state rate rather than silently dropping
- * that authority's share.
+ * Codes are the REGISTER's jurisdiction codes — `us:CO:CITY-DENVER`, `us:KS:COUNTY-209`
+ * — the same keys its rate records are filed under. Level and code together, because
+ * a county and a special district can file under the same number and levy
+ * separately. A code the register does not carry makes the whole stack refuse and
+ * fall back to the state rate rather than silently dropping that authority's share.
+ *
+ * The state is one of them where the state's own rate applies, and it is the bare
+ * state code: `us:KS`. That mirrors the boundary format, where the file itself says
+ * whether the state share is due rather than leaving a consumer to add it.
  */
 interface LocalAuthorityResolver
 {

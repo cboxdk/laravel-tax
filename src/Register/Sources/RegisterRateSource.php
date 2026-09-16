@@ -115,16 +115,44 @@ final readonly class RegisterRateSource implements CommodityRateSource
         ?DateTimeImmutable $at,
         string $version,
     ): ?TaxRate {
-        if ($jurisdiction->locality === null) {
-            return null;
-        }
-
+        // ASKED EVEN WITH NO LOCALITY ON THE JURISDICTION. Colorado is the shape
+        // this seam exists for: several authorities at one address, and nothing
+        // shipped that can resolve the state below the state line, so there is no
+        // locality to carry. Gating the question on one would mean the resolver a
+        // host bound for exactly that state is never consulted — and the assessment
+        // still comes out with a plausible number, just the state share.
         $authorities = $this->authorities->authoritiesFor($jurisdiction, $at);
 
         if ($authorities === null) {
+            // Nobody resolved below the state line. Whether that is worth FLAGGING
+            // depends on what was asked: a caller who supplied an address wanted an
+            // address-level answer and did not get one, while a caller who supplied
+            // only a state got exactly what they asked for. Flagging both would put
+            // a caveat on every state-level assessment, and a caveat on everything
+            // is one nobody reads.
+            if ($jurisdiction->locality === null) {
+                return null;
+            }
+
             // Nobody resolved the address below the state line. The state share is
             // the honest answer, and saying so is what lets an operator see the gap.
             return $this->unstacked($state);
+        }
+
+        if ($authorities === []) {
+            // A POSITIVE FINDING: a row covers this address and no local authority
+            // levies there, so the state share is the whole rate. That is a different
+            // claim from "we only managed to find the state share", and collapsing
+            // the two would either understate a certainty or overstate a guess.
+            return new TaxRate(
+                $state->percentage,
+                $state->kind,
+                self::SOURCE,
+                Confidence::Authoritative,
+                [],
+                $state->limitedBy,
+                $state->provenance,
+            );
         }
 
         $total = BigDecimal::zero();
@@ -309,10 +337,12 @@ final readonly class RegisterRateSource implements CommodityRateSource
         $effective = $rate['effective'] ?? null;
         $provenance = $rate['provenance'] ?? null;
 
+        $by = $resolved['by'] ?? null;
+
         return new TaxRate(
             $percentage,
             $this->kind($rate),
-            self::SOURCE,
+            is_string($by) ? self::SOURCE.':'.$by : self::SOURCE,
             $resolved['inferred'] || $resolved['ambiguous'] ? Confidence::Derived : Confidence::Authoritative,
             [],
             $this->limit($resolved),

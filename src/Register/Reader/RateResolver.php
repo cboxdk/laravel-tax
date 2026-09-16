@@ -38,6 +38,12 @@ use DateTimeImmutable;
 final readonly class RateResolver
 {
     /**
+     * The kinds that are not bands: a component added to the band, and an all-in
+     * total that replaces it. Both are read through {@see self::local()}.
+     */
+    private const array SHARES = ['local_component', 'combined'];
+
+    /**
      * @param  list<array<string, mixed>>  $rates
      * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool}|null
      */
@@ -59,10 +65,39 @@ final readonly class RateResolver
         }
 
         foreach (CategoryMap::ladder($category) as $rung) {
-            $atRung = array_values(array_filter($live, static fn (array $r): bool => ($r['category'] ?? null) === $rung));
+            // Bands only. A local share is ADDED to whatever the band answers and is
+            // read by {@see self::local()}; counting it here made Virginia — which
+            // exempts groceries while its localities levy 1% on them anyway — look
+            // like a state answering its own question twice, and every Virginia
+            // grocery resolved to the standard rate, flagged.
+            $atRung = array_values(array_filter(
+                $live,
+                static fn (array $r): bool => ($r['category'] ?? null) === $rung
+                    && ! in_array($r['kind'] ?? null, self::SHARES, true),
+            ));
 
             if ($atRung === []) {
                 continue;
+            }
+
+            // A BARE ROW IS THE CATEGORY'S GENERAL ANSWER. Where a rung carries one
+            // row with no classification and any number with one, the bare row is
+            // what the category itself is rated at and the classified rows are
+            // narrower cases beneath it — Title IX exempts medical care in every
+            // member state, and Germany, Greece, Cyprus, Czechia and Portugal each
+            // publish one CPA-coded reduced rate under that exemption. Reading the
+            // pair as a disagreement charged the standard rate for a doctor.
+            //
+            // Only when there is exactly one. Two bare rows at one rung genuinely
+            // are two answers, which is what the grocery and prescription defects
+            // were, and they must keep falling through.
+            $bare = array_values(array_filter(
+                $atRung,
+                static fn (array $r): bool => ($r['classification'] ?? null) === null,
+            ));
+
+            if (count($bare) === 1) {
+                return ['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false];
             }
 
             $distinct = $this->distinct($atRung);
@@ -205,10 +240,43 @@ final readonly class RateResolver
         $seen = [];
 
         foreach ($rates as $rate) {
-            $seen[Shape::scalar($rate['percentage'] ?? null).'/'.Shape::scalar($rate['kind'] ?? null)] = true;
+            $seen[$this->measure($rate)] = true;
         }
 
         return array_keys($seen);
+    }
+
+    /**
+     * What a row charges, which is not the same as which band it is.
+     *
+     * THE KIND IS NOT PART OF THE ANSWER TO A PRICE. Four states file groceries at a
+     * 0% standard rate and exempt at once, and Tennessee at 4% reduced and 4%
+     * standard; keying distinctness on the kind as well made each of those a
+     * disagreement and charged the standard rate for food. Zero-rating and exemption
+     * differ in whether input tax may be deducted — a real difference, carried in
+     * the kind on the row that is returned — but they charge the customer the same,
+     * and this method exists to decide what to charge.
+     *
+     * The register draws the line in the same place, in its own `one-answer-per-
+     * category` check: "a 0% standard rate and a 0% exemption are different facts
+     * about deduction and the same answer about what to charge".
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    private function measure(array $rate): string
+    {
+        $perUnit = $rate['perUnit'] ?? null;
+        $brackets = $rate['brackets'] ?? null;
+
+        if (is_array($perUnit)) {
+            return 'unit:'.json_encode($perUnit);
+        }
+
+        if (is_array($brackets)) {
+            return 'brackets:'.json_encode($brackets);
+        }
+
+        return 'percentage:'.Shape::scalar($rate['percentage'] ?? null);
     }
 
     /**

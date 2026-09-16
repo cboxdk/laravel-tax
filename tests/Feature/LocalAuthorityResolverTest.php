@@ -12,10 +12,12 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Testing\FakeLocalAuthorityResolver;
 
@@ -44,7 +46,7 @@ it('stacks every authority a host resolver returns', function () {
     // the jurisdiction at all — nothing shipped resolves that state below the
     // state line, which is exactly why a host would bind a resolver.
     $place = resolverPlace('US-KS');
-    $this->resolver->resolve($place, ['209', '36000']);
+    $this->resolver->resolve($place, ['us:KS', 'us:KS:COUNTY-209', 'us:KS:CITY-36000']);
 
     $rate = $this->source->rateFor($place, TaxClass::GeneralGoods);
 
@@ -79,16 +81,30 @@ it('treats an empty list as a positive "no local authority taxes here"', functio
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('falls back to the honest state rate when the resolver defers', function () {
-    $rate = $this->source->rateFor(resolverPlace('US-KS'), TaxClass::GeneralGoods);
+it('falls back to the honest state rate when the resolver defers on an address', function () {
+    // WITH an address, because that is what makes the gap a gap. A caller who
+    // supplied only a state got the answer they asked for and gets no caveat; one
+    // who supplied an address asked to be taken below the state line and was not.
+    $place = resolverPlace('US-KS')->withLocality(
+        new LocalityCode(new SubdivisionCode('US-KS'), LocalityScheme::Zip9->value, '99999-0000'),
+    );
+
+    $rate = $this->source->rateFor($place, TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('6.5')
-        ->and($rate?->confidence)->toBe(Confidence::Derived);
+        ->and($rate?->confidence)->toBe(Confidence::Derived)
+        ->and($rate?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+
+    // And without one, no caveat at all.
+    expect($this->source->rateFor(resolverPlace('US-KS'), TaxClass::GeneralGoods)?->limitedBy)->toBeNull();
 });
 
 it('refuses the whole stack when one authority is not in the dataset', function () {
     $place = resolverPlace('US-KS');
-    $this->resolver->resolve($place, ['209', 'NOT-A-CODE']);
+    $place = $place->withLocality(
+        new LocalityCode(new SubdivisionCode('US-KS'), LocalityScheme::Zip9->value, '66101-3064'),
+    );
+    $this->resolver->resolve($place, ['us:KS', 'us:KS:COUNTY-209', 'us:KS:COUNTY-NOT-A-CODE']);
 
     $rate = $this->source->rateFor($place, TaxClass::GeneralGoods);
 
@@ -122,7 +138,7 @@ it('wins over the shipped resolution where both could answer', function () {
 
     // The ZIP+4 index would return the county AND the city; the host says county
     // only. Binding a resolver is a deliberate act, so the host's answer stands.
-    $this->resolver->resolve($place, ['209']);
+    $this->resolver->resolve($place, ['us:KS', 'us:KS:COUNTY-209']);
 
     $rate = $this->source->rateFor($place, TaxClass::GeneralGoods);
 
@@ -130,13 +146,21 @@ it('wins over the shipped resolution where both could answer', function () {
         ->and($rate?->components)->toHaveCount(2);
 });
 
-it('is bound to the deferring default in the container', function () {
-    expect($this->app->make(LocalAuthorityResolver::class))->toBeInstanceOf(DefersLocalAuthorities::class);
+it('is bound to the register\'s own boundary resolver, which defers where it holds nothing', function () {
+    // The package DOES ship local resolution now — twenty-four Streamlined states by
+    // ZIP+4, California by polygon, and four more by county name. What it will not do
+    // is guess: a state the register carries no artifact for defers, which sends the
+    // engine to the state rate exactly as the old no-op default did.
+    $bound = $this->app->make(LocalAuthorityResolver::class);
+
+    expect($bound)->toBeInstanceOf(RegisterBoundaries::class)
+        ->and($bound->authoritiesFor(resolverPlace('US-CO')))->toBeNull()
+        ->and(new DefersLocalAuthorities()->authoritiesFor(resolverPlace('US-KS')))->toBeNull();
 });
 
 it('lets a host rebind it and reach the rate source through the container', function () {
     $fake = new FakeLocalAuthorityResolver;
-    $fake->resolve(resolverPlace('US-KS'), ['209']);
+    $fake->resolve(resolverPlace('US-KS'), ['us:KS', 'us:KS:COUNTY-209']);
 
     $this->app->instance(LocalAuthorityResolver::class, $fake);
 

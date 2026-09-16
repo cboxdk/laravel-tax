@@ -94,7 +94,6 @@ final class SuiteRegister
     {
         $register->rate('eu:HU', '5', 'reduced', 'goods.food', classification: '01022110');
         $register->rate('eu:HU', '18', 'reduced', 'goods.food', classification: '1806');
-        $register->rate('eu:HU', '5', 'reduced', 'goods.food', classification: '18063100');
         $register->rate('eu:HU', '18', 'reduced', 'services.accommodation');
 
         $register->rate('eu:FR', '5.5', 'reduced', 'goods.publications.book');
