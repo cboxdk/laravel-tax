@@ -81,7 +81,7 @@ class TaxServiceProvider extends ServiceProvider
 
             return $version === null
                 ? new DefersLocalAuthorities
-                : new RegisterBoundaries($app->make(StoreLayout::class), $version);
+                : new RegisterBoundaries($app->make(StoreLayout::class), $version, $dataset);
         });
 
         // Knows no item codes until a host binds its own. An app that never sends an

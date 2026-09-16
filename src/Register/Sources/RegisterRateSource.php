@@ -149,7 +149,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
                     return $this->unstacked($state);
                 }
 
-                $components[] = new RateComponent($this->levelOf($authority), $resolved->percentage, $authority);
+                $components[] = new RateComponent($this->levelOf($authority), $resolved->percentage, $authority, $this->nameOf($authority));
                 $total = $total->plus($resolved->percentage);
 
                 continue;
@@ -175,12 +175,14 @@ final readonly class RegisterRateSource implements CommodityRateSource
                 );
             }
 
-            $components[] = new RateComponent($this->levelOf($authority), $percentage, $authority);
+            $components[] = new RateComponent($this->levelOf($authority), $percentage, $authority, $this->nameOf($authority));
             $total = $total->plus(BigDecimal::of($percentage));
         }
 
         return new TaxRate(
-            $total,
+            // 5.3 + 1.7 is seven per cent. Printing it as 7.0 makes a scale artefact
+            // of the addition look like a statement about precision.
+            $total->strippedOfTrailingZeros(),
             $state->kind,
             self::SOURCE,
             Confidence::Authoritative,
@@ -216,6 +218,19 @@ final readonly class RegisterRateSource implements CommodityRateSource
             RateLimit::NoLocalResolution,
             $state->provenance,
         );
+    }
+
+    /**
+     * The authority's published name, for a breakdown somebody has to file from.
+     *
+     * A remittance line reading `us:FL:COUNTY-ALACHUA` is not one anybody can take
+     * to a Department of Revenue.
+     */
+    private function nameOf(string $code): ?string
+    {
+        $jurisdiction = $this->dataset->jurisdiction($code);
+
+        return $jurisdiction === null ? null : Shape::text($jurisdiction['name'] ?? null);
     }
 
     /** The bare state code a local authority sits under. */

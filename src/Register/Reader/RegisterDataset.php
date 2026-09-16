@@ -112,6 +112,35 @@ final class RegisterDataset
     }
 
     /**
+     * Every jurisdiction in a shard, as code => published name.
+     *
+     * Only useful where a shard is small and a NAME is the key a caller holds —
+     * Florida's 67 counties, Virginia's 39 independent localities, Pennsylvania's
+     * two, Hawaii's four. None of those states files a boundary artifact, so a name
+     * is the only handle there is.
+     *
+     * @return array<string, string>
+     */
+    public function namesIn(string $shard): array
+    {
+        $reader = $this->jurisdictions[$shard] ??= new ShardReader(
+            $this->layout->file($this->requireVersion(), 'jurisdictions/'.$shard),
+        );
+
+        $names = [];
+
+        foreach ($reader->keys() as $code) {
+            $name = Shape::text($reader->read($code)[0]['name'] ?? null);
+
+            if ($name !== null) {
+                $names[$code] = $name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * Whether the store actually carries this regime, as opposed to carrying it and
      * finding nothing.
      *

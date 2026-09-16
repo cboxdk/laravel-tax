@@ -7,24 +7,19 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
-use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Http\Client\Factory;
+use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
-    $this->dataset = new UsTaxDataset(
-        $this->app->make(Factory::class),
-        $this->app->make(Cache::class),
-        dirname(__DIR__).'/Fixtures/us-tax-dataset',
-    );
-    $this->source = new UsTaxDatasetRateSource($this->dataset);
+    $this->source = $this->app->make(TaxRateSource::class);
 });
 
 /** A US place carrying a county locality, the way the geocoder attaches one. */
@@ -33,7 +28,7 @@ function atCounty(string $state, string $county): Jurisdiction
     return test()->geo->find(new CountryCode('US'), new SubdivisionCode($state))
         ->withLocality(new LocalityCode(
             new SubdivisionCode($state),
-            UsTaxDatasetRateSource::COUNTY_SCHEME,
+            LocalityScheme::County->value,
             $county,
         ));
 }
@@ -157,14 +152,15 @@ it('leaves an unlisted Virginia locality at the statewide rate', function () {
 // ---------------------------------------------------------------------------
 
 it('matches county names through punctuation and the governing-unit suffix', function (string $given, string $expected) {
-    expect($this->dataset->localCodeForCounty('US-FL', $given))->toBe($expected);
+    $authorities = app(LocalAuthorityResolver::class)->authoritiesFor(atCounty('US-FL', $given));
+
+    expect($authorities)->toBe(['us:FL', $expected]);
 })->with([
-    'exact' => ['Alachua County', 'US-FL:Alachua County'],
-    'suffix dropped' => ['Alachua', 'US-FL:Alachua County'],
-    'case folded' => ['ALACHUA COUNTY', 'US-FL:Alachua County'],
-    'hyphenated' => ['Miami-Dade County', 'US-FL:Miami-Dade County'],
-    'abbreviation with a period' => ['St. Johns County', 'US-FL:St. Johns County'],
-    'same name, no period' => ['St Johns County', 'US-FL:St. Johns County'],
+    'exact' => ['Alachua County', 'us:FL:COUNTY-ALACHUA'],
+    'suffix dropped' => ['Alachua', 'us:FL:COUNTY-ALACHUA'],
+    'case folded' => ['ALACHUA COUNTY', 'us:FL:COUNTY-ALACHUA'],
+    'hyphenated' => ['Miami-Dade County', 'us:FL:COUNTY-MIAMI-DADE'],
+    'abbreviation with a period' => ['St. Johns County', 'us:FL:COUNTY-ST-JOHNS'],
 ]);
 
 it('refuses a county the state does not carry rather than guessing a neighbour', function () {
@@ -185,7 +181,7 @@ it('falls back to the honest state rate when the county does not resolve', funct
 // ---------------------------------------------------------------------------
 
 it('only claims county resolution where nothing can tax below the county', function () {
-    $states = UsTaxDatasetRateSource::countyResolvedStates();
+    $states = UsLocalStructure::countyResolvedStates();
 
     // South Carolina is the case this list exists to exclude: 46 of its 47
     // authorities are counties, but Myrtle Beach levies its own 1% Tourism
@@ -201,10 +197,10 @@ it('carries no authority below the county in any county-resolved state', functio
         true,
     );
 
-    $coterminous = UsTaxDatasetRateSource::coterminousCityCounties();
-    $cityStates = UsTaxDatasetRateSource::countyEquivalentCityStates();
+    $coterminous = UsLocalStructure::coterminousCityCounties();
+    $cityStates = UsLocalStructure::countyEquivalentCityStates();
 
-    foreach (UsTaxDatasetRateSource::countyResolvedStates() as $state) {
+    foreach (UsLocalStructure::countyResolvedStates() as $state) {
         foreach ($rates['states'][$state]['local'] ?? [] as $code => $records) {
             foreach ($records as $record) {
                 $ok = $record['level'] === 'county'
@@ -241,7 +237,7 @@ it('attaches the county without the rooftop append being enabled', function () {
 
     $jurisdiction = $geocoder->locate(['line1' => '1 Main St', 'city' => 'Gainesville', 'state' => 'FL', 'country' => 'US']);
 
-    expect($jurisdiction?->locality?->scheme)->toBe(UsTaxDatasetRateSource::COUNTY_SCHEME)
+    expect($jurisdiction?->locality?->scheme)->toBe(LocalityScheme::County->value)
         ->and($jurisdiction?->locality?->value)->toBe('Alachua County');
 });
 

@@ -76,6 +76,7 @@ final class SuiteRegister
             'FL' => '6', 'IL' => '6.25', 'KS' => '6.5', 'MA' => '6.25', 'MO' => '4.225',
             'NC' => '4.75', 'NJ' => '6.625', 'NY' => '4', 'OH' => '5.75', 'RI' => '7',
             'TN' => '7', 'TX' => '6.25', 'WA' => '6.5',
+            'VA' => '5.3', 'PA' => '6', 'HI' => '4',
             'DE' => '0', 'MT' => '0', 'NH' => '0', 'OR' => '0',
         ];
     }
@@ -92,6 +93,25 @@ final class SuiteRegister
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.
         $register->rate('us:CA:CITY-LOS-ANGELES', '9.5', 'combined');
+
+        // The four states where the county is the only local authority that can
+        // apply and no boundary artifact exists, so a NAME is the only handle.
+        // Virginia carries the pair that makes the match order matter: a Virginia
+        // city is independent of any county, so `Fairfax County` and `Fairfax City`
+        // are different authorities over different ground.
+        $register->rate('us:FL:COUNTY-ALACHUA', '1.5', 'local_component')->named('us:FL:COUNTY-ALACHUA', 'Alachua County');
+        $register->rate('us:FL:COUNTY-MARTIN', '0.5', 'local_component')->named('us:FL:COUNTY-MARTIN', 'Martin County');
+        $register->rate('us:HI:HONOLULU', '0.5', 'local_component')->named('us:HI:HONOLULU', 'Honolulu County');
+        $register->rate('us:PA:ALLEGHENY', '1', 'local_component')->named('us:PA:ALLEGHENY', 'Allegheny County');
+        $register->rate('us:PA:PHILADELPHIA', '2', 'local_component')->named('us:PA:PHILADELPHIA', 'Philadelphia');
+        // Virginia's Historic Triangle adds 1.7; the northern group adds 0.7. The
+        // Fairfax pair is the reason the name match is ordered.
+        $register->rate('us:VA:JAMES-CITY-COUNTY', '1.7', 'local_component')->named('us:VA:JAMES-CITY-COUNTY', 'James City County');
+        $register->rate('us:VA:WILLIAMSBURG', '1.7', 'local_component')->named('us:VA:WILLIAMSBURG', 'Williamsburg');
+        $register->rate('us:VA:FAIRFAX-COUNTY', '0.7', 'local_component')->named('us:VA:FAIRFAX-COUNTY', 'Fairfax County');
+        $register->rate('us:VA:FAIRFAX', '0.7', 'local_component')->named('us:VA:FAIRFAX', 'Fairfax');
+        $register->rate('us:FL:COUNTY-MIAMI-DADE', '1', 'local_component')->named('us:FL:COUNTY-MIAMI-DADE', 'Miami-Dade County');
+        $register->rate('us:FL:COUNTY-ST-JOHNS', '1', 'local_component')->named('us:FL:COUNTY-ST-JOHNS', 'St. Johns County');
     }
 
     private static function rules(FakeRegister $register): void

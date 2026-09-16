@@ -7,7 +7,9 @@ namespace Cbox\Tax\Register\Sources;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Territories\UsLocalStructure;
 use Cboxdk\TaxResolver\Accuracy;
 use Cboxdk\TaxResolver\Authority;
 use Cboxdk\TaxResolver\BoundaryData;
@@ -40,6 +42,7 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
     public function __construct(
         private StoreLayout $layout,
         private string $version,
+        private ?RegisterDataset $dataset = null,
         private Resolver $resolver = new Resolver,
     ) {}
 
@@ -56,6 +59,11 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
         }
 
         $state = substr($subdivision->value, 3);
+
+        if ($locality->scheme === LocalityScheme::County->value) {
+            return $this->byName($state, $locality->value);
+        }
+
         $address = $this->address($locality->scheme, $locality->value);
 
         if ($address === null) {
@@ -79,6 +87,62 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             fn (Authority $authority): string => $this->code($state, $authority),
             $assignment->authorities ?? [],
         );
+    }
+
+    /**
+     * A county resolved by NAME, for the four states where the county is the only
+     * local authority that can apply and no boundary artifact exists.
+     *
+     * THE MATCH IS ORDERED, and Virginia is why. `Fairfax County` and `Fairfax City`
+     * are different authorities over different ground, and so are Franklin, Richmond
+     * and Roanoke. Dropping the unit word to match would make each pair ambiguous and
+     * refuse — costing Fairfax its regional rate for nothing. So the full name is
+     * tried first, and only then the name with its unit word removed.
+     *
+     * @return list<string>|null
+     */
+    private function byName(string $state, string $county): ?array
+    {
+        if ($this->dataset === null || ! in_array('US-'.$state, UsLocalStructure::countyResolvedStates(), true)) {
+            return null;
+        }
+
+        $names = $this->dataset->namesIn('us/'.$state);
+        $wanted = $this->fold($county);
+        $bare = $this->fold(preg_replace('/\s+(county|city|parish|borough)$/i', '', $county) ?? $county);
+        $exact = null;
+        $loose = [];
+
+        foreach ($names as $code => $name) {
+            $folded = $this->fold($name);
+
+            if ($folded === $wanted) {
+                $exact = $code;
+
+                break;
+            }
+
+            if ($folded === $bare || $this->fold(preg_replace('/\s+(county|city|parish|borough)$/i', '', $name) ?? $name) === $bare) {
+                $loose[] = $code;
+            }
+        }
+
+        if ($exact !== null) {
+            return ['us:'.$state, $exact];
+        }
+
+        // Two localities answer to the same bare name and nothing said which. Refusing
+        // sends the caller to the state rate; guessing bills the wrong authority.
+        if (count($loose) !== 1) {
+            return null;
+        }
+
+        return ['us:'.$state, $loose[0]];
+    }
+
+    private function fold(string $value): string
+    {
+        return strtolower(trim(preg_replace('/\s+/', ' ', $value) ?? $value));
     }
 
     /**
