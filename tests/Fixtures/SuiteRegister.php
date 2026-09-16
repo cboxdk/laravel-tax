@@ -115,6 +115,10 @@ final class SuiteRegister
         // rather than facilitated — a marketplace collects nothing on either, and
         // calling it facilitated asserts a tax that was never due.
         $register->rate('us:WA', '0', 'exempt', 'goods.medicine.prescription');
+
+        // Missouri reduces the STATE share on groceries and its localities still
+        // levy on food — which is why a reduced category is not an all-in rate.
+        $register->rate('us:MO', '1.225', 'reduced', 'goods.food.basic');
         $register->rate('eu:GR', '13', 'reduced', 'services.accommodation');
     }
 
@@ -138,6 +142,7 @@ final class SuiteRegister
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.
         $register->rate('us:CA:CITY-LOS-ANGELES', '9.5', 'combined');
+        $register->rate('us:CA:CITY-ALAMEDA', '10.75', 'combined')->named('us:CA:CITY-ALAMEDA', 'Alameda');
 
         // The four states where the county is the only local authority that can
         // apply and no boundary artifact exists, so a NAME is the only handle.

@@ -192,12 +192,28 @@ final readonly class RegisterRateSource implements CommodityRateSource
             if (($record['kind'] ?? null) === 'combined') {
                 // An all-in figure: it IS the whole rate, and adding the state share
                 // to it would charge California's own portion twice.
+                //
+                // It still DECOMPOSES, because a return has to be filed against
+                // authorities rather than against a total. The state share is known
+                // exactly, so the remainder is the aggregate of every district
+                // taxing there — levelled `local`, never attributed to the named
+                // city, because the register does not say how that remainder splits
+                // and inventing a split would be a filing nobody can defend.
+                $all = BigDecimal::of($percentage);
+                $local = $all->minus($state->percentage);
+
                 return new TaxRate(
-                    $percentage,
+                    $all,
                     $state->kind,
                     self::SOURCE,
                     Confidence::Authoritative,
-                    [],
+                    $local->isZero() ? [] : [
+                        new RateComponent(JurisdictionLevel::State, $state->percentage, $this->stateOf($authority)),
+                        // Trailing zeros stripped: 10.75 − 7.25 is three and a half
+                        // per cent, and 3.50 makes a scale artefact of the
+                        // subtraction look like a statement about precision.
+                        new RateComponent(JurisdictionLevel::Local, $local->strippedOfTrailingZeros(), $authority, $this->shortNameOf($authority)),
+                    ],
                     null,
                     $state->provenance,
                 );
@@ -259,6 +275,21 @@ final readonly class RegisterRateSource implements CommodityRateSource
         $jurisdiction = $this->dataset->jurisdiction($code);
 
         return $jurisdiction === null ? null : Shape::text($jurisdiction['name'] ?? null);
+    }
+
+    /**
+     * The authority's own segment, for a component that names a place rather than a
+     * key — `us:CA:CITY-ALAMEDA` reads as `ALAMEDA` on a return.
+     */
+    private function shortNameOf(string $code): ?string
+    {
+        $segment = explode(':', $code)[2] ?? null;
+
+        if ($segment === null) {
+            return null;
+        }
+
+        return str_contains($segment, '-') ? substr($segment, (int) strpos($segment, '-') + 1) : $segment;
     }
 
     /** The bare state code a local authority sits under. */

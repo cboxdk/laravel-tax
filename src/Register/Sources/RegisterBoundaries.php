@@ -64,7 +64,7 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return $this->byName($state, $locality->value);
         }
 
-        if ($locality->scheme === LocalityScheme::Authority->value) {
+        if (in_array($locality->scheme, [LocalityScheme::Authority->value, LocalityScheme::CaliforniaPlace->value], true)) {
             return $this->byAuthorityCode($state, $locality->value);
         }
 
@@ -160,7 +160,9 @@ final readonly class RegisterBoundaries implements LocalAuthorityResolver
             return null;
         }
 
-        $wanted = strtoupper(trim($code));
+        // `06:ALAMEDA` carries the state FIPS in front of the place; the authority is
+        // the last segment, and the prefix is context the register already has.
+        $wanted = strtoupper(trim(substr($code, (int) strrpos($code, ':') + 1)));
         $found = [];
 
         foreach (array_keys($this->dataset->namesIn('us/'.$state)) as $jurisdiction) {

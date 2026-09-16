@@ -51,4 +51,11 @@ enum LocalityScheme: string
      * seller's ship-from that is recorded as a jurisdiction rather than an address.
      */
     case Authority = 'sst-fips';
+
+    /**
+     * California's own place key, from the state's GIS layer. The same kind of
+     * thing as {@see self::Authority} — an authority already resolved by something
+     * that knew better — under the name that layer uses.
+     */
+    case CaliforniaPlace = 'ca-place';
 }

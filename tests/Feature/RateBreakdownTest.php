@@ -19,7 +19,12 @@ use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\RateComponentsDoNotReconcile;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterBoundaries;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\Testing\FakeRegister;
@@ -128,9 +133,9 @@ it('keeps every stacked authority as a component', function () {
         ], $rate?->components ?? []))->toBe([
             // The state carries a code too: an authority with none cannot be
             // merged with itself across the lines of a document.
-            ['state', '6.5', 'US-KS'],
-            ['county', '1', '209'],
-            ['city', '1.625', '36000'],
+            ['state', '6.5', 'us:KS'],
+            ['county', '1', 'us:KS:COUNTY-209'],
+            ['city', '1.625', 'us:KS:CITY-36000'],
         ]);
 });
 
@@ -377,10 +382,11 @@ it('stacks a reduced category on the locality food rate, not the general one', f
     // And the local share is not the general local rate either: the dataset
     // carries `foodDrugRate` per locality precisely because a city may levy 2.75%
     // generally and 2.25% on food.
-    $directory = datasetWithFoodRate();
-
-    $dataset = app(RegisterDataset::class);
-    $source = app(TaxRateSource::class);
+    $source = new RegisterRateSource(
+        $dataset = registerWithFoodRate(),
+        new RateResolver,
+        new RegisterBoundaries(new StoreLayout($dataset->storeRoot()), (string) $dataset->version(), $dataset),
+    );
 
     $place = breakdownPlace('US-KS', zip9('US-KS', '66101-6200'));
 
@@ -394,10 +400,14 @@ it('stacks a reduced category on the locality food rate, not the general one', f
 });
 
 it('decomposes a reduced rooftop rate into its authorities too', function () {
-    $dataset = app(RegisterDataset::class);
+    $dataset = registerWithFoodRate();
+    $source = new RegisterRateSource(
+        $dataset,
+        new RateResolver,
+        new RegisterBoundaries(new StoreLayout($dataset->storeRoot()), (string) $dataset->version(), $dataset),
+    );
 
-    $grocery = app(TaxRateSource::class)
-        ->rateFor(breakdownPlace('US-KS', zip9('US-KS', '66101-6200')), TaxClass::Groceries);
+    $grocery = $source->rateFor(breakdownPlace('US-KS', zip9('US-KS', '66101-6200')), TaxClass::Groceries);
 
     expect(array_map(fn (RateComponent $c): array => [
         $c->level->value, (string) $c->percentage,
@@ -411,47 +421,24 @@ it('decomposes a reduced rooftop rate into its authorities too', function () {
  * A dataset where one state reduces groceries and its single locality levies a
  * DIFFERENT rate on food than on everything else — the shape MO and TN publish.
  */
-function datasetWithFoodRate(): string
+/**
+ * A register where the locality levies a DIFFERENT rate on food than on general
+ * goods, which is the case a reduced state share must not flatten: Tennessee's and
+ * Missouri's own guidance both say local sales taxes still apply to groceries.
+ */
+function registerWithFoodRate(): RegisterDataset
 {
-    $directory = sys_get_temp_dir().'/cbox-tax-food-'.bin2hex(random_bytes(4));
-    mkdir($directory.'/boundaries', 0o755, true);
-    mkdir($directory.'/by-section', 0o755, true);
+    $root = sys_get_temp_dir().'/cbox-tax-food-'.bin2hex(random_bytes(4));
 
-    file_put_contents($directory.'/by-section/baseline.json', json_encode(['states' => [
-        'US-KS' => ['baseline' => [['stateRate' => 0.07, 'localsExist' => true, 'noSalesTax' => false, 'effectiveFrom' => null, 'effectiveTo' => null]]],
-    ]]));
+    FakeRegister::at($root)
+        ->rate('us:KS', '7', from: '1990-01-01')
+        ->rate('us:KS', '4', 'reduced', 'goods.food.basic', from: '1990-01-01')
+        ->rate('us:KS:COUNTY-209', '2.75', 'local_component', from: '1990-01-01')
+        ->rate('us:KS:COUNTY-209', '2.25', 'local_component', 'goods.food.basic', from: '1990-01-01')
+        ->boundary('KS', '66101', ['state:20', 'county:209'])
+        ->install();
 
-    file_put_contents($directory.'/by-section/taxability.json', json_encode(['states' => [
-        'US-KS' => [
-            ['category' => 'goods_general', 'taxable' => true, 'treatment' => 'taxable', 'conditions' => null, 'effectiveFrom' => null, 'effectiveTo' => null],
-            ['category' => 'grocery', 'taxable' => true, 'treatment' => 'reduced_rate', 'conditions' => ['rate' => 0.04], 'effectiveFrom' => null, 'effectiveTo' => null],
-        ],
-    ]]));
+    $layout = new StoreLayout($root);
 
-    file_put_contents($directory.'/by-section/rates.json', json_encode(['states' => [
-        'US-KS' => [
-            'rateBasis' => 'component',
-            'stateRate' => 0.07,
-            'local' => ['209' => [[
-                'level' => 'county',
-                'jurisdictionName' => null,
-                'generalRate' => 0.0275,
-                'foodDrugRate' => 0.0225,
-                'effectiveFrom' => null,
-                'effectiveTo' => null,
-            ]]],
-        ],
-    ]]));
-
-    foreach (['nexus', 'sourcing'] as $section) {
-        file_put_contents($directory.'/by-section/'.$section.'.json', json_encode(['states' => []]));
-    }
-
-    file_put_contents($directory.'/boundaries/US-KS.json', json_encode([
-        'sets' => [['209']],
-        'zip' => (object) [],
-        'ranges' => [['66000', '67999', '0000', '9999', 0]],
-    ]));
-
-    return $directory;
+    return new RegisterDataset($layout, new StorePointer($layout));
 }
