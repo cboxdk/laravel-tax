@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Store;
+namespace Cbox\Tax\Register\Store;
 
 /**
  * Which installed version is live, read and written atomically.

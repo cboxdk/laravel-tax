@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Compile;
+namespace Cbox\Tax\Register\Compile;
 
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Illuminate\Http\Client\Factory;
@@ -24,7 +24,7 @@ use Throwable;
  */
 final readonly class SectionFetcher
 {
-    private const string SOURCE = 'cadastre';
+    private const string SOURCE = 'cbox-tax';
 
     public function __construct(
         private Factory $http,

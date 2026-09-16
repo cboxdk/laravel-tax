@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Sources;
+namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
-use Cbox\Tax\Cadastre\Reader\CadastreDataset;
-use Cbox\Tax\Cadastre\Reader\CategoryMap;
-use Cbox\Tax\Cadastre\Reader\RateResolver;
-use Cbox\Tax\Cadastre\Reader\Shape;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RateResolver;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
@@ -34,12 +34,12 @@ use DateTimeImmutable;
  * DOES carry and has no rate for returns null, which is the honest "this source
  * cannot answer" the chain is built on.
  */
-final readonly class CadastreRateSource implements CommodityRateSource
+final readonly class RegisterRateSource implements CommodityRateSource
 {
-    private const string SOURCE = 'cadastre';
+    private const string SOURCE = 'cbox-tax';
 
     public function __construct(
-        private CadastreDataset $dataset,
+        private RegisterDataset $dataset,
         private RateResolver $resolver = new RateResolver,
     ) {}
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Compile;
+namespace Cbox\Tax\Register\Compile;
 
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Generator;

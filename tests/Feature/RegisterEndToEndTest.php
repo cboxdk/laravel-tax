@@ -5,14 +5,14 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
-use Cbox\Tax\Cadastre\Reader\CadastreDataset;
-use Cbox\Tax\Cadastre\Store\StoreLayout;
-use Cbox\Tax\Cadastre\Store\StorePointer;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Illuminate\Support\Facades\Http;
@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     $this->store = sys_get_temp_dir().'/cbox-tax-e2e-'.getmypid();
-    config()->set('tax.cadastre.store', $this->store);
+    config()->set('tax.register.store', $this->store);
 });
 
 afterEach(function (): void {
@@ -49,7 +49,7 @@ afterEach(function (): void {
 });
 
 it('refuses to price anything before a register is synced, and names the command', function (): void {
-    $dataset = new CadastreDataset(new StoreLayout($this->store), app(StorePointer::class));
+    $dataset = new RegisterDataset(new StoreLayout($this->store), app(StorePointer::class));
 
     expect($dataset->isInstalled())->toBeFalse();
 
@@ -68,7 +68,7 @@ it('syncs a real release and prices from it, with no network call while pricing'
     $this->artisan('tax:data:sync', ['--region' => ['eu'], '--no-boundaries' => true])
         ->assertSuccessful();
 
-    $dataset = app(CadastreDataset::class);
+    $dataset = app(RegisterDataset::class);
     expect($dataset->isInstalled())->toBeTrue();
 
     $version = $dataset->version();
@@ -91,7 +91,7 @@ it('syncs a real release and prices from it, with no network call while pricing'
 
     expect((string) $assessment->rate->percentage)->toBe('25')
         ->and((string) $assessment->tax->getAmount())->toBe('25.00')
-        ->and($assessment->rate->source)->toBe('cadastre')
+        ->and($assessment->rate->source)->toBe('cbox-tax')
         ->and($assessment->rate->provenance?->version)->toBe($version);
 })->group('e2e');
 

@@ -43,7 +43,7 @@ return [
     | it to your deploy alongside `php artisan migrate`.
     |
     | `store` is where the compiled register lives; null puts it under
-    | storage/app/cbox-tax/cadastre. `version` pins a release, or null follows
+    | storage/app/cbox-tax/register. `version` pins a release, or null follows
     | whatever the last sync made live.
     |
     | OPT IN TO LESS, NOT MORE. `regions` and `states` narrow what gets compiled,
@@ -67,14 +67,14 @@ return [
     |
     */
 
-    'cadastre' => [
-        'enabled' => env('TAX_CADASTRE', true),
-        'url' => env('TAX_CADASTRE_URL', 'https://data.cboxtax.com'),
-        'store' => env('TAX_CADASTRE_STORE'),
-        'version' => env('TAX_CADASTRE_VERSION'),
-        'regions' => env('TAX_CADASTRE_REGIONS'),
-        'states' => env('TAX_CADASTRE_STATES'),
-        'keep' => (int) env('TAX_CADASTRE_KEEP', 2),
+    'register' => [
+        'enabled' => env('TAX_REGISTER', true),
+        'url' => env('TAX_REGISTER_URL', 'https://data.cboxtax.com'),
+        'store' => env('TAX_REGISTER_STORE'),
+        'version' => env('TAX_REGISTER_VERSION'),
+        'regions' => env('TAX_REGISTER_REGIONS'),
+        'states' => env('TAX_REGISTER_STATES'),
+        'keep' => (int) env('TAX_REGISTER_KEEP', 2),
     ],
 
     /*

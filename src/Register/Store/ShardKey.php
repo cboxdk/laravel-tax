@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Store;
+namespace Cbox\Tax\Register\Store;
 
 /**
  * Which shard a jurisdiction code's records live in.

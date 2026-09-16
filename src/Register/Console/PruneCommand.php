@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Console;
+namespace Cbox\Tax\Register\Console;
 
-use Cbox\Tax\Cadastre\Store\StoreLayout;
-use Cbox\Tax\Cadastre\Store\StorePointer;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Illuminate\Console\Command;
 
 /**

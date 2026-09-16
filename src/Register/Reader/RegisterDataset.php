@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Reader;
+namespace Cbox\Tax\Register\Reader;
 
-use Cbox\Tax\Cadastre\Store\ShardKey;
-use Cbox\Tax\Cadastre\Store\ShardReader;
-use Cbox\Tax\Cadastre\Store\StoreLayout;
-use Cbox\Tax\Cadastre\Store\StorePointer;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Register\Store\ShardKey;
+use Cbox\Tax\Register\Store\ShardReader;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use DateTimeImmutable;
 
 /**
@@ -24,7 +24,7 @@ use DateTimeImmutable;
  * not move the answer under a half-priced invoice: two lines of one order have to be
  * priced by the same register, or the totals do not reconcile with either.
  */
-final class CadastreDataset
+final class RegisterDataset
 {
     private ?string $version = null;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Reader;
+namespace Cbox\Tax\Register\Reader;
 
 /**
  * Narrow `mixed` from a decoded document into the shapes this package reads.

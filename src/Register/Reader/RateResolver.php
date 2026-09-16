@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Reader;
+namespace Cbox\Tax\Register\Reader;
 
 use DateTimeImmutable;
 

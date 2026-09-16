@@ -25,7 +25,7 @@ class DatasetNotInstalled extends RuntimeException implements Refusal
     public function __construct(private readonly string $root)
     {
         parent::__construct(sprintf(
-            'No tax register is installed at %s. Run `php artisan tax:data:sync` to compile one (about 6.5 MB over the wire), or point tax.cadastre.store at an existing store.',
+            'No tax register is installed at %s. Run `php artisan tax:data:sync` to compile one (about 6.5 MB over the wire), or point tax.register.store at an existing store.',
             $root,
         ));
     }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Store;
+namespace Cbox\Tax\Register\Store;
 
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 

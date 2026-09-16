@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Cbox\Tax\Cadastre\Compile;
+namespace Cbox\Tax\Register\Compile;
 
-use Cbox\Tax\Cadastre\Store\ShardWriter;
-use Cbox\Tax\Cadastre\Store\StoreLayout;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
+use Cbox\Tax\Register\Store\ShardWriter;
+use Cbox\Tax\Register\Store\StoreLayout;
 use Closure;
 
 /**

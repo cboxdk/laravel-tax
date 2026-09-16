@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Cbox\Tax\Cadastre\Compile\JsonArrayStream;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
+use Cbox\Tax\Register\Compile\JsonArrayStream;
 
 /*
  * The reader that makes the register readable at all: the US region is 48.8 MB and
