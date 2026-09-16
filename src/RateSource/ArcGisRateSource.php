@@ -7,9 +7,11 @@ namespace Cbox\Tax\RateSource;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
+use Cbox\Tax\Territories\UsLocalStructure;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository;
@@ -51,7 +53,7 @@ readonly class ArcGisRateSource implements TaxRateSource
      * postal key elsewhere — the choice belongs with the knowledge of which states
      * publish polygons, which is this list.
      */
-    public const string LATLNG_SCHEME = 'latlng';
+    public const string LATLNG_SCHEME = LocalityScheme::LatLng->value;
 
     private const string SOURCE = 'state-gis';
 
@@ -91,7 +93,7 @@ readonly class ArcGisRateSource implements TaxRateSource
      */
     public static function states(): array
     {
-        return array_keys(self::SERVICES);
+        return UsLocalStructure::polygonResolvedStates();
     }
 
     public function rateFor(

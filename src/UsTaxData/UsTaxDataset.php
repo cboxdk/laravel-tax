@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\UsTaxData;
 
 use Brick\Math\BigDecimal;
+use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\ValueObjects\RateProvenance;
@@ -32,7 +33,7 @@ use Throwable;
  *
  * @phpstan-type StatesMap array<array-key, mixed>
  */
-readonly class UsTaxDataset
+readonly class UsTaxDataset implements UsTaxFacts
 {
     /** Sections this loader reads, each a `by-section/<name>.json` file. */
     private const array SECTIONS = ['baseline', 'taxability', 'nexus', 'sourcing', 'rates', 'holidays', 'elections'];

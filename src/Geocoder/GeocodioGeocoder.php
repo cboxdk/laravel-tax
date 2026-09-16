@@ -10,8 +10,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
-use Cbox\Tax\RateSource\ArcGisRateSource;
-use Cbox\Tax\RateSource\UsTaxDatasetRateSource;
+use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
 use Throwable;
@@ -30,7 +30,7 @@ use Throwable;
  *
  * When `$rooftop` is enabled it also requests Geocodio's `zip4` append and, for US
  * results, attaches the full ZIP+4 as a {@see LocalityCode} (scheme
- * {@see UsTaxDatasetRateSource::ZIP9_SCHEME}, e.g. `66101-3064`).
+ * {@see LocalityScheme::Zip9->value}, e.g. `66101-3064`).
  *
  * A ZIP+4 is a POSTAL key, not a taxing authority — it is what the dataset's
  * boundary index is keyed by, and that index is what turns it into the authorities
@@ -158,7 +158,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         // can tax below it there — so the county name is not a proxy for the
         // authority, it names the authority. This branch runs whether or not
         // rooftop resolution is enabled: it costs nothing extra and is exact.
-        if (in_array($subdivision->value, UsTaxDatasetRateSource::countyResolvedStates(), true)) {
+        if (in_array($subdivision->value, UsLocalStructure::countyResolvedStates(), true)) {
             return $this->countyLocality($result, $subdivision);
         }
 
@@ -170,7 +170,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
 
         // California and New Mexico publish polygon services a point resolves
         // against, which is finer than the postal proxy the ZIP+4 index offers.
-        if (in_array($subdivision->value, ArcGisRateSource::states(), true)) {
+        if (in_array($subdivision->value, UsLocalStructure::polygonResolvedStates(), true)) {
             return $this->pointLocality($result, $subdivision);
         }
 
@@ -190,7 +190,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             return null;
         }
 
-        return new LocalityCode($subdivision, UsTaxDatasetRateSource::ZIP9_SCHEME, $value);
+        return new LocalityCode($subdivision, LocalityScheme::Zip9->value, $value);
     }
 
     /**
@@ -218,7 +218,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             return null;
         }
 
-        return new LocalityCode($subdivision, UsTaxDatasetRateSource::COUNTY_SCHEME, trim($county));
+        return new LocalityCode($subdivision, LocalityScheme::County->value, trim($county));
     }
 
     /**
@@ -240,7 +240,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
 
         return new LocalityCode(
             $subdivision,
-            ArcGisRateSource::LATLNG_SCHEME,
+            LocalityScheme::LatLng->value,
             sprintf('%.6F,%.6F', $lat, $lng),
         );
     }

@@ -11,6 +11,7 @@ use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRegime;
+use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Regime\CaGstRegime;
 use Cbox\Tax\Regime\EuVatRegime;
 use Cbox\Tax\Regime\IndiaGstRegime;
@@ -19,7 +20,6 @@ use Cbox\Tax\Regime\NationalTaxRegime;
 use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Taxability\StaticProductTaxability;
 use Cbox\Tax\Territories\StaticEuTerritories;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 
 /**
  * Maps regime-module keys to regime instances. Keys with no entry return `null`,
@@ -52,7 +52,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
         ?JurisdictionRepository $jurisdictions = null,
         ?NexusThresholds $nexusThresholds = null,
         ?SourcingRules $sourcing = null,
-        ?UsTaxDataset $dataset = null,
+        ?UsTaxFacts $dataset = null,
         /**
          * The territory list the EU regime consults.
          *

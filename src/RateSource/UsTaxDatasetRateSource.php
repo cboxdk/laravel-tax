@@ -11,11 +11,13 @@ use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\RateBasis;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Territories\UsLocalStructure;
 use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\TaxRate;
@@ -55,99 +57,43 @@ readonly class UsTaxDatasetRateSource implements TaxRateSource
      * boundary index expands into the authorities that apply there, rather than an
      * authority code itself.
      */
-    public const string ZIP9_SCHEME = 'zip9';
+    public const string ZIP9_SCHEME = LocalityScheme::Zip9->value;
 
     /**
      * The locality scheme carrying a county NAME (`Alachua County`) for the states
      * in {@see countyResolvedStates()}, resolved to an authority code by the dataset.
      */
-    public const string COUNTY_SCHEME = 'county';
+    public const string COUNTY_SCHEME = LocalityScheme::County->value;
 
     /**
-     * The states where the COUNTY is the only local authority that can apply, so
-     * resolving the county resolves the rate exactly — no boundary file needed.
-     *
-     * This is a legal claim about each state's taxing structure, not an observation
-     * of today's data, which is why it is a written list with its grounds rather
-     * than something derived from the records:
-     *
-     *  - **FL** — ch. 212.055 authorizes the discretionary sales surtax to COUNTIES.
-     *    The Department of Revenue's own surtax table is published per county, all 67.
-     *  - **PA** — only two local taxes exist: Allegheny County at 1% and Philadelphia
-     *    at 2%. Philadelphia is carried as a city because that is what it is called,
-     *    but the city and the county are coterminous, so a county resolves it.
-     *  - **HI** — the counties may adopt a GET surcharge by ordinance; four have.
-     *  - **VA** — a Virginia city is by law INDEPENDENT of any county, so a city
-     *    there is a county-equivalent (FIPS class C7) rather than something sitting
-     *    inside one. Nothing can be below it. The state's own rate page bands all 39
-     *    localities by county or independent city, and the dataset carries 39.
-     *
-     * VIRGINIA ALSO SHOWS WHY THE NAME MATCH IS ORDERED. `Fairfax County` and
-     * `Fairfax City` are different authorities over different ground, and so are
-     * Franklin, Richmond and Roanoke. A match that dropped the unit word would make
-     * each pair ambiguous and refuse — costing Fairfax its regional rate for no
-     * reason. {@see UsTaxDataset::localCodeForCounty()} tries the full name first.
-     *
-     * SOUTH CAROLINA IS DELIBERATELY ABSENT and the reason is the point of this
-     * list. Its local option taxes look county-level, and 46 of the dataset's 47 SC
-     * authorities are counties — but Myrtle Beach levies its own 1% Tourism
-     * Development tax ON TOP of Horry County's. Resolving only the county there
-     * would UNDER-charge, which is the direction that cannot be refunded later. A
-     * state joins this list when nothing can sit below the county line, not when
-     * almost nothing does.
-     *
-     * Two guards hold the list to that claim, and they sit at different layers on
-     * purpose. `tests/Feature/CountyResolvedRateTest.php` checks the engine's
-     * behaviour here; `bin/check-county-resolved.php` in the us-tax-data repo checks
-     * the PUBLISHED data every drift run, which is where a newly-adopted city tax
-     * would actually show up. Adding a state means changing both.
-     *
      * @return list<string>
+     *
+     * @deprecated Moved to {@see UsLocalStructure::countyResolvedStates()}. These are
+     *             claims about US law, not about this dataset, and they outlive it.
      */
     public static function countyResolvedStates(): array
     {
-        return ['US-FL', 'US-PA', 'US-HI', 'US-VA'];
+        return UsLocalStructure::countyResolvedStates();
     }
 
     /**
-     * Authority codes that are NOT counties but are coterminous with one, so a
-     * county resolution reaches them correctly.
-     *
-     * Philadelphia is the only NAMED one, and it is named because it is a one-off:
-     * a single consolidated city-county in a state whose other authority is an
-     * ordinary county. It exists so the guard can tell "a city that IS the county"
-     * apart from "a city inside a county" — the distinction that keeps South
-     * Carolina out over Myrtle Beach.
-     *
-     * Virginia is handled by rule instead, in {@see countyEquivalentCityStates()},
-     * because there it is not an exception but the entire structure.
-     *
      * @return list<string>
+     *
+     * @deprecated Moved to {@see UsLocalStructure::coterminousCityCounties()}.
      */
     public static function coterminousCityCounties(): array
     {
-        return ['US-PA:Philadelphia'];
+        return UsLocalStructure::coterminousCityCounties();
     }
 
     /**
-     * States where EVERY city is a county-equivalent, so a city-level record needs
-     * no individual exemption.
-     *
-     * Virginia only. Under Virginia law every municipality incorporated as a city is
-     * independent of any county — there is no such thing as a Virginia city inside a
-     * county, which is why the Census treats all 38 as county-equivalents. Listing
-     * the 17 that levy a regional rate would read as 17 exceptions to a rule; there
-     * is no rule for them to be exceptions to.
-     *
-     * Note this covers CITIES, not TOWNS. A Virginia town IS inside a county, so a
-     * town-level record would be a genuine sub-county authority and the guard fails
-     * on it — correctly.
-     *
      * @return list<string>
+     *
+     * @deprecated Moved to {@see UsLocalStructure::countyEquivalentCityStates()}.
      */
     public static function countyEquivalentCityStates(): array
     {
-        return ['US-VA'];
+        return UsLocalStructure::countyEquivalentCityStates();
     }
 
     public function __construct(

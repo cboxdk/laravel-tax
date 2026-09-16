@@ -13,6 +13,7 @@ use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
+use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\SourcingMode;
@@ -21,7 +22,6 @@ use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
-use Cbox\Tax\UsTaxData\UsTaxDataset;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -76,7 +76,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
          * the static tables keeps working — it simply never applies the marketplace
          * treatment, which is the safe direction.
          */
-        private ?UsTaxDataset $dataset = null,
+        private ?UsTaxFacts $dataset = null,
     ) {}
 
     /**
