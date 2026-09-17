@@ -45,7 +45,7 @@ final readonly class RateResolver
 
     /**
      * @param  list<array<string, mixed>>  $rates
-     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, by?: ?string}|null
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}|null
      */
     public function resolve(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null): ?array
     {
@@ -107,7 +107,7 @@ final readonly class RateResolver
             ));
 
             if (count($bare) === 1) {
-                return ['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false];
+                return ['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => $this->narrowed($bare[0], $rung, $category)];
             }
 
             $distinct = $this->distinct($atRung);
@@ -121,7 +121,7 @@ final readonly class RateResolver
                 // nobody reads. Only a SHORTENED COMMODITY CODE is an inference,
                 // because there the register demonstrably disagrees with itself
                 // between one length and the next.
-                return ['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false];
+                return ['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => $this->narrowed($atRung[0], $rung, $category)];
             }
 
             // More than one live answer at the rung the item actually is. Climbing
@@ -129,12 +129,12 @@ final readonly class RateResolver
             // rate, flagged — the caller closes this by supplying a commodity code.
             $standard = $this->standard($live);
 
-            return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => true];
+            return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false];
         }
 
         $standard = $this->standard($live);
 
-        return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => false];
+        return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false];
     }
 
     /**
@@ -199,7 +199,7 @@ final readonly class RateResolver
      * that is a prefix of the one asked for.
      *
      * @param  list<array<string, mixed>>  $live
-     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, by?: ?string}|null
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}|null
      */
     private function byClassification(array $live, string $code): ?array
     {
@@ -257,6 +257,7 @@ final readonly class RateResolver
         return [
             'rate' => $best,
             'inferred' => $bestLength < strlen($wanted),
+            'narrowed' => false,
             'ambiguous' => false,
             // Which code decided it, so a reader can see WHY this rate and not the
             // heading's. Two codes under one category give two different right
@@ -331,6 +332,43 @@ final readonly class RateResolver
 
             return ! (is_string($until) && $until < $on);
         }));
+    }
+
+    /**
+     * Whether this answer came from a BROADER rung whose own conditions narrow it.
+     *
+     * The register publishes conditions as `kind`, the statute's own words in `says`,
+     * and a short label in `names` — all three prose, none of them a link to a
+     * category. So a consumer can read that a rate has been narrowed and cannot read
+     * what it was narrowed to.
+     *
+     * That is survivable when the question was asked AT the rung the rate is filed
+     * on: the exclusions are then about things beside or beneath the answer, which is
+     * the ordinary shape. Ireland zero-rates books and excludes newspapers from that
+     * zero — asked about a book, the exclusion is not about you.
+     *
+     * It is NOT survivable after a climb. The United Kingdom zero-rates food and
+     * excludes confectionery, catering and the rest, and every one of those
+     * exclusions is a child of the rung climbed to — so answering 0% for
+     * `goods.food.candy` returns the exact figure the condition exists to deny.
+     * There is no way to tell from the data which of the twenty-five live cases are
+     * caught, so none of them is returned as authoritative.
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    private function narrowed(array $rate, string $rung, string $asked): bool
+    {
+        if ($rung === $asked) {
+            return false;
+        }
+
+        foreach (Shape::records($rate['conditions'] ?? null) as $condition) {
+            if (in_array(Shape::text($condition['kind'] ?? null), ['excludes', 'applies_only_to'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

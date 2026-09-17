@@ -209,13 +209,13 @@ function ladderStateRate(string $state)
     );
 }
 
-function ladderCountryRate(string $country)
+function ladderCountryRate(string $country, TaxClass $class = TaxClass::GeneralGoods)
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
 
     return new RegisterRateSource($dataset, new RateResolver)
-        ->rateFor(app(JurisdictionRepository::class)->find(new CountryCode($country)), TaxClass::GeneralGoods);
+        ->rateFor(app(JurisdictionRepository::class)->find(new CountryCode($country)), $class);
 }
 
 it('does not answer for a country with a US state that shares its letters', function (): void {
@@ -319,4 +319,67 @@ it('still refuses a per-unit amount that has no percentage to give', function ()
         ->install();
 
     expect(ladderStateRate('US-PA'))->toBeNull();
+});
+
+it('does not add an untyped statewide share to a category the jurisdiction zero-rates', function (): void {
+    // Brazil files a 0.1% IBS component with NO category — the general local share —
+    // beside zero-rated rows for basic food, books and newspapers. Adding it to those
+    // billed 0.1% on a loaf of bread the statute exempts.
+    //
+    // Virginia is the case this must not swallow, and the test above is that one: its
+    // 1% is filed AT `goods.food`, next to the state's own exemption on the same
+    // category. Naming the category is the register saying the locality levies there
+    // whatever the state does.
+    ladderRegister()
+        ->rate('us:VA', '0.9')
+        ->rate('us:VA', '0.1', 'local_component')
+        ->rate('us:VA', '0', 'zero', 'goods.food.basic')
+        ->install();
+
+    expect((string) ladderStateRate('US-VA')?->percentage)->toBe('1')
+        ->and((string) ladderRateFor('US-VA', '23219-0001', TaxClass::Groceries)?->percentage)->toBe('0');
+});
+
+it('marks a rate reached by climbing to a rung whose conditions narrow it', function (): void {
+    // The United Kingdom zero-rates food and EXCLUDES confectionery and catering from
+    // that zero. Asked about sweets the engine climbs to `goods.food`, finds 0%, and
+    // returns the exact figure the exclusion exists to deny — sweets are standard
+    // rated at 20%.
+    //
+    // The register states a condition as prose: the statute's own words and a short
+    // label, never a link to a category. So a consumer can read THAT a rate is
+    // narrowed and cannot read what it was narrowed to. The figure is still the best
+    // one available, so it is returned and marked rather than withheld.
+    ladderRegister()
+        ->rate('eu:GB', '20')
+        ->rate('eu:GB', '0', 'zero', 'goods.food', extra: ['conditions' => [
+            ['kind' => 'excludes', 'says' => 'except a supply in the course of catering', 'names' => 'catering and the excepted items'],
+        ]])
+        ->install();
+
+    $sweets = ladderCountryRate('GB', TaxClass::Candy);
+
+    expect((string) $sweets?->percentage)->toBe('0')
+        ->and($sweets?->confidence)->toBe(Confidence::Derived)
+        ->and($sweets?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        // Nothing the caller can send closes this one.
+        ->and($sweets?->limitedBy->callerCanClose())->toBeFalse();
+});
+
+it('leaves a rate asked for at its own rung alone, conditions and all', function (): void {
+    // Ireland zero-rates books and excludes newspapers from that zero. Asked about a
+    // book, the exclusion is not about you — and flagging it would put a caveat on
+    // 123 of the register's answers to buy a warning on 25.
+    ladderRegister()
+        ->rate('eu:IE', '23')
+        ->rate('eu:IE', '0', 'zero', 'goods.publications.book', extra: ['conditions' => [
+            ['kind' => 'excludes', 'says' => 'but excluding newspapers, periodicals and brochures', 'names' => 'newspapers and periodicals'],
+        ]])
+        ->install();
+
+    $book = ladderCountryRate('IE', TaxClass::Book);
+
+    expect((string) $book?->percentage)->toBe('0')
+        ->and($book?->confidence)->toBe(Confidence::Authoritative)
+        ->and($book?->limitedBy)->toBeNull();
 });

@@ -77,6 +77,23 @@ enum RateLimit: string
      */
     case BracketSchedule = 'bracket_schedule';
 
+    /**
+     * The rate was found on a BROADER category than the one asked about, and that
+     * rate carries conditions narrowing what it reaches.
+     *
+     * The register states a condition as prose — the statute's own words, plus a
+     * short label — never as a link to a category, so a consumer can read THAT a
+     * rate is narrowed and not read what it was narrowed to. The United Kingdom
+     * zero-rates food and excludes confectionery and catering from that zero; asked
+     * about sweets, the engine climbs to `goods.food`, finds 0%, and returns the
+     * exact figure the exclusion exists to deny.
+     *
+     * The figure is still the best one available — refusing would also break the
+     * cases where the exclusion is about something else entirely — so it is returned
+     * and marked rather than withheld.
+     */
+    case ConditionsUnevaluated = 'conditions_unevaluated';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -94,6 +111,10 @@ enum RateLimit: string
             self::ClassificationInferred => 'Supply the code at the length the register publishes it. Codes run to '
                 .'two, four, six and eight digits, and a chapter can disagree with a subheading beneath it — '
                 .'so `04` is not a safe stand-in for `0401 10`.',
+            self::ConditionsUnevaluated => 'Read the conditions on the rate and decide whether this supply is one '
+                .'they exclude; each carries the statute\'s own words. Where a jurisdiction\'s exclusions map '
+                .'onto tax classes you sell — the UK taxing confectionery and hot food at the standard rate '
+                .'while zero-rating groceries — put your own source in front via ChainTaxRateSource.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',
@@ -110,6 +131,9 @@ enum RateLimit: string
      */
     public function callerCanClose(): bool
     {
+        // ConditionsUnevaluated is deliberately absent: no input the caller can supply
+        // settles it. The register would have to publish a rate at the excluded rung,
+        // or the host bind a source that does.
         return $this === self::HeadingAmbiguous
             || $this === self::ItemUnmapped
             || $this === self::ClassificationInferred;

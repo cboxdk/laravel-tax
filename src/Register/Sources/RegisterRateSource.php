@@ -343,6 +343,19 @@ final readonly class RegisterRateSource implements CommodityRateSource
             return $rate;
         }
 
+        if (($record['category'] ?? null) === null && $rate->kind === RateKind::Zero) {
+            // AN UNTYPED SHARE FOLLOWS THE CATEGORY IT IS ADDED TO. Brazil files a
+            // 0.1% IBS component with no category — the general local share — beside
+            // zero-rated rows for basic food, books and newspapers, and adding it to
+            // those billed 0.1% on a loaf of bread the statute exempts.
+            //
+            // Virginia is the case this must NOT swallow: its 1% is filed AT
+            // `goods.food`, next to the state's own 0% exemption on the same
+            // category. Naming the category is the register saying the locality
+            // levies there whatever the state does, and that one still applies.
+            return $rate;
+        }
+
         $percentage = $record['percentage'] ?? null;
 
         if (! is_string($percentage) || BigDecimal::of($percentage)->isZero()) {
@@ -570,7 +583,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
             $percentage,
             $this->kind($rate),
             is_string($by) ? self::SOURCE.':'.$by : self::SOURCE,
-            $resolved['inferred'] || $resolved['ambiguous'] || $bracketed ? Confidence::Derived : Confidence::Authoritative,
+            $resolved['inferred'] || $resolved['ambiguous'] || $bracketed || $resolved['narrowed'] ? Confidence::Derived : Confidence::Authoritative,
             [],
             $this->limit($resolved) ?? ($bracketed ? RateLimit::BracketSchedule : null),
             new RateProvenance(
@@ -602,7 +615,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
     }
 
     /**
-     * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool}  $resolved
+     * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool}  $resolved
      */
     private function limit(array $resolved): ?RateLimit
     {
@@ -610,6 +623,10 @@ final readonly class RegisterRateSource implements CommodityRateSource
             return RateLimit::HeadingAmbiguous;
         }
 
-        return $resolved['inferred'] ? RateLimit::ClassificationInferred : null;
+        if ($resolved['inferred']) {
+            return RateLimit::ClassificationInferred;
+        }
+
+        return $resolved['narrowed'] ? RateLimit::ConditionsUnevaluated : null;
     }
 }
