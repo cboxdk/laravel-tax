@@ -109,6 +109,13 @@ pricing a Danish invoice touches 12 KB.
 - **A category-scoped row could stand in for the headline band.** Arizona files a
   per-unit standard rate on telecommunications ahead of its 5.6% band; the band is
   the row carrying no category, and that is now what the lookup requires.
+- **An untyped statewide share no longer reaches a category the jurisdiction
+  zero-rates.** Brazil files a 0.1% IBS component with no category beside
+  zero-rated rows for basic food, books and newspapers; adding it billed 0.1% on a
+  loaf of bread the statute exempts. A share carrying no category follows the
+  category it is added to. Virginia's 1%, filed AT `goods.food` next to the state's
+  own exemption on that category, still applies — naming the category is the
+  register saying the locality levies there whatever the state does.
 - **A price-capped exemption is not a rate of zero.** A $200 Massachusetts coat
   billed $0.00. The register files a capped exemption twice — a `goods.clothing` row
   at 0% exempt, and a `price_exemption` rule capping it at $175 with the excess
@@ -131,6 +138,17 @@ pricing a Danish invoice touches 12 KB.
 
 ### Added
 
+- **Rate conditions are read, and an answer that one narrows says so.** Schema
+  1.34.0 publishes `conditions` on a rate — 1,722 of them — as the statute's own
+  words plus a short label, never a link to a category. Where the rate was found on
+  the rung that was asked for, an exclusion is about something else and nothing
+  changes: Ireland zero-rates books and excludes newspapers, and a book is still 0%
+  `Authoritative`. Where the rate was reached by CLIMBING to a broader rung, the
+  exclusion may be about exactly what was asked — the UK zero-rates food and
+  excludes confectionery — so the figure comes back `Derived` and flagged
+  `RateLimit::ConditionsUnevaluated`. 25 answers in this release. The figure is not
+  changed: refusing would break the cases where the exclusion is about something
+  else, and no caller input settles it.
 - **Bracket schedules price at their own per-dollar rate.** Alabama, Idaho,
   Maryland and Pennsylvania publish a table in cents rather than a percentage, and
   the engine refused outright — pricing nothing in four states. The figure comes
