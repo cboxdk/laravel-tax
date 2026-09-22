@@ -17,6 +17,7 @@ use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use DateTimeImmutable;
+use InvalidArgumentException;
 
 /**
  * Everything the engine needs to assess one supply: the amount, whether it is
@@ -169,7 +170,17 @@ readonly class TaxQuery
          * null, the supplier's own country is assumed and the rate is flagged.
          */
         public ?Jurisdiction $performedAt = null,
+        /**
+         * How many items the amount covers. It matters only where a rule is PER ITEM —
+         * a US clothing cap, a holiday cap — and there it is the whole answer: two
+         * $150 coats on one line are two exempt coats, not one $300 taxable one.
+         */
+        public int $quantity = 1,
     ) {
+        if ($quantity < 1) {
+            throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
+        }
+
         $this->categoryStated = $categoryKey === null || $category !== TaxClass::GeneralGoods;
         $this->category = $categoryKey !== null && $category === TaxClass::GeneralGoods
             ? CategoryMap::governing($categoryKey)
@@ -217,6 +228,7 @@ readonly class TaxQuery
             $this->delivery,
             $this->categoryKey,
             $this->performedAt,
+            $this->quantity,
         );
     }
 

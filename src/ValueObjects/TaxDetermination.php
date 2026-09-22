@@ -93,7 +93,7 @@ readonly class TaxDetermination
      * `ExcessTaxable` returns the amount minus the threshold, `Cliff` returns the
      * whole amount. Below the threshold both return zero.
      */
-    public function taxableBase(Money $amount): Money
+    public function taxableBase(Money $amount, int $quantity = 1): Money
     {
         if ($this->treatment === TaxabilityTreatment::Exempt) {
             return Money::zero($amount->getCurrency(), $amount->getContext());
@@ -115,7 +115,12 @@ readonly class TaxDetermination
             throw ThresholdCurrencyMismatch::between($this->thresholdCurrency, $currency->getCurrencyCode());
         }
 
-        $threshold = Money::ofMinor($this->exemptBelowMinor, $currency, $amount->getContext());
+        // PER ITEM, and a line is not an item. `SupplyLine::$amount` is quantity ×
+        // price, so two $150 coats arrive as $300 — above Massachusetts' $175 though
+        // neither coat is. The cap is scaled by the quantity rather than the amount
+        // divided by it: "each below the cap" is "the total below cap × quantity", and
+        // the excess of each, summed, is the total minus cap × quantity. Both exact.
+        $threshold = Money::ofMinor($this->exemptBelowMinor, $currency, $amount->getContext())->multipliedBy(max(1, $quantity));
 
         // Compare the MAGNITUDE, not the signed amount. A credit note is a negative
         // supply of the same garment, and −$200 is arithmetically "less than $175"
@@ -144,15 +149,15 @@ readonly class TaxDetermination
     }
 
     /** Whether nothing at all is taxed on this amount. */
-    public function isExemptFor(Money $amount): bool
+    public function isExemptFor(Money $amount, int $quantity = 1): bool
     {
-        return $this->taxableBase($amount)->isZero();
+        return $this->taxableBase($amount, $quantity)->isZero();
     }
 
     /** Whether only part of the amount bears tax — the case a net/gross pair alone cannot show. */
-    public function isPartial(Money $amount): bool
+    public function isPartial(Money $amount, int $quantity = 1): bool
     {
-        $base = $this->taxableBase($amount);
+        $base = $this->taxableBase($amount, $quantity);
 
         return ! $base->isZero() && $base->isLessThan($amount);
     }

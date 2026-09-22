@@ -78,5 +78,7 @@ readonly class SupplyLine
         public ?string $categoryKey = null,
         /** Where the service is performed, as on {@see TaxQuery::$performedAt}. */
         public ?Jurisdiction $performedAt = null,
+        /** How many items `$amount` covers — the whole of it, quantity × price. See {@see TaxQuery::$quantity}. */
+        public int $quantity = 1,
     ) {}
 }

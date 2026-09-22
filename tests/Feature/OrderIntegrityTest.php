@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
@@ -49,3 +50,26 @@ it('splits a credit note\'s freight the same way, signs and all', function (): v
 
     expect((string) $a->forLine('freight')->tax->getAmount())->toBe('-1.51');
 });
+
+function massachusettsCoats(string $amount, int $quantity)
+{
+    $ma = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-MA'));
+    $seller = new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-MA'))]);
+
+    return app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($ma, CustomerType::Consumer, $seller, Pricing::Exclusive, [
+        new SupplyLine('coats', Money::of($amount, 'USD'), TaxClass::Clothing, quantity: $quantity),
+    ], suppliedAt: new DateTimeImmutable('2026-09-22')))->forLine('coats');
+}
+
+it('applies a per-item price cap per item, not per line', function (): void {
+    // Two $150 coats on one line are two coats under Massachusetts' $175 — not one
+    // $300 coat taxed on $125.
+    expect((string) massachusettsCoats('300.00', 2)->tax->getAmount())->toBe('0.00')
+        // Two $200 coats: each taxed on its $25 excess, so $50 at 6.25%.
+        ->and((string) massachusettsCoats('400.00', 2)->tax->getAmount())->toBe('3.13');
+});
+
+it('refuses a quantity below one', function (): void {
+    new SupplyLine('x', Money::of('1.00', 'USD'), quantity: 0);
+    massachusettsCoats('1.00', 0);
+})->throws(InvalidArgumentException::class, 'at least 1');

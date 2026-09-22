@@ -147,6 +147,10 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // permanent thresholds twenty lines away; this path did not.
         $price = $query->amount->getAmount()->abs();
 
+        // PER ARTICLE: a holiday cap is per item and the line carries quantity × price,
+        // so the cap is scaled rather than the price divided — exact either way round.
+        $cap *= $query->quantity;
+
         // Compared as decimals, not floats — `Money` carries a BigDecimal precisely
         // so this is exact.
         //
@@ -248,7 +252,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
             // never due — a wrong return under a right charge.
             $determination = $this->determination($query);
 
-            if (! $determination->isExemptFor($query->amount)) {
+            if (! $determination->isExemptFor($query->amount, $query->quantity)) {
                 return new TaxAssessment(
                     treatment: TaxTreatment::MarketplaceFacilitated,
                     net: $query->amount,
@@ -290,7 +294,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // Exempt outright, or below a price threshold — Massachusetts under $175,
         // New York under $110, Rhode Island under $250. Both are "no tax", and
         // saying so beats a zero-rated assessment, which reads as a rate.
-        if ($determination->isExemptFor($query->amount)) {
+        if ($determination->isExemptFor($query->amount, $query->quantity)) {
             return new TaxAssessment(
                 treatment: TaxTreatment::Exempt,
                 net: $query->amount,
@@ -382,7 +386,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
             $rate = $rate->qualifiedBy(RateLimit::TaxabilityAssumed);
         }
 
-        $base = $determination->taxableBase($query->amount);
+        $base = $determination->taxableBase($query->amount, $query->quantity);
         $rounding = $this->roundingPolicy($subdivision, $query, $rate);
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
@@ -434,7 +438,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         };
 
         $rate = new TaxRate($percent, RateKind::Standard, self::ELECTION_SOURCE, Confidence::Authoritative);
-        $base = $determination->taxableBase($query->amount);
+        $base = $determination->taxableBase($query->amount, $query->quantity);
         $rounding = $this->roundingPolicy($subdivision, $query, $rate);
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 

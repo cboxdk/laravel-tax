@@ -148,6 +148,7 @@ readonly class TaxOrder
             delivery: $line->isDeliveryCharge ? ($line->delivery ?? new DeliveryCharge) : null,
             categoryKey: $line->categoryKey,
             performedAt: $line->performedAt,
+            quantity: $line->quantity,
         );
     }
 
