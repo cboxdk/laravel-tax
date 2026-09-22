@@ -207,10 +207,13 @@ trait AssessesOrders
         foreach ($delivered as [$line, $assessed]) {
             $key = $assessed->treatment->value.'|'.((string) $assessed->rate?->percentage);
 
+            // SIGNED. A discount line takes weight away from its rate group; with the
+            // absolute value it ADDED weight, so a −50 food discount pulled freight
+            // toward the food rate it should have pulled away from.
             $weight = match ($order->apportionment) {
                 ApportionmentBasis::Equal => Money::of(1, $charge->amount->getCurrency()),
-                ApportionmentBasis::NetValue => $assessed->net->abs(),
-                ApportionmentBasis::GrossValue => $assessed->gross->abs(),
+                ApportionmentBasis::NetValue => $assessed->net,
+                ApportionmentBasis::GrossValue => $assessed->gross,
             };
 
             if (! isset($groups[$key])) {
@@ -220,6 +223,23 @@ trait AssessesOrders
             }
 
             $groups[$key][2] = $groups[$key][2]->plus($weight);
+        }
+
+        // A credit note is negative throughout: the ratio is the same, so the signs are
+        // turned over once for the whole document. A rate group that nets below zero
+        // inside it — a discount on a rate nothing else in the order carries — can
+        // take no share of freight, and is given none rather than a negative one.
+        $net = null;
+
+        foreach ($groups as [, , $weight]) {
+            $net = $net === null ? $weight : $net->plus($weight);
+        }
+
+        $flip = $net !== null && $net->isNegative();
+
+        foreach ($groups as $key => [$line, $assessed, $weight]) {
+            $weight = $flip ? $weight->negated() : $weight;
+            $groups[$key][2] = $weight->isNegative() ? $weight->multipliedBy(0) : $weight;
         }
 
         $delivered = [];
