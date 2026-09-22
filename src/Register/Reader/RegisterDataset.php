@@ -281,8 +281,8 @@ final class RegisterDataset
     }
 
     /**
-     * Refuse a category key this release does not publish, naming what it does
-     * publish nearby — the same two leading segments — so a typo is a one-look fix.
+     * Refuse a category key this release does not publish, naming the closest keys
+     * it does publish, so a typo is a one-look fix.
      */
     public function assertCategoryPublished(string $key): void
     {
@@ -292,15 +292,13 @@ final class RegisterDataset
             return;
         }
 
-        $stem = implode('.', array_slice(explode('.', $key), 0, 2));
-        $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $stem)));
+        // Closest first, by edit distance within the same root — `goods` or `services` —
+        // so a typo's intended key leads the list instead of whatever sorts first.
+        $root = explode('.', $key)[0].'.';
+        $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $root)));
+        usort($nearby, static fn (string $a, string $b): int => levenshtein($key, $a) <=> levenshtein($key, $b) ?: strcmp($a, $b));
 
-        if ($nearby === []) {
-            $root = explode('.', $key)[0];
-            $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $root.'.')));
-        }
-
-        throw UnknownCategory::notPublished($key, $this->requireVersion(), array_slice($nearby, 0, 8));
+        throw UnknownCategory::notPublished($key, $this->requireVersion(), array_slice($nearby, 0, 5));
     }
 
     /**
