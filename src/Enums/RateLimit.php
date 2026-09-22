@@ -136,6 +136,19 @@ enum RateLimit: string
      */
     case RateDeclined = 'rate_declined';
 
+    /**
+     * The place's law deems a marketplace liable for SOME facilitated sales, and this
+     * reader has not evaluated which ones.
+     *
+     * Article 14a reaches an imported consignment worth at most EUR 150, or goods
+     * already in the Community sold by a seller established outside it to a customer
+     * who is not a taxable person — 26 member states publish it, each with its own
+     * conditions. Treating that as a mandate over every facilitated sale hands the
+     * tax to a platform the Directive does not reach; so the seller charges, and this
+     * says why that figure may not be the one a platform files.
+     */
+    case MarketplaceLiabilityUnread = 'marketplace_liability_unread';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -168,6 +181,10 @@ enum RateLimit: string
                 .'records the rate it declined for this category, with the statute\'s own words, as a `declined_rate` '
                 .'rule on the jurisdiction. Where it applies to what you sell, put your own source in front via '
                 .'ChainTaxRateSource.',
+            self::MarketplaceLiabilityUnread => 'Decide who collects on this sale: read the place\'s '
+                .'`marketplace_facilitator` rule, whose conditions carry the statute\'s own words, and where the '
+                .'platform is the deemed supplier bill the sale as facilitated by it. Nothing the caller passes '
+                .'settles it yet — the conditions are read but not evaluated.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',

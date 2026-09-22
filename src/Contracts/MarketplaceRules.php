@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Tax\Enums\MarketplaceLiability;
 use DateTimeImmutable;
 
 /**
@@ -14,9 +15,10 @@ use DateTimeImmutable;
  * The caller asserts THAT a sale went through a platform which took on collection —
  * only the caller can know that. This answers the other half: whether the law of the
  * place of supply actually moves the liability. Where it does not, the assertion
- * changes nothing and the seller's own obligation stands.
+ * changes nothing and the seller's own obligation stands, and where it moves it only
+ * for some facilitated sales, the answer says that rather than picking a side.
  */
 interface MarketplaceRules
 {
-    public function platformOwes(CountryCode $country, DateTimeImmutable $on): bool;
+    public function liability(CountryCode $country, DateTimeImmutable $on): MarketplaceLiability;
 }

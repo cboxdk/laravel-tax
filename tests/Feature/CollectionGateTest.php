@@ -6,8 +6,10 @@ use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxCalculator;
+use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Testing\FakeRegister;
@@ -35,6 +37,16 @@ beforeEach(function (): void {
         ->rate('europe:NO', '25', from: '1990-01-01')
         ->rate('europe:GB', '20', from: '1990-01-01')
         ->rule('europe:GB', 'marketplace_facilitator', ['platformOwes' => true], '2021-01-01')
+        // Article 14a as schema 2.6 types it: a mandate over SOME facilitated sales.
+        ->rule('eu:FR', 'marketplace_facilitator', ['platformOwes' => true, 'conditions' => [[
+            'kind' => 'applies_only_to',
+            'says' => 'facilitates distance sales of goods imported from third territories or third countries in consignments of an intrinsic value not exceeding EUR 150',
+            'names' => 'an imported consignment worth at most EUR 150',
+            'predicate' => ['all' => [
+                ['fact' => 'supply.isDistanceSaleOfGoods', 'op' => 'eq', 'value' => true, 'says' => 'distance sales of goods imported'],
+                ['fact' => 'consignment.intrinsicValueEur', 'op' => 'at_most', 'value' => '150', 'says' => 'not exceeding EUR 150'],
+            ]],
+        ]]], '2021-07-01')
         ->install();
 });
 
@@ -117,3 +129,23 @@ it('marks intra-EU goods to a business as an Article 138 supply, and services as
     'a consultancy service' => [TaxClass::ProfessionalService, 'reverse_charge', 'Article 196'],
     'an electronic service' => [TaxClass::DigitalService, 'reverse_charge', 'Article 196'],
 ]);
+
+it('leaves the seller charging where a marketplace mandate reaches only some sales, and says so', function (): void {
+    // France deems the platform liable under Article 14a — for an imported consignment
+    // worth at most EUR 150, or goods within the Community sold by a seller
+    // established outside it. Read as a mandate over everything it hands the tax to a
+    // platform the Directive does not reach, and nobody collects.
+    $a = app(TaxCalculator::class)->assess(gateQuery('FR', 'FR', marketplace: true));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $a->tax->getAmount())->toBe('20.00')
+        ->and($a->rate?->limitedBy)->toBe(RateLimit::MarketplaceLiabilityUnread)
+        ->and($a->rate?->confidence)->toBe(Confidence::Derived);
+});
+
+it('still hands an unconditional mandate to the platform', function (): void {
+    $a = app(TaxCalculator::class)->assess(gateQuery('GB', 'GB', marketplace: true));
+
+    expect($a->treatment)->toBe(TaxTreatment::MarketplaceFacilitated)
+        ->and((string) $a->tax->getAmount())->toBe('0.00');
+});

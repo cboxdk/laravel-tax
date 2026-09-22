@@ -228,7 +228,7 @@ final class SuiteRegister
         // Economic nexus. The four states with no sales tax carry none at all.
         foreach (['AL' => '250000', 'CA' => '500000', 'KS' => '100000',
             'OH' => '100000', 'TX' => '500000',
-            'WA' => '100000', 'MO' => '100000', 'AZ' => '100000'] as $state => $amount) {
+            'WA' => '100000', 'MO' => '100000'] as $state => $amount) {
             $register->rule('us:'.$state, 'threshold', [
                 'amount' => $amount.'.00',
                 'currency' => 'USD',
@@ -236,6 +236,22 @@ final class SuiteRegister
                 'measuredOver' => 'previous_or_current_calendar_year',
             ]);
         }
+
+        // Arizona states what counts toward the figure and when collection starts —
+        // twelve states do — and the reader used to refuse the whole threshold for it.
+        $register->rule('us:AZ', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'measuredOver' => 'previous_or_current_calendar_year', 'amountOperator' => 'exceeds',
+            'measurementRules' => [
+                ['dimension' => 'marketplace_sales', 'treatment' => 'excluded', 'says' => 'that is not facilitated by a marketplace facilitator'],
+                ['dimension' => 'affiliated_persons', 'treatment' => 'aggregate', 'says' => 'all affiliated persons shall be aggregated'],
+            ],
+            'obligations' => [
+                ['action' => 'remit', 'trigger' => 'first_crossing_in_current_year',
+                    'date' => ['kind' => 'first_month_start_on_or_after_days', 'days' => 30],
+                    'says' => 'begin remitting the tax on the first day of the month that starts at least thirty days after the threshold is met'],
+            ],
+        ], from: '2019-10-01');
 
         // Connecticut and New Jersey keep a transaction limb, and they combine it
         // differently — which is the whole reason the combinator is a field.

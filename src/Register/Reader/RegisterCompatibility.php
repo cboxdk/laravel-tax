@@ -30,7 +30,7 @@ final class RegisterCompatibility
      *
      * @var array<int, int>
      */
-    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 5];
+    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 6];
 
     /**
      * Payload fields this reader interprets, per rule kind it consumes.
@@ -38,10 +38,10 @@ final class RegisterCompatibility
      * @var array<string, list<string>>
      */
     private const array PAYLOAD_FIELDS = [
-        'threshold' => ['amount', 'currency', 'measuredOver', 'transactions', 'combinator', 'basis', 'counts', 'binds', 'appliesTo', 'consequence', 'graceDays', 'crossing', 'conditions', 'conditionsCombinator', 'none', 'amountOperator', 'transactionsOperator'],
+        'threshold' => ['amount', 'currency', 'measuredOver', 'transactions', 'combinator', 'basis', 'counts', 'binds', 'appliesTo', 'consequence', 'graceDays', 'crossing', 'conditions', 'conditionsCombinator', 'none', 'amountOperator', 'transactionsOperator', 'obligations', 'measurementRules'],
         'sourcing' => ['basis', 'decision'],
         'holiday' => ['name', 'category', 'capAmount', 'capCurrency', 'capIsExclusive'],
-        'marketplace_facilitator' => ['platformOwes', 'platformElects', 'deemedElection'],
+        'marketplace_facilitator' => ['platformOwes', 'platformElects', 'deemedElection', 'conditions'],
         'price_exemption' => ['category', 'capAmount', 'capCurrency', 'capIsExclusive', 'above'],
         'remote_seller_election' => ['program', 'mechanic', 'ratePercent', 'statute'],
         'rounding' => ['method', 'places', 'appliesTo', 'aggregatesLocal'],
@@ -53,18 +53,22 @@ final class RegisterCompatibility
      * Fields schema 2 defines that this reader does not act on. A rule carrying one
      * compiles, and refuses when read.
      *
-     *  - `obligations` — what a registration threshold obliges (register within 30 days).
-     *  - `measurementRules` — what counts toward the figure (exempt sales included).
      *  - `unresolvedQualifications` — statutory triggers the register has not modelled.
      *
-     * All three sit on registration thresholds outside the United States today, which
-     * no adapter here reads. On a US remote-seller threshold they would change what
-     * the published figure means, so there they refuse rather than being dropped.
+     * It sits on registration thresholds outside the United States today, which no
+     * adapter here reads. On a US remote-seller threshold it would change what the
+     * published figure means, so there it refuses rather than being dropped.
+     *
+     * `obligations` and `measurementRules` were here too, and refusing them left
+     * twelve states — Arizona, California, Colorado and nine more — with no nexus
+     * answer at all. They are now carried on the threshold in the state's own words,
+     * for the host to apply: it is the only party that knows its marketplace sales,
+     * its affiliates, and the day it crossed.
      *
      * @var array<string, list<string>>
      */
     private const array UNINTERPRETED_FIELDS = [
-        'threshold' => ['obligations', 'measurementRules', 'unresolvedQualifications'],
+        'threshold' => ['unresolvedQualifications'],
     ];
 
     public static function schema(mixed $schema, string $where): void

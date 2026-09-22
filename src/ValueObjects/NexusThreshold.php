@@ -37,6 +37,20 @@ readonly class NexusThreshold
         public ?ThresholdOperator $salesOperator = null,
         /** How the transaction count is crossed, where the register states it. */
         public ?ThresholdOperator $transactionsOperator = null,
+        /**
+         * What the state counts toward the figure, and what crossing it obliges.
+         *
+         * Both are the state's own words, reported rather than applied: measuring a
+         * seller's turnover means knowing its marketplace sales and its affiliates,
+         * and dating the obligation means knowing the day it crossed. This package
+         * knows none of the three — the host does. Added last, so positional callers
+         * are unaffected.
+         *
+         * @var list<ThresholdMeasurement>
+         */
+        public array $measuredBy = [],
+        /** @var list<ThresholdObligation> */
+        public array $obligations = [],
     ) {}
 
     /**

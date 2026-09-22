@@ -16,6 +16,7 @@ use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Enums\MarketplaceLiability;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
@@ -259,8 +260,20 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         }
 
         $consumer = ! ($query->isBusiness() && $query->customerTaxIdValidated);
+        $liability = $query->marketplaceFacilitated && $consumer
+            ? $this->marketplace?->liability($place->country, $query->on())
+            : null;
 
-        if ($query->marketplaceFacilitated && $consumer && $this->marketplace?->platformOwes($place->country, $query->on())) {
+        if ($liability === MarketplaceLiability::Conditioned) {
+            // The law deems the platform liable on SOME facilitated sales and this
+            // reader has not read which. The seller's charge stands — a seller who
+            // charges where the platform owed can refund, and a sale nobody charged
+            // is a liability discovered at audit — and the rate carries the caveat so
+            // a marketplace can settle it rather than inherit it silently.
+            return $assessment->with(rate: $assessment->rate?->qualifiedBy(RateLimit::MarketplaceLiabilityUnread));
+        }
+
+        if ($liability === MarketplaceLiability::PlatformOwes) {
             return new TaxAssessment(
                 treatment: TaxTreatment::MarketplaceFacilitated,
                 net: $query->amount,

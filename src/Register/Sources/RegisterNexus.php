@@ -13,6 +13,8 @@ use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\NexusThreshold;
+use Cbox\Tax\ValueObjects\ThresholdMeasurement;
+use Cbox\Tax\ValueObjects\ThresholdObligation;
 use DateTimeImmutable;
 
 /**
@@ -73,10 +75,66 @@ final readonly class RegisterNexus implements NexusThresholds
                 $this->combinator($payload, $transactions),
                 $this->operator($payload, 'amountOperator', $state),
                 $transactions === null ? null : $this->operator($payload, 'transactionsOperator', $state),
+                $this->measurements($payload),
+                $this->obligations($payload),
             );
         }
 
         return $threshold;
+    }
+
+    /**
+     * What the state counts toward the figure, in its own words.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return list<ThresholdMeasurement>
+     */
+    private function measurements(array $payload): array
+    {
+        $rules = [];
+
+        foreach (Shape::records($payload['measurementRules'] ?? null) as $rule) {
+            $dimension = Shape::text($rule['dimension'] ?? null);
+            $treatment = Shape::text($rule['treatment'] ?? null);
+            $says = Shape::text($rule['says'] ?? null);
+
+            if ($dimension === null || $treatment === null || $says === null) {
+                continue;
+            }
+
+            $rules[] = new ThresholdMeasurement($dimension, $treatment, $says);
+        }
+
+        return $rules;
+    }
+
+    /**
+     * What crossing obliges, and from when.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return list<ThresholdObligation>
+     */
+    private function obligations(array $payload): array
+    {
+        $obligations = [];
+
+        foreach (Shape::records($payload['obligations'] ?? null) as $rule) {
+            $action = Shape::text($rule['action'] ?? null);
+            $trigger = Shape::text($rule['trigger'] ?? null);
+            $says = Shape::text($rule['says'] ?? null);
+            $date = Shape::map($rule['date'] ?? null);
+            $kind = Shape::text($date['kind'] ?? null);
+
+            if ($action === null || $trigger === null || $says === null || $kind === null) {
+                continue;
+            }
+
+            $figure = $date['days'] ?? $date['months'] ?? null;
+
+            $obligations[] = new ThresholdObligation($action, $trigger, $kind, is_int($figure) ? $figure : null, $says);
+        }
+
+        return $obligations;
     }
 
     /**

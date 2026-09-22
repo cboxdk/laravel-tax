@@ -9,7 +9,7 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Added — register schema 2 and category keys
 
-- **Schema 2.0–2.5 is read.** Every release since 18 September was refused, and the
+- **Schema 2.0–2.6 is read.** Every release since 18 September was refused, and the
   refusal said "re-run". Rates, jurisdictions, regions and boundary format 3 are
   unchanged in schema 2; its additions are each handled on purpose, below. An
   unsupported schema now says what to do: pin a supported release, or upgrade.
@@ -34,6 +34,28 @@ minor bumps may carry additive features; patches are fixes and docs).
   nearby. `category` still governs place of supply, derived from the key when left
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
+
+### Fixed — nexus thresholds and marketplace mandates
+
+- **Twelve states had no nexus answer at all.** Arizona, California, Colorado, Iowa,
+  Michigan, Minnesota, North Carolina, North Dakota, Oklahoma, Tennessee, Vermont
+  and Wisconsin publish what counts toward the remote-seller figure, and when
+  crossing it obliges collection, beside the number. Both fields were refused, so
+  the whole threshold refused with them. They are now carried on `NexusThreshold`
+  in the state's own words — `measuredBy` and `obligations` — for the host to apply,
+  since only it knows its marketplace sales, its affiliates and the day it crossed.
+  Arizona's is the reason it matters: remitting starts on the first day of the month
+  beginning at least 30 days after the crossing, not at the crossing.
+  `unresolvedQualifications` still refuses.
+- **A marketplace mandate that reaches only some sales no longer moves the tax.**
+  Schema 2.6 types the conditions that were prose: 26 member states publish
+  Article 14a, which reaches an imported consignment worth at most EUR 150, or goods
+  within the Community sold by a seller established outside it to a customer who is
+  not a taxable person. Read as a mandate over everything, it hands the tax to a
+  platform the Directive does not reach and nobody collects. The seller's charge now
+  stands, flagged `RateLimit::MarketplaceLiabilityUnread`. `MarketplaceRules` answers
+  with `MarketplaceLiability` — platform, seller, or conditioned — in place of a
+  boolean.
 
 ### Fixed — Canadian provinces
 

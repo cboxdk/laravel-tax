@@ -12,7 +12,12 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterNexus;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -88,4 +93,39 @@ it('flags the economic-nexus threshold on a not-registered US assessment', funct
 
     expect($assessment->treatment)->toBe(TaxTreatment::NotRegistered)
         ->and($assessment->reason)->toContain('Economic-nexus threshold there is $500,000');
+});
+
+it('carries what the state counts and when collection starts, rather than refusing the threshold', function () {
+    // Twelve states publish these beside the figure — Arizona, California, Colorado,
+    // Oklahoma and eight more. Refusing them left every one of those states with no
+    // nexus answer at all, which is worse than an answer a host has to qualify.
+    $az = $this->thresholds->for(new SubdivisionCode('US-AZ'));
+
+    expect($az?->salesDollars)->toBe(100_000)
+        ->and(array_map(fn ($m) => [$m->dimension, $m->treatment], $az->measuredBy))
+        ->toBe([['marketplace_sales', 'excluded'], ['affiliated_persons', 'aggregate']])
+        ->and($az->obligations[0]->action)->toBe('remit')
+        ->and($az->obligations[0]->dateKind)->toBe('first_month_start_on_or_after_days')
+        ->and($az->obligations[0]->dateFigure)->toBe(30)
+        ->and($az->obligations[0]->says)->toContain('thirty days');
+});
+
+it('still refuses a threshold qualified by something it does not model', function () {
+    // `unresolvedQualifications` is the register saying it has not modelled the
+    // statutory trigger. There is nothing to report and nothing to apply.
+    $root = config('tax.register.store').'/unresolved-threshold';
+
+    FakeRegister::at($root)
+        ->rate('us:KS', '6.5', from: '1990-01-01')
+        ->rule('us:KS', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'unresolvedQualifications' => [['says' => 'or otherwise has a physical presence']],
+        ])
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $nexus = new RegisterNexus(new RegisterDataset($layout, new StorePointer($layout)));
+
+    expect(fn () => $nexus->for(new SubdivisionCode('US-KS')))
+        ->toThrow(UnresolvedTaxRule::class, 'unresolvedQualifications');
 });

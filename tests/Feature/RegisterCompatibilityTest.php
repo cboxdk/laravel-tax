@@ -26,7 +26,7 @@ it('rejects an unreviewed schema before downloading sections or replacing the ac
     expect(app(StorePointer::class)->current())->toBe($active)
         ->and(is_dir(app(StoreLayout::class)->version($version)))->toBeFalse();
     Http::assertSentCount(1);
-})->with(['3.0.0', '2.6.0', '1.35.0', '1.34.invalid', null]);
+})->with(['3.0.0', '2.7.0', '1.35.0', '1.34.invalid', null]);
 
 it('also rejects an incompatible store installed by another worker before offline reads', function (?string $schema): void {
     $layout = app(StoreLayout::class);
@@ -40,7 +40,7 @@ it('also rejects an incompatible store installed by another worker before offlin
     expect(fn () => $dataset->ratesFor('eu:DK'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion')
         ->and(fn () => $dataset->rulesFor('us:NY'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
     Http::assertNothingSent();
-})->with(['3.0.0', '2.6.0', '1.35.0', '1.34.invalid', null]);
+})->with(['3.0.0', '2.7.0', '1.35.0', '1.34.invalid', null]);
 
 it('rejects additional rule conditions during compilation even if labelled with the old schema', function (): void {
     $version = '2026.09.18-999';
