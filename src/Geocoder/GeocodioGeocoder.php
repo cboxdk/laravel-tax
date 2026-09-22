@@ -11,6 +11,7 @@ use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
@@ -64,6 +65,8 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private string $apiKey,
         private string $baseUrl = 'https://api.geocod.io/v2',
         private bool $rooftop = false,
+        /** The installed register, which says which states resolve by point. */
+        private ?RegisterDataset $register = null,
     ) {}
 
     public function locate(array $address): ?Jurisdiction
@@ -168,9 +171,15 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             return null;
         }
 
-        // California and New Mexico publish polygon services a point resolves
-        // against, which is finer than the postal proxy the ZIP+4 index offers.
-        if (in_array($subdivision->value, UsLocalStructure::polygonResolvedStates(), true)) {
+        // A state the register publishes GEOMETRY for resolves by point, which is
+        // finer than the postal proxy a ZIP+4 offers — California and New Mexico
+        // today. Read from the installed store, so a state gaining geometry is
+        // resolved by point without a release of this package; the list is only the
+        // fallback for a geocoder built without a store.
+        $byPoint = $this->register?->publishesGeometryFor(substr($subdivision->value, 3))
+            ?? in_array($subdivision->value, UsLocalStructure::polygonResolvedStates(), true);
+
+        if ($byPoint) {
             return $this->pointLocality($result, $subdivision);
         }
 

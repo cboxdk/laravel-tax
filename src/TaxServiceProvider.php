@@ -157,7 +157,7 @@ class TaxServiceProvider extends ServiceProvider
         // a supply, the other to a delivery however many lines it has. Colorado's
         // Retail Delivery Fee is the second kind, and charging it through the first
         // billed a two-line order twice for one delivery.
-        $this->app->singleton(EuTerritories::class, static fn (): EuTerritories => new StaticEuTerritories);
+        $this->app->singleton(EuTerritories::class, static fn (Application $app): EuTerritories => new StaticEuTerritories($app->make(RegisterDataset::class)));
 
         $this->app->singleton(FlatChargeSource::class, static fn (): FlatChargeSource => new NoFlatCharges);
         $this->app->singleton(OrderFlatChargeSource::class, static fn (): OrderFlatChargeSource => new NoOrderFlatCharges);
@@ -278,6 +278,7 @@ class TaxServiceProvider extends ServiceProvider
             $key,
             $baseUrl,
             $rooftop,
+            $app->make(RegisterDataset::class),
         ));
     }
 

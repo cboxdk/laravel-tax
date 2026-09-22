@@ -108,17 +108,11 @@ final class UsLocalStructure
     }
 
     /**
-     * The states that publish their own taxing-jurisdiction polygons, so a POINT
-     * resolves the authority more finely than any postal key can.
+     * States resolved by point against published polygons.
      *
-     * A geocoder consults this to decide whether to emit a point or a ZIP+4. Both
-     * states publish the geometry through their own GIS: California's is the CDTFA
-     * layer the register reads its CA rates from, and New Mexico's is the TRD layer
-     * keyed on the same location code its GRT rates sit under.
-     *
-     * TEXAS IS DELIBERATELY ABSENT. It is not a Streamlined member and publishes no
-     * polygons, so an address there resolves at ZIP-5 or falls to the state rate —
-     * visibly, rather than by a guess dressed as a lookup.
+     * FALLBACK ONLY. The geocoder reads this from the installed register — a state
+     * has point resolution exactly when its release carries a geometry artifact —
+     * and consults this list only when it was built without a store.
      *
      * @return list<string>
      */

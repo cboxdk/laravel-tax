@@ -111,7 +111,7 @@ function conformanceRegime(string $regime = 'eu-vat'): TaxRegime
         );
     }
 
-    return new EuVatRegime(app(JurisdictionRepository::class), new StaticEuTerritories);
+    return new EuVatRegime(app(JurisdictionRepository::class), new StaticEuTerritories(app(RegisterDataset::class)));
 }
 
 function conformanceRates(string $regime = 'eu-vat'): TaxRateSource

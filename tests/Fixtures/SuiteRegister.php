@@ -123,6 +123,20 @@ final class SuiteRegister
         $register->rate('eu:IE', '0', 'zero', 'goods.publications.book');
         $register->rate('eu:SE', '6', 'reduced', 'goods.publications.newspaper');
         $register->rate('eu:PT', '6', 'reduced', 'goods.food');
+
+        // PORTUGAL'S BANDS, AND THE ISLANDS' OWN, as the register publishes them —
+        // bare rows, no category. Madeira and the Azores are priced from these, band
+        // paired with band by kind; this fixture used to be spared them because the
+        // islands' figures sat in the territory class instead.
+        $register->rate('eu:PT', '13', 'intermediate', from: '1990-01-01');
+        $register->rate('eu:PT', '6', 'reduced', from: '1990-01-01');
+        $register->rate('eu:PT:MADEIRA', '22', 'standard', from: '2020-04-01');
+        $register->rate('eu:PT:MADEIRA', '12', 'intermediate', from: '2012-04-01');
+        $register->rate('eu:PT:MADEIRA', '5', 'reduced', from: '2012-04-01', until: '2024-09-30');
+        $register->rate('eu:PT:MADEIRA', '4', 'reduced', from: '2024-10-01');
+        $register->rate('eu:PT:AZORES', '16', 'standard', from: '2021-07-01');
+        $register->rate('eu:PT:AZORES', '9', 'intermediate', from: '2021-07-01');
+        $register->rate('eu:PT:AZORES', '4', 'reduced', from: '2021-07-01');
         $register->rate('eu:ES', '10', 'reduced', 'services.accommodation');
         $register->rate('eu:PL', '5', 'reduced', 'goods.food');
 

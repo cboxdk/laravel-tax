@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\TaxRate;
 /**
  * EU VAT. Digital/B2C supplies are taxed at the customer's Member State rate
  * (destination); intra-EU B2B supplies to a VIES-validated customer reverse-charge.
- * Rates are sourced (e.g. from the EU Commission's TEDB feed) via the rate source.
+ * Rates come from the register via the rate source.
  *
  * Threshold-aware place-of-supply (Art. 59c VAT Directive): a micro-business
  * established in a single Member State, below the €10,000 combined cross-border

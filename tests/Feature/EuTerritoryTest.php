@@ -12,7 +12,12 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -102,7 +107,7 @@ it('treats a missing postcode as unplaceable, not as mainland', function () {
     // rules are what the engine applies — but it must not be because a missing
     // code was taken as proof of mainland. The seam returns null; the deduction
     // that this is Spain is the regime's, made explicitly.
-    $territories = new StaticEuTerritories;
+    $territories = new StaticEuTerritories(app(RegisterDataset::class));
 
     expect($territories->for(new CountryCode('ES'), null))->toBeNull()
         ->and($territories->for(new CountryCode('ES'), ''))->toBeNull();
@@ -114,7 +119,7 @@ it('identifies the Portuguese islands, which are inside the VAT area', function 
     // A different case from Spain's, and the reason territory is modelled rather
     // than "special = no tax": the Azores charge 16% and Madeira 22% where the
     // mainland charges 23%. They are IN the VAT area with their own rates.
-    $territories = new StaticEuTerritories;
+    $territories = new StaticEuTerritories(app(RegisterDataset::class));
 
     $madeira = $territories->for(new CountryCode('PT'), '9000-001');
     $azores = $territories->for(new CountryCode('PT'), '9500-001');
@@ -171,7 +176,7 @@ it('charges Madeira its own reduced rate, not the mainland band', function () {
     // authority's own table. CIVA art. 18 n.º 3 deliberately does not carry them; it
     // delegates to the regional assemblies, which is why reading the tax code alone
     // finds nothing.
-    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001');
+    $territory = new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9000-001');
 
     expect($territory?->name)->toBe('Madeira')
         ->and($territory?->rateFor('23'))->toBe('22')
@@ -183,8 +188,8 @@ it('prices a Madeira supply with the reduced rate in force on its date', functio
     // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (DLR 6/2024/M art.
     // 21.º, effective under art. 121.º n.º 2). An invoice corrected afterwards must
     // reprice at what applied then.
-    $before = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-06-01'));
-    $after = new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-10-01'));
+    $before = new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-06-01'));
+    $after = new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9000-001', new DateTimeImmutable('2024-10-01'));
 
     expect($before?->rateFor('6'))->toBe('5')
         ->and($after?->rateFor('6'))->toBe('4');
@@ -194,7 +199,7 @@ it('charges the Azores 30% below every national level', function () {
     // DLR 15-A/2021/A cut the national rates by 30% from 2021-07-01, turning
     // 6/13/23 into 4/9/16 — one rule, three levels, and the engine must apply it at
     // whichever level the supply lands on.
-    $territory = new StaticEuTerritories()->for(new CountryCode('PT'), '9500-001');
+    $territory = new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9500-001');
 
     expect($territory?->name)->toBe('Azores')
         ->and($territory?->rateFor('23'))->toBe('16')
@@ -205,7 +210,7 @@ it('charges the Azores 30% below every national level', function () {
 it('leaves a level it does not carry on the mainland band, and says so', function () {
     // Deny-by-default at the level lookup: an unknown mainland rate is not silently
     // mapped to the standard one.
-    expect(new StaticEuTerritories()->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
+    expect(new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
 });
 
 it('lets a host rebind the territory list and actually reach the regime', function () {
@@ -246,3 +251,30 @@ it('lets a host rebind the territory list and actually reach the regime', functi
 
     expect($assessment->tax->getAmount()->toFloat())->toBe(0.0);
 });
+
+it('takes the islands\' rates from the register, not from code', function () {
+    // The figures used to live in this package, copied from the register that already
+    // published them. A copy is correct until Portugal changes a rate. Change it in
+    // the register, and the territory follows — there is nothing here to update.
+    $store = sys_get_temp_dir().'/cbox-tax-islands-'.getmypid().'-'.bin2hex(random_bytes(4));
+    FakeRegister::at($store)
+        ->rate('eu:PT', '23', from: '1990-01-01')->rate('eu:PT', '13', 'intermediate', from: '1990-01-01')->rate('eu:PT', '6', 'reduced', from: '1990-01-01')
+        ->rate('eu:PT:MADEIRA', '21', from: '1990-01-01')->rate('eu:PT:MADEIRA', '11', 'intermediate', from: '1990-01-01')->rate('eu:PT:MADEIRA', '3', 'reduced', from: '1990-01-01')
+        ->install();
+    $layout = new StoreLayout($store);
+    $madeira = new StaticEuTerritories(new RegisterDataset($layout, new StorePointer($layout)))->for(new CountryCode('PT'), '9000-001');
+
+    expect($madeira?->standardRate)->toBe('21')
+        ->and($madeira?->rateFor('13'))->toBe('11')
+        ->and($madeira?->rateFor('6'))->toBe('3');
+});
+
+it('refuses an island supply when the register does not carry the island', function () {
+    // Never the mainland's 23% in its place: that is a confident wrong rate on every
+    // invoice into the region.
+    $store = sys_get_temp_dir().'/cbox-tax-islands-'.getmypid().'-'.bin2hex(random_bytes(4));
+    FakeRegister::at($store)->rate('eu:PT', '23', from: '1990-01-01')->install();
+    $layout = new StoreLayout($store);
+
+    new StaticEuTerritories(new RegisterDataset($layout, new StorePointer($layout)))->for(new CountryCode('PT'), '9500-001');
+})->throws(UnresolvedTaxRule::class, 'Refusing rather than charging the mainland rate');

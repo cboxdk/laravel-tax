@@ -6,6 +6,9 @@ namespace Cbox\Tax\Territories;
 
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use DateTimeImmutable;
 
@@ -22,15 +25,17 @@ use DateTimeImmutable;
  * is honest here in a way a rate snapshot would not be: rates move, the map does
  * not.
  *
- * The territories that keep their own RATES (the Azores, Madeira) carry every
- * level, keyed by the mainland rate each one replaces. Cadastre already publishes
- * dated standard, intermediate and reduced bands for Madeira and the Azores.
- * This PHP snapshot remains because the public reader does not yet connect postal
- * coverage, VAT-area membership and category/band substitutions to those regional
- * records. The migration gaps are recorded in conformance/cadastre-feedback.md.
- * The figures here come from the Portuguese tax authority's Ofício Circulado
- * n.º 25045 (2024-12-06) and its annex table; they are not historical coverage
- * beyond the dates this implementation actually models.
+ * The territories that keep their own RATES (the Azores, Madeira) are priced from
+ * the REGISTER, not from here. Cadastre publishes their dated standard,
+ * intermediate and reduced bands as `eu:PT:MADEIRA` and `eu:PT:AZORES`; each band
+ * is paired with the mainland band of the same kind on the supply date, which is
+ * what turns the mainland's 13% into Madeira's 12%. When the register cannot supply
+ * them the supply refuses — it never falls back to the mainland's rates.
+ *
+ * What stays in this class is what the register does not publish: which postal
+ * ranges belong to which territory, and which territories Article 6 places outside
+ * the VAT area. Neither is a moving figure; both are requested from cadastre in
+ * conformance/cadastre-feedback.md.
  *
  * Two territory families are ABSENT on purpose, not as gaps. Corsica's special
  * rates are enumerated per operation rather than per level, so the substitution
@@ -58,6 +63,11 @@ use DateTimeImmutable;
  */
 readonly class StaticEuTerritories implements EuTerritories
 {
+    /** Register codes for the territories that keep their own rates. */
+    private const array OWN_RATES = ['PT-30' => ['eu:PT:MADEIRA', 'Madeira'], 'PT-20' => ['eu:PT:AZORES', 'Azores']];
+
+    public function __construct(private ?RegisterDataset $register = null) {}
+
     public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
     {
         $digits = $postalCode === null ? null : preg_replace('/\D/', '', $postalCode);
@@ -109,30 +119,78 @@ readonly class StaticEuTerritories implements EuTerritories
         // The islands keep their own rates but remain inside the EU VAT area —
         // a different case entirely from Spain's, and the reason this class
         // distinguishes the two rather than treating "special" as one thing.
-        if ($prefix >= 9000 && $prefix <= 9400) {
-            // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (Decreto
-            // Legislativo Regional n.º 6/2024/M, art. 21.º, effective under art.
-            // 121.º n.º 2). A back-dated supply must not take today's.
-            $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        // The islands keep their own rates but remain inside the EU VAT area —
+        // a different case entirely from Spain's, and the reason this class
+        // distinguishes the two rather than treating "special" as one thing.
+        $code = match (true) {
+            $prefix >= 9000 && $prefix <= 9400 => 'PT-30',
+            $prefix >= 9500 && $prefix <= 9980 => 'PT-20',
+            default => null,
+        };
 
-            return EuTerritory::withOwnRates('PT-30', 'Madeira', '22', [
-                '23' => '22',
-                '13' => '12',
-                '6' => $on >= '2024-10-01' ? '4' : '5',
-            ]);
+        return $code === null ? null : $this->ownRates($code, 'eu:PT', $at);
+    }
+
+    /**
+     * A territory with its own rates, each band read from the register and keyed by
+     * the mainland band of the same KIND on the same date.
+     *
+     * By kind, because that is how both are published — standard, intermediate,
+     * reduced — and by date, because Madeira's reduced band went from 5% to 4% on
+     * 1 October 2024 and a back-dated supply must take the band it was made under.
+     */
+    private function ownRates(string $code, string $mainland, ?DateTimeImmutable $at): EuTerritory
+    {
+        [$registerCode, $name] = self::OWN_RATES[$code];
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+
+        $home = $this->bands($mainland, $on);
+        $away = $this->bands($registerCode, $on);
+
+        if (! isset($away['standard'])) {
+            throw new UnresolvedTaxRule(sprintf(
+                '%s charges its own VAT rates, and the installed register does not supply them (%s on %s). Refusing rather than charging the mainland rate.',
+                $name,
+                $registerCode,
+                $on,
+            ));
         }
 
-        if ($prefix >= 9500 && $prefix <= 9980) {
-            // A flat 30% cut of the national levels since 2021-07-01 (Decreto
-            // Legislativo Regional n.º 15-A/2021/A), which turns 6/13/23 into
-            // 4/9/16.
-            return EuTerritory::withOwnRates('PT-20', 'Azores', '16', [
-                '23' => '16',
-                '13' => '9',
-                '6' => '4',
-            ]);
+        $map = [];
+
+        foreach ($away as $kind => $percentage) {
+            if (isset($home[$kind])) {
+                $map[$home[$kind]] = $percentage;
+            }
         }
 
-        return null;
+        return EuTerritory::withOwnRates($code, $name, $away['standard'], $map);
+    }
+
+    /**
+     * A jurisdiction's headline bands on a date, by kind: `['standard' => '22', ...]`.
+     * Only rows with no category and no classification — the bands themselves.
+     *
+     * @return array<string, string>
+     */
+    private function bands(string $jurisdiction, string $on): array
+    {
+        $bands = [];
+
+        foreach ($this->register?->ratesFor($jurisdiction) ?? [] as $rate) {
+            $effective = Shape::map($rate['effective'] ?? null);
+            $from = $effective['from'] ?? null;
+            $until = $effective['until'] ?? null;
+
+            if (($rate['category'] ?? null) !== null || ($rate['classification'] ?? null) !== null
+                || (is_string($from) && $from > $on) || (is_string($until) && $until < $on)
+                || ! is_string($rate['kind'] ?? null) || ! is_string($rate['percentage'] ?? null)) {
+                continue;
+            }
+
+            $bands[$rate['kind']] = $rate['percentage'];
+        }
+
+        return $bands;
     }
 }

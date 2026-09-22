@@ -57,6 +57,25 @@ final class RegisterDataset
         return $this->layout->root();
     }
 
+    /**
+     * Whether the installed release carries a GEOMETRY artifact for a US state —
+     * the states an address resolves against by point rather than by ZIP+4.
+     *
+     * Read from what was installed, not from a list: California and New Mexico are
+     * the two today, and a third published tomorrow is resolved by point the day it
+     * is synced. Null when no store is installed, so a caller can fall back.
+     */
+    public function publishesGeometryFor(string $state): ?bool
+    {
+        $version = $this->version();
+
+        if ($version === null) {
+            return null;
+        }
+
+        return is_file($this->layout->file($version, 'boundaries/'.strtoupper($state).'.geo.json'));
+    }
+
     public function isInstalled(): bool
     {
         return $this->version() !== null;
