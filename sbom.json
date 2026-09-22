@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:c61c10d6-a629-4d35-ae57-a38f1495968e",
+    "serialNumber": "urn:uuid:630c4d28-49f8-4f19-87bf-efd6d9157d71",
     "version": 1,
     "metadata": {
         "tools": [
@@ -37,11 +37,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/brick/money@0.14.0",
+            "bom-ref": "pkg:composer/brick/money@0.15.1",
             "group": "brick",
             "name": "money",
-            "version": "0.14.0",
-            "purl": "pkg:composer/brick/money@0.14.0",
+            "version": "0.15.1",
+            "purl": "pkg:composer/brick/money@0.15.1",
             "description": "Money and currency library",
             "licenses": [
                 {

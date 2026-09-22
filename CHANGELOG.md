@@ -35,6 +35,18 @@ minor bumps may carry additive features; patches are fixes and docs).
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
 
+### Changed — dependencies
+
+- **`brick/money` accepts `^0.15`.** The constraint was `^0.14`, which cannot install
+  the current release, and a 0.x caret does not reach the next minor. The whole suite
+  passes on 0.15.1 with `brick/math` 1.0.
+- **Laravel 12 stays unsupported, and [requirements](docs/requirements.md) now says
+  why correctly.** It claimed the `brick/math` cap appeared in Laravel 12.64; every
+  Laravel 12 release has carried it, from v12.0.0. An application on Laravel 12
+  cannot install a current `brick/money` with or without this package, so widening
+  `illuminate/*` would only move the failure from install time to somebody's
+  production deploy.
+
 ### Added — documentation
 
 - **The README leads with the work, not the architecture.** Install, sync, ask — three
