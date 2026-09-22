@@ -218,3 +218,18 @@ it('matches coverage against the origin-sourced place for EU micro-business reli
 
     $this->assertExempt($exemptDe, 'DE-EXEMPT');
 });
+
+it('honours a certificate for the whole of its last day', function () {
+    // Built from a date column, the end is midnight; compared as an instant, the
+    // certificate expired one second into its last valid day.
+    $exemption = new TaxExemption(
+        type: ExemptionType::Resale,
+        reference: 'RS-1',
+        validFrom: new DateTimeImmutable('2026-01-01 00:00:00'),
+        validUntil: new DateTimeImmutable('2026-09-30 00:00:00'),
+    );
+
+    expect($exemption->isValidAt(new DateTimeImmutable('2026-09-30 17:45:00')))->toBeTrue()
+        ->and($exemption->isValidAt(new DateTimeImmutable('2026-10-01 00:00:01')))->toBeFalse()
+        ->and($exemption->isValidAt(new DateTimeImmutable('2025-12-31 23:59:59')))->toBeFalse();
+});

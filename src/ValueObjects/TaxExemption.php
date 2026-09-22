@@ -87,15 +87,17 @@ readonly class TaxExemption
      */
     public function isValidAt(DateTimeInterface $at): bool
     {
-        if ($this->validFrom !== null && $at < $this->validFrom) {
+        // CALENDAR DATES, both ends inclusive — as a seller registration is read. A
+        // certificate valid until the 30th is valid all of the 30th; compared as
+        // instants, one built from a date column (midnight) expired at 00:00:01 and
+        // the buyer was charged on its last day.
+        $on = $at->format('Y-m-d');
+
+        if ($this->validFrom !== null && $on < $this->validFrom->format('Y-m-d')) {
             return false;
         }
 
-        if ($this->validUntil !== null && $at > $this->validUntil) {
-            return false;
-        }
-
-        return true;
+        return ! ($this->validUntil !== null && $on > $this->validUntil->format('Y-m-d'));
     }
 
     /** A short phrase for the assessment's human-readable reason string. */
