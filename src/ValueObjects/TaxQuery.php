@@ -10,6 +10,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Enums\CustomerType;
+use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RoundingScope;
@@ -71,6 +72,9 @@ readonly class TaxQuery
      * {@see CategoryMap::governing()}; a class passed explicitly always wins.
      */
     public TaxClass $category;
+
+    /** Whether the caller named the class, rather than it being derived from a key. */
+    private bool $categoryStated;
 
     public function __construct(
         public Money $amount,
@@ -158,10 +162,29 @@ readonly class TaxQuery
          * or the general rule for services; pass it to name a specific article.
          */
         public ?string $categoryKey = null,
+        /**
+         * Where the service is performed — the hotel, the venue, the restaurant, the
+         * building site. For those supplies it IS the place of supply, for business
+         * customers and consumers alike, and the customer's country is not. Left
+         * null, the supplier's own country is assumed and the rate is flagged.
+         */
+        public ?Jurisdiction $performedAt = null,
     ) {
+        $this->categoryStated = $categoryKey === null || $category !== TaxClass::GeneralGoods;
         $this->category = $categoryKey !== null && $category === TaxClass::GeneralGoods
             ? CategoryMap::governing($categoryKey)
             : $category;
+    }
+
+    /**
+     * The place-of-supply rule this supply falls under: the class's where the caller
+     * named one, the key's where only a key was named.
+     */
+    public function placeOfSupplyRule(): PlaceOfSupplyRule
+    {
+        return $this->categoryStated || $this->categoryKey === null
+            ? $this->category->placeOfSupplyRule()
+            : CategoryMap::placeOfSupplyRule($this->categoryKey);
     }
 
     /**
@@ -193,6 +216,7 @@ readonly class TaxQuery
             $this->roundingScope,
             $this->delivery,
             $this->categoryKey,
+            $this->performedAt,
         );
     }
 

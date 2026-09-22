@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Brick\Money\Money;
+use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Enums\Pricing;
@@ -75,5 +76,7 @@ readonly class SupplyLine
         public ?DeliveryCharge $delivery = null,
         /** The register's category key, as on {@see TaxQuery::$categoryKey}. */
         public ?string $categoryKey = null,
+        /** Where the service is performed, as on {@see TaxQuery::$performedAt}. */
+        public ?Jurisdiction $performedAt = null,
     ) {}
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
@@ -150,6 +151,36 @@ final class CategoryMap
         }
 
         return str_starts_with($key, 'services.') ? TaxClass::ProfessionalService : TaxClass::GeneralGoods;
+    }
+
+    /**
+     * The place-of-supply rule for a register key named WITHOUT a class.
+     *
+     * The key says what the supply is, and for a service with no class above it that
+     * is the only thing that can say where it is taxed. Nearest rung wins; a key
+     * nothing here names takes its governing class's rule.
+     */
+    public static function placeOfSupplyRule(string $key): PlaceOfSupplyRule
+    {
+        foreach (self::ladder($key) as $rung) {
+            $rule = match ($rung) {
+                // Art. 58 — telecommunications, broadcasting, electronic services.
+                'services.telecom', 'services.broadcasting', 'services.digital' => PlaceOfSupplyRule::Destination,
+                // Where performed — Arts. 47, 48, 53, 54(1), 55.
+                'services.restaurant', 'services.short_term_letting', 'services.accommodation', 'services.housing_provision',
+                'services.housing_renovation', 'services.construction', 'services.passenger_transport',
+                'services.cultural_admission', 'services.sporting_admission', 'services.sport_use' => PlaceOfSupplyRule::WherePerformed,
+                // Art. 54(2) — physically carried out, for a consumer.
+                'services.repair', 'services.personal_care', 'services.hairdressing', 'services.beauty_treatment' => PlaceOfSupplyRule::WhereProvided,
+                default => null,
+            };
+
+            if ($rule !== null) {
+                return $rule;
+            }
+        }
+
+        return self::governing($key)->placeOfSupplyRule();
     }
 
     /**

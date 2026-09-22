@@ -40,4 +40,16 @@ enum PlaceOfSupplyRule: string
      * separately.
      */
     case WhereProvided = 'where_provided';
+
+    /**
+     * Where the service is PERFORMED, for a business customer and a consumer alike:
+     * Art. 47 (immovable property — a hotel room, building work), Art. 48 (passenger
+     * transport), Arts. 53 and 54(1) (admission to an event), Art. 55 (restaurant and
+     * catering). Never reverse-charged at the customer's establishment, because the
+     * customer's establishment is not where the supply happens.
+     *
+     * Read from `TaxQuery::$performedAt`; without one, the supplier's own country is
+     * assumed and the rate says so.
+     */
+    case WherePerformed = 'where_performed';
 }

@@ -224,16 +224,23 @@ enum TaxClass: string
             self::SoftwarePrewritten, self::WebHosting, self::AiApi,
             self::Broadcasting => PlaceOfSupplyRule::Destination,
 
-            // Art. 54 — physically carried out where the customer is. Admission to
-            // an event is taxed where the event happens, which is the same idea.
+            // Art. 54(2) — work on movable property and similar, physically carried
+            // out; for a consumer only. A business customer falls to Art. 44.
             self::RepairService, self::PersonalCare, self::CleaningService,
-            self::CulturalAdmission, self::SportingAdmission,
-            self::Accommodation, self::MedicalCare, self::Renovation => PlaceOfSupplyRule::WhereProvided,
+            self::MedicalCare => PlaceOfSupplyRule::WhereProvided,
 
-            // Art. 45 — the general rule for services to a consumer.
+            // Where it happens, for everyone: immovable property (Art. 47), passenger
+            // transport (Art. 48), admission to an event (Arts. 53, 54(1)).
+            self::Accommodation, self::Renovation, self::Housing,
+            self::PassengerTransport,
+            self::CulturalAdmission, self::SportingAdmission => PlaceOfSupplyRule::WherePerformed,
+
+            // Art. 45 — the general rule for services to a consumer. Postal and waste
+            // services are services: without this they fell to the rule for goods.
             self::ProfessionalService, self::DataProcessing, self::SoftwareCustom,
             self::AuthorshipService, self::FinancialAdmin,
-            self::SocialCare, self::FuneralService => PlaceOfSupplyRule::SupplierEstablishment,
+            self::SocialCare, self::FuneralService,
+            self::PostalService, self::WasteTreatment => PlaceOfSupplyRule::SupplierEstablishment,
 
             // Art. 33(a) — intra-Community distance sales of goods. Everything not
             // named above is goods.

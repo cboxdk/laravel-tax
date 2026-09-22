@@ -48,7 +48,7 @@ abstract class DestinationTaxRegime implements TaxRegime
 
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
-        if ($query->isCrossBorder() && $query->isBusiness() && $query->customerTaxIdValidated) {
+        if ($query->isCrossBorder() && $query->isBusiness() && $query->customerTaxIdValidated && $this->reverseChargeApplies($query)) {
             return $this->reverseCharge($query);
         }
 
@@ -60,7 +60,22 @@ abstract class DestinationTaxRegime implements TaxRegime
             throw UnresolvedTaxRate::for($place);
         }
 
-        return $this->applyRate($query, $place, $rate);
+        return $this->applyRate($query, $place, $this->qualify($query, $place, $rate));
+    }
+
+    /**
+     * Whether a cross-border supply to a validated business is reverse-charged at the
+     * customer. True for most services; a regime says where it is not.
+     */
+    protected function reverseChargeApplies(TaxQuery $query): bool
+    {
+        return true;
+    }
+
+    /** A hook to flag a rate the regime had to assume something to reach. */
+    protected function qualify(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxRate
+    {
+        return $rate;
     }
 
     /**

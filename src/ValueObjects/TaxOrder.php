@@ -147,6 +147,7 @@ readonly class TaxOrder
             roundingScope: $this->roundingScope,
             delivery: $line->isDeliveryCharge ? ($line->delivery ?? new DeliveryCharge) : null,
             categoryKey: $line->categoryKey,
+            performedAt: $line->performedAt,
         );
     }
 

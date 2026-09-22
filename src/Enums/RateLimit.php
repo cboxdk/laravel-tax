@@ -107,6 +107,14 @@ enum RateLimit: string
      */
     case TaxabilityAssumed = 'taxability_assumed';
 
+    /**
+     * A service taxed where it is PERFORMED — a hotel stay, an event, a meal, building
+     * work, a journey — priced in the supplier's own country because no performance
+     * place was given. Usually right: a German hotel company's hotel is in Germany. A
+     * chain with property abroad, an agency selling rooms elsewhere, is not.
+     */
+    case PerformanceLocationAssumed = 'performance_location_assumed';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -128,6 +136,8 @@ enum RateLimit: string
                 .'they exclude; each carries the statute\'s own words. Where a jurisdiction\'s exclusions map '
                 .'onto tax classes you sell — the UK taxing confectionery and hot food at the standard rate '
                 .'while zero-rating groceries — put your own source in front via ChainTaxRateSource.',
+            self::PerformanceLocationAssumed => 'Pass where the service is performed as `performedAt` — the hotel, the '
+                .'venue, the site. It is taxed there, for a business customer as much as for a consumer.',
             self::TaxabilityAssumed => 'Check whether the state taxes this service: most do not tax medical care, '
                 .'education, financial services or insurance. Where it does not, record that for the item — a '
                 .'taxability source bound ahead of the register, or a buyer exemption — rather than billing the assumption.',
@@ -152,6 +162,7 @@ enum RateLimit: string
         // or the host bind a source that does.
         return $this === self::HeadingAmbiguous
             || $this === self::ItemUnmapped
-            || $this === self::ClassificationInferred;
+            || $this === self::ClassificationInferred
+            || $this === self::PerformanceLocationAssumed;
     }
 }

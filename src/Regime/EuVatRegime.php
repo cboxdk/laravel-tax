@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\InvoiceMention;
@@ -184,8 +185,59 @@ class EuVatRegime extends DestinationTaxRegime
         ];
     }
 
+    /**
+     * Not for a supply taxed where it is performed: a French company cannot
+     * self-account German VAT on a room in Munich. Reverse-charged only when the
+     * performance place is the customer's own country.
+     */
+    protected function reverseChargeApplies(TaxQuery $query): bool
+    {
+        if ($query->placeOfSupplyRule() !== PlaceOfSupplyRule::WherePerformed) {
+            return true;
+        }
+
+        $performed = $this->performancePlace($query);
+
+        return $performed === null || $performed->country->equals($query->place->country);
+    }
+
+    protected function qualify(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxRate
+    {
+        return $query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed
+            && $query->performedAt === null
+            && ! $place->country->equals($query->place->country)
+                ? $rate->qualifiedBy(RateLimit::PerformanceLocationAssumed)
+                : $rate;
+    }
+
+    /**
+     * Where a performed service happens: as stated, or the supplier's own country —
+     * the usual case, and an assumption the rate is flagged for.
+     */
+    private function performancePlace(TaxQuery $query): ?Jurisdiction
+    {
+        return $query->performedAt ?? $this->jurisdictions?->find($query->seller->establishment);
+    }
+
+    /** A business the supplier can treat as taxable: one with a validated number. */
+    private function taxableCustomer(TaxQuery $query): bool
+    {
+        return $query->isBusiness() && $query->customerTaxIdValidated;
+    }
+
     protected function sourcingPlace(TaxQuery $query): Jurisdiction
     {
+        // WHERE IT HAPPENS, for everyone: a hotel, a venue, a meal, a journey.
+        if ($query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed) {
+            return $this->performancePlace($query) ?? $query->place;
+        }
+
+        // Physically carried out, for a consumer: the stated place where there is one,
+        // else the customer's location as the proxy it almost always is.
+        if ($query->placeOfSupplyRule() === PlaceOfSupplyRule::WhereProvided && ! $this->taxableCustomer($query) && $query->performedAt !== null) {
+            return $query->performedAt;
+        }
+
         // Art. 45 first: for a consumer, the general rule for SERVICES is the
         // supplier's establishment. Only telecoms/broadcasting/electronic services
         // (Art. 58) and goods (Art. 33(a)) go to the customer, and treating those
@@ -226,7 +278,7 @@ class EuVatRegime extends DestinationTaxRegime
      */
     private function generalRulePlace(TaxQuery $query): ?Jurisdiction
     {
-        if ($query->isBusiness() || $query->category->placeOfSupplyRule() !== PlaceOfSupplyRule::SupplierEstablishment) {
+        if ($this->taxableCustomer($query) || $query->placeOfSupplyRule() !== PlaceOfSupplyRule::SupplierEstablishment) {
             return null;
         }
 
@@ -247,7 +299,7 @@ class EuVatRegime extends DestinationTaxRegime
      */
     private function qualifiesForOriginSourcing(TaxQuery $query): bool
     {
-        if ($query->isBusiness()) {
+        if ($this->taxableCustomer($query)) {
             return false;
         }
 
@@ -255,7 +307,7 @@ class EuVatRegime extends DestinationTaxRegime
         // for intra-Community distance sales of goods and for TBE services, not a
         // general small-seller exemption. Granting it to, say, admission to an event
         // (Art. 53) charged origin VAT on a supply that is taxed where the event is.
-        if ($query->category->placeOfSupplyRule() !== PlaceOfSupplyRule::Destination) {
+        if ($query->placeOfSupplyRule() !== PlaceOfSupplyRule::Destination) {
             return false;
         }
 

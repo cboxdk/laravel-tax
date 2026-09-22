@@ -127,6 +127,7 @@ trait AssessesOrders
                 isDeliveryCharge: true,
                 delivery: ($charge->delivery ?? new DeliveryCharge)->forGoods($assessed->treatment->taxWasDue()),
                 categoryKey: $line->categoryKey,
+                performedAt: $line->performedAt,
             ));
 
             if ($order->place->country->value === 'US' && ! $share->isZero() && $portion->isTaxable()
