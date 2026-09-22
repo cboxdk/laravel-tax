@@ -9,6 +9,7 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -73,3 +74,16 @@ it('refuses a quantity below one', function (): void {
     new SupplyLine('x', Money::of('1.00', 'USD'), quantity: 0);
     massachusettsCoats('1.00', 0);
 })->throws(InvalidArgumentException::class, 'at least 1');
+
+it('collects every caveat on a document in one place', function (): void {
+    $es = app(JurisdictionRepository::class)->find(new CountryCode('ES'));
+    $seller = new SellerRegistrations(new CountryCode('ES'));
+    $order = fn (?string $postcode) => app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($es, CustomerType::Consumer, $seller, Pricing::Exclusive, [
+        new SupplyLine('a', Money::of('10.00', 'EUR')),
+    ], suppliedAt: new DateTimeImmutable('2026-09-22'), postalCode: $postcode));
+
+    expect($order(null)->limits())->toBe([RateLimit::TerritoryUnplaced])
+        ->and($order(null)->needsReview())->toBeTrue()
+        ->and($order('28001')->limits())->toBe([])
+        ->and($order('28001')->needsReview())->toBeFalse();
+});

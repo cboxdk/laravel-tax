@@ -138,11 +138,16 @@ class EuVatRegime extends DestinationTaxRegime
             );
         }
 
+        // The mainland rate's own caveat and provenance travel with it: a heading the
+        // mainland could not settle is no more settled in Madeira.
         $regional = new TaxRate(
             $substitute,
             $rate->kind,
             'eu-territory',
             Confidence::Derived,
+            [],
+            $rate->limitedBy,
+            $rate->provenance,
         );
 
         [$net, $tax, $gross] = $this->split($query, $regional);

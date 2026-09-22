@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Brick\Money\Money;
+use Cbox\Tax\Enums\Confidence;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
 
 /**
@@ -140,44 +142,97 @@ readonly class OrderAssessment
         $totals = [];
 
         foreach ($this->lines as $line) {
-            $assessment = $line->assessment;
+            // A FREIGHT LINE SPLIT ACROSS RATES has no single breakdown — each share
+            // carries its own. Read the shares, or every US cart with mixed rates and
+            // shipping had no per-authority split at all.
+            foreach ($line->assessment->portions !== [] ? $line->assessment->portions : [$line->assessment] as $assessment) {
+                // A line that charged nothing has nothing to attribute, and no missing
+                // breakdown to complain about.
+                if ($assessment->tax->isZero()) {
+                    continue;
+                }
 
-            // A line that charged nothing has nothing to attribute, and no missing
-            // breakdown to complain about.
-            if ($assessment->tax->isZero()) {
-                continue;
-            }
+                // An EMPTY breakdown on a taxed line is not a split, it is the absence
+                // of one — the same distinction TaxRate draws for components. Merging
+                // it as though it contributed nothing would drop that line's tax from
+                // the roll-up while the remaining figures still looked plausible.
+                if ($assessment->breakdown === null || $assessment->breakdown->isEmpty()) {
+                    return null;
+                }
 
-            // An EMPTY breakdown on a taxed line is not a split, it is the absence
-            // of one — the same distinction TaxRate draws for components. Merging
-            // it as though it contributed nothing would drop that line's tax from
-            // the roll-up while the remaining figures still looked plausible.
-            if ($assessment->breakdown === null || $assessment->breakdown->isEmpty()) {
-                return null;
-            }
+                foreach ($assessment->breakdown->lines as $index => $share) {
+                    // An unidentified authority cannot be merged with another: two
+                    // special districts both reporting a null code are two districts,
+                    // not one, and summing them would report a single district owed
+                    // both shares. Key those by position within their line instead, so
+                    // they stay distinct and simply do not combine across lines.
+                    $key = $share->code === null
+                        ? $share->level->value.'|#'.$index.'@'.$line->id
+                        : $share->level->value.'|'.$share->code;
 
-            foreach ($assessment->breakdown->lines as $index => $share) {
-                // An unidentified authority cannot be merged with another: two
-                // special districts both reporting a null code are two districts,
-                // not one, and summing them would report a single district owed
-                // both shares. Key those by position within their line instead, so
-                // they stay distinct and simply do not combine across lines.
-                $key = $share->code === null
-                    ? $share->level->value.'|#'.$index.'@'.$line->id
-                    : $share->level->value.'|'.$share->code;
-
-                $totals[$key] = isset($totals[$key])
-                    ? new AuthorityTotal(
-                        $share->level,
-                        $totals[$key]->tax->plus($share->tax),
-                        $share->code,
-                        $totals[$key]->name ?? $share->name,
-                    )
-                    : new AuthorityTotal($share->level, $share->tax, $share->code, $share->name);
+                    $totals[$key] = isset($totals[$key])
+                        ? new AuthorityTotal(
+                            $share->level,
+                            $totals[$key]->tax->plus($share->tax),
+                            $share->code,
+                            $totals[$key]->name ?? $share->name,
+                        )
+                        : new AuthorityTotal($share->level, $share->tax, $share->code, $share->name);
+                }
             }
         }
 
         return array_values($totals);
+    }
+
+    /**
+     * Every reason a rate on this document is not exact — across its lines and each
+     * share of a freight split — once each. Empty when every rate is exact.
+     *
+     * One place to look before an invoice goes out, instead of walking every line and
+     * every delivery share for `limitedBy`.
+     *
+     * @return list<RateLimit>
+     */
+    public function limits(): array
+    {
+        $limits = [];
+
+        foreach ($this->rated() as $rate) {
+            if ($rate->limitedBy !== null) {
+                $limits[$rate->limitedBy->value] = $rate->limitedBy;
+            }
+        }
+
+        return array_values($limits);
+    }
+
+    /** Whether any rate on the document is less than authoritative. */
+    public function needsReview(): bool
+    {
+        foreach ($this->rated() as $rate) {
+            if ($rate->confidence !== Confidence::Authoritative || $rate->limitedBy !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<TaxRate> */
+    private function rated(): array
+    {
+        $rates = [];
+
+        foreach ($this->lines as $line) {
+            foreach ([$line->assessment, ...$line->assessment->portions] as $assessment) {
+                if ($assessment->rate !== null) {
+                    $rates[] = $assessment->rate;
+                }
+            }
+        }
+
+        return $rates;
     }
 
     /**

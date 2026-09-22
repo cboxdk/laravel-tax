@@ -375,7 +375,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // local half away and undid exactly that, turning a correct 6.25% into
         // 4.00% — an under-collection wearing the state's own published figure.
         if ($determination->reducedRate !== null && $rate->kind !== RateKind::Reduced) {
-            $rate = new TaxRate($determination->reducedRate, RateKind::Reduced, $rate->source, $rate->confidence);
+            $rate = new TaxRate($determination->reducedRate, RateKind::Reduced, $rate->source, $rate->confidence, [], $rate->limitedBy, $rate->provenance);
         }
 
         // A SERVICE NOBODY PUBLISHED A RULE FOR. US states tax services only where they
