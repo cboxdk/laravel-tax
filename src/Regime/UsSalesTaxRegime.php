@@ -167,6 +167,15 @@ readonly class UsSalesTaxRegime implements TaxRegime
     {
         $delivery = $query->delivery;
 
+        // A BUYER'S CERTIFICATE COVERS THE WHOLE SALE, freight included, and it is
+        // applied after this. The certificate had made the goods exempt, which turned
+        // the freight into "delivery of exempt goods" — a rule most states do not
+        // publish, so an ordinary wholesale order with shipping refused outright. With
+        // a certificate that applies here the delivery rule has nothing to decide.
+        if ($query->exemption?->appliesTo($query->place, $query->on())) {
+            return false;
+        }
+
         if ($delivery === null || $delivery->goodsTaxable === null) {
             throw new UnresolvedTaxRule('Delivery requires the taxability of the delivered goods.', RefusalReason::DeliveryFactsRequired);
         }

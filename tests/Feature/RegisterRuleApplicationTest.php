@@ -16,6 +16,7 @@ use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\DeliveryComponent;
+use Cbox\Tax\Enums\ExemptionType;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RefusalReason;
@@ -30,6 +31,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\SupplyRoute;
+use Cbox\Tax\ValueObjects\TaxExemption;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Illuminate\Support\Facades\Http;
@@ -573,3 +575,20 @@ it('accepts a decision only on a mixed sourcing rule', function (): void {
 
     app(SourcingRules::class)->for(new SubdivisionCode('US-IL'), new DateTimeImmutable('2027-06-01'));
 })->throws(UnresolvedTaxRule::class, 'Conditional origin sourcing');
+
+it('prices a resale order with freight, the certificate covering both', function (): void {
+    // A wholesale buyer with a resale certificate, goods plus shipping. The goods are
+    // exempt under the certificate, which made the freight "delivery of exempt goods"
+    // — and the regime refused that before the certificate was ever applied, so a
+    // perfectly ordinary B2B order could not be priced at all.
+    $q = ruleQuery('IL');
+    $certificate = new TaxExemption(ExemptionType::Resale, 'IL-RS-1', subdivisions: [new SubdivisionCode('US-IL')]);
+
+    $a = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($q->place, $q->customer, $q->seller, Pricing::Exclusive, [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true),
+    ], suppliedAt: $q->suppliedAt, exemption: $certificate));
+
+    expect((string) $a->tax()->getAmount())->toBe('0.00')
+        ->and($a->forLine('delivery')->treatment)->toBe(TaxTreatment::Exempt);
+});
