@@ -123,6 +123,24 @@ readonly class TaxRate
      * The reason is appended to the source so it survives into the assessment,
      * where the only thing carrying it would otherwise be a log line nobody reads.
      */
+    /**
+     * The same rate, qualified: no longer authoritative, and saying why. An existing
+     * limit is kept — it is the nearer thing to act on — and a rate already at low
+     * confidence stays there.
+     */
+    public function qualifiedBy(RateLimit $limit): self
+    {
+        return new self(
+            $this->percentage,
+            $this->kind,
+            $this->source,
+            $this->confidence === Confidence::Authoritative ? Confidence::Derived : $this->confidence,
+            $this->components,
+            $this->limitedBy ?? $limit,
+            $this->provenance,
+        );
+    }
+
     public function degraded(string $why): self
     {
         return new self(

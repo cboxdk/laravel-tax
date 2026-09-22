@@ -10,8 +10,10 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
@@ -153,3 +155,27 @@ it('refuses a key when the bound source cannot answer one', function (): void {
 
     app(TaxCalculator::class)->assess(keyQuery('DK', null, '100.00', 'services.education'));
 })->throws(UnresolvedTaxRule::class, 'cannot answer a register category key');
+
+it('stops calling an assumed US service taxability authoritative', function (): void {
+    // No state publishes a rule for medical care yet. US states tax services only where
+    // they enumerate them, so "nothing says it is exempt" is an assumption — and a
+    // doctor's visit billed at the full rate and stamped authoritative is exactly the
+    // confident number this package refuses to produce. The figure is kept, because it
+    // is the direction a customer can be refunded from; the stamp is not.
+    $medical = app(TaxCalculator::class)->assess(keyQuery('US', 'US-KS', '100.00', null, TaxClass::MedicalCare));
+    $keyed = app(TaxCalculator::class)->assess(keyQuery('US', 'US-KS', '100.00', 'services.education'));
+    $goods = app(TaxCalculator::class)->assess(keyQuery('US', 'US-KS', '100.00', null));
+
+    expect((string) $medical->tax->getAmount())->toBe('6.50')
+        ->and($medical->rate?->limitedBy)->toBe(RateLimit::TaxabilityAssumed)
+        ->and($medical->rate?->confidence)->not->toBe(Confidence::Authoritative)
+        ->and($keyed->rate?->limitedBy)->toBe(RateLimit::TaxabilityAssumed)
+        // Goods are taxable by default under US law: nothing is assumed there.
+        ->and($goods->rate?->limitedBy)->not->toBe(RateLimit::TaxabilityAssumed);
+});
+
+it('leaves an assumed EU service alone, because taxable is the VAT default', function (): void {
+    $a = app(TaxCalculator::class)->assess(keyQuery('DK', null, '100.00', null, TaxClass::MedicalCare));
+
+    expect($a->rate?->limitedBy)->not->toBe(RateLimit::TaxabilityAssumed);
+});

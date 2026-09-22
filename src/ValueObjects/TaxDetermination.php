@@ -47,11 +47,25 @@ readonly class TaxDetermination
          * ask, and neither looks wrong on the invoice.
          */
         public ?string $thresholdCurrency = null,
+        /**
+         * Taxable because NOTHING published says otherwise, not because anything says
+         * so. Under a VAT that is the law's own default. Under US sales tax it is the
+         * law's default for goods and the opposite of it for services, which states
+         * tax only where they enumerate them — so a regime can tell a stated answer
+         * from an assumed one.
+         */
+        public bool $assumed = false,
     ) {}
 
     public static function taxable(): self
     {
         return new self(TaxabilityTreatment::Taxable);
+    }
+
+    /** Taxable by default — see {@see self::$assumed}. */
+    public static function assumedTaxable(): self
+    {
+        return new self(TaxabilityTreatment::Taxable, assumed: true);
     }
 
     public static function exempt(): self

@@ -95,7 +95,7 @@ final readonly class RegisterTaxability implements CategoryKeyedTaxability
         // per-category verdict — so that refusal has nowhere to come from. A
         // jurisdiction the register knows NOTHING about still refuses, below.
         if ($this->dataset->ratesFor($code) !== []) {
-            return TaxDetermination::taxable();
+            return TaxDetermination::assumedTaxable();
         }
 
         throw UnresolvedProductTaxability::for($jurisdiction, $category);

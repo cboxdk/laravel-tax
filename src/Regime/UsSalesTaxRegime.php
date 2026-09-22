@@ -21,6 +21,7 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Enums\SourcingMode;
 use Cbox\Tax\Enums\TaxabilityTreatment;
@@ -30,6 +31,7 @@ use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -370,6 +372,14 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // 4.00% — an under-collection wearing the state's own published figure.
         if ($determination->reducedRate !== null && $rate->kind !== RateKind::Reduced) {
             $rate = new TaxRate($determination->reducedRate, RateKind::Reduced, $rate->source, $rate->confidence);
+        }
+
+        // A SERVICE NOBODY PUBLISHED A RULE FOR. US states tax services only where they
+        // enumerate them, so "nothing says it is exempt" is an assumption here in a
+        // way it is not for goods. The figure stands — the recoverable direction —
+        // and stops claiming to be authoritative.
+        if ($determination->assumed && str_starts_with($query->categoryKey ?? CategoryMap::keyFor($query->category), 'services.')) {
+            $rate = $rate->qualifiedBy(RateLimit::TaxabilityAssumed);
         }
 
         $base = $determination->taxableBase($query->amount);

@@ -94,6 +94,19 @@ enum RateLimit: string
      */
     case ConditionsUnevaluated = 'conditions_unevaluated';
 
+    /**
+     * A US SERVICE priced as taxable because the register publishes no rule for it
+     * in this state — not because any rule says it is taxable.
+     *
+     * US states tax goods unless they exempt them and services only where they
+     * enumerate them, so for a service "nothing published" leans the other way from
+     * "taxable". Medical care, education, financial services and insurance are
+     * published for no state at all yet; a doctor's visit in Kansas City was billed
+     * at 9.125% and called authoritative. The figure is kept — it is the direction a
+     * customer can be refunded from — and marked as the assumption it is.
+     */
+    case TaxabilityAssumed = 'taxability_assumed';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -115,6 +128,9 @@ enum RateLimit: string
                 .'they exclude; each carries the statute\'s own words. Where a jurisdiction\'s exclusions map '
                 .'onto tax classes you sell — the UK taxing confectionery and hot food at the standard rate '
                 .'while zero-rating groceries — put your own source in front via ChainTaxRateSource.',
+            self::TaxabilityAssumed => 'Check whether the state taxes this service: most do not tax medical care, '
+                .'education, financial services or insurance. Where it does not, record that for the item — a '
+                .'taxability source bound ahead of the register, or a buyer exemption — rather than billing the assumption.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',
