@@ -1,178 +1,63 @@
 ---
 title: Supported jurisdictions
 weight: 1
-description: Regime, standard rate, authoritative source and confidence for each supported jurisdiction.
+description: The engine's modelled regimes and how their coverage differs from the register's data coverage.
 ---
 
 # Supported jurisdictions
 
-Each row is modelled by a regime and resolves a rate. **Confidence** reflects how
-well the *rate/rules* are grounded in primary sources. Every rate comes from
-[the register](the-register.md), which reads the authorities directly — there is no
-shipped snapshot behind it and nothing illustrative to fall back to.
+The default geo profiles and regime registry model **52 countries**. A usable
+assessment also requires the relevant register data and enough information about
+the seller, customer and supply. A rate existing in the register does not by itself
+add a country to the engine's regime registry.
 
-## EU — VAT (`eu-vat`)
+## Modelled regimes
 
-All 27 member states. Destination VAT for B2C digital (Art. 58); intra-EU B2B to a
-VIES-validated customer reverse-charges (Art. 44). Rates come from the register, which reads the Commission's **TEDB** among its
-sources and records which publisher stated each figure. Confidence: **high** — the
-regime and threshold are grounded in EU primary law, and the rates carry the
-publisher's own provenance rather than a community compilation. Reduced bands are the caveat: TEDB resolves them for some
-member states and splits them across sub-scopes for others, where the standard rate
-applies instead. Re-verify against member-state guidance before filing.
-
-**€10,000 micro-business threshold (Art. 59c).** The regime is threshold-aware: a
-seller established in a single member state, **below** the €10,000 combined
-cross-border B2C threshold (current or preceding year) and **not** opted into OSS,
-charges its **own (origin)** VAT on cross-border B2C supplies; once it opts in or
-crosses the threshold, the general **destination** rule applies. The seller
-supplies these signals on `SellerRegistrations::$oss` (`OssStatus`) — the engine
-never guesses turnover, and absent an asserted status it applies the destination
-rule. B2B reverse-charge is unaffected.
-
-| Countries | Regime | Rate source |
+| Countries | Engine module | Calculation path |
 | --- | --- | --- |
-| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | the register (TEDB among its sources, with per-fact provenance) |
+| AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE | `eu-vat` | EU place of supply, B2B reverse charge and the scoped micro-business threshold |
+| GB CH NO AU NZ MX SG TW AE SA BH OM TR CL ID VN PH JP KR TH UA | National VAT/GST modules | `NationalTaxRegime`, including its cross-border B2B treatment |
+| IN | `in-gst` | India GST with IGST or CGST/SGST component labels |
+| MY | `my-sst` | Malaysia service tax without the generic VAT reverse-charge treatment |
+| US | `us-sales-tax` | Registration, marketplace, taxability, sourcing and local-authority gates |
+| CA | `ca-gst` | Province-level combined rate and cross-border B2B self-assessment |
 
-### Reduced / zero rates
+See [Regimes](../core-concepts/regimes.md) for the rules each implementation models
+and [Unsupported jurisdictions](not-yet-supported.md) for the remaining boundary.
 
-The rate-source contract resolves rates by **taxability category**, so a supply
-that legally carries a reduced or zero band (e-books, food, etc.) resolves one
-**when the bound source supplies it**. The shipped static snapshot carries **no
-reduced-rate table** — the package will not fabricate national reduced bands.
-Enable the live TEDB source (`tax.register`) to resolve them from the Commission's
-own database, or bind your own source. TEDB bands are
-deliberately conservative: where a member state carries a category at several rates
-at once, the band is refused and the standard rate applies rather than guessing
-which sub-scope a supply falls in (see
-[rate sources](../extension-points/rate-sources.md#the-eu-tedb-service-tedbsoapratesource)).
+## Rates and confidence
 
-### Tax-ID validation — live-response verification still needed
+Every default rate comes from `RegisterRateSource`. Run `tax:data:sync` before
+pricing. The register supplies dated standard, reduced and zero rates; there is no
+bundled national snapshot or illustrative province-rate fallback.
 
-The VAT-ID validators (VIES, HMRC, ABN Lookup) are **fail-safe by design**: an
-unreachable service returns *inconclusive*, and the engine then charges tax rather
-than granting reverse-charge relief it cannot prove — this design is correct and
-unchanged. Note, however, that treating a validation as *conclusive* still depends
-on the authority's **live response**; a stubbed or cached validation must not be
-mistaken for a real-time VIES/HMRC confirmation before relying on reverse-charge.
+A commodity code can refine a category lookup. If several applicable rates remain
+ambiguous, the source uses the standard rate with `RateLimit::HeadingAmbiguous`.
+Conditions that narrow an inherited category answer are reported with
+`RateLimit::ConditionsUnevaluated`. Read `confidence`, `limitedBy` and `provenance`
+on the returned rate rather than treating an entire country's coverage as one
+confidence grade. See [Rate sources](../extension-points/rate-sources.md).
 
-## National VAT/GST regimes (`NationalTaxRegime`)
+Rates are resolved against the supply date where the register carries that window.
+A missing historical rate does not become today's rate. Source monitoring and data
+publication belong to the register; the package updates its local copy through sync.
 
-Destination tax at the national rate; cross-border B2B to a registered customer
-reverse-charges.
+## US address precision
 
-| Country | Module | Std rate | Authoritative source | Confidence |
-| --- | --- | --- | --- | --- |
-| United Kingdom | `uk-vat` | 20% | HMRC | high |
-| Switzerland | `ch-vat` | 8.1% | ESTV/FTA | high |
-| Norway | `no-vat` | 25% | Skatteetaten (VOEC) | high |
-| Australia | `au-gst` | 10% | ATO | high |
-| New Zealand | `nz-gst` | 15% | IRD | high |
-| Mexico | `mx-iva` | 16% | SAT | high |
-| Singapore | `sg-gst` | 9% | IRAS | high |
-| Taiwan | `tw-vat` | 5% | MOF (Business Tax Act) | high |
-| United Arab Emirates | `ae-vat` | 5% | FTA (federal, all emirates) | high |
-| Saudi Arabia | `sa-vat` | 15% | ZATCA | high |
-| Bahrain | `bh-vat` | 10% | NBR | high |
-| Oman | `om-vat` | 5% | OTA | high |
-| Türkiye | `tr-vat` | 20% | Gazette (Decree 7346, 2023) | high |
-| Chile | `cl-iva` | 19% | SII | high |
-| Indonesia | `id-ppn` | 11% | DGT (effective via 11/12 base; **not** the 12% headline) | high |
-| Vietnam | `vn-vat` | 10% | GDT (**temporary 8% cut through 2026-12-31** — bind a date-aware source) | high |
-| Philippines | `ph-vat` | 12% | BIR (RA 12023) | high |
-| Japan | `jp-ct` | 10% | NTA (consumption tax; ¥10M threshold) | high |
-| South Korea | `kr-vat` | 10% | NTS | high |
-| Thailand | `th-vat` | 7% | Revenue Department (VES regime) | high |
-| Ukraine | `ua-vat` | 20% | STS | high |
+The available paths are described in [register coverage](the-register.md): ZIP+4,
+optional street indexes, polygons and county names. Postal and polygon artifacts
+are included in sync by default; street indexes are selected with `--streets=KS,WA`.
+Enable `tax.geocodio.rooftop` to have the shipped geocoder attach ZIP+4 or point
+localities. County resolution works without that option.
 
-> **Rates carry dates.** The shipped snapshot is a set of dated *windows*, not a
-> flat map, and `rateFor()` honours the `$at` it is given — so reissuing a 2023
-> invoice reprices at the rate that applied then rather than today's. Prior windows
-> are carried where a dated, primary-source-verified change is recorded: Türkiye
-> (18% → 20% on 10 Jul 2023), Saudi Arabia (5% → 15%, Jul 2020), Bahrain (5% → 10%,
-> Jan 2022) and Malaysia (6% → 8%, 1 Mar 2024). Absence of a prior window is not a
-> claim that a rate never moved — only that this package carries no dated change
-> for it. The overlay lives in `resources/rates.json` with the authority named per
-> jurisdiction.
+Where the applicable local authorities cannot be resolved, a state share can be
+returned as `Derived` with `NoLocalResolution`. It must not be treated as a complete
+address-level rate. [SaaS taxability](us-saas-taxability.md) and
+[nexus thresholds](us-nexus-thresholds.md) describe two separate inputs to the US
+regime.
 
-> **The authority pages are watched.** No statistical API publishes VAT/GST rates —
-> verified against the OECD's SDMX service, whose 4,603 dataflows carry national
-> accounts only — so the shipped rates cannot be refreshed from a feed. A monthly
-> workflow instead hashes the authority page behind each rate and opens an issue when
-> one changes, for **13 jurisdictions** so far (GB, IE, NO, CH, NZ, SG, JP, MY, TR,
-> SA, AE, PH, TH). It never reads a rate off a page: a change means *verify*, and a
-> human updates the window. The rest are unwatched because their pages block
-> automated fetching (Australia, Canada) or have not been verified yet.
+## Tax-ID validation
 
-> **Time-sensitive rate notes.** Indonesia's headline PPN is 12% but the *effective*
-> rate on non-luxury supplies is **11%** (the 11/12 base mechanism) — the engine
-> encodes 11%. Vietnam's statutory standard is **10%**, currently reduced to 8% for
-> most supplies **through 31 Dec 2026**; the shipped default is the durable 10% —
-> bind a date-aware rate source to apply the temporary cut. Türkiye rose to 20% on
-> 10 Jul 2023; Saudi Arabia to 15% (Jul 2020); Bahrain to 10% (Jan 2022).
-
-## India — dual GST (`in-gst`)
-
-A dedicated regime. The customer-facing rate is uniform across the split, so the
-amount is a single rate; the regime labels the components: **IGST** for
-inter-state / imports / foreign (OIDAR) suppliers, **CGST+SGST** for intra-state.
-Foreign B2C digital (OIDAR) is charged at destination (18% IGST); B2B to a
-GST-registered recipient reverse-charges. Source: **CBIC** (OIDAR guidance,
-IGST Act). Standard rate **18%** (post-22 Sep 2025 slab restructure). Confidence:
-**high**.
-
-## Malaysia — SST (`my-sst`)
-
-A dedicated regime, **not** a destination VAT. A registered foreign digital-service
-provider charges Malaysian **service tax on both B2C and B2B with no reverse
-charge** — so this regime never reverse-charges, unlike the national VAT regimes.
-Service tax **8%** (since 1 Mar 2024), RM 500,000 threshold. Source: **RMCD**.
-Confidence: **high**.
-
-## United States — sales tax (`us-sales-tax`) — dataset-backed, state-level precision
-
-> **Rates, taxability, nexus and sourcing are supplied by the
-> [the register](the-register.md)** across all 51
-> jurisdictions — it replaces the hardcoded US entries the static tables used to
-> ship. The remaining limitation is **precision, not coverage**: jurisdictions
-> resolve to the **state**, so a rate is the state share unless a rooftop locality
-> is resolved. Four states (FL, PA, HI, VA) resolve from the county with no opt-in;
-> the rest need `tax:data:sync --streets`. Taxability and nexus data remain a
-> decision aid to verify with a tax advisor.
-
-Sub-federal. Three gates before a rate applies: the **state** must be resolved
-(via an `AddressGeocoder`), the seller must have **nexus** in it, and the product
-must be **taxable** there — else `NotRegistered` / `Exempt`. What is modelled
-versus what you must supply:
-
-| Concern | Shipped | What is required for correctness |
-| --- | --- | --- |
-| Sourcing / nexus / taxability **logic** | ✅ the regime | — |
-| Per-state **taxability** (25 categories, incl. SaaS) | ✅ from the dataset; the curated, cited `digital_service` map for 44 jurisdictions is the fallback when the dataset is disabled — [details](us-saas-taxability.md) | verify with a tax advisor; a pair neither source determines throws `UnresolvedProductTaxability` until you configure it |
-| **State rates** | ✅ dataset baseline for all 51 jurisdictions, at `Confidence::Derived` — honestly the state share | — |
-| **Local rates** | ✅ address-exact for **30 states**. Twenty-six need `tax:data:sync --streets` enabled: 24 Streamlined states by ZIP+4 through the published boundary index, California and New Mexico by point against their own polygon services. Florida, Pennsylvania, Hawaii and Virginia need **no opt-in and no boundary file** — the county is the only authority that can tax there and a geocoder returns it for free, so they resolve at `Confidence::Authoritative` — [details](the-register.md) | a geocoder (the shipped Geocodio adapter). **12 states** have local tax and no path below the state line — AL, AZ, CO, ID, IL, LA, MO, MS, NY, SC, TX resolve to the state share at `Confidence::Derived`, and AK refuses outright. Texas' address file sits behind an audited portal that forbids redistribution; see [the full list and what it costs](the-register.md) |
-| **Economic-nexus thresholds** | ✅ from the dataset (cited static table as fallback); flags a likely registration obligation on `NotRegistered` — [details](us-nexus-thresholds.md) | nexus is still **asserted** by an explicit `SellerRegistration`; the thresholds advise, they do not auto-register or evaluate per invoice |
-
-So a US assessment is **state-precision** unless rooftop resolution is enabled — a
-local city/district component can therefore be missing.
-
-On provenance, be precise: the **local** rate records come from primary sources
-(the SST Governing Board's own files for 24 states, and each state's revenue
-department directly). The **51 state-level rates do not** — they come from a single
-Tax Foundation compilation. That is the number you get in the 12 states with no
-rooftop path, so treat it as a good, refreshable default rather than an
-authority's own figure, and re-verify before filing. See
-[the dataset's provenance table](the-register.md).
-
-Confidence: **high on logic; local rates primary-sourced; state rates, taxability
-and nexus from cited secondary compilations (advisor-verify); rooftop precision
-partial and opt-in.**
-
-## Canada — GST/HST (`ca-gst`)
-
-Province-level (Canada has no local sales tax), so a province fully determines the
-combined rate — a cleaner structure than the US. Cross-border non-resident B2B to
-a registered customer self-assesses. The shipped province rates are illustrative
-defaults; an authoritative source (**CRA** open dataset + provincial ministries,
-QST via Revenu Québec) should still be bound. Confidence: **high on logic; province
-rates are DATA to source.**
+VIES, HMRC and optional ABN Lookup validators are separate from the register. An
+unavailable validation service returns an inconclusive result. Store the actual
+validation result when relying on it for the customer treatment.

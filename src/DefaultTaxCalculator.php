@@ -126,6 +126,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             $assessment->rate->confidence,
             $assessment->rate->components,
             RateLimit::ItemUnmapped,
+            $assessment->rate->provenance,
         ));
     }
 

@@ -131,6 +131,8 @@ readonly class TaxRate
             $this->source.' (degraded: '.$why.')',
             Confidence::LowConfidence,
             $this->components,
+            $this->limitedBy,
+            $this->provenance,
         );
     }
 
@@ -149,12 +151,14 @@ readonly class TaxRate
      * live, and the rational form says what the arithmetic is without the reader
      * having to check whether a scale is wide enough.
      */
-    public function taxOnNet(Money $net): Money
+    public function taxOnNet(Money $net, ?TaxRounding $rounding = null): Money
     {
-        return $net->toRational()
+        $tax = $net->toRational()
             ->multipliedBy($this->percentage)
-            ->dividedBy(100)
-            ->toContext($net->getContext(), RoundingMode::HalfUp);
+            ->dividedBy(100);
+
+        return $rounding?->round($tax, $net->getContext())
+            ?? $tax->toContext($net->getContext(), RoundingMode::HalfUp);
     }
 
     /**
@@ -163,8 +167,15 @@ readonly class TaxRate
      * `gross × 100 ÷ (100 + percentage)`, kept rational for the same reason as
      * {@see taxOnNet()}: one rounding step, and it happens at the money.
      */
-    public function netFromGross(Money $gross): Money
+    public function netFromGross(Money $gross, ?TaxRounding $rounding = null): Money
     {
+        if ($rounding !== null) {
+            $tax = $gross->toRational()->multipliedBy($this->percentage)
+                ->dividedBy(BigDecimal::of(100)->plus($this->percentage));
+
+            return $gross->minus($rounding->round($tax, $gross->getContext()));
+        }
+
         return $gross->toRational()
             ->multipliedBy(100)
             ->dividedBy(BigDecimal::of(100)->plus($this->percentage))

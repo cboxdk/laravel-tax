@@ -9,6 +9,7 @@ use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
@@ -19,6 +20,7 @@ use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
+use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
@@ -31,11 +33,15 @@ use Cbox\Tax\Register\Console\ActivateCommand;
 use Cbox\Tax\Register\Console\PruneCommand;
 use Cbox\Tax\Register\Console\StatusCommand;
 use Cbox\Tax\Register\Console\SyncCommand;
+use Cbox\Tax\Register\Console\VerifyCommand;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Sources\RegisterBoundaries;
+use Cbox\Tax\Register\Sources\RegisterDelivery;
 use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
+use Cbox\Tax\Register\Sources\RegisterRounding;
 use Cbox\Tax\Register\Sources\RegisterSourcing;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Register\Sources\RegisterUsFacts;
@@ -55,8 +61,8 @@ use Illuminate\Support\ServiceProvider;
 
 /**
  * Package entry point. Binds the engine, the shipped regime registry and a default
- * (static) rate source. Hosts override the rate source — and any regime — by
- * rebinding the contract; nothing forces a migration or external service.
+ * register rate source. Hosts override the rate source — and any regime — by
+ * rebinding the contract. The default source requires a synced local store.
  */
 class TaxServiceProvider extends ServiceProvider
 {
@@ -104,7 +110,8 @@ class TaxServiceProvider extends ServiceProvider
             new RateResolver,
             // Resolved from the container so a host can bind its own — a state portal
             // it holds credentials for, a commercial adapter, an internal boundary
-            // file. Without a locality on the jurisdiction none of it is consulted.
+            // file. The resolver is consulted even without a locality so hosts can
+            // supply an address-resolution path beyond the shipped geocoder.
             $app->make(LocalAuthorityResolver::class),
         ));
 
@@ -124,6 +131,14 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(RegisterDataset::class),
         ));
 
+        $this->app->singleton(RoundingRules::class, static fn (Application $app): RoundingRules => new RegisterRounding(
+            $app->make(RegisterDataset::class),
+        ));
+
+        $this->app->singleton(DeliveryRules::class, static fn (Application $app): DeliveryRules => new RegisterDelivery(
+            $app->make(RegisterDataset::class),
+        ));
+
         $this->app->singleton(RegimeRegistry::class, static fn (Application $app): DefaultRegimeRegistry => DefaultRegimeRegistry::withDefaults(
             $app->make(ProductTaxability::class),
             $app->make(JurisdictionRepository::class),
@@ -131,6 +146,8 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(SourcingRules::class),
             $app->make(UsTaxFacts::class),
             $app->make(EuTerritories::class),
+            $app->make(RoundingRules::class),
+            $app->make(DeliveryRules::class),
         ));
 
         // No fixed charges are shipped: these levies are per-jurisdiction, move on
@@ -208,6 +225,7 @@ class TaxServiceProvider extends ServiceProvider
         $this->app->singleton(RegisterDataset::class, static fn (Application $app): RegisterDataset => new RegisterDataset(
             $app->make(StoreLayout::class),
             $app->make(StorePointer::class),
+            Shape::text($app->make(Config::class)->get('tax.register.version')),
         ));
     }
 
@@ -252,7 +270,7 @@ class TaxServiceProvider extends ServiceProvider
         // and the polygon services. County resolution (FL, PA, HI) runs regardless:
         // it needs no append, and in those states the county is the whole local
         // share, so withholding it would just under-charge.
-        $rooftop = $config->get('tax.us_tax_data.rooftop') === true;
+        $rooftop = $config->get('tax.geocodio.rooftop') === true;
 
         $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(
             $app->make(Factory::class),
@@ -274,6 +292,7 @@ class TaxServiceProvider extends ServiceProvider
                 SyncCommand::class,
                 StatusCommand::class,
                 ActivateCommand::class,
+                VerifyCommand::class,
                 PruneCommand::class,
             ]);
         }

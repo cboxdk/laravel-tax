@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Sources;
 
+use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Enums\NexusCombinator;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\NexusThreshold;
+use DateTimeImmutable;
 
 /**
  * Economic-nexus thresholds, from the register's `threshold` rules.
@@ -20,21 +23,30 @@ use Cbox\Tax\ValueObjects\NexusThreshold;
  * would tell a seller they have no obligation until they cross a number written for
  * somebody else entirely.
  *
- * ONLY DOLLARS ARE COMPARED. A threshold published in another currency is refused
- * rather than converted: the rate to convert at is a decision with a date on it, and
- * this is not the place to make it.
+ * `crossing` describes WHAT crossing triggers, not > versus >=. These figures
+ * are advisory; neither that effect nor the comparison of seller totals is
+ * evaluated here. The combinator alone describes how the two figures combine.
+ *
+ * Only USD figures are exposed. Other currencies are not converted into an
+ * advisory dollar figure: a conversion would need its own dated policy.
  */
 final readonly class RegisterNexus implements NexusThresholds
 {
     public function __construct(private RegisterDataset $dataset) {}
 
-    public function for(SubdivisionCode $state): ?NexusThreshold
+    public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?NexusThreshold
     {
-        foreach ($this->dataset->rulesFor(UsCode::of($state), 'threshold') as $rule) {
+        $threshold = null;
+
+        foreach ($this->dataset->rulesOn(UsCode::of($state), 'threshold', $at ?? new DateTimeImmutable) as $rule) {
             $payload = Shape::map($rule['payload'] ?? null);
 
             if (Shape::text($payload['binds'] ?? null) !== 'remote_seller') {
                 continue;
+            }
+
+            if (array_key_exists('conditions', $payload) || array_key_exists('conditionsCombinator', $payload)) {
+                throw new UnresolvedTaxRule('Unsupported compound remote-seller threshold for '.$state->value.'.');
             }
 
             if (Shape::text($payload['currency'] ?? null) !== 'USD') {
@@ -50,23 +62,25 @@ final readonly class RegisterNexus implements NexusThresholds
             $transactions = $payload['transactions'] ?? null;
             $transactions = is_int($transactions) ? $transactions : (is_numeric($transactions) ? (int) $transactions : null);
 
-            return new NexusThreshold(
-                (int) round((float) $amount),
+            if ($threshold !== null) {
+                throw new UnresolvedTaxRule('Overlapping remote-seller thresholds for '.$state->value.'.');
+            }
+
+            $threshold = new NexusThreshold(
+                BigDecimal::of($amount)->toInt(),
                 $transactions,
                 $this->combinator($payload, $transactions),
             );
         }
 
-        return null;
+        return $threshold;
     }
 
     /**
      * How the two limbs combine.
      *
-     * The register states it where a state does; where it does not, a threshold with
-     * no transaction count can only be sales-only, and one with a count is `or` —
-     * which is what every state that kept a transaction limb actually legislated,
-     * and the direction that registers a seller SOONER rather than later.
+     * A missing count permits sales-only. Two limbs require an explicit operator;
+     * guessing OR can change a published AND rule into a different obligation.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -74,20 +88,11 @@ final readonly class RegisterNexus implements NexusThresholds
     {
         $stated = Shape::text($payload['combinator'] ?? null);
 
-        if ($stated !== null) {
-            $mapped = match ($stated) {
-                'and' => NexusCombinator::SalesAndTransactions,
-                'or' => NexusCombinator::SalesOrTransactions,
-                default => null,
-            };
-
-            if ($mapped !== null) {
-                return $mapped;
-            }
-        }
-
-        return $transactions === null
-            ? NexusCombinator::SalesOnly
-            : NexusCombinator::SalesOrTransactions;
+        return match (true) {
+            $transactions === null && ($stated === null || $stated === 'sales_only') => NexusCombinator::SalesOnly,
+            $transactions !== null && in_array($stated, ['and', 'sales_and_transactions'], true) => NexusCombinator::SalesAndTransactions,
+            $transactions !== null && in_array($stated, ['or', 'sales_or_transactions'], true) => NexusCombinator::SalesOrTransactions,
+            default => throw new UnresolvedTaxRule('Missing or unsupported nexus combinator: '.($stated ?? '(absent)').'.'),
+        };
     }
 }

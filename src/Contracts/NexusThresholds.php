@@ -6,6 +6,7 @@ namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\ValueObjects\NexusThreshold;
+use DateTimeImmutable;
 
 /**
  * Supplies the economic-nexus threshold for a US state — the *Wayfair*
@@ -19,5 +20,6 @@ use Cbox\Tax\ValueObjects\NexusThreshold;
  */
 interface NexusThresholds
 {
-    public function for(SubdivisionCode $state): ?NexusThreshold;
+    /** Null date means today; historical supplies must pass their tax point. */
+    public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?NexusThreshold;
 }

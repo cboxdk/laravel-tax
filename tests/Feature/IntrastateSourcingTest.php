@@ -117,11 +117,10 @@ it('does not origin-source an INTERSTATE supply', function () {
     expect((string) sourcingCalculator($this->dataset)->assess($query)->rate?->percentage)->toBe('6.75');
 });
 
-it('leaves a mixed-sourcing state on destination until the split is modelled', function () {
+it('preserves the published mixed sourcing value for the regime to handle', function () {
     // California is hybrid: state, county and city origin-sourced, districts
-    // destination-sourced. One place cannot express that, and picking either would
-    // be wrong for half the stack — so it stays where it was and the note in the
-    // dataset says why.
+    // destination-sourced. One place cannot express that; the adapter preserves
+    // the value and the regime refuses an identified mixed intrastate route.
     $sourcing = new RegisterSourcing($this->dataset);
 
     expect($sourcing->for(new SubdivisionCode('US-CA'))?->mode->value)->toBe('mixed')

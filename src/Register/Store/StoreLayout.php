@@ -62,9 +62,9 @@ final readonly class StoreLayout
     /**
      * Every fully-installed version, newest name last.
      *
-     * The register's versions sort correctly as strings — `2026.09.15-202` — because
-     * the date leads and the counter is zero-free only after it. Where two disagree
-     * the pointer decides; this is for listing and pruning, not for choosing.
+     * Natural ordering keeps a release counter of 100 after 99 on the same date.
+     * The pointer decides which version is active; this ordering is for rollback
+     * and pruning.
      *
      * @return list<string>
      */
@@ -93,7 +93,7 @@ final readonly class StoreLayout
             }
         }
 
-        sort($versions);
+        sort($versions, SORT_NATURAL);
 
         return $versions;
     }

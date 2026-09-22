@@ -1,156 +1,47 @@
 ---
 title: US SaaS taxability
 weight: 4
-description: The curated per-state SaaS taxability map the engine ships, with a citation per state and the states left undetermined for the operator to configure.
+description: How the register answers US SaaS taxability, including the changed fallback for undetermined categories.
 ---
 
 # US SaaS taxability
 
-> **Now dataset-backed.** SaaS (`digital_service`) taxability — and 24 other product
-> categories — comes from the [the register](the-register.md) by default,
-> across all states. The curated `StaticProductTaxability` map described below is the
-> fallback used when the dataset is disabled (or for US pairs it leaves undetermined).
+The default `ProductTaxability` binding is `RegisterTaxability`. It reads the
+installed register and maps `TaxClass::DigitalService` into the register's category
+vocabulary. SaaS, prewritten software, custom software, hosting and data processing
+have separate classes; choose the one that describes the supply.
 
-Whether **SaaS / cloud software** is subject to US sales tax varies state by state.
-The engine ships a **curated `StaticProductTaxability` override map** for the
-`digital_service` category, keyed `"US-XX:digital_service" => taxable`, bound by
-default. It covers **only states with clear, citable guidance**; states where the
-guidance conflicts, is local/home-rule-only, or is conditional/partial in a way a
-boolean cannot represent, are **deliberately absent** and throw
-`UnresolvedProductTaxability` so an operator configures them.
+## How a determination is made
 
-> **Not a substitute for tax advice.** The determinations below are drawn from
-> **authoritative, dated practitioner compilations**, not from reading each
-> statute. SaaS taxability is nuanced (bundling, delivery method, home-rule
-> localities, B2B vs B2C) and changes. **Verify with your tax advisor before
-> relying on this in production.**
->
-> **Rates are state-precision by default.** Where SaaS is taxable, the dataset
-> rate source returns the **state** rate at `Confidence::Derived`; local
-> city/county/special-district components are stacked only when a rooftop locality
-> is resolved (experimental, off by default). With the dataset disabled, the
-> The engine instead refuses `US:*:digital_service` unless a
-> category-specific rate band is bound.
+For the supply's jurisdiction, amount and date, the source checks:
 
-## Sources, and what they are not
+1. A published price exemption, including what happens above its threshold.
+2. The nearest category with a published rate or exemption. A category is exempt
+   only when every applicable record at that level is zero-rated or exempt.
+3. Taxable when the jurisdiction has rate records but no category determination.
 
-The map is curated from two dated, published SaaS-by-state compilations, retrieved
-**2026-07-17**; only states where **both agree** on a clear taxable/exempt outcome
-are shipped, and a state they disagree on is deliberately absent so it refuses
-rather than guesses.
+An incomplete price exemption refuses with `UnresolvedProductTaxability`. A
+jurisdiction with no rate records also refuses. The US regime applies the result
+after its registration and marketplace checks.
 
-Both are **practitioner compilations, not tax authorities**. Neither carries
-statutory citations, both are published by commercial tax vendors as marketing
-material, and neither is under any obligation to keep its page current. The two are
-named with their URLs and retrieval dates in the dataset's own provenance registry
-(`us-tax-data`, `resources/overlays/saas-taxability.json` and the published
-`meta.json`), which is where a determination's source belongs — beside the
-determination, where an auditor reading the data finds it.
+## Behaviour changed with the register migration
 
-They are not repeated here. This package is the public MIT engine, and a coverage
-page that reads as a comparison against named competitors is not what its
-documentation is for.
+The retired dataset carried an explicit `undetermined` verdict for some
+state/category pairs, which made the engine refuse. The register has no equivalent
+per-category marker. Those pairs now follow the taxable fallback above.
 
-Two consequences worth acting on. First, requiring both to agree is doing real
-work — it is the only cross-check there is, which is why a disagreement ships as a
-refusal. Second, this is the weakest provenance anywhere in the package, weaker
-than the state rates and far weaker than the SST-sourced local records, so verify
-any state that matters to your revenue against its own department's guidance
-before you rely on it.
+This can change the tax charged. Review the states and product classes you sell
+into when upgrading; the old static SaaS table is no longer a fallback. Bind your
+own `Contracts\ProductTaxability` when you need a more specific determination.
 
-## Shipped — taxable (18 jurisdictions)
+## Taxability and rate precision
 
-SaaS treated as **taxable** for the `digital_service` category. Citation: both
-compilations above concur (retrieved 2026-07-17).
+A taxable determination does not establish an address-level rate. The register
+source also needs the applicable local authorities. Where resolution stops at the
+state share, the rate carries `Confidence::Derived` and
+`RateLimit::NoLocalResolution` if local tax may be missing.
 
-| State | Note |
-| --- | --- |
-| US-AZ Arizona | |
-| US-CT Connecticut | Business use taxed at 1%, personal at the full rate; the map records "taxable" |
-| US-DC District of Columbia | |
-| US-HI Hawaii | General excise tax applies broadly |
-| US-KY Kentucky | Taxable since 2023 |
-| US-LA Louisiana | Taxable at state level; parish-level rules add complexity |
-| US-MA Massachusetts | |
-| US-NM New Mexico | Gross receipts tax applies broadly |
-| US-NY New York | |
-| US-PA Pennsylvania | |
-| US-RI Rhode Island | |
-| US-SC South Carolina | |
-| US-SD South Dakota | |
-| US-TN Tennessee | |
-| US-UT Utah | |
-| US-VT Vermont | |
-| US-WA Washington | |
-| US-WV West Virginia | |
-
-## Shipped — exempt (26 jurisdictions)
-
-SaaS treated as **not taxable** at the state level for the `digital_service`
-category. Citation: both compilations concur (retrieved 2026-07-17).
-
-| State | Note |
-| --- | --- |
-| US-AR Arkansas | |
-| US-CA California | No transfer of tangible personal property |
-| US-CO Colorado | **State-level** exempt; home-rule cities (e.g. Denver) may tax |
-| US-FL Florida | |
-| US-GA Georgia | |
-| US-ID Idaho | |
-| US-IL Illinois | **State-level** exempt; Chicago's lease-transaction tax may apply |
-| US-IN Indiana | |
-| US-KS Kansas | |
-| US-ME Maine | |
-| US-MI Michigan | Downloadable components may still be taxable |
-| US-MN Minnesota | |
-| US-MO Missouri | |
-| US-NE Nebraska | |
-| US-NV Nevada | |
-| US-NJ New Jersey | |
-| US-NC North Carolina | |
-| US-ND North Dakota | |
-| US-OK Oklahoma | |
-| US-VA Virginia | |
-| US-WI Wisconsin | |
-| US-WY Wyoming | |
-| US-DE Delaware | No general statewide sales tax |
-| US-MT Montana | No general statewide sales tax |
-| US-NH New Hampshire | No general statewide sales tax |
-| US-OR Oregon | No general statewide sales tax |
-
-## Undetermined — operator configures (throws)
-
-These are **not** in the shipped map. `StaticProductTaxability` throws
-`UnresolvedProductTaxability` for these jurisdictions. **You must configure these
-before invoicing SaaS in them**; do not rely on a default.
-
-| State | Why undetermined |
-| --- | --- |
-| US-AL Alabama | Sources conflict (one taxable, one exempt) |
-| US-MS Mississippi | Sources conflict (recent law change) |
-| US-TX Texas | Partial: SaaS is a data-processing service, **80% taxable / 20% exempt** — not a boolean |
-| US-IA Iowa | Conditional on B2B vs B2C (exempt for business use) |
-| US-OH Ohio | Conditional on B2B vs B2C (taxable for business use) |
-| US-MD Maryland | Conditional: business use taxed at a reduced rate, personal use fully taxable |
-| US-AK Alaska | No statewide sales tax; home-rule localities set their own SaaS rules |
-
-Representative primary-source constraints behind the "undetermined" bucket:
-
-| State | Primary-source constraint |
-| --- | --- |
-| US-TX Texas | Texas Comptroller guidance treats data processing as taxable with 20% of the charge exempt, so a plain taxable/exempt boolean is not enough. See <https://comptroller.texas.gov/taxes/publications/94-127.php>. |
-| US-OH Ohio | Ohio taxes automatic data processing / computer / electronic information services when provided for business use, so customer/use context matters. See <https://tax.ohio.gov/wps/portal/gov/tax/business/ohio-business-taxes/sales-and-use/information-releases/index-sales/st199904-archive3>. |
-| US-MD Maryland | Maryland distinguishes non-commercial SaaS from commercial-use software/SaaS, with further enterprise-computer-system analysis. See <https://marylandtaxes.gov/forms/Business_Tax_Tips/bustip29.pdf>. |
-
-## Scope of the map
-
-- Covers the **`digital_service`** category only. Tangible goods (`standard`) remain
-  **taxable-by-default**, which is generally correct.
-- Determinations are **state-level**. Home-rule localities (Chicago; Colorado
-  home-rule cities) may tax SaaS even where the state does not — resolving those
-  needs rooftop resolution the package does not yet ship a crosswalk for.
-- Taxable state-level SaaS resolves at the **state** rate. With the dataset
-  disabled and no category-specific band bound, the engine throws
-  `UnresolvedTaxRate` rather than applying an illustrative base rate.
-- Override any entry, or supply your own full map, by binding
-  `Cbox\Tax\Contracts\ProductTaxability`.
+See [register coverage](the-register.md) and [geocoding](../extension-points/geocoding.md)
+for the available resolution paths. Keep the assessment's rate provenance and
+limitations with the invoice so the data release and unresolved questions remain
+visible.

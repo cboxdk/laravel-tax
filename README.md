@@ -2,8 +2,8 @@
 
 **`cboxdk/laravel-tax`** — a self-hostable consumption-tax engine for Laravel. It
 **owns the calculation logic** — place-of-supply, reverse-charge, rate application,
-inclusive/exclusive — and **sources only the rate data** behind a pluggable
-contract. No forced third-party calculation SaaS.
+inclusive/exclusive — and **reads rate and rule data** through pluggable
+contracts. No forced third-party calculation SaaS.
 
 > Built on [`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo): every
 > supply is assessed against a jurisdiction resolved from canonical ISO data, so
@@ -40,6 +40,10 @@ compiled to local disk by `php artisan tax:data:sync` and read without a network
 A missing rate is **refused, never assumed 0%**, and that includes the first run: until
 the register is synced the engine refuses and says so.
 
+The [data/engine validation matrix](conformance/validation-matrix.md) distinguishes
+published facts, engine logic, adapters and host inputs. It also records reference
+data still held in PHP and what the current tests establish for each layer.
+
 ## Multi-entity / seller-of-record routing
 
 Tax depends on *which selling entity* issues the invoice. The same buyer is taxed
@@ -61,22 +65,20 @@ calculation the billing engine supplies per invoice.
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
 | **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
 | **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, 25-category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 30 states |
+| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 30 states |
 | **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
 
-See [`docs/coverage`](docs/coverage/_index.md) for the full per-country table with
-sources and confidence — and an honest list of jurisdictions we **omit** until
-their rate data is verified (a broad national-VAT batch pending primary-source
-confirmation, Pakistan's other provinces, and Brazil). We omit rather than ship a
-rate we cannot stand behind.
+See [`docs/coverage`](docs/coverage/_index.md) for supported regimes and limitations. The default geo profiles and regime registry model **52
+countries**; the register's broader data coverage does not automatically add their
+calculation rules to this engine. Unsupported regimes refuse before rate lookup.
 
 The **US** regime gates on three things before applying a rate — the state must be
 resolved (via the `AddressGeocoder`), the seller must have **nexus** in it, and the
 product must be **taxable** there — otherwise it returns `NotRegistered` or
-`Exempt`, never a wrong charge. A category whose rule is conditional, or one
-whose rule is conditional on the line amount (the MA/NY/RI clothing thresholds),
-**refuses** rather than defaulting to taxable — over-collecting from a consumer is
-a failure too. State rates, per-state taxability (25 categories) and economic-nexus
+`Exempt`. Price exemptions use the line amount and the published threshold rule;
+incomplete threshold records refuse. A category with no published determination in a known
+jurisdiction defaults to taxable — a behaviour change from the retired dataset's
+explicit undetermined verdicts. State rates, category taxability and economic-nexus
 thresholds come from **the register**.
 **Intrastate sourcing is applied**, not just supplied: nine states tax an in-state
 sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
@@ -116,8 +118,7 @@ German VAT. On top of that sits the **Art. 59c €10,000 micro-business threshol
 scoped to the supplies it actually covers (goods and TBE, not services generally):
 a below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
 charges destination. Rate sources resolve by **taxability category**, so
-reduced/zero bands apply when a bound source supplies them (none are fabricated by
-default).
+reduced/zero bands apply where the installed register supplies an applicable rate.
 
 Unmodelled jurisdictions and missing rates are **refused, not guessed**.
 
@@ -134,9 +135,9 @@ $assessment = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
     seller: new SellerRegistrations(new CountryCode('DK')),
     pricing: Pricing::Exclusive,
     lines: [
-        new SupplyLine('subscription', Money::of('100.00', 'DKK'), TaxCategory::DigitalService),
-        new SupplyLine('usage',        Money::of('37.50',  'DKK'), TaxCategory::DigitalService),
-        new SupplyLine('onboarding',   Money::of('2500.00','DKK'), TaxCategory::ServicesProfessional),
+        new SupplyLine('subscription', Money::of('100.00', 'DKK'), TaxClass::DigitalService),
+        new SupplyLine('usage',        Money::of('37.50',  'DKK'), TaxClass::DigitalService),
+        new SupplyLine('onboarding',   Money::of('2500.00','DKK'), TaxClass::ProfessionalService),
     ],
 ));
 
@@ -145,10 +146,11 @@ $assessment->forLine('usage');   // that line's own assessment
 $assessment->taxByAuthority();   // per-jurisdiction totals for remittance, or null
 ```
 
-The order plane adds **no** tax logic — each line becomes a single-supply query and
-runs the identical path, so a document cannot reach an outcome a single supply
-could not. A line may override the document's pricing (VAT-inclusive subscription
-beside exclusive usage) or carry its own exemption.
+Each order line uses the same regime and input facts as a single supply. Delivery
+is assessed after the goods, and published invoice rounding reconciles the rate
+groups before totals are returned. A line may override the document's pricing or
+carry its own exemption. See [rounding and delivery](docs/core-concepts/rounding-and-delivery.md)
+for rounding elections, conditional delivery facts and supported rule shapes.
 
 ## Rate breakdown
 
@@ -180,17 +182,19 @@ capture and verification are the consumer's concern.** See
   and override any of them. Rate sources compose (static · remote · caching · chain).
 - **Deny-by-default.** No regime for a jurisdiction, or no rate, → an exception,
   never a silent zero.
-- **Money is exact.** Amounts are `brick/money`; rate maths rounds half-up once.
+- **Money is exact.** Amounts are `brick/money`; published rounding policies control
+  method, precision and line/invoice scope, with half-up where no policy is published.
 
 ## Requirements
 
-PHP `^8.4` with `ext-dom`; Laravel `^13`. See `composer.json`.
+PHP `^8.4` with `ext-dom` and `ext-zlib`; Laravel `^13`. See `composer.json`.
 
 ## Development
 
 ```bash
 composer install
-composer qa    # pint --test, phpstan (level max), pest, license-check, audit
+composer qa    # pint --test, phpstan (level max), pest (including live e2e), license-check, audit
+vendor/bin/pest --exclude-group=e2e  # fixture tests when working offline
 ```
 
 ## License

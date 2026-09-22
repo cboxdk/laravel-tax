@@ -3,13 +3,33 @@
 declare(strict_types=1);
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\TaxServiceProvider;
 use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
+
+it('uses the geocodio rooftop configuration when binding the adapter', function (bool $enabled): void {
+    config()->set('tax.geocodio.key', 'test-key');
+    config()->set('tax.geocodio.rooftop', $enabled);
+    new TaxServiceProvider(app())->register();
+
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $http->fake(['api.geocod.io/*' => $http->response(['results' => [[
+        'address_components' => ['country' => 'US', 'state_province' => 'KS'],
+        'fields' => ['zip4' => ['zip9' => ['66101-3064']]],
+    ]]])]);
+
+    $place = app(AddressGeocoder::class)->locate(['line1' => '701 N 7th St', 'country' => 'US']);
+
+    expect($place?->locality?->value)->toBe($enabled ? '66101-3064' : null);
+    $http->assertSent(fn ($request): bool => isset($request['fields']) === $enabled);
+})->with([true, false]);
 
 it('resolves an address to a jurisdiction with its subdivision', function () {
     $http = new Factory;

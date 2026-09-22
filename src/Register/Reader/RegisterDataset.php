@@ -30,6 +30,8 @@ final class RegisterDataset
 
     private bool $resolved = false;
 
+    private bool $schemaChecked = false;
+
     /** @var array<string, ShardReader> */
     private array $rates = [];
 
@@ -45,6 +47,7 @@ final class RegisterDataset
     public function __construct(
         private readonly StoreLayout $layout,
         private readonly StorePointer $pointer,
+        private readonly ?string $pinnedVersion = null,
     ) {}
 
     /** Where the store lives, for a refusal that can name it. */
@@ -62,7 +65,9 @@ final class RegisterDataset
     public function version(): ?string
     {
         if (! $this->resolved) {
-            $this->version = $this->pointer->current();
+            $this->version = $this->pinnedVersion === null
+                ? $this->pointer->current()
+                : (is_file($this->layout->manifest($this->pinnedVersion)) ? $this->pinnedVersion : null);
             $this->resolved = true;
         }
 
@@ -77,7 +82,14 @@ final class RegisterDataset
         $version = $this->version();
 
         if ($version === null) {
-            throw new DatasetNotInstalled($this->layout->root());
+            throw new DatasetNotInstalled($this->layout->root(), $this->pinnedVersion);
+        }
+
+        // A store can be installed by a newer worker and then opened by an older
+        // one. Checking only at sync time does not protect offline pricing.
+        if (! $this->schemaChecked) {
+            RegisterCompatibility::schema($this->readDocument('manifest', $version)['schemaVersion'] ?? null, $version);
+            $this->schemaChecked = true;
         }
 
         return $version;
@@ -198,11 +210,34 @@ final class RegisterDataset
 
         $rules = $this->rulesByJurisdiction[$jurisdiction] ?? [];
 
-        if ($kind === null) {
-            return $rules;
+        if ($kind !== null) {
+            $rules = array_values(array_filter($rules, static fn (array $rule): bool => ($rule['kind'] ?? null) === $kind));
         }
 
-        return array_values(array_filter($rules, static fn (array $rule): bool => ($rule['kind'] ?? null) === $kind));
+        foreach ($rules as $rule) {
+            RegisterCompatibility::rule($rule);
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Rules whose published window contains the requested calendar date.
+     * End dates are inclusive. A capture floor does not establish earlier coverage.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rulesOn(string $jurisdiction, string $kind, DateTimeImmutable $at): array
+    {
+        $on = $at->format('Y-m-d');
+
+        return array_values(array_filter($this->rulesFor($jurisdiction, $kind), static function (array $rule) use ($on): bool {
+            $effective = Shape::map($rule['effective'] ?? null);
+            $from = Shape::text($effective['from'] ?? null);
+            $until = Shape::text($effective['until'] ?? null);
+
+            return ($from === null || $from <= $on) && ($until === null || $until >= $on);
+        }));
     }
 
     /**
@@ -330,11 +365,17 @@ final class RegisterDataset
      */
     private function document(string $name): array
     {
+        return $this->readDocument($name, $this->requireVersion());
+    }
+
+    /** @return array<string, mixed> */
+    private function readDocument(string $name, string $version): array
+    {
         if (isset($this->documents[$name])) {
             return $this->documents[$name];
         }
 
-        $raw = @file_get_contents($this->layout->file($this->requireVersion(), $name.'.json'));
+        $raw = @file_get_contents($this->layout->file($version, $name.'.json'));
         $decoded = $raw === false ? null : json_decode($raw, true);
 
         /** @var array<string, mixed> $document */

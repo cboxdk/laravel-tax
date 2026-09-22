@@ -6,11 +6,13 @@ description: Where the rate data comes from, how to sync it, and what the licenc
 
 # The register
 
-Every rate, rule and boundary this engine applies comes from one place:
+The default sources read their rates, US rules and address boundaries from
 **[data.cboxtax.com](https://data.cboxtax.com)**, a published register of consumption-tax
 jurisdictions covering 80 jurisdictions across eleven regimes — the EU, the US, the UK
 and the rest of Europe, Canada, Mexico, Latin America, Asia-Pacific, Africa, the
-Caribbean, the Gulf and the wider Middle East.
+Caribbean, the Gulf and the wider Middle East. The engine currently models 52
+countries; see [Supported jurisdictions](../coverage/supported.md) for the
+calculation coverage.
 
 It is **not fetched while pricing**. `tax:data:sync` compiles a published release into a
 local store; the engine reads that store and makes no network call at all.
@@ -50,25 +52,72 @@ one index and one record. Pricing a Danish invoice touches 12 KB.
 
 | | |
 | --- | --- |
-| `tax:data:sync` | Compile a release and make it live |
-| `tax:data:status` | What is installed, what is live, what it covers |
-| `tax:data:activate <version>` | Make an already-installed version live |
-| `tax:data:verify` | Re-hash every file against the manifest |
+| `tax:data:sync` | Compile a release, activate it and prune according to retention |
+| `tax:data:status --offline` | Active release, configured pin, pricing version and installed scope |
+| `tax:data:activate <version>` | Change the active release; an explicit pricing pin still wins |
+| `tax:data:verify [release]` | Check file sizes and hashes against the local compiled manifest |
 | `tax:data:prune --keep=2` | Delete old versions |
 
 `activate` is the rollback, and it costs one `rename` — no download, no network. That
 matters because a bad release is discovered exactly when you would rather not be
 downloading another. `activate previous` takes the one before the live one.
 
-`sync --check` compares the installed version against the published one for a few
-kilobytes and exits non-zero when behind, so a deploy or a cron can gate on it without
-pulling anything.
+`sync --check` compares the pricing version with the configured release, or the
+latest published release when no pin is configured. It exits non-zero when they
+differ or the required register is missing. `--release=latest` explicitly checks
+against the publisher even when pricing is pinned.
+
+`verify` defaults to the version used for pricing and performs no network request.
+A missing file, changed content or invalid manifest makes it fail. It checks local
+integrity against the manifest created during sync; it does not authenticate the
+publisher or establish that a rate is legally correct.
+
+## Configuration and version pins
+
+Publish `config/tax.php` with `php artisan vendor:publish --tag=tax-config`.
+
+| Config under `tax.register` | Environment | Default |
+| --- | --- | --- |
+| `url` | `TAX_REGISTER_URL` | `https://data.cboxtax.com` |
+| `store` | `TAX_REGISTER_STORE` | `storage/app/cbox-tax/register` |
+| `version` | `TAX_REGISTER_VERSION` | Active release; sync selects latest |
+| `regions` | `TAX_REGISTER_REGIONS` | All published regions |
+| `states` | `TAX_REGISTER_STATES` | All US states |
+| `streets` | `TAX_REGISTER_STREETS` | No street indexes |
+| `boundaries` | `TAX_REGISTER_BOUNDARIES` | `true` |
+| `keep` | `TAX_REGISTER_KEEP` | `2` |
+
+Lists accept PHP arrays or comma-separated environment values. Explicit CLI values
+replace the corresponding sync defaults. `--no-boundaries` disables the boundary
+download for that run.
+
+Set `TAX_REGISTER_VERSION=2026.09.16-236` to pin both pricing and the default sync
+target. A missing pinned release refuses, even if another release is active.
+Running `sync --release=latest` or `activate` changes the active pointer, but does
+not override a configured pin. `status` shows both.
+
+Sync prunes automatically using `keep`; `sync --keep=3` overrides it for one run.
+Pruning always preserves the active release and the configured pin, so it can
+retain more than the requested count. `activate previous` selects the most recent
+installed release older than the active one.
+
+The dataset holds its selected version for the lifetime of the application
+instance. Restart long-running queue workers and Octane processes after changing
+the release or pin, and retain releases that are still used by running workers.
+
+Schema compatibility is checked during sync and again before reading an installed
+store. This reader accepts reviewed schema versions through `1.34.x`; a newer
+minor or major requires a package update. Unknown fields on consumed rules also
+refuse, so a new condition cannot be dropped while retaining the old boolean or
+rate decision. Do not strip conditions or edit the schema version to bypass this
+check. The [draft consumer contract](../../conformance/cadastre-consumer-contract.md)
+describes the proposed extension and the publication barrier needed by older readers.
 
 ## Take less than everything
 
 ```php
 'register' => [
-    'regions' => ['eu'],          // only the regimes you sell into
+    'regions' => ['eu', 'us'],    // only the data regions you need
     'states' => ['TX', 'CA'],     // only the US states you sell into
     'boundaries' => true,
 ],
@@ -96,8 +145,9 @@ php artisan tax:data:activate 2026.09.15-199
 ```
 
 A version stays on disk until pruned, so the previous one is normally right there.
-`status` answers offline on purpose — it still tells you what you are billing from when
-the network is the thing that is broken.
+`status --offline` reads only local files. Without that option, status also attempts
+to report the latest published release; an unreachable publisher does not hide the
+local installation.
 
 ## Licence
 

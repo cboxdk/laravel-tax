@@ -218,8 +218,7 @@ function failures(array $response, array $expect): array
         $bad[] = 'tax: expected a charge, got '.var_export($line['tax'] ?? null, true);
     }
 
-    // The reason is not decoration. It is the thing no competitor returns, and a
-    // response without one has dropped the part that makes the number defensible.
+    // Every response must explain the tax determination so callers can audit it.
     if (! is_string($line['reason'] ?? null) || $line['reason'] === '') {
         $bad[] = 'reason: missing — the number is not defensible without it';
     }

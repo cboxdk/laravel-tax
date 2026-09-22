@@ -17,8 +17,50 @@ $calc = $this->taxCalculator(['DK' => '25', 'FR' => '20']);
 $assessment = $calc->assess($query);
 ```
 
-Pass no rates to use the built-in defaults. Jurisdictions come from the real
+Pass no rates to use the helper's fixed test fixture; those figures are not a
+production rate source. Jurisdictions come from the real
 `laravel-geo` repository, so place-of-supply behaviour is exercised for free.
+
+## A register for the application container
+
+```php
+use Cbox\Tax\Testing\FakeRegister;
+
+$store = sys_get_temp_dir().'/my-tax-test';
+FakeRegister::at($store)->rate('eu:DK', '25')->install();
+config()->set('tax.register.store', $store);
+config()->set('tax.register.version', null);
+```
+
+Set the configuration before resolving the calculator or register from the
+container. Use a separate temporary directory per test and remove it afterwards.
+`FakeRegister` supplies invented test data and does not need network access.
+
+The package's full `composer qa` gate includes the live `e2e` group. For an offline
+iteration, run `vendor/bin/pest --exclude-group=e2e`; that is a narrower check than
+the full gate.
+
+## Independent result checks
+
+`composer test:reference` syncs the release pinned in
+`conformance/reference/2026-09-17.json`, verifies its local hashes and assesses
+41 dated reference cases through the application container. Pricing runs with
+outbound HTTP blocked. Expected rates and rules come from public tax-authority
+sources; monetary expectations are sourced examples or independently derived
+arithmetic. The register does not generate them.
+
+The cases cover standard, reduced and zero rates, local US rate components,
+inclusive pricing, credit notes, reverse charge, a rate-change boundary and a
+mixed-rate order with delivery. To compare a newer register release against the
+same dated expectations:
+
+```bash
+CBOX_TAX_REFERENCE_RELEASE=latest composer test:reference
+```
+
+These checks use supplied US localities and do not independently validate street
+addresses or geocoding. The corpus records the reference URLs, review dates,
+inputs and assumptions for reviewing those limits.
 
 ## Exemptions
 
@@ -37,4 +79,3 @@ $assessment = $calc->assess(new TaxQuery(
 
 $this->assertExempt($assessment, 'CA-RESALE-42'); // Exempt, tax 0, gross = net, reference present
 ```
-

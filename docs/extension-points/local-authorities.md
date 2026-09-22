@@ -1,15 +1,14 @@
 ---
 title: Local authorities
 weight: 25
-description: Bind a LocalAuthorityResolver to resolve US addresses below the state line where the shipped dataset cannot — a state portal you hold credentials for, a commercial adapter, or your own boundary file.
+description: Bind a LocalAuthorityResolver to resolve US addresses below the state line where the installed register cannot — a state portal you hold credentials for, a commercial adapter, or your own boundary file.
 ---
 
 # Local authorities
 
-In [12 US states](../coverage/the-register.md)
-nothing this package ships resolves an address below the state line, so the state
-share applies at `Confidence::Derived` — an honest floor, but a floor. Louisiana's
-state share is 4.45% against a combined rate reaching 11.45%.
+Some states have local tax but no shipped address-resolution path. A state-only
+answer then carries `Confidence::Derived` and `NoLocalResolution`; see
+[register coverage](../coverage/the-register.md).
 
 `LocalAuthorityResolver` is where you close that for the states you care about.
 Bind one, and the US rate source stacks whatever it returns.
@@ -46,9 +45,9 @@ public function authoritiesFor(Jurisdiction $jurisdiction, ?DateTimeImmutable $a
 
 | Return | Means | The engine |
 | --- | --- | --- |
-| `null` | "I do not answer for this address" | Falls through to its own resolution, exactly as if nothing were bound |
+| `null` | "I do not answer for this address" | Uses the state share, flagged where local tax may be missing |
 | `[]` | "No local authority taxes here" | Prices at the state share and calls it **`Authoritative`** — that IS the whole rate |
-| `['US-CO:DENVER', …]` | The authorities that apply | Sums them onto the state share at **`Authoritative`**, with a `RateComponent` each |
+| `['us:KS', 'us:KS:COUNTY-209', 'us:KS:CITY-36000']` | The authorities that apply | Sums the complete set, including its state member, with a `RateComponent` each |
 
 **A failed lookup returns `null`, never `[]`.** An unreachable service is not
 knowledge that no tax applies. Returning `[]` there would publish a confident
@@ -56,9 +55,9 @@ under-charge.
 
 **List every authority that applies.** The engine sums them; a short list is an
 under-charge stamped `Authoritative`, which is the outcome this package works
-hardest to prevent. Codes are the dataset's own local authority codes for the state
-— see the `rates` section of [the register](../coverage/the-register.md). A code
-the dataset does not carry makes the whole stack refuse and fall back to the state
+hardest to prevent. Codes are the register's full jurisdiction codes, including
+the state code when its share applies — see the `rates` section of [the register](../coverage/the-register.md). A code
+the register does not carry makes the whole stack refuse and fall back to the state
 rate, rather than silently dropping that authority's share.
 
 **`$at` is the supply date, not today.** Addresses change hands between districts,
@@ -67,7 +66,7 @@ cannot answer historically, return `null` for a past date rather than today's an
 
 ## It is asked first, and without a locality
 
-The resolver is consulted before the shipped resolution, and about the whole
+The bound resolver replaces the default `RegisterBoundaries` and is asked about the whole
 jurisdiction rather than about a locality. That matters: a Colorado address carries
 no locality at all, because nothing shipped resolves Colorado below the state line —
 which is exactly the case a resolver exists to cover.
@@ -80,21 +79,21 @@ Where both could answer, yours wins. Binding one is a deliberate act.
 
 ```php
 $fake = new FakeLocalAuthorityResolver;
-$fake->resolve($denver, ['US-CO:DENVER', 'US-CO:RTD']);
+$fake->resolve($kansasCity, ['us:KS', 'us:KS:COUNTY-209', 'us:KS:CITY-36000']);
 
 $this->app->instance(LocalAuthorityResolver::class, $fake);
 
 // …assess…
 
-expect($fake->wasConsultedFor($denver))->toBeTrue();
+expect($fake->wasConsultedFor($kansasCity))->toBeTrue();
 ```
 
 `wasConsultedFor()` earns its place: the mistake worth catching is a resolver that
 is bound but never reached. The assessment still comes out with a plausible number —
 the state share — and nothing in the result says the lookup never happened.
 
-Anything unscripted defers, so a test that forgets an address gets the shipped
-behaviour rather than an empty stack.
+Anything unscripted defers to the state-share fallback; it does not assert an
+empty authority set.
 
 ## What is not solved here
 

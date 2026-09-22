@@ -22,8 +22,8 @@ use Illuminate\Support\Facades\Http;
  * run; `tax:data:sync` compiles a real published release; the same assessment then
  * prices from local files with no network call.
  *
- * It talks to data.cboxtax.com, so it is skipped unless CBOX_TAX_E2E=1. Everything
- * else in this suite runs against fixtures.
+ * The e2e group talks to data.cboxtax.com and runs as part of the full QA gate.
+ * Use `pest --exclude-group=e2e` when working offline; the other tests use fixtures.
  */
 
 beforeEach(function (): void {
@@ -99,6 +99,6 @@ it('reports what is installed, offline', function (): void {
     $this->artisan('tax:data:sync', ['--region' => ['gcc'], '--no-boundaries' => true])->assertSuccessful();
 
     $this->artisan('tax:data:status', ['--offline' => true])
-        ->expectsOutputToContain('Live version')
+        ->expectsOutputToContain('Pricing version')
         ->assertSuccessful();
 })->group('e2e');

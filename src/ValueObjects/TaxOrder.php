@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
 use DateTimeImmutable;
 
@@ -20,10 +21,9 @@ use DateTimeImmutable;
  * three separate {@see TaxQuery} calls rounds three times and produces three
  * assessments nothing ties back together.
  *
- * The order plane adds NO tax logic. {@see queryFor()} is the single place a line
- * becomes a single-supply query, so every regime, rate source, gate and refusal
- * applies exactly as it does for one amount. That is the whole design: fan out,
- * then sum.
+ * {@see queryFor()} carries the shared context into each line assessment. Delivery
+ * allocation and invoice rounding then reconcile the document across those lines,
+ * preserving their pricing modes and the published rounding scope.
  */
 readonly class TaxOrder
 {
@@ -71,6 +71,8 @@ readonly class TaxOrder
          * checked — but it IS a default and not a law, and the enum says why.
          */
         public ApportionmentBasis $apportionment = ApportionmentBasis::NetValue,
+        /** Used only when the published policy permits a seller election. */
+        public RoundingScope $roundingScope = RoundingScope::Line,
     ) {
         if ($lines === []) {
             throw InvalidTaxOrder::withoutLines();
@@ -142,6 +144,8 @@ readonly class TaxOrder
             postalCode: $this->postalCode,
             marketplaceFacilitated: $this->marketplaceFacilitated,
             itemCode: $line->itemCode,
+            roundingScope: $this->roundingScope,
+            delivery: $line->isDeliveryCharge ? ($line->delivery ?? new DeliveryCharge) : null,
         );
     }
 

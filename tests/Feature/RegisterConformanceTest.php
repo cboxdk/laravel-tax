@@ -10,12 +10,14 @@ use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cboxdk\TaxResolver\Authority;
 use Cboxdk\TaxResolver\ParsedAddress;
+use Illuminate\Filesystem\Filesystem;
 
 /*
  * The register's own conformance deck, run against this engine's resolution.
  *
- * This is the only test in the suite that asserts a REAL rate, and it is the point of
- * the whole exercise: the register cuts these cases out of the artifacts a release
+ * This checks address-to-authority resolution against published artifacts. Rate
+ * calculation has separate tests; this deck checks the authority set, not a total.
+ * The register cuts these cases out of the artifacts a release
  * actually ships, and reads them back through the same shared resolver this engine
  * uses. Two readers of one format drift apart quietly — that is exactly what happened
  * when the resolver package read a formatVersion 3 artifact as a v2 one and answered
@@ -26,7 +28,11 @@ use Cboxdk\TaxResolver\ParsedAddress;
  */
 
 beforeEach(function (): void {
-    $this->root = sys_get_temp_dir().'/cbox-tax-deck-'.getmypid();
+    $this->root = sys_get_temp_dir().'/cbox-tax-deck-'.getmypid().'-'.bin2hex(random_bytes(6));
+});
+
+afterEach(function (): void {
+    (new Filesystem)->deleteDirectory($this->root);
 });
 
 it('resolves the register\'s own conformance deck the way the register does', function (): void {

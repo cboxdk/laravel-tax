@@ -15,8 +15,8 @@ confidence level per jurisdiction, and lists the jurisdictions we deliberately d
 - [What the register covers](the-register.md) — the 80 jurisdictions, how a rate is found, and where the gaps are.
 - [Supported jurisdictions](supported.md) — regime, rate, source, confidence.
 - [Not yet supported](not-yet-supported.md) — researched but omitted, and why.
-- [US SaaS taxability](us-saas-taxability.md) — the curated, cited per-state SaaS map, kept as a reference for what the register answers.
-- [US economic-nexus thresholds](us-nexus-thresholds.md) — the cited per-state *Wayfair* threshold table, kept as a reference for what the register answers.
+- [US SaaS taxability](us-saas-taxability.md) — register-backed determinations and the taxable fallback.
+- [US economic-nexus thresholds](us-nexus-thresholds.md) — register-backed threshold annotations and their limits.
 
 Two boundaries to keep in mind:
 

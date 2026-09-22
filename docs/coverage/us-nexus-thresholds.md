@@ -1,86 +1,57 @@
 ---
 title: US economic-nexus thresholds
 weight: 5
-description: The cited per-state economic-nexus (Wayfair) threshold table the engine ships, its source, and how it flags a likely registration obligation.
+description: How the register supplies remote-seller thresholds and how the engine uses them.
 ---
 
 # US economic-nexus thresholds
 
-> **Now dataset-backed.** The default `NexusThresholds` source is the
-> [the register](the-register.md); the cited static table below is the
-> fallback used when the dataset is disabled. The *Wayfair* model and the engine's
-> use of the thresholds are unchanged.
-
-After *South Dakota v. Wayfair* (2018), a remote seller with no physical presence
-can still owe sales tax once its sales into a state cross that state's **economic
-nexus** threshold. These thresholds are **published and largely stable**, so the
-engine ships them as a cited data table feeding a `NexusThresholds` source.
+The default `NexusThresholds` binding is `RegisterNexus`, which reads `threshold`
+rules from the [installed register](../getting-started/the-register.md). It selects
+USD thresholds whose `binds` field is `remote_seller`. The old static threshold
+table has been removed.
 
 ## What the engine does with them
 
-The `us-sales-tax` regime still asserts nexus from an **explicit seller
-registration** — it never infers nexus from a single invoice, because economic
-nexus turns on the seller's **cumulative** sales/transactions in the state over a
-measuring period, which one supply does not carry. What the threshold table adds:
+The US regime takes nexus from an explicit `SellerRegistration`. When the seller
+is not registered in a state, the `NotRegistered` assessment reason includes the
+available threshold as an indication that registration may be needed.
 
-- When a supply resolves to a state where the seller is **not** registered, the
-  `NotRegistered` assessment reason is **annotated with that state's threshold** —
-  flagging the operator to check whether the *Wayfair* trigger has been crossed and
-  a registration is now required.
-- `NexusThreshold::describe()` renders the figures for that annotation.
+```php
+use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\NexusThresholds;
 
-This package deliberately stops there. It does **not** decide whether a seller has
-crossed a threshold, because the figures alone cannot answer it: the verdict turns
-on the state's measuring **period** (rolling twelve months, previous calendar year,
-the four preceding VAT quarters) and on which sales **basis** it measures (gross,
-retail, taxable). A comparison made without those is a guess wearing the clothes of
-a determination. `cboxdk/laravel-nexus` models both, and reports `Unknown` when the
-seller's totals are measured on a different footing than the state uses.
+$threshold = app(NexusThresholds::class)->for(
+    new SubdivisionCode('US-TX'),
+    new DateTimeImmutable('2026-09-18'),
+);
+$description = $threshold?->describe();
+```
 
-## Source
+A missing threshold returns `null`; it does not establish that a seller has no
+obligation. The lookup supplies figures and a combinator, not a decision about a
+seller's accumulated sales.
 
-| | |
-| --- | --- |
-| **Source** | Sales Tax Institute — *Economic Nexus State Guide* |
-| **URL** | <https://www.salestaxinstitute.com/resources/economic-nexus-state-guide> |
-| **Retrieved** | 2026-07-17 |
-| **Nature** | An authoritative, dated practitioner compilation of each state's post-*Wayfair* threshold |
-| **Source class** | `Cbox\Tax\Nexus\StaticNexusThresholds` |
+## Scope and dates
 
-> Transaction-count thresholds are being **widely repealed** — the dollar figure is
-> the durable trigger. Re-verify against the state's own guidance before relying on
-> a transaction count.
+`NexusThresholds::for()` accepts an optional date and selects the rule whose
+inclusive effective window contains it. Omitting the date means today. The US
+regime passes the supply date when producing its advisory annotation. Keep the
+release pinned as well when reproducing an earlier result.
 
-## Thresholds
+The adapter reads `sales_and_transactions`, `sales_or_transactions` and
+`sales_only`. Legacy `and`/`or` values remain accepted. A missing operator with a
+transaction count, an unknown operator, or overlapping applicable thresholds
+raises `UnresolvedTaxRule`; the adapter never invents an OR condition.
 
-Dollar figures are the annual gross-sales trigger. "Combinator" is how the sales and
-transaction thresholds combine.
+Custom implementations must add the optional `?DateTimeImmutable $at = null`
+parameter to their `for()` method.
 
-| Threshold | States | Combinator |
-| --- | --- | --- |
-| **$500,000** | California, Texas | sales only |
-| **$500,000 and 100 transactions** | New York | both required |
-| **$250,000** | Alabama, Mississippi | sales only |
-| **$100,000 and 200 transactions** | Connecticut | both required |
-| **$100,000 or 200 transactions** | Maryland, Michigan, Minnesota, Nebraska, Nevada, New Jersey, Rhode Island, Vermont | either trigger |
-| **$100,000** | Alaska†, Arizona, Arkansas, Colorado, DC, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Louisiana, Maine, Massachusetts, Missouri, New Mexico, North Carolina, North Dakota, Ohio, Oklahoma, Pennsylvania, South Carolina, South Dakota, Tennessee, Utah, Virginia, Washington, West Virginia, Wisconsin, Wyoming, Kentucky* | sales only |
+Determining whether a seller crossed a threshold also requires the state's
+measuring period and sales basis. That cumulative calculation belongs to
+`cboxdk/laravel-nexus` or the host application. This package neither registers the
+seller nor infers an obligation from a single invoice.
 
-\* Kentucky **repealed** its 200-transaction prong effective **2026-08-01** — HB 757
-(2026 RS) amended KRS 139.340 and 139.450; the $100,000 gross-receipts threshold is
-unchanged. Verified against the Department of Revenue's own *Sales Tax Facts*,
-Summer 2026. **The published dataset still carries the transaction prong on an
-open-ended window**, so a deployment on the default source is applying a repealed
-test until `us-tax-data` is corrected and re-published; the static fallback here is
-right.
-† Alaska has no statewide sales tax; the $100,000 figure is the statewide threshold
-set by the **Alaska Remote Seller Sales Tax Commission** for local sales taxes.
-
-**No general sales tax — absent from the table (returns `null`):** Delaware,
-Montana, New Hampshire, Oregon.
-
-## Honest scope
-
-This is DATA that states amend. The table is a **decision aid**, not an automatic
-nexus determination — the engine will not register you or start collecting on its
-own. **Verify your obligations with your tax advisor.** Override any figure, or bind
-your own source, via `Cbox\Tax\Contracts\NexusThresholds`.
+The amounts and transaction counts can change independently of this package.
+Use `tax:data:sync` to install a reviewed release, retain its provenance, and bind
+`Contracts\NexusThresholds` if your application supplies its own source.

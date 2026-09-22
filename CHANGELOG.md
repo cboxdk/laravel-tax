@@ -7,6 +7,74 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed — conditional-rule compatibility
+
+- Compilation and offline store reads now reject unreviewed schemas, including
+  newer minors beyond `1.34.x`. Unknown fields on consumed rules refuse instead of
+  leaving an unconditional scalar answer. Upgrading the reader is required before
+  adopting a newer schema; this does not implement the proposed predicate contract.
+- Compound remote-seller thresholds and proportional delivery bases refuse when
+  their semantics cannot be represented by the current public adapters.
+- Corrected cadastre feedback: `crossing` describes the effect of crossing, existing
+  versioned schemas and blocking overlap checks are acknowledged, and Madeira/Azores
+  rates are already migrated. Added a proposed consumer contract with input/output
+  cases and older-reader rejection requirements. No upstream date overrides added.
+
+### Fixed — dated rules, rounding and delivery
+
+- Sourcing and nexus adapters now select inclusive effective windows on the supply
+  date. Their contracts accept optional `?DateTimeImmutable $at = null`; custom
+  implementations must update their signatures. Existing one-argument calls mean today.
+- Nexus decodes the published AND/OR vocabulary, rejects ambiguous operators and
+  overlapping rules, and avoids floating-point conversion of dollar thresholds.
+- Added pluggable `RoundingRules` and `DeliveryRules` adapters. The US regime applies
+  published rounding method, precision and scope. Invoice rounding reconciles exact
+  tax per rate group, including delivery portions, credits and mixed pricing, before
+  allocating line tax back to authorities. Seller-elected scope is explicit input.
+- US delivery uses dated transport/handling rules. Exclusions require confirmed
+  conditions through `DeliveryCharge`; missing rules/facts and unsupported delivery
+  rate classifications now raise a structured refusal. EU delivery retains its
+  product-rate treatment. Delivery preserves dates, money contexts and component
+  assessments and uses the document path without per-supply flat-charge calls.
+- Identified mixed intrastate sourcing now refuses instead of silently using
+  destination for every authority layer. Rate refinements preserve provenance.
+- Added offline rule regressions and a live pinned-release regression covering
+  sourcing, nexus, invoice rounding and conditional delivery. Remaining publication
+  requests are tracked in `conformance/cadastre-feedback.md`.
+
+### Fixed — independently checked calculation results
+
+- Delivery charges now preserve inclusive pricing, including line overrides and
+  refunds. Previously, their assessment added VAT to an already inclusive charge.
+- Added optional `ApportionmentBasis::GrossValue` for delivery allocated by gross
+  selling prices, reproducing the Finnish Tax Administration's mixed-cart example.
+  The default remains `NetValue`.
+- Added 41 dated reference cases against a real compiled release: the 27 EU
+  standard VAT rates, UK VAT, reduced/zero rates, a historical Finnish rate change,
+  reverse charge, inclusive/refund arithmetic, three US local-rate cases sourced
+  from tax authorities and the Finnish delivery example. `composer test:reference`
+  runs them; they also run in the full QA gate.
+
+### Fixed — register deployment and upgrade cleanup
+
+- `tax.register.version` now pins pricing and the default sync target. An absent
+  pinned release refuses instead of silently using the active version. Status
+  distinguishes the active release from the one used for pricing.
+- Sync honours configured regions, states, street indexes, boundaries and retention;
+  explicit CLI options take precedence. Non-US syncs skip US boundary downloads.
+  Sync now prunes according to `tax.register.keep` (default 2), always preserving
+  the active release and configured pin. `activate previous` selects an older
+  release, and release counters are sorted numerically.
+- `tax:data:verify [release]` is implemented: it checks the local compiled manifest,
+  file sizes and SHA-256 hashes offline and fails on missing or corrupt content.
+- Removed retired dataset configuration and the unused `register.enabled` switch.
+  Geocoder rooftop resolution now uses `tax.geocodio.rooftop` / `GEOCODIO_ROOFTOP`;
+  `TAX_US_DATASET_ROOFTOP` remains an environment fallback during upgrades.
+- Installation, coverage and extension docs now describe the register sources,
+  the changed taxability fallback, the engine's 52-country regime coverage and
+  the public category API. Live e2e tests are documented as part of the QA gate
+  and clean up their temporary register stores.
+
 ### Changed — the register is the only data source
 
 `laravel-tax` now reads one published register, **[data.cboxtax.com](https://data.cboxtax.com)**,

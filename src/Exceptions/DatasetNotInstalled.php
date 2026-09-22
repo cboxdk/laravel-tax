@@ -22,10 +22,14 @@ use RuntimeException;
  */
 class DatasetNotInstalled extends RuntimeException implements Refusal
 {
-    public function __construct(private readonly string $root)
+    public function __construct(private readonly string $root, ?string $version = null)
     {
-        parent::__construct(sprintf(
+        parent::__construct($version === null ? sprintf(
             'No tax register is installed at %s. Run `php artisan tax:data:sync` to compile one (about 6.5 MB over the wire), or point tax.register.store at an existing store.',
+            $root,
+        ) : sprintf(
+            'Pinned tax register %s is not installed at %s. Run `php artisan tax:data:sync` to install the configured release, or change tax.register.version.',
+            $version,
             $root,
         ));
     }

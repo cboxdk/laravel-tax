@@ -67,6 +67,12 @@ enum RefusalReason: string
      */
     case ThresholdCurrencyUnknown = 'threshold_currency_unknown';
 
+    /** Published rules are missing, conflicting, or beyond the supported model. */
+    case TaxRuleUnsupported = 'tax_rule_unsupported';
+
+    /** The host has not established the facts required for a delivery exclusion. */
+    case DeliveryFactsRequired = 'delivery_facts_required';
+
     /** The one step that turns this refusal into an answer. */
     public function remedy(): string
     {
@@ -84,6 +90,10 @@ enum RefusalReason: string
             self::ThresholdCurrencyUnknown => 'Bill the line in the threshold\'s currency, or supply an exchange '
                 .'rate for the supply date. A threshold decides whether tax applies at all, so it is not '
                 .'converted at a rate nobody chose.',
+            self::TaxRuleUnsupported => 'Inspect the rule and its effective window in the installed release. '
+                .'Correct the data or bind an implementation that supports the rule; repeating the same request will not resolve it.',
+            self::DeliveryFactsRequired => 'State whether the delivered goods are taxable and confirm whether '
+                .'the published delivery exclusion conditions are met. Leave the charge unassessed until those facts are known.',
         };
     }
 
@@ -98,8 +108,8 @@ enum RefusalReason: string
     public function callerCanClose(): bool
     {
         return match ($this) {
-            self::TaxabilityConditional, self::ThresholdCurrencyUnknown => true,
-            self::RateUnavailable, self::TaxabilityUndetermined, self::JurisdictionUnsupported => false,
+            self::TaxabilityConditional, self::ThresholdCurrencyUnknown, self::DeliveryFactsRequired => true,
+            self::RateUnavailable, self::TaxabilityUndetermined, self::JurisdictionUnsupported, self::TaxRuleUnsupported => false,
         };
     }
 }

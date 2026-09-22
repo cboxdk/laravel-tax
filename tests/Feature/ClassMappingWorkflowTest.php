@@ -25,11 +25,6 @@ function calculatorWithCatalogue(ProductCatalogue $catalogue): TaxCalculator
     // and Testbench resolves the same container either way.
     app()->instance(ProductCatalogue::class, $catalogue);
 
-    // The base TestCase points at the US fixture only, so the EU source is not in
-    // the chain by default and Hungary would fall through to the static snapshot.
-    config()->set('tax.eu_tax_data.location', dirname(__DIR__).'/Fixtures/eu-tax-dataset');
-    app()->forgetInstance(TaxRateSource::class);
-
     return app(TaxCalculator::class);
 }
 
@@ -159,9 +154,8 @@ it('gives every limit a remedy, so none is a dead end', function () {
 // ---------------------------------------------------------------------------
 
 it('resolves the class from the item code, so the line never decides', function () {
-    // The shape both commercial engines settled on: register the mapping once
-    // against your SKU, then send the SKU. Avalara takes an itemCode and resolves
-    // the tax code server-side; Stripe hangs the code on the Product object.
+    // Register the tax mapping once against the SKU, then resolve it from the
+    // item code supplied on each line.
     $calculator = calculatorWithCatalogue(new ArrayProductCatalogue([
         'SHOE-001' => TaxClass::Footwear,
     ]));
@@ -186,9 +180,7 @@ it('carries the product\'s commodity code too, so the exact rate is reached', fu
 });
 
 it('flags a SKU nothing has mapped instead of taxing it in silence', function () {
-    // The gap both competitors leave. An unmapped SKU still produces an invoice —
-    // at the fallback class — and nothing says it did. This is the finding that
-    // lets a review list every product nobody has classified.
+    // Flag fallback classification so a review can identify unmapped products.
     $calculator = calculatorWithCatalogue(new ArrayProductCatalogue);
 
     $assessment = $calculator->assess(catalogueQuery('NEVER-MAPPED'));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Brick\Money\Money;
+use Brick\Money\RationalMoney;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Enums\TaxTreatment;
 use DateTimeImmutable;
@@ -61,6 +62,13 @@ readonly class TaxAssessment
         public array $mentions = [],
         /** @var list<FlatCharge> Fixed levies on top of the rate-based tax. */
         public array $charges = [],
+        /** Policy and exact amount used to reconcile invoice rounding. */
+        public ?TaxRounding $rounding = null,
+        public ?RationalMoney $unroundedTax = null,
+        /** @var list<TaxAssessment> Delivery portions, before or after invoice reconciliation. */
+        public array $portions = [],
+        /** The taxable net base, retained even when rounded line tax is zero. */
+        public ?Money $taxableBase = null,
     ) {}
 
     /**
@@ -79,6 +87,7 @@ readonly class TaxAssessment
      *
      * @param  list<InvoiceMention>|null  $mentions
      * @param  list<FlatCharge>|null  $charges
+     * @param  list<TaxAssessment>|null  $portions
      */
     public function with(
         ?TaxTreatment $treatment = null,
@@ -96,6 +105,9 @@ readonly class TaxAssessment
         ?DateTimeImmutable $reportedOn = null,
         ?array $mentions = null,
         ?array $charges = null,
+        TaxBreakdown|false|null $breakdown = false,
+        ?array $portions = null,
+        ?Money $taxableBase = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -106,11 +118,15 @@ readonly class TaxAssessment
             rate: $rate ?? $this->rate,
             reason: $reason ?? $this->reason,
             exemption: $this->exemption,
-            breakdown: $this->breakdown,
+            breakdown: $breakdown === false ? $this->breakdown : $breakdown,
             taxPoint: $taxPoint ?? $this->taxPoint,
             reportedOn: $reportedOn ?? $this->reportedOn,
             mentions: $mentions ?? $this->mentions,
             charges: $charges ?? $this->charges,
+            rounding: $this->rounding,
+            unroundedTax: $this->unroundedTax,
+            portions: $portions ?? $this->portions,
+            taxableBase: $taxableBase ?? $this->taxableBase,
         );
     }
 

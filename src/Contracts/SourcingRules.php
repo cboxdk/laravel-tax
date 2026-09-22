@@ -6,6 +6,7 @@ namespace Cbox\Tax\Contracts;
 
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\ValueObjects\IntrastateSourcing;
+use DateTimeImmutable;
 
 /**
  * Supplies a US state's INTRASTATE sourcing rule — origin vs destination vs mixed —
@@ -16,5 +17,6 @@ use Cbox\Tax\ValueObjects\IntrastateSourcing;
  */
 interface SourcingRules
 {
-    public function for(SubdivisionCode $state): ?IntrastateSourcing;
+    /** Null date means today; historical supplies must pass their tax point. */
+    public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?IntrastateSourcing;
 }

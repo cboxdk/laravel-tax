@@ -8,24 +8,32 @@ use Brick\Math\BigDecimal;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
+use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\Confidence;
+use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Enums\SourcingMode;
+use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
+use Cbox\Tax\ValueObjects\TaxRounding;
 use DateTimeImmutable;
 
 /**
@@ -77,6 +85,8 @@ readonly class UsSalesTaxRegime implements TaxRegime
          * treatment, which is the safe direction.
          */
         private ?UsTaxFacts $dataset = null,
+        private ?RoundingRules $rounding = null,
+        private ?DeliveryRules $delivery = null,
     ) {}
 
     /**
@@ -146,6 +156,48 @@ readonly class UsSalesTaxRegime implements TaxRegime
             : $price->isLessThan($cap);
     }
 
+    private function deliveryExcluded(TaxQuery $query, SubdivisionCode $state): bool
+    {
+        $delivery = $query->delivery;
+
+        if ($delivery === null || $delivery->goodsTaxable === null) {
+            throw new UnresolvedTaxRule('Delivery requires the taxability of the delivered goods.', RefusalReason::DeliveryFactsRequired);
+        }
+
+        $included = $this->delivery?->included($state, $delivery->component, $delivery->goodsTaxable, $query->on());
+
+        if ($included === null) {
+            throw new UnresolvedTaxRule('No applicable delivery rule for '.$state->value.' on '.$query->on()->format('Y-m-d').'.');
+        }
+
+        if (! $included) {
+            if ($delivery->exclusionConditionsMet === null) {
+                throw new UnresolvedTaxRule('Confirm delivery exclusionConditionsMet after checking the published conditions for '.$state->value.'.', RefusalReason::DeliveryFactsRequired);
+            }
+
+            if ($delivery->exclusionConditionsMet) {
+                return true;
+            }
+        }
+
+        if (! $delivery->goodsTaxable) {
+            throw new UnresolvedTaxRule('Taxable delivery of exempt goods needs an independently classified delivery rate.');
+        }
+
+        return false;
+    }
+
+    private function determination(TaxQuery $query): TaxDetermination
+    {
+        $determination = $this->taxability->determine($query->place, $query->category, $query->amount, $query->on());
+
+        // The delivered goods were assessed before their freight. A per-item
+        // exemption threshold must not be applied a second time to the freight's price.
+        return $query->delivery === null
+            ? $determination
+            : new TaxDetermination(TaxabilityTreatment::Taxable, $determination->reducedRate);
+    }
+
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
         $subdivision = $query->place->subdivision;
@@ -161,16 +213,25 @@ readonly class UsSalesTaxRegime implements TaxRegime
         $facilitated = $query->marketplaceFacilitated
             && $this->marketplaceLawInForce($subdivision->value, $query->on());
 
+        if ($query->delivery !== null && ! $query->amount->isZero() && ($facilitated || $query->seller->isRegisteredInSubdivision($subdivision, $query->on()))) {
+            if ($this->deliveryExcluded($query, $subdivision)) {
+                return new TaxAssessment(
+                    treatment: TaxTreatment::Exempt,
+                    net: $query->amount,
+                    tax: $this->zero($query),
+                    gross: $query->amount,
+                    placeOfSupply: $query->place,
+                    rate: null,
+                    reason: 'US sales tax: delivery excluded from the taxable base; the host confirmed the exclusion conditions.',
+                );
+            }
+        }
+
         if ($facilitated) {
             // Taxability still decides. A marketplace collects nothing on an exempt
             // supply, and reporting it as facilitated would assert a tax that was
             // never due — a wrong return under a right charge.
-            $determination = $this->taxability->determine(
-                $query->place,
-                $query->category,
-                $query->amount,
-                $query->on(),
-            );
+            $determination = $this->determination($query);
 
             if (! $determination->isExemptFor($query->amount)) {
                 return new TaxAssessment(
@@ -201,7 +262,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 reason: sprintf(
                     'US sales tax: seller has no nexus/registration in %s; no obligation to collect.%s',
                     $subdivision->value,
-                    $this->nexusHint($subdivision),
+                    $this->nexusHint($subdivision, $query->on()),
                 ),
             );
         }
@@ -209,12 +270,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // On the SUPPLY's date, the same one the rate is resolved against. Priced
         // with one year's rate and another year's taxability, an assessment is
         // internally inconsistent in a way that still looks like a number.
-        $determination = $this->taxability->determine(
-            $query->place,
-            $query->category,
-            $query->amount,
-            $query->on(),
-        );
+        $determination = $this->determination($query);
 
         // Exempt outright, or below a price threshold — Massachusetts under $175,
         // New York under $110, Rhode Island under $250. Both are "no tax", and
@@ -241,7 +297,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
             $query->on()->format('Y-m-d'),
         );
 
-        if ($holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'], $holiday['capInclusive'])) {
+        if ($query->delivery === null && $holiday !== null && $this->qualifiesForHoliday($query, $holiday['cap'], $holiday['capInclusive'])) {
             return new TaxAssessment(
                 treatment: TaxTreatment::Exempt,
                 net: $query->amount,
@@ -304,7 +360,8 @@ readonly class UsSalesTaxRegime implements TaxRegime
         }
 
         $base = $determination->taxableBase($query->amount);
-        [$net, $tax, $gross] = $this->split($query, $rate, $base);
+        $rounding = $this->roundingPolicy($subdivision, $query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
         return new TaxAssessment(
             treatment: TaxTreatment::Standard,
@@ -322,7 +379,10 @@ readonly class UsSalesTaxRegime implements TaxRegime
                     ? sprintf(', charged on %s of %s above the exemption threshold', $base->getAmount(), $net->getAmount())
                     : '',
             ),
-            breakdown: $this->breakdown($rate, $base, $tax),
+            breakdown: $this->breakdown($rate, $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate, $base),
+            taxableBase: $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base,
         );
     }
 
@@ -352,7 +412,8 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
         $rate = new TaxRate($percent, RateKind::Standard, self::ELECTION_SOURCE, Confidence::Authoritative);
         $base = $determination->taxableBase($query->amount);
-        [$net, $tax, $gross] = $this->split($query, $rate, $base);
+        $rounding = $this->roundingPolicy($subdivision, $query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
         return new TaxAssessment(
             treatment: TaxTreatment::Standard,
@@ -369,7 +430,10 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 $election['statute'],
                 $composition,
             ),
-            breakdown: $this->breakdown($rate, $base, $tax),
+            breakdown: $this->breakdown($rate, $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate, $base),
+            taxableBase: $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base,
         );
     }
 
@@ -428,22 +492,10 @@ readonly class UsSalesTaxRegime implements TaxRegime
     /**
      * The jurisdiction whose LOCAL rate applies.
      *
-     * Destination almost always, and for every interstate supply without exception.
-     * The carve-out is an INTRASTATE sale in a state that sources at the seller:
-     * Texas, Arizona, Missouri, Ohio, Pennsylvania, Tennessee, Utah, Virginia and
-     * Mississippi all tax a Houston-to-Houston sale at the Houston seller's rate,
-     * not the buyer's, and getting that wrong is a 2% error in the seller's own
-     * home state — the one they are most likely to be audited in.
-     *
-     * Three things must all hold, and any of them missing falls back to
-     * destination rather than guessing:
-     *
-     *  1. a {@see SourcingRules} source is bound and knows the state's rule;
-     *  2. the rule is `Origin` — `Mixed` states split by jurisdiction layer or
-     *     seller type in ways a single place cannot express, so they stay on
-     *     destination until the split is modelled;
-     *  3. the seller's origin is supplied AND is in the same state, because
-     *     interstate is destination-sourced everywhere regardless.
+     * Remote supplies use destination. An identified intrastate route consults
+     * the rule for the supply date. Origin and destination can be applied directly;
+     * a missing rule or a mixed rule cannot select one place and refuses.
+     * Hosts constructing a regime without a sourcing source retain destination.
      */
     private function sourcedFrom(TaxQuery $query, SubdivisionCode $subdivision): Jurisdiction
     {
@@ -453,9 +505,34 @@ readonly class UsSalesTaxRegime implements TaxRegime
             return $query->place;
         }
 
-        return $this->sourcing?->for($subdivision)?->mode === SourcingMode::Origin
+        $mode = $this->sourcing?->for($subdivision, $query->on())?->mode;
+
+        if ($this->sourcing !== null && $mode === null) {
+            throw new UnresolvedTaxRule('No applicable intrastate sourcing rule for '.$subdivision->value.' on '.$query->on()->format('Y-m-d').'.');
+        }
+
+        if ($mode === SourcingMode::Mixed) {
+            throw new UnresolvedTaxRule('Mixed intrastate sourcing requires rules for each taxing authority in '.$subdivision->value.'.');
+        }
+
+        return $mode === SourcingMode::Origin
             ? $origin
             : $query->place;
+    }
+
+    private function roundingPolicy(SubdivisionCode $state, TaxQuery $query, TaxRate $rate): ?TaxRounding
+    {
+        $policy = $this->rounding?->for($state, $query->on())?->elected($query->roundingScope);
+
+        if ($policy !== null && $policy->aggregatesLocal === null) {
+            foreach ($rate->components as $component) {
+                if ($component->level !== JurisdictionLevel::State) {
+                    throw new UnresolvedTaxRule('The rounding policy does not specify how local tax shares are aggregated.');
+                }
+            }
+        }
+
+        return $policy;
     }
 
     /**
@@ -463,9 +540,9 @@ readonly class UsSalesTaxRegime implements TaxRegime
      * unregistered seller is flagged to verify whether the *Wayfair* trigger has
      * been crossed. Empty when no threshold source is bound or the state has none.
      */
-    private function nexusHint(SubdivisionCode $subdivision): string
+    private function nexusHint(SubdivisionCode $subdivision, DateTimeImmutable $at): string
     {
-        $threshold = $this->nexusThresholds?->for($subdivision);
+        $threshold = $this->nexusThresholds?->for($subdivision, $at);
 
         if ($threshold === null) {
             return '';

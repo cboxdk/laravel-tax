@@ -1,0 +1,1040 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-09-17",
+  "reviewedOn": "2026-09-18",
+  "release": "2026.09.16-236",
+  "sources": {
+    "eu-vat": {
+      "title": "European Commission: national standard VAT rates",
+      "url": "https://europa.eu/youreurope/business/finance-and-tax/vat/vat-rules-rates/index_en.htm",
+      "pageCheckedOn": "2026-07-13"
+    },
+    "hmrc-rates": {
+      "title": "HMRC: VAT rates",
+      "url": "https://www.gov.uk/vat-rates"
+    },
+    "hmrc-inclusive": {
+      "title": "HMRC BIM31505: GBP 120 inclusive = GBP 100 net + GBP 20 VAT",
+      "url": "https://www.gov.uk/hmrc-internal-manuals/business-income-manual/bim31505"
+    },
+    "hmrc-books": {
+      "title": "HMRC VAT Notice 701/10: ordinary printed books",
+      "url": "https://www.gov.uk/guidance/zero-rating-books-and-printed-matter-for-vat-notice-70110"
+    },
+    "fr-books": {
+      "title": "French tax authority: books at 5.5%",
+      "url": "https://bofip.impots.gouv.fr/bofip/1437-PGP.html/identifiant%3DBOI-TVA-LIQ-30-10-40-20260729"
+    },
+    "vero": {
+      "title": "Finnish Tax Administration: rates, 2026 change and mixed delivery example",
+      "url": "https://www.vero.fi/en/businesses-and-corporations/taxes-and-charges/vat/rates-of-vat/"
+    },
+    "eu-cross-border": {
+      "title": "European Commission: cross-border B2B services",
+      "url": "https://europa.eu/youreurope/business/finance-and-tax/vat/cross-border-vat/index_en.htm"
+    },
+    "wa-local-rates": {
+      "title": "Washington Department of Revenue: local sales and use tax rates, third quarter 2026",
+      "url": "https://dor.wa.gov/sites/default/files/2026-05/Q326_LSU-flyer-by-county.pdf",
+      "reviewedOn": "2026-09-18",
+      "effectiveFrom": "2026-07-01",
+      "effectiveThrough": "2026-09-30",
+      "reference": "Seattle, location code 1726: 6.5% state, 4.05% combined local, 10.55% total."
+    },
+    "fl-local-rates": {
+      "title": "Florida Department of Revenue: 2026 discretionary sales surtax and general state sales tax",
+      "url": "https://floridarevenue.com/Forms_library/current/dr15dss_26.pdf",
+      "stateRateUrl": "https://floridarevenue.com/taxes/taxesfees/Pages/sales_tax.aspx",
+      "reviewedOn": "2026-09-18",
+      "reference": "DR-15DSS, calendar year 2026, page 1: Miami-Dade 1% and Hillsborough 1.5% county surtax; the general state sales tax is 6%."
+    }
+  },
+  "notes": [
+    "Reference facts were collected independently of Cbox Tax; expected amounts for rate-only sources are arithmetic derived from the cited rates.",
+    "US local-rate expectations use published tax-authority tables. Their monetary amounts are derived arithmetic for synthetic transactions, not published transaction results.",
+    "The register release and supply dates are pinned. Updating a reference requires revisiting the cited source, not copying the engine's result.",
+    "US cases validate the package calculator from an explicitly supplied locality. The cited rate tables do not independently verify that locality's geographic boundaries, street parsing or an external geocoder."
+  ],
+  "cases": [
+    {
+      "id": "at-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "AT",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "20.00",
+        "gross": "120.00",
+        "ratePercentage": "20",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "be-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "BE",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "bg-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "BG",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "20.00",
+        "gross": "120.00",
+        "ratePercentage": "20",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "cy-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "CY",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "19.00",
+        "gross": "119.00",
+        "ratePercentage": "19",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "cz-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "CZ",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "de-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "DE",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "19.00",
+        "gross": "119.00",
+        "ratePercentage": "19",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "dk-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "DK",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "25.00",
+        "gross": "125.00",
+        "ratePercentage": "25",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "ee-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "EE",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "24.00",
+        "gross": "124.00",
+        "ratePercentage": "24",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "gr-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "GR",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "24.00",
+        "gross": "124.00",
+        "ratePercentage": "24",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "es-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "ES",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "fi-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "FI",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "25.50",
+        "gross": "125.50",
+        "ratePercentage": "25.5",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "fr-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "FR",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "20.00",
+        "gross": "120.00",
+        "ratePercentage": "20",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "hr-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "HR",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "25.00",
+        "gross": "125.00",
+        "ratePercentage": "25",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "hu-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "HU",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "27.00",
+        "gross": "127.00",
+        "ratePercentage": "27",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "ie-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "IE",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "23.00",
+        "gross": "123.00",
+        "ratePercentage": "23",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "it-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "IT",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "22.00",
+        "gross": "122.00",
+        "ratePercentage": "22",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "lt-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "LT",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "lu-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "LU",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "17.00",
+        "gross": "117.00",
+        "ratePercentage": "17",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "lv-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "LV",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "mt-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "MT",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "18.00",
+        "gross": "118.00",
+        "ratePercentage": "18",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "nl-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "NL",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "pl-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "PL",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "23.00",
+        "gross": "123.00",
+        "ratePercentage": "23",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "pt-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "PT",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "23.00",
+        "gross": "123.00",
+        "ratePercentage": "23",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "ro-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "RO",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "21.00",
+        "gross": "121.00",
+        "ratePercentage": "21",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "se-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "SE",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "25.00",
+        "gross": "125.00",
+        "ratePercentage": "25",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "si-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "SI",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "22.00",
+        "gross": "122.00",
+        "ratePercentage": "22",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "sk-standard",
+      "source": "eu-vat",
+      "kind": "official-rate",
+      "query": {
+        "country": "SK",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "23.00",
+        "gross": "123.00",
+        "ratePercentage": "23",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "gb-standard",
+      "source": "hmrc-rates",
+      "kind": "official-rate",
+      "query": {
+        "country": "GB",
+        "currency": "GBP",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "20.00",
+        "gross": "120.00",
+        "ratePercentage": "20",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "us-fl-miami-dade",
+      "source": "fl-local-rates",
+      "kind": "official-local-rate",
+      "referenceLocality": "Miami-Dade County, Florida",
+      "assumptions": "Synthetic USD 100 ordinary taxable goods; seller registered in destination state; delivery location supplied to the engine as a locality, not independently geocoded.",
+      "query": {
+        "country": "US",
+        "currency": "USD",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17",
+        "subdivision": "US-FL",
+        "registrations": [
+          "US-FL"
+        ],
+        "locality": {
+          "scheme": "county",
+          "value": "Miami-Dade County"
+        }
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "7.00",
+        "gross": "107.00",
+        "ratePercentage": "7",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null,
+        "components": {
+          "state": "6",
+          "county": "1"
+        }
+      }
+    },
+    {
+      "id": "us-wa-seattle",
+      "source": "wa-local-rates",
+      "kind": "official-local-rate",
+      "referenceLocality": "Seattle, Washington; location code 1726",
+      "notes": "The official table publishes a combined local share of 4.05%. The register represents that aggregate at city level; this case does not independently validate allocation among local authorities.",
+      "assumptions": "Synthetic USD 100 ordinary taxable goods; seller registered in destination state; delivery location supplied to the engine as a locality, not independently geocoded.",
+      "query": {
+        "country": "US",
+        "currency": "USD",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17",
+        "subdivision": "US-WA",
+        "registrations": [
+          "US-WA"
+        ],
+        "locality": {
+          "scheme": "zip9",
+          "value": "98109"
+        }
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "10.55",
+        "gross": "110.55",
+        "ratePercentage": "10.55",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null,
+        "components": {
+          "state": "6.5",
+          "city": "4.05"
+        }
+      }
+    },
+    {
+      "id": "us-fl-hillsborough",
+      "source": "fl-local-rates",
+      "kind": "official-local-rate",
+      "referenceLocality": "Hillsborough County, Florida",
+      "assumptions": "Synthetic USD 100 ordinary taxable goods; seller registered in destination state; delivery location supplied to the engine as a locality, not independently geocoded.",
+      "query": {
+        "country": "US",
+        "currency": "USD",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17",
+        "subdivision": "US-FL",
+        "registrations": [
+          "US-FL"
+        ],
+        "locality": {
+          "scheme": "county",
+          "value": "Hillsborough County"
+        }
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "7.50",
+        "gross": "107.50",
+        "ratePercentage": "7.5",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null,
+        "components": {
+          "state": "6",
+          "county": "1.5"
+        }
+      }
+    },
+    {
+      "id": "fr-printed-book",
+      "source": "fr-books",
+      "kind": "official-rate",
+      "query": {
+        "country": "FR",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "book",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "5.50",
+        "gross": "105.50",
+        "ratePercentage": "5.5",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "gb-printed-book",
+      "source": "hmrc-books",
+      "kind": "official-rate",
+      "query": {
+        "country": "GB",
+        "currency": "GBP",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "book",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "0.00",
+        "gross": "100.00",
+        "ratePercentage": "0",
+        "treatment": "zero_rated",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "fi-groceries-current",
+      "source": "vero",
+      "kind": "official-rate",
+      "query": {
+        "country": "FI",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "groceries",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "13.50",
+        "gross": "113.50",
+        "ratePercentage": "13.5",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "fi-groceries-before-change",
+      "source": "vero",
+      "kind": "official-rate",
+      "query": {
+        "country": "FI",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "groceries",
+        "suppliedAt": "2025-12-31"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "14.00",
+        "gross": "114.00",
+        "ratePercentage": "14",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "fi-groceries-after-change",
+      "source": "vero",
+      "kind": "official-rate",
+      "query": {
+        "country": "FI",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "groceries",
+        "suppliedAt": "2026-01-01"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "13.50",
+        "gross": "113.50",
+        "ratePercentage": "13.5",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "gb-hmrc-inclusive-example",
+      "source": "hmrc-inclusive",
+      "kind": "official-example",
+      "query": {
+        "country": "GB",
+        "currency": "GBP",
+        "amount": "120.00",
+        "pricing": "inclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "20.00",
+        "gross": "120.00",
+        "ratePercentage": "20",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "dk-inclusive",
+      "source": "eu-vat",
+      "kind": "arithmetic-regression",
+      "query": {
+        "country": "DK",
+        "currency": "DKK",
+        "amount": "125.00",
+        "pricing": "inclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "25.00",
+        "gross": "125.00",
+        "ratePercentage": "25",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "dk-credit-note",
+      "source": "eu-vat",
+      "kind": "arithmetic-regression",
+      "query": {
+        "country": "DK",
+        "currency": "DKK",
+        "amount": "-100.00",
+        "pricing": "exclusive",
+        "class": "general_goods",
+        "suppliedAt": "2026-09-17"
+      },
+      "expect": {
+        "net": "-100.00",
+        "tax": "-25.00",
+        "gross": "-125.00",
+        "ratePercentage": "25",
+        "treatment": "standard",
+        "confidence": "authoritative",
+        "limitedBy": null
+      }
+    },
+    {
+      "id": "dk-fr-b2b-service",
+      "source": "eu-cross-border",
+      "kind": "official-rule",
+      "query": {
+        "country": "FR",
+        "currency": "EUR",
+        "amount": "100.00",
+        "pricing": "exclusive",
+        "class": "professional_service",
+        "suppliedAt": "2026-09-17",
+        "sellerCountry": "DK",
+        "customer": "business",
+        "customerTaxIdValidated": true
+      },
+      "expect": {
+        "net": "100.00",
+        "tax": "0.00",
+        "gross": "100.00",
+        "ratePercentage": null,
+        "treatment": "reverse_charge",
+        "confidence": null,
+        "limitedBy": null
+      }
+    }
+  ],
+  "orders": [
+    {
+      "id": "fi-vero-mixed-inclusive-delivery",
+      "source": "vero",
+      "kind": "official-example",
+      "notes": "Vero specifies EUR 60 groceries, EUR 20 cleaning products, EUR 12 inclusive delivery, split EUR 9/EUR 3 by gross prices. The cent-rounded VAT amounts below are calculated from that example.",
+      "query": {
+        "country": "FI",
+        "currency": "EUR",
+        "pricing": "inclusive",
+        "apportionment": "gross_value",
+        "suppliedAt": "2026-09-17",
+        "lines": [
+          {
+            "id": "food",
+            "amount": "60.00",
+            "class": "groceries"
+          },
+          {
+            "id": "cleaning-products",
+            "amount": "20.00",
+            "class": "general_goods"
+          },
+          {
+            "id": "delivery",
+            "amount": "12.00",
+            "delivery": true
+          }
+        ]
+      },
+      "expect": {
+        "net": "79.12",
+        "tax": "12.88",
+        "gross": "92.00",
+        "lines": {
+          "food": {
+            "net": "52.86",
+            "tax": "7.14",
+            "gross": "60.00"
+          },
+          "cleaning-products": {
+            "net": "15.94",
+            "tax": "4.06",
+            "gross": "20.00"
+          },
+          "delivery": {
+            "net": "10.32",
+            "tax": "1.68",
+            "gross": "12.00"
+          }
+        }
+      }
+    }
+  ]
+}

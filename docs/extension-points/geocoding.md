@@ -36,7 +36,7 @@ $jurisdiction = app(AddressGeocoder::class)->locate([
 Two rules the design keeps:
 
 - **We take only geocoding from Geocodio** — country and state/province (plus the
-  census identifiers below when rooftop is enabled). Geocodio offers no sales-tax
+  county names, ZIP+4 and coordinates described below). Geocodio offers no sales-tax
   or taxing-jurisdiction append, and none is wanted: the rate and the calculation
   stay in this engine, so it remains authoritative and the adapter swappable.
 - **Deny-by-default.** Any failure — no key, request error, unparseable result, a
@@ -64,16 +64,18 @@ Two further v2 changes do not affect this adapter: `zip` became `postal_code`
 instead of returning the FSA alone. The `census` append is unchanged between
 versions.
 
-## Rooftop resolution (experimental)
+## Address-level resolution
 
-A `Jurisdiction` carries exactly **one** locality, so with `tax:data:sync --streets`
-enabled the adapter attaches whichever key that state is actually resolved by:
+Enable `tax.geocodio.rooftop` (`GEOCODIO_ROOFTOP=true`) and sync the boundary
+artifacts to attach ZIP+4 or point localities. A `Jurisdiction` carries one locality,
+chosen for the state's resolution path:
 
 | State | Locality attached | Resolved by |
 | --- | --- | --- |
 | California, New Mexico | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from each state's own GIS |
-| the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the dataset's boundary index, via `UsTaxDatasetRateSource` |
-| everywhere else | none | the state rate applies |
+| the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the register's boundary index, via `RegisterBoundaries` |
+| Florida, Pennsylvania, Hawaii, Virginia | county or independent-city name, scheme `county` | register jurisdiction names; works with rooftop disabled |
+| other states | none | state share, flagged where local tax may be missing |
 
 Coordinates come back on every Geocodio result; the ZIP+4 needs the `zip4` append,
 which the adapter requests when rooftop is on:
@@ -83,11 +85,16 @@ which the adapter requests when rooftop is on:
 | `fields.zip4.zip9` | `["66101-3064"]` — the USPS add-on |
 | `address_components.postal_code` | `66101` — the ZIP5 alone, not enough |
 
-A ZIP+4 is a **postal** key, not a taxing authority. The dataset's boundary index
+A ZIP+4 is a **postal** key, not a taxing authority. The register's boundary index
 expands it into the authorities that apply, and the rate source sums them — see
-[the US dataset's rooftop section](../coverage/the-register.md).
+[register coverage](../coverage/the-register.md).
 A point needs no such expansion: it is real geography, and the polygon it falls in
-carries the rate directly.
+identifies the authorities whose rates the register supplies.
+
+`tax:data:sync --streets=KS,WA` additionally installs street indexes. It does not
+enable the geocoder's rooftop option; the shipped geocoder emits the locality keys
+in the table. Parsed street addresses can be resolved through
+`RegisterBoundaries::resolveParsed()`.
 
 Two refusals worth knowing. Geocodio returns `zip9` as a **list**; an address
 spanning several add-ons could straddle a jurisdiction line, so no locality is

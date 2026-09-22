@@ -12,6 +12,7 @@ use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
+use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
 use DateTimeImmutable;
 
@@ -131,6 +132,9 @@ readonly class TaxQuery
          * rather than quietly taxed at the standard rate forever.
          */
         public ?string $itemCode = null,
+        /** Used only when the published policy permits a seller election. */
+        public RoundingScope $roundingScope = RoundingScope::Line,
+        public ?DeliveryCharge $delivery = null,
     ) {}
 
     /**
@@ -159,6 +163,8 @@ readonly class TaxQuery
             $this->postalCode,
             $this->marketplaceFacilitated,
             $this->itemCode,
+            $this->roundingScope,
+            $this->delivery,
         );
     }
 

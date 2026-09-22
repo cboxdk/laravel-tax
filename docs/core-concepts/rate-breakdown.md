@@ -93,7 +93,7 @@ and the shortfall surfaces at audit rather than at calculation. A source that
 cannot decompose a rate supplies **no** components.
 
 ```php
-new TaxRate('9.125', RateKind::Standard, 'us-tax-data', components: [
+new TaxRate('9.125', RateKind::Standard, 'cbox-tax', components: [
     new RateComponent(JurisdictionLevel::State, '6.5'),
     new RateComponent(JurisdictionLevel::County, '1', '209'),
     new RateComponent(JurisdictionLevel::City, '1.625', '36000'),
@@ -105,12 +105,12 @@ name for an authority leaves them null rather than deriving a plausible label.
 
 ### What the shipped US source emits
 
-[`UsTaxDatasetRateSource`](../extension-points/rate-sources.md) decomposes by the
+[`RegisterRateSource`](../extension-points/rate-sources.md) decomposes by the
 state's rate basis:
 
 | Rate basis | Example | Components |
 | --- | --- | --- |
-| Component | KS, NC, TX | The state share plus one line **per authority** the boundary index matched |
+| Component | KS, NC | The state share plus one line **per authority** the boundary index matched |
 | Combined | CA | Two lines: the state share, and the **aggregate** local remainder |
 | — (state-only rate) | any state, no rooftop | None — the state share is the absence of a stack, not a stack of one |
 | — (reduced category) | MO grocery | None — a product rule, not a stack of authorities |

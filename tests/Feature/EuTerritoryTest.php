@@ -16,7 +16,6 @@ use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
-use DateTimeImmutable;
 
 // Ten territories sit inside a Member State and outside its VAT rules. Before
 // this, a delivery to Tenerife was charged Spanish VAT — which is not a rate

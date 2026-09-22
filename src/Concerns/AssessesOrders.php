@@ -8,6 +8,9 @@ use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\ApportionmentBasis;
+use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\ValueObjects\DeliveryCharge;
 use Cbox\Tax\ValueObjects\FlatCharge;
 use Cbox\Tax\ValueObjects\LineAssessment;
 use Cbox\Tax\ValueObjects\OrderAssessment;
@@ -18,11 +21,9 @@ use Cbox\Tax\ValueObjects\TaxOrder;
 /**
  * Assessing a document as a fan-out over single supplies.
  *
- * Shared by the shipped calculator and by the adapter that wraps a host's own, so
- * the two cannot drift into answering a document differently. There is deliberately
- * no tax logic here: each line becomes a query via {@see TaxOrder::queryFor()} and
- * runs the identical path, which is what guarantees a document cannot reach an
- * outcome a single supply could not.
+ * Shared by the shipped calculator and the adapter that wraps a host's own.
+ * Each line becomes a query via {@see TaxOrder::queryFor()}; delivery is allocated
+ * after the goods are assessed, then published invoice rounding is reconciled.
  *
  * A line that refuses throws, and the whole document fails with it. Half a
  * tax-assessed invoice is not a useful artefact — worse, it is one a caller might
@@ -32,6 +33,8 @@ use Cbox\Tax\ValueObjects\TaxOrder;
  */
 trait AssessesOrders
 {
+    use RoundsInvoices;
+
     public function assessOrder(TaxOrder $order): OrderAssessment
     {
         $delivered = [];
@@ -64,10 +67,10 @@ trait AssessesOrders
             $byId[$assessed->id] = $assessed;
         }
 
-        $assessment = new OrderAssessment(array_map(
+        $assessment = new OrderAssessment($this->roundInvoice($order, array_map(
             static fn (SupplyLine $line): LineAssessment => $byId[$line->id],
             $order->lines,
-        ));
+        )));
 
         $charges = $this->orderCharges($order, $assessment);
 
@@ -77,10 +80,10 @@ trait AssessesOrders
     /**
      * A delivery charge, spread across the supplies it delivers.
      *
-     * Article 78(b) makes it part of the taxable amount of those supplies, so it has
-     * no rate to look up — it inherits theirs. On a single-rate cart that is simply
-     * that rate, and the assessment reports it. On a mixed one there is no single
-     * rate to report, so `rate` is null and the reason carries the split in words.
+     * EU incidental costs follow the supplied goods under Article 78(b). Other
+     * regimes may include or exclude a component under their own published rules.
+     * Each portion carries delivery facts to the regime; a mixed result has no
+     * single rate and retains its component assessments in `portions`.
      *
      * The split is NOT put in a `TaxBreakdown`. That structure describes which
      * authorities levied what — state, county, city — and a delivery split describes
@@ -100,15 +103,20 @@ trait AssessesOrders
     {
         $shares = $this->apportion($order, $charge, $delivered);
 
-        $tax = Money::zero($charge->amount->getCurrency());
+        $net = Money::zero($charge->amount->getCurrency(), $charge->amount->getContext());
+        $tax = $net;
+        $gross = $net;
         $parts = [];
+        $portions = [];
+        $exactTax = null;
+        $rounding = null;
 
         foreach ($shares as [$line, $assessed, $share]) {
             // The share is assessed AS the line it accompanies — that line's class,
             // its commodity code, its exemption. That is the whole mechanism: the
             // rate is not looked up for "delivery", it is looked up for what is
             // being delivered.
-            $portion = $this->assess($order->queryFor(new SupplyLine(
+            $portion = $this->assessLine($order, new SupplyLine(
                 id: $charge->id,
                 amount: $share,
                 category: $line->category,
@@ -116,9 +124,30 @@ trait AssessesOrders
                 commodityCode: $line->commodityCode,
                 exemption: $line->exemption,
                 itemCode: $line->itemCode,
-            )));
+                isDeliveryCharge: true,
+                delivery: ($charge->delivery ?? new DeliveryCharge)->forGoods($assessed->treatment->taxWasDue()),
+            ));
 
+            if ($order->place->country->value === 'US' && ! $share->isZero() && $portion->isTaxable()
+                && $assessed->taxableBase !== null && $assessed->isTaxable()
+                && $assessed->taxableBase->abs()->isLessThan($assessed->net->abs())) {
+                throw new UnresolvedTaxRule('Taxable delivery of partially exempt goods requires a rule for allocating its taxable base.');
+            }
+
+            $portions[] = $portion;
+
+            if ($portion->rounding !== null && $portion->unroundedTax !== null) {
+                if ($rounding !== null && $rounding->key() !== $portion->rounding->key()) {
+                    throw new UnresolvedTaxRule('Delivery portions have incompatible rounding policies.');
+                }
+
+                $rounding = $portion->rounding;
+                $exactTax = $exactTax === null ? $portion->unroundedTax : $exactTax->plus($portion->unroundedTax);
+            }
+
+            $net = $net->plus($portion->net);
             $tax = $tax->plus($portion->tax);
+            $gross = $gross->plus($portion->gross);
             $parts[] = sprintf(
                 '%s at %s',
                 $share->getAmount(),
@@ -131,17 +160,25 @@ trait AssessesOrders
             // delivery is taxed at several. The reason carries the split instead of
             // forcing it into a breakdown built to describe authority levels, which
             // is a different thing wearing a similar shape.
-            treatment: $delivered[0][1]->treatment,
-            net: $charge->amount,
+            treatment: array_any($portions, static fn (TaxAssessment $portion): bool => $portion->isTaxable())
+                ? TaxTreatment::Standard : $portions[0]->treatment,
+            net: $net,
             tax: $tax,
-            gross: $charge->amount->plus($tax),
+            gross: $gross,
             placeOfSupply: $delivered[0][1]->placeOfSupply,
-            rate: count($shares) === 1 ? $delivered[0][1]->rate : null,
+            rate: count($portions) === 1 ? $portions[0]->rate : null,
             reason: sprintf(
-                'Delivery takes the rates of what it delivers (Art. 78(b)), %s: %s.',
+                'Delivery assessed under the applicable jurisdiction rules, %s: %s.',
                 $order->apportionment->describe(),
                 implode(', ', $parts),
             ),
+            breakdown: count($portions) === 1 ? $portions[0]->breakdown : null,
+            taxPoint: $portions[0]->taxPoint,
+            reportedOn: $portions[0]->reportedOn,
+            rounding: $rounding,
+            unroundedTax: $exactTax,
+            portions: $portions,
+            taxableBase: count($portions) === 1 ? $portions[0]->taxableBase : null,
         );
     }
 
@@ -168,9 +205,11 @@ trait AssessesOrders
         foreach ($delivered as [$line, $assessed]) {
             $key = $assessed->treatment->value.'|'.((string) $assessed->rate?->percentage);
 
-            $weight = $order->apportionment === ApportionmentBasis::Equal
-                ? Money::of(1, $charge->amount->getCurrency())
-                : $assessed->net->abs();
+            $weight = match ($order->apportionment) {
+                ApportionmentBasis::Equal => Money::of(1, $charge->amount->getCurrency()),
+                ApportionmentBasis::NetValue => $assessed->net->abs(),
+                ApportionmentBasis::GrossValue => $assessed->gross->abs(),
+            };
 
             if (! isset($groups[$key])) {
                 $groups[$key] = [$line, $assessed, $weight];

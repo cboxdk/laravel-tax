@@ -8,6 +8,7 @@ use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Config\Repository as Config;
 
 /**
  * Point the engine at a different installed version.
@@ -22,14 +23,17 @@ final class ActivateCommand extends Command
 
     protected $description = 'Make an already-installed register version live';
 
-    public function handle(StoreLayout $layout, StorePointer $pointer): int
+    public function handle(StoreLayout $layout, StorePointer $pointer, Config $config): int
     {
         $installed = $layout->installed();
         $wanted = Shape::scalar($this->argument('version'));
 
         if ($wanted === 'previous') {
             $live = $pointer->current();
-            $others = array_values(array_diff($installed, $live === null ? [] : [$live]));
+            $others = array_values(array_filter(
+                $installed,
+                static fn (string $version): bool => $live !== null && strnatcmp($version, $live) < 0,
+            ));
             $wanted = $others === [] ? '' : Shape::scalar(end($others));
         }
 
@@ -41,7 +45,13 @@ final class ActivateCommand extends Command
         }
 
         $pointer->pointAt($wanted);
-        $this->info(sprintf('Live: %s.', $wanted));
+        $this->info(sprintf('Active: %s.', $wanted));
+
+        $pin = Shape::text($config->get('tax.register.version'));
+
+        if ($pin !== null && $pin !== $wanted) {
+            $this->warn(sprintf('Pricing remains pinned to %s by tax.register.version.', $pin));
+        }
 
         return self::SUCCESS;
     }

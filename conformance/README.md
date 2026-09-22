@@ -7,6 +7,29 @@ determination — a supply in, an answer out — and a sentence saying what it p
 vendor/bin/pest tests/Feature/ConformanceTest.php
 ```
 
+## Independent references against a real release
+
+The fixture corpus below checks engine behaviour. A separate
+[reference corpus](reference/README.md) checks 41 dated results against public
+tax-authority references, using a real
+downloaded register and the public application-container bindings:
+
+```bash
+composer test:reference
+```
+
+See the [data/engine validation matrix](validation-matrix.md) for ownership,
+remaining data in PHP, and the difference between fixture, adapter and independent
+integration evidence.
+
+The reference group also runs the dated-rule, rounding and delivery regression
+against a pinned release. Remaining publication work is collected in
+[cadastre feedback](cadastre-feedback.md). The companion
+[consumer-contract proposal](cadastre-consumer-contract.md) distinguishes existing
+schema fields from proposed predicates, comparison operators and rounding groups,
+with input/output acceptance cases. Those draft cases are not counted as executed
+conformance tests.
+
 ## Why this exists
 
 **One engine, several consumers.** The library, the HTTP API and any embedded
@@ -15,10 +38,9 @@ apart quietly. Each keeps passing its own tests while disagreeing with the other
 and nobody finds out until a customer does. A shared corpus is the only thing that
 makes disagreement visible.
 
-**And it is meant to be handed over.** In a category where no vendor discloses how
-an answer is reached, the cheapest way to be argued with is to publish the cases you
-hold yourself to. Take these, run them against this engine, run them against
-something else, and see who answers what.
+**The cases are inspectable and reusable.** Each one records the inputs and expected
+outcome so consumers can reproduce it through their own integration and review why
+that answer was selected.
 
 ## What a vector looks like
 
@@ -42,8 +64,8 @@ breaks on a change that was never what it was guarding.
 
 ## Vectors pin the fixture, not the mirror
 
-They run against the committed dataset slice in `tests/Fixtures/`, never the live
-published mirror. A rate that changes in the world must not silently change what a
+They run against the register fixture defined in `tests/Fixtures/SuiteRegister.php`,
+never the live published register. A rate that changes in the world must not silently change what a
 vector asserts — that would make this a mirror of today's data instead of a
 description of behaviour. When a rate genuinely changes, the fixture is updated
 deliberately and the diff is reviewable.
@@ -79,17 +101,17 @@ where the engine turned out to have nothing at all.
 Two of the first ten vectors were wrong, and both were wrong the same way — a
 foreign intuition applied to EU VAT:
 
-- **Hungary was assumed to reduce groceries.** It does not; food is charged at the
-  full 27%. Assuming every member state reduces food is how an intuition becomes an
-  under-charge. The vector now pins the standard rate, and a second one pins France
-  at 5.5% so both directions are covered.
+- **The broad grocery class needs explicit fixture expectations.** The fixture
+  assigns Hungary 27% and France 5.5% to exercise both standard and reduced paths.
+  These invented expectations do not establish the legal rate for every food
+  product in either country; real classifications need a sourced reference.
 - **An empty registration list was read as "charge nothing."** That is US thinking:
   there, no nexus means you must not collect. In the EU a distance seller is obliged
   to collect through OSS, and relief must be *affirmatively asserted* — silence is
   not relief, and not being registered is non-compliance rather than an exemption.
 
-Neither was an engine defect. Both would have shipped as confident wrong answers
-without a corpus to state them out loud.
+Neither was an engine defect. They exposed assumptions in the fixture vectors;
+independent references are needed to establish real-world correctness.
 
 Then the order shape found three more, and these were real:
 
@@ -137,8 +159,7 @@ contract the service has to satisfy. The request shape, the three outcomes and t
 field names in `run-http.php` are the specification, executable.
 
 It also holds one thing the library runner cannot: that every answer carries a
-`reason`. That is the part no competitor returns, and a response without it has
-dropped what makes the number defensible.
+`reason` explaining the tax determination so callers can audit it.
 
 ## Adding one
 

@@ -38,6 +38,13 @@ enum ApportionmentBasis: string
     case NetValue = 'net_value';
 
     /**
+     * Pro rata by tax-inclusive selling prices, as in the Finnish Tax
+     * Administration's mixed grocery and household-goods delivery example.
+     * The caller selects the basis appropriate to its transaction.
+     */
+    case GrossValue = 'gross_value';
+
+    /**
      * An equal share to each delivered line, whatever it costs.
      *
      * Defensible where value tracks nothing about the cost of delivering: three
@@ -51,6 +58,7 @@ enum ApportionmentBasis: string
     {
         return match ($this) {
             self::NetValue => 'apportioned pro rata by net value',
+            self::GrossValue => 'apportioned pro rata by gross value',
             self::Equal => 'apportioned equally across the delivered lines',
         };
     }

@@ -30,13 +30,33 @@ already-exempt — untouched. See [exemptions](exemptions.md).
 - **Logic (owned):** place-of-supply, B2B/B2C reverse-charge determination,
   inclusive/exclusive handling, rate application and rounding, and the assessment
   itself all live in the engine.
-- **Data (sourced):** the rate number comes from a `TaxRateSource` — the register, or
-  feed, the SST files, or a commercial adapter. The engine decides *whether and
-  how* to apply it.
+- **Data (sourced):** the register supplies percentages, effective windows,
+  category scopes, rule parameters and boundary artifacts. Contracts allow a host
+  to replace these sources. The engine decides *whether and how* to apply them.
+- **Adapter logic:** compiling artifacts, translating classifications and choosing
+  applicable records are executable code, even under the `Register` namespace.
+- **Host inputs:** amounts, seller registrations, product mappings, addresses,
+  validated tax IDs, exemptions and supply dates describe the transaction.
+
+Some reference facts still ship in PHP: `StaticEuTerritories` carries postal ranges
+and regional rate substitutions; `UsLocalStructure` carries state lists;
+`CategoryMap` maps public classes to register categories. They remain data or
+maintained mappings by meaning, irrespective of their storage format. Moving the
+main rate source to the register has not externalized every tax fact.
+
+The [data/engine validation matrix](../../conformance/validation-matrix.md) records
+the current boundary and evidence. Fixture tests check logic against controlled
+data; independent reference cases check the assembled system. Passing the latter
+does not isolate data correctness from correct interpretation and calculation.
 
 ## Deny-by-default
 
 - No regime modelled for a jurisdiction → `UnsupportedJurisdiction`.
 - No rate available from the source → `UnresolvedTaxRate`.
+- Conflicting/unsupported published rules or missing delivery facts → `UnresolvedTaxRule`.
+
+The [rounding and delivery](rounding-and-delivery.md) contracts keep these rules
+sourced while the engine applies them and reconciles the invoice. Remaining
+publication requests are recorded in [cadastre feedback](../../conformance/cadastre-feedback.md).
 
 Neither ever degrades to a silent 0% — a wrong tax outcome is a real liability.

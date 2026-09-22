@@ -9,6 +9,7 @@ description: PHP and Laravel versions and the direct dependencies the engine enf
 From `composer.json`:
 
 - **PHP** `^8.4`
+- **`ext-dom`** — XML parsing for tax-ID validation.
 - **`ext-zlib`** — the register is served gzipped (1.8 MB against 54 MB of JSON) and
   inflated on read.
 - **[`cboxdk/tax-resolver`](https://github.com/cboxdk/tax-resolver)** `^1.0` — the
@@ -21,8 +22,9 @@ From `composer.json`:
 - **[`brick/money`](https://github.com/brick/money)** `^0.14` — exact integer-minor-unit
   money for amounts and rate maths.
 
-No migration is required. Rate data is supplied by a `TaxRateSource`; the default
-binding ships representative national rates for out-of-the-box use.
+No database migration is required. The default `TaxRateSource` reads a local
+register compiled by `php artisan tax:data:sync`; a fresh install refuses until
+that data is available. See [The register](getting-started/the-register.md).
 
 ## Why Laravel 13 only
 

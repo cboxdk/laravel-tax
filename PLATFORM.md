@@ -1,6 +1,6 @@
 # The platform, for someone arriving cold
 
-Five repositories and two published data mirrors. This is what each one is for, why
+The calculation packages and one published register. This is what each one is for, why
 the split exists, and the handful of decisions you need to know before changing
 anything.
 
@@ -61,28 +61,26 @@ running. A credit note against a March invoice reprices at March's law.
 how much to trust a figure; `RateLimit` says what was missing and the one step that
 closes it. A warning nobody can act on is one everybody filters out.
 
-## Live branches, as of 2026-08-15
+## Release status
 
-Nothing below is tagged or released. **Versioning and publication are the repo
-owner's call** — do not tag, do not cut releases.
-
-| Repo | Branch | Carries |
-| --- | --- | --- |
-| laravel-tax | `eu-dataset-source` | EU dataset source, county resolution, CN/CPA commodity scopes, marketplace facilitator, sales tax holidays, `ProductCatalogue`, `RateLimit`. Would be **v0.11.0** — breaking: two third-party rate sources removed, `EuTerritories::for()` signature changed |
-| cadastre | `the-deck-resolves` | Conformance deck cut from the artifacts a release actually ships, read back through the shared resolver |
-| laravel-nexus | `main` | — |
-| laravel-geo | `main` | — |
+The register integration is on `main` and recorded under `Unreleased` in
+`CHANGELOG.md`. Check Git tags and releases for publication status rather than
+assuming the current branch has shipped. Versioning and publication are the repo
+owner's call; do not tag or cut releases without an explicit request.
 
 ## Things that will bite you
 
-**The datasets are verified before they are believed.** Both readers check a sha256
-per section against the published manifest and refuse a schema version they were not
-written for. If you change the published shape, that is a schema decision: **additive
-changes must NOT bump `schemaVersion`**, because the reader refuses on mismatch and a
-bump locks out every existing install.
+**The compiler reads schema 1.x.** It rejects a different major version. Additive
+fields can still change the meaning of an answer, so compatibility needs tests
+against published documents as well as fixture tests.
 
-**A new section is additive; a new field inside an existing one may not be.** Adding
-`files.sections.holidays` was safe. Changing the shape of `rates` would not be.
+**The compiled manifest checks local integrity.** `tax:data:verify` checks installed
+file sizes and hashes offline. The compiler writes those hashes from downloaded
+content; they are not signatures or independent verification of the publisher.
+
+**A pin overrides the active pointer.** `tax.register.version` controls pricing and
+the default sync target. Restart long-running workers after changing releases.
+Pruning protects both the active release and the configured pin.
 
 **Positional constructor arguments.** Several value objects gained parameters that
 were deliberately appended LAST rather than placed where they belong by meaning,
@@ -106,7 +104,7 @@ Every repo, before every commit. Never a partial run.
 ```bash
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --no-progress --memory-limit=1G   # level max, larastan
-vendor/bin/pest
+vendor/bin/pest  # includes the live e2e group
 composer audit --no-dev
 composer license-check
 ```

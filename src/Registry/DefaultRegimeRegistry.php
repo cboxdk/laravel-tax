@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Cbox\Tax\Registry;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\RegimeRegistry;
+use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Contracts\UsTaxFacts;
@@ -43,7 +45,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
      * the regime falls back to destination taxation. The optional
      * {@see NexusThresholds} lets the US regime annotate a `NotRegistered` outcome
      * with the state's economic-nexus threshold, and the optional
-     * {@see UsTaxDataset} tells it when each state's marketplace-facilitator rule
+     * {@see UsTaxFacts} tells it when each state's marketplace-facilitator rule
      * took effect — without it the regime never applies that treatment, which
      * leaves the tax with the seller and is the recoverable direction.
      */
@@ -62,6 +64,8 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
          * is mainland VAT charged on a supply outside the VAT area.
          */
         ?EuTerritories $territories = null,
+        ?RoundingRules $rounding = null,
+        ?DeliveryRules $delivery = null,
     ): self {
         $national = new NationalTaxRegime;
 
@@ -90,7 +94,7 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
             'ua-vat' => $national,
             'my-sst' => new MalaysiaSstRegime,
             'in-gst' => new IndiaGstRegime,
-            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new AlwaysTaxable, $nexusThresholds, $sourcing, $dataset),
+            'us-sales-tax' => new UsSalesTaxRegime($taxability ?? new AlwaysTaxable, $nexusThresholds, $sourcing, $dataset, $rounding, $delivery),
             'ca-gst' => new CaGstRegime,
         ]);
     }

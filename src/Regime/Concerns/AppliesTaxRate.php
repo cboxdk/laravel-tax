@@ -7,12 +7,14 @@ namespace Cbox\Tax\Regime\Concerns;
 use Brick\Math\BigDecimal;
 use Brick\Money\AllocationMode;
 use Brick\Money\Money;
+use Brick\Money\RationalMoney;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
+use Cbox\Tax\ValueObjects\TaxRounding;
 
 /**
  * Shared rate maths for regimes: split an amount into net/tax/gross honouring
@@ -28,11 +30,11 @@ trait AppliesTaxRate
      *                                   the whole amount, which is the usual case.
      * @return array{Money, Money, Money} net, tax, gross
      */
-    protected function split(TaxQuery $query, TaxRate $rate, ?Money $taxableBase = null): array
+    protected function split(TaxQuery $query, TaxRate $rate, ?Money $taxableBase = null, ?TaxRounding $rounding = null): array
     {
         if ($query->pricing === Pricing::Exclusive) {
             $net = $query->amount;
-            $tax = $rate->taxOnNet($taxableBase ?? $net);
+            $tax = $rate->taxOnNet($taxableBase ?? $net, $rounding);
             $gross = $net->plus($tax);
 
             return [$net, $tax, $gross];
@@ -41,7 +43,7 @@ trait AppliesTaxRate
         $gross = $query->amount;
 
         if ($taxableBase === null) {
-            $net = $rate->netFromGross($gross);
+            $net = $rate->netFromGross($gross, $rounding);
 
             return [$net, $gross->minus($net), $gross];
         }
@@ -57,11 +59,18 @@ trait AppliesTaxRate
         // base, which is what the caller already resolved for us.
         $exempt = $query->amount->minus($taxableBase);
         $taxableGross = $gross->minus($exempt);
-        $taxableNet = $rate->netFromGross($taxableGross);
+        $taxableNet = $rate->netFromGross($taxableGross, $rounding);
         $tax = $taxableGross->minus($taxableNet);
         $net = $gross->minus($tax);
 
         return [$net, $tax, $gross];
+    }
+
+    /** Exact tax retained until a document's rounding policy is applied. */
+    protected function unroundedTax(TaxQuery $query, TaxRate $rate, ?Money $taxableBase = null): RationalMoney
+    {
+        return ($taxableBase ?? $query->amount)->toRational()->multipliedBy($rate->percentage)
+            ->dividedBy($query->pricing === Pricing::Exclusive ? BigDecimal::of(100) : $rate->percentage->plus(100));
     }
 
     protected function zero(TaxQuery $query): Money

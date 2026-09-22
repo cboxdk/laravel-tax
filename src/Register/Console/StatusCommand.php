@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Console;
 
 use Cbox\Tax\Register\Compile\SectionFetcher;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Config\Repository as Config;
 use Throwable;
 
 /**
@@ -24,25 +26,31 @@ final class StatusCommand extends Command
 
     protected $description = 'Show the installed Cbox Tax register and what it covers';
 
-    public function handle(StoreLayout $layout, StorePointer $pointer, SectionFetcher $fetcher): int
+    public function handle(StoreLayout $layout, StorePointer $pointer, SectionFetcher $fetcher, RegisterDataset $dataset, Config $config): int
     {
         $live = $pointer->current();
+        $pricing = $dataset->version();
+        $pin = Shape::text($config->get('tax.register.version'));
         $installed = $layout->installed();
 
         $this->line('Store: '.$layout->root());
 
-        if ($live === null) {
+        if ($pricing === null) {
             $this->newLine();
-            $this->warn('No register installed. Run `php artisan tax:data:sync`.');
+            $this->warn($pin === null
+                ? 'No register installed. Run `php artisan tax:data:sync`.'
+                : sprintf('Pinned register %s is not installed. Run `php artisan tax:data:sync`.', $pin));
 
             return self::FAILURE;
         }
 
-        $manifest = $this->manifest($layout->file($live, 'manifest.json'));
+        $manifest = $this->manifest($layout->file($pricing, 'manifest.json'));
 
         $this->newLine();
         $this->table(['', ''], [
-            ['Live version', $live],
+            ['Active version', $live ?? 'none'],
+            ['Configured pin', $pin ?? 'none'],
+            ['Pricing version', $pricing],
             ['Published at', Shape::scalar($manifest['publishedAt'] ?? '—')],
             ['Compiled at', Shape::scalar($manifest['compiledAt'] ?? '—')],
             ['Schema', Shape::scalar($manifest['schemaVersion'] ?? '—')],
@@ -50,11 +58,11 @@ final class StatusCommand extends Command
             ['US states', $this->describe($manifest['states'] ?? null, 'all')],
             ['Street indexes', $this->describe($manifest['streets'] ?? null, 'none')],
             ['Files', (string) count(Shape::records($manifest['files'] ?? null))],
-            ['Also installed', implode(', ', array_values(array_diff($installed, [$live]))) ?: '—'],
+            ['Also installed', implode(', ', array_values(array_diff($installed, [$pricing]))) ?: '—'],
         ]);
 
         if (! $this->option('offline')) {
-            $this->published($fetcher, $live);
+            $this->published($fetcher, $pricing, $pin);
         }
 
         $this->newLine();
@@ -63,7 +71,7 @@ final class StatusCommand extends Command
         return self::SUCCESS;
     }
 
-    private function published(SectionFetcher $fetcher, string $live): void
+    private function published(SectionFetcher $fetcher, string $live, ?string $pin): void
     {
         try {
             $latest = Shape::text($fetcher->json('/api/v1/releases/latest')['version'] ?? null);
@@ -82,7 +90,9 @@ final class StatusCommand extends Command
             return;
         }
 
-        $this->warn(sprintf('A newer release is published: %s. Run `php artisan tax:data:sync`.', $latest ?? '?'));
+        $this->warn(sprintf('Published release: %s. %s', $latest ?? '?', $pin === null
+            ? 'Run `php artisan tax:data:sync` to update.'
+            : sprintf('Pricing is pinned to %s; change tax.register.version to update.', $pin)));
     }
 
     private function describe(mixed $value, string $whenNull): string

@@ -41,9 +41,9 @@ The tax point is threaded through **every** dated lookup for that supply:
 | Resolved on the tax point | Where the dated data lives |
 | --- | --- |
 | the rate | `TaxRateSource::rateFor($jurisdiction, $category, $at)` |
-| product taxability | `ProductTaxability::isTaxable($jurisdiction, $category, $at)` |
+| product taxability | `ProductTaxability::determine($jurisdiction, $category, $amount, $at)` |
 | the buyer's exemption validity | `TaxExemption` validity window |
-| nexus thresholds | dated windows in the dataset |
+| marketplace, holidays and sourcing | dated rules in the register |
 
 This is a correctness property, not a convenience. An assessment priced with one
 year's rate and another year's taxability is internally inconsistent, and a state
@@ -58,7 +58,7 @@ $grocery = fn (string $date): TaxQuery => new TaxQuery(
     place: $kansas,
     customer: CustomerType::Consumer,
     seller: $registrations,
-    category: TaxCategory::Grocery,
+    category: TaxClass::Groceries,
     suppliedAt: new DateTimeImmutable($date),
 );
 
@@ -75,12 +75,17 @@ whole day of invoices priced wrong.
 
 ## What a source does with a date it cannot honour
 
-A source that has no dated data answers the same for every date — and should say
-so rather than imply otherwise. `StaticProductTaxability` accepts the date and
-ignores it, because it is a hand-maintained snapshot that only knows one answer;
-`UsTaxDatasetTaxability` reads the dataset's dated windows and honours it.
+`RegisterRateSource` and `RegisterTaxability` select rate and rule windows on the
+supply date. A rate source that cannot answer for that date returns `null`, so the
+engine can refuse rather than use an unrelated rate.
 
-A source that cannot answer for a past date at all should return `null` rather than
-quietly serve today's figure. A live polygon service does exactly this: the state
-polygon services publish only the current boundaries, so it declines a historical
-question instead of answering a different one.
+Boundary artifacts are snapshots of the selected register release. They do not
+carry effective-date windows, so the shipped boundary resolver cannot reconstruct
+an annexation from a newer snapshot. Select an appropriate historical release, or
+bind a resolver with dated boundaries when that distinction matters.
+
+`NexusThresholds::for()` and `SourcingRules::for()` accept an optional date; the US
+regime supplies the tax point. Published rounding and delivery rules use that date
+as well. Nexus still returns advisory figures rather than determining whether a
+seller's cumulative activity crossed a threshold. A capture-floor date establishes
+available coverage, not an earlier legal commencement that the engine can infer.

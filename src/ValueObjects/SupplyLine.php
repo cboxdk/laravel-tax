@@ -55,11 +55,10 @@ readonly class SupplyLine
         /**
          * This line is what it cost to get the rest of the order there.
          *
-         * Delivery, packing, insurance, commission — Article 78(b) treats them alike:
-         * charged by the supplier, they become part of the taxable amount of the
-         * supply they accompany. So this line has NO RATE OF ITS OWN. It takes the
-         * rates of the lines it delivers, and on a mixed cart it is split across them
-         * by the document's {@see ApportionmentBasis}.
+         * The charge is split across delivered goods by the document's
+         * ApportionmentBasis. EU incidental costs follow Article 78(b); the US
+         * regime reads a dated transport/handling rule and any host-confirmed
+         * exclusion conditions. The flag does not establish taxability by itself.
          *
          * Which is why it is a flag rather than a `TaxClass`. A class would mean
          * "look up the rate for delivery", and there is no such rate to look up —
@@ -72,5 +71,7 @@ readonly class SupplyLine
          * nothing.
          */
         public bool $isDeliveryCharge = false,
+        /** Optional delivery component and confirmed exclusion conditions. */
+        public ?DeliveryCharge $delivery = null,
     ) {}
 }

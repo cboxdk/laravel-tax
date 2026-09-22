@@ -211,15 +211,15 @@ final class SuiteRegister
         // differently — which is the whole reason the combinator is a field.
         $register->rule('us:CT', 'threshold', [
             'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
-            'transactions' => 200, 'combinator' => 'and',
+            'transactions' => 200, 'combinator' => 'sales_and_transactions',
         ]);
         $register->rule('us:NJ', 'threshold', [
             'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
-            'transactions' => 200, 'combinator' => 'or',
+            'transactions' => 200, 'combinator' => 'sales_or_transactions',
         ]);
         $register->rule('us:NY', 'threshold', [
             'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
-            'transactions' => 100, 'combinator' => 'and',
+            'transactions' => 100, 'combinator' => 'sales_and_transactions',
         ]);
 
         // Arizona is absent on purpose: its published commencement is not trusted, and

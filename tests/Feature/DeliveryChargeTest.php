@@ -127,6 +127,54 @@ it('carries the sign on a refunded delivery', function () {
     expect((string) $lines['shipping']->tax->getAmount())->toBe('-0.55');
 });
 
+it('preserves delivery pricing, including overrides and refunds', function (Pricing $pricing, ?Pricing $override, string $amount, string $net, string $tax, string $gross) {
+    $order = new TaxOrder(
+        place: $this->geo->find(new CountryCode('DK')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('DK')),
+        pricing: $pricing,
+        lines: [
+            new SupplyLine('goods', Money::of('100.00', 'DKK')),
+            new SupplyLine('shipping', Money::of($amount, 'DKK'), pricing: $override, isDeliveryCharge: true),
+        ],
+    );
+
+    $delivery = app(OrderTaxCalculator::class)->assessOrder($order)->forLine('shipping');
+
+    expect((string) $delivery->net->getAmount())->toBe($net)
+        ->and((string) $delivery->tax->getAmount())->toBe($tax)
+        ->and((string) $delivery->gross->getAmount())->toBe($gross)
+        ->and($delivery->net->plus($delivery->tax)->isEqualTo($delivery->gross))->toBeTrue();
+})->with([
+    'inclusive order' => [Pricing::Inclusive, null, '12.50', '10.00', '2.50', '12.50'],
+    'inclusive line overrides exclusive order' => [Pricing::Exclusive, Pricing::Inclusive, '12.50', '10.00', '2.50', '12.50'],
+    'exclusive line overrides inclusive order' => [Pricing::Inclusive, Pricing::Exclusive, '10.00', '10.00', '2.50', '12.50'],
+    'inclusive refund' => [Pricing::Inclusive, null, '-12.50', '-10.00', '-2.50', '-12.50'],
+]);
+
+it('can apportion mixed inclusive delivery by gross selling prices', function () {
+    $document = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
+        place: $this->geo->find(new CountryCode('FR')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('FR')),
+        pricing: Pricing::Inclusive,
+        lines: [
+            new SupplyLine('food', Money::of('60.00', 'EUR'), TaxClass::Groceries),
+            new SupplyLine('goods', Money::of('20.00', 'EUR')),
+            deliveryLine('12.00'),
+        ],
+        apportionment: ApportionmentBasis::GrossValue,
+    ));
+
+    $delivery = $document->forLine('shipping');
+
+    expect((string) $delivery->net->getAmount())->toBe('11.03')
+        ->and((string) $delivery->tax->getAmount())->toBe('0.97')
+        ->and((string) $delivery->gross->getAmount())->toBe('12.00')
+        ->and($delivery->reason)->toContain('gross value', '9.00 at 5.5%', '3.00 at 20%')
+        ->and((string) $document->gross()->getAmount())->toBe('92.00');
+});
+
 it('refuses an order that is nothing but delivery', function () {
     ($this->order)([deliveryLine('10.00')]);
 })->throws(InvalidTaxOrder::class, 'nothing for it to be delivering');

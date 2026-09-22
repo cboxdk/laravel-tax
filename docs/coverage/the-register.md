@@ -70,7 +70,9 @@ polygons, so an address there resolves at the state rate, visibly.
 
 The register publishes a conformance deck — addresses in, expected authority set and
 rate out — cut from the artifacts a release actually ships and read back through the
-same shared resolver this engine uses. `RegisterConformanceTest` runs it.
+same shared resolver this engine uses. `RegisterConformanceTest` checks the expected authority sets for Kansas and Arkansas.
+It does not compare the deck's rate totals; calculation and live-sync tests are
+separate.
 
 That is the only cross-check that means anything here. Two readers of one format drift
 apart quietly: it is exactly what happened when the resolver package read a

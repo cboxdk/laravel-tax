@@ -58,6 +58,7 @@ it('separates what the caller can fix from what they cannot', function () {
     expect($closeable)->toBe([
         RefusalReason::TaxabilityConditional,
         RefusalReason::ThresholdCurrencyUnknown,
+        RefusalReason::DeliveryFactsRequired,
     ]);
 });
 

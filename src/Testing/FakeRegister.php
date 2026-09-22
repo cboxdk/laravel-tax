@@ -23,8 +23,8 @@ use Cbox\Tax\Register\Store\StorePointer;
  * fixture in the shared resolver package was hand-built to match the parser's
  * assumption rather than the publisher's bytes, so a format change went unnoticed
  * for months while the suite stayed green and the answer was empty. Assertions
- * about what a jurisdiction actually charges belong against the live register, in
- * a group that is skipped when it is unreachable.
+ * about published data belong in the e2e group against the live register. That
+ * group runs in the full QA gate and can be excluded explicitly when offline.
  */
 final class FakeRegister
 {

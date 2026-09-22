@@ -21,10 +21,8 @@ use Cbox\Tax\Contracts\SourcingRules;
  * exactly — destination everywhere — so this widens what can be expressed without
  * changing what an existing caller gets.
  *
- * The mature engines carry four to eight of these (Vertex four, AvaTax eight, Sovos
- * seven plus a secondary situs). These are the ones the shipped regimes can
- * actually use today; adding a role nothing reads would repeat the mistake this
- * class exists to fix.
+ * The available roles describe the locations used by the shipped regimes. Add a
+ * new role when a regime needs it to determine the place of supply.
  */
 readonly class SupplyRoute
 {

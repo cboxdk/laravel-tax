@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Compile;
 
 use Cbox\Tax\Exceptions\DatasetUnreadable;
+use Cbox\Tax\Register\Reader\RegisterCompatibility;
+use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\ShardWriter;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Closure;
@@ -29,9 +31,6 @@ use Closure;
  */
 final readonly class Compiler
 {
-    /** The register schema this compiler was written against. */
-    private const string SCHEMA_MAJOR = '1';
-
     public function __construct(
         private SectionFetcher $fetcher,
         private StoreLayout $layout,
@@ -55,7 +54,7 @@ final readonly class Compiler
         $version = $this->fetcher->resolve($version);
         $release = $this->fetcher->json('/api/v1/releases/'.$version);
 
-        $this->assertSchema($release, $version);
+        RegisterCompatibility::schema($release['schemaVersion'] ?? null, $version);
 
         $partial = $this->layout->partial($version);
         $this->reset($partial);
@@ -77,7 +76,11 @@ final readonly class Compiler
         ]);
         $say('  meta — regimes, categories, mappings, sources');
 
-        $this->put($partial, 'rules.json', $this->fetcher->json("{$base}/sections/rules"));
+        $rules = $this->fetcher->json("{$base}/sections/rules");
+        foreach (Shape::records($rules['rules'] ?? null) as $rule) {
+            RegisterCompatibility::rule($rule);
+        }
+        $this->put($partial, 'rules.json', $rules);
         $this->put($partial, 'coverage.json', $this->fetcher->json("{$base}/coverage"));
         $this->put($partial, 'standard-rates.json', $this->fetcher->json("{$base}/sections/standard-rates"));
         $say('  rules, coverage, standard rates');
@@ -88,7 +91,7 @@ final readonly class Compiler
             $this->compileRegion($base, $partial, $region, $states, $say);
         }
 
-        if ($boundaries) {
+        if ($boundaries && in_array('us', $wanted, true)) {
             $this->compileBoundaries($base, $partial, $states, $streets, $say);
         }
 
@@ -465,21 +468,6 @@ final readonly class Compiler
         }
 
         return array_values(array_intersect($names, $wanted));
-    }
-
-    /**
-     * @param  array<string, mixed>  $release
-     */
-    private function assertSchema(array $release, string $version): void
-    {
-        $schema = $release['schemaVersion'] ?? null;
-
-        if (! is_string($schema) || ! str_starts_with($schema, self::SCHEMA_MAJOR.'.')) {
-            throw DatasetUnreadable::corruptShard(
-                $version,
-                sprintf('the release declares schemaVersion %s; this package reads %s.x', is_string($schema) ? $schema : 'nothing', self::SCHEMA_MAJOR),
-            );
-        }
     }
 
     /**

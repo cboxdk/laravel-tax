@@ -18,9 +18,9 @@ use Cbox\Tax\Enums\TaxClass;
  *
  * The answer is not to grow the enum. `TaxClass` was derived from a retired
  * dataset's 87 headings and is a hand-maintained copy of a vocabulary somebody else
- * now publishes, versions, and ships catalogue mappings into. It stays as the
- * ergonomic front door; a caller with a finer product can pass a category key or a
- * commodity code straight through and reach what this map cannot express.
+ * now publishes, versions, and ships catalogue mappings into. The public API still
+ * accepts TaxClass, with a commodity code to refine it within its mapped category.
+ * Raw register category keys are not yet accepted by TaxQuery or TaxRateSource.
  *
  * Where a class has no counterpart it maps to the nearest PARENT rather than to a
  * sibling that is nearly right. A parent is honestly coarse; a near-sibling is
