@@ -12,7 +12,8 @@ section documents exactly what is supported, with the authoritative source and a
 confidence level per jurisdiction, and lists the jurisdictions we deliberately do
 *not* yet cover with the reason.
 
-- [What the register covers](the-register.md) — the 80 jurisdictions, how a rate is found, and where the gaps are.
+- [Beta status and responsibility](data-status.md) — the data is in beta; what the engine guarantees, what it does not, and what stays yours.
+- [What the register covers](the-register.md) — the jurisdictions, how a rate is found, and where the gaps are.
 - [Supported jurisdictions](supported.md) — regime, rate, source, confidence.
 - [Not yet supported](not-yet-supported.md) — researched but omitted, and why.
 - [US SaaS taxability](us-saas-taxability.md) — register-backed determinations and the taxable fallback.

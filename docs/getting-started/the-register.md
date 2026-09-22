@@ -8,11 +8,13 @@ description: Where the rate data comes from, how to sync it, and what the licenc
 
 The default sources read their rates, US rules and address boundaries from
 **[data.cboxtax.com](https://data.cboxtax.com)**, a published register of consumption-tax
-jurisdictions covering 80 jurisdictions across eleven regimes — the EU, the US, the UK
-and the rest of Europe, Canada, Mexico, Latin America, Asia-Pacific, Africa, the
-Caribbean, the Gulf and the wider Middle East. The engine currently models 52
-countries; see [Supported jurisdictions](../coverage/supported.md) for the
-calculation coverage.
+jurisdictions: eleven regimes covering the EU, the US, the UK and the rest of Europe,
+Canada, Mexico, Latin America, Asia-Pacific, Africa, the Caribbean, the Gulf and the
+wider Middle East — 293 countries and states, and some 20 000 local authorities
+beneath them. The engine currently models 52 countries; see
+[Supported jurisdictions](../coverage/supported.md) for the calculation coverage, and
+[beta status](../coverage/data-status.md) for what the data does and does not
+guarantee.
 
 It is **not fetched while pricing**. `tax:data:sync` compiles a published release into a
 local store; the engine reads that store and makes no network call at all.

@@ -153,6 +153,23 @@ The package is MIT. **The register's data is licensed separately** (PolyForm Int
 Use 1.0.0): computing your own tax is covered; redistributing the data or reselling
 lookups from it is not. → [The register](docs/getting-started/the-register.md)
 
+## The data is in beta
+
+Rates are read from primary sources and carry their provenance, and the engine
+refuses rather than guessing where nothing published answers. **That is not the same
+as being right**, and there will be errors nobody has found yet — in the data, and in
+the law this engine models.
+
+So: act on `needsReview()`, check the countries you actually sell in against your own
+adviser's numbers, and store the release version with each invoice so a later
+correction can be traced to the orders it touched. The package is MIT and the
+register's data is licensed separately; both are provided as-is, and neither is tax
+advice. A wrong number is worth reporting —
+[open an issue](https://github.com/cboxdk/laravel-tax/issues) with the release
+version and it gets fixed in the data or in the code.
+
+→ [Beta status and responsibility](docs/coverage/data-status.md)
+
 ## Documentation
 
 | | |
@@ -161,6 +178,7 @@ lookups from it is not. → [The register](docs/getting-started/the-register.md)
 | [Cookbook](docs/cookbook/_index.md) | A checkout, a marketplace sale, a backfill |
 | [Core concepts](docs/core-concepts/_index.md) | Regimes, seller registrations, dates, exemptions, rounding, breakdowns |
 | [Coverage](docs/coverage/_index.md) | What is modelled, what the register publishes, and what is neither |
+| [Beta status](docs/coverage/data-status.md) | What is guaranteed, what is not, and what stays yours |
 | [Extension points](docs/extension-points/_index.md) | Bind your own sources, geocoder, catalogue, resolvers |
 | [Upgrading from 0.9](docs/getting-started/upgrading.md) | The retired data sources, changed contracts, and the numbers that move |
 

@@ -35,6 +35,20 @@ minor bumps may carry additive features; patches are fixes and docs).
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
 
+### Added — what the data does and does not guarantee
+
+- **The register's data is in beta, and the docs now say so plainly.** A new
+  [beta status page](docs/coverage/data-status.md) states what the engine guarantees
+  (it never invents a number, it flags what it is unsure of, a pinned release is
+  reproducible), what it does not (`Authoritative` means the published data answered,
+  not that the figure is right in law; nothing here is tax advice; both licences are
+  as-is), and what stays with the host — act on `needsReview()`, check the countries
+  you actually sell in, and store the release version with each invoice so a
+  correction can be traced to the orders it touched. The README carries the short
+  version.
+- Refreshed the register's own figures against release 261 and removed the "80
+  jurisdictions" count that had outlived three releases.
+
 ### Changed — dependencies
 
 - **`brick/money` accepts `^0.15`.** The constraint was `^0.14`, which cannot install

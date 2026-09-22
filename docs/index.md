@@ -54,5 +54,6 @@ what was missing and the one step that would close it.
 | [Cookbook](cookbook/_index.md) | A checkout, a marketplace sale, a backfill |
 | [Core concepts](core-concepts/_index.md) | Regimes, seller registrations, dates, exemptions, rounding, breakdowns |
 | [Coverage](coverage/_index.md) | What is modelled, what the register publishes, what is neither |
+| [Beta status](coverage/data-status.md) | The data is in beta — what is guaranteed, and what stays yours |
 | [Extension points](extension-points/_index.md) | Bind your own sources, geocoder, catalogue, resolvers |
 | [Decisions](decisions/_index.md) | Why particular places are modelled the way they are |

@@ -1,20 +1,22 @@
 ---
 title: What the register covers
 weight: 1
-description: The 80 jurisdictions, what is published for each, and where the gaps are.
+description: What the register publishes, how a rate is found, and where the gaps are.
 ---
 
 # What the register covers
 
 One register, one schema, for every regime — measured against release
-`2026.09.15-202`.
+`2026.09.22-261`. The figures move with every release, which is why the command below
+is the answer and this table is only an illustration.
 
 | | |
 | --- | --- |
-| Jurisdictions | 20 642 |
-| Rates | 91 959 |
-| Rules | 974, in eleven kinds |
-| Categories | 147, of which 116 carry a live rate |
+| Jurisdictions carrying a rate | 20 635 |
+| Rate records | 92 807 |
+| Rules | 793, in twelve kinds |
+| Categories | 182 |
+| Countries and states covered | 293 |
 | Regimes | `eu` `us` `europe` `ca` `mx` `sa` `apac` `africa` `cac` `gcc` `me` |
 
 Ask it what it covers rather than trusting this page:
