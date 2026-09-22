@@ -10,6 +10,7 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
@@ -24,7 +25,9 @@ it('charges India IGST at 18% on a foreign B2C digital supply (OIDAR)', function
         pricing: Pricing::Exclusive,
         place: $this->geo->find(new CountryCode('IN')),
         customer: CustomerType::Consumer,
-        seller: new SellerRegistrations(new CountryCode('US')),
+        // OIDAR: a foreign supplier of B2C digital services registers in India and
+        // collects — the simplified registration is what makes it the seller's tax.
+        seller: new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('IN'))]),
         category: TaxClass::DigitalService,
     ));
 

@@ -13,6 +13,7 @@ use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
@@ -39,6 +40,7 @@ use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterDelivery;
+use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
 use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterRounding;
@@ -169,8 +171,12 @@ class TaxServiceProvider extends ServiceProvider
                 $app->make(FlatChargeSource::class),
                 $app->make(OrderFlatChargeSource::class),
                 $app->make(ProductCatalogue::class),
+                $app->make(MarketplaceRules::class),
+                $app->make(JurisdictionRepository::class),
             );
         });
+
+        $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterDataset::class)));
 
         // The shipped calculator assesses documents directly. A host that rebound
         // TaxCalculator to its own engine gets the same capability by fan-out —

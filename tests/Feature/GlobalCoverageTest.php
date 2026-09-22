@@ -9,6 +9,7 @@ use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
@@ -51,7 +52,8 @@ it('charges Malaysia SST on cross-border B2B with NO reverse charge', function (
         pricing: Pricing::Exclusive,
         place: $this->geo->find(new CountryCode('MY')),
         customer: CustomerType::Business,
-        seller: new SellerRegistrations(new CountryCode('US')),
+        // Registered for Malaysian service tax, as a foreign service provider must be.
+        seller: new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('MY'))]),
         customerTaxIdValidated: true, // would reverse-charge under a VAT regime — but not here
     ));
 

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Brick\Money\Money;
+use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Concerns\AssessesOrders;
 use Cbox\Tax\Contracts\FlatChargeSource;
+use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductCatalogue;
@@ -52,6 +55,10 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
          * nothing, so an app that never sets an item code behaves exactly as before.
          */
         private ProductCatalogue $catalogue = new EmptyProductCatalogue,
+        /** Whether a place's law makes a marketplace liable; null honours no assertion outside the US. */
+        private ?MarketplaceRules $marketplace = null,
+        /** Resolves the seller's establishment, to recognise an EU-established seller. */
+        private ?JurisdictionRepository $jurisdictions = null,
     ) {}
 
     public function assess(TaxQuery $query): TaxAssessment
@@ -176,7 +183,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->applyExemption($query, $this->stampTaxPoint($query, $regime->assess($query, $this->rates)));
+        return $this->applyExemption($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates))));
     }
 
     /**
@@ -219,6 +226,93 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             taxPoint: $assessment->taxPoint ?? $query->on(),
             reportedOn: $assessment->reportedOn ?? $query->reportingDate(),
         );
+    }
+
+    /**
+     * WHO COLLECTS. A regime answers what tax falls on a supply and where; whether it
+     * is THIS seller's to charge is a separate question, and outside the United States
+     * nothing asked it. A Danish shop billed Norwegian VAT it held no number to remit
+     * under, and a marketplace sale was taxed twice — by the platform the law made
+     * liable, and by the seller.
+     *
+     * Asked of the place the regime actually settled on, so the EU's own answers pass
+     * untouched: origin under the micro-business relief is the seller's own country,
+     * and Art. 45 is the supplier's establishment.
+     *
+     *  - A consumer supply the caller says went through a marketplace, where the
+     *    register says that place's law makes the platform liable on the date: the
+     *    platform collects, and the seller charges nothing.
+     *  - Otherwise, a seller neither established nor registered there does not
+     *    collect. Inside the Union an OSS/IOSS registration covers every member
+     *    state, and an EU-established seller stays on the rules its regime applies.
+     *
+     * The United States is left to its own regime, which gates on state registration,
+     * marketplace law and nexus itself. A reverse charge, an exemption or a zero rate
+     * is not a charge, and is not touched.
+     */
+    private function gateCollection(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        $place = $assessment->placeOfSupply;
+
+        if ($assessment->treatment !== TaxTreatment::Standard || $place->country->value === 'US') {
+            return $assessment;
+        }
+
+        $consumer = ! ($query->isBusiness() && $query->customerTaxIdValidated);
+
+        if ($query->marketplaceFacilitated && $consumer && $this->marketplace?->platformOwes($place->country, $query->on())) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::MarketplaceFacilitated,
+                net: $query->amount,
+                tax: Money::zero($query->amount->getCurrency()),
+                gross: $query->amount,
+                placeOfSupply: $place,
+                rate: null,
+                reason: sprintf('%s makes the marketplace liable to collect on a facilitated sale; the seller charges nothing.', $place->country->value),
+            );
+        }
+
+        if ($this->registeredToCollect($query, $place)) {
+            return $assessment;
+        }
+
+        return new TaxAssessment(
+            treatment: TaxTreatment::NotRegistered,
+            net: $query->amount,
+            tax: Money::zero($query->amount->getCurrency()),
+            gross: $query->amount,
+            placeOfSupply: $place,
+            rate: null,
+            reason: sprintf(
+                'The seller is neither established nor registered in %s, so it collects nothing there: imported goods are '
+                .'taxed at the border. Some supplies oblige a non-resident seller to register from the first sale — '
+                .'digital services and low-value consignments in most places — and once registered, add it to the '
+                .'seller\'s registrations to collect.',
+                $place->country->value,
+            ),
+        );
+    }
+
+    private function registeredToCollect(TaxQuery $query, Jurisdiction $place): bool
+    {
+        if ($query->seller->isRegisteredIn($place->country, $query->on())) {
+            return true;
+        }
+
+        if (! $place->taxProfile->isEuMember) {
+            return false;
+        }
+
+        if ($query->seller->oss?->registered === true) {
+            return true;
+        }
+
+        // An EU-established seller is on the Union's own rules, which its regime has
+        // already applied: OSS, the micro-business relief, or destination when no OSS
+        // status was stated. Without a repository to tell, it is given the same benefit.
+        $home = $this->jurisdictions?->find($query->seller->establishment);
+
+        return $this->jurisdictions === null || ($home !== null && $home->taxProfile->isEuMember);
     }
 
     /**

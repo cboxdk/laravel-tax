@@ -10,6 +10,7 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\OssStatus;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
@@ -77,13 +78,14 @@ it('leaves B2B reverse-charge unchanged regardless of OSS status', function () {
 
 it('does not grant origin relief to a non-EU seller shipping into the EU', function () {
     // A US micro-business selling B2C into France must charge destination VAT — the
-    // €10k relief is for EU-established sellers only.
+    // €10k relief is for EU-established sellers only. Registered in France so it is
+    // its tax to collect; below the threshold, so relief WOULD apply to an EU seller.
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
         place: $this->geo->find(new CountryCode('FR')),
         customer: CustomerType::Consumer,
-        seller: new SellerRegistrations(new CountryCode('US'), oss: new OssStatus(registered: false, thresholdExceeded: false)),
+        seller: new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('FR'))], new OssStatus(registered: false, thresholdExceeded: false)),
     ));
 
     expect($a->placeOfSupply->country->value)->toBe('FR')
