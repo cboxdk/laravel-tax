@@ -316,7 +316,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return false;
         }
 
-        if ($query->seller->oss?->registered === true) {
+        if ($query->seller->oss?->registered === true || $query->seller->holdsUnionScheme($query->on())) {
             return true;
         }
 

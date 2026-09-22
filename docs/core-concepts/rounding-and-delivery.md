@@ -72,6 +72,11 @@ The component defaults to `DeliveryComponent::Transport`.
 the delivered goods' taxability from their assessments; a standalone delivery
 `TaxQuery` must supply `DeliveryCharge::$goodsTaxable` itself.
 
+A US delivery rule is only reached where the seller holds that state's permit (or the
+sale was marketplace-facilitated). Without one the supply is `NotRegistered` and there
+is no charge to exclude freight from — see
+[seller registrations](seller-registrations.md).
+
 Goods are assessed first, then the delivery is allocated using the order's
 `ApportionmentBasis`. US delivery uses the component rule and the goods' outcome;
 the freight price is not treated as the price of another product for a per-item
@@ -80,6 +85,11 @@ Delivery portions are retained on `TaxAssessment::$portions`, including their
 dates and rounding policy. Document charges are applied once at order level.
 
 ## Upgrade notes
+
+Custom `MarketplaceRules` implementations answer `liability(): MarketplaceLiability`
+in place of `platformOwes(): bool`; return `MarketplaceLiability::PlatformOwes` for
+what used to be `true` and `SellerCollects` for `false`. Custom `DeliveryRules`
+implement `treatment()` in place of `included()`.
 
 Custom `SourcingRules` and `NexusThresholds` implementations must accept the new
 optional `?DateTimeImmutable $at = null` argument. Existing one-argument calls

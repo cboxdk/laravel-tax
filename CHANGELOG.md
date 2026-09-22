@@ -35,6 +35,28 @@ minor bumps may carry additive features; patches are fixes and docs).
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
 
+### Added — documentation
+
+- **Seller registrations have a page.** How an entity states where it is established
+  and registered, under which scheme and for which period, and what each signal
+  decides — the collection gate, US nexus, a Canadian province's PST, a state's
+  flat-rate election, and why a backfill needs the validity window. None of it was
+  documented, and no example anywhere showed a `SellerRegistration` being built.
+- **An upgrade guide from 0.9.** The removed data sources and their replacements,
+  every changed contract signature, and the numbers that move with no change on the
+  host's side.
+- Corrected: the marketplace page said the EU's Art. 14a rule zeroed the seller's
+  charge, which is the opposite of what the engine now does; the nexus page
+  conflated an operator with a combinator and omitted `measuredBy`/`obligations`;
+  the delivery page did not say a US delivery rule needs the state permit first.
+
+### Fixed — a one-stop scheme stated as a registration
+
+- **An `oss` or `ioss` registration is read.** `SellerRegistration` has always
+  named the scheme vocabulary, and nothing read it: a seller holding an IOSS number
+  but no `OssStatus` was `NotRegistered` on every EU sale. Either statement now
+  counts, on the supply's date.
+
 ### Fixed — nexus thresholds and marketplace mandates
 
 - **Twelve states had no nexus answer at all.** Arizona, California, Colorado, Iowa,

@@ -9,6 +9,9 @@ description: The engine's architecture and the regimes it ships.
 - [Architecture](architecture.md) — how a query flows to an assessment, and the
   own-the-logic / source-the-data boundary.
 - [Regimes](regimes.md) — the tax regimes shipped and how they are selected.
+- [Seller registrations](seller-registrations.md) — where the selling entity is
+  established and registered, under which scheme and for which period, and what
+  each of those decides.
 - [Exemptions](exemptions.md) — express a buyer certificate natively and get a
   native `Exempt` assessment, applied deny-by-default over the regime's verdict.
 - [Rate breakdown](rate-breakdown.md) — splitting an assessment's tax across the

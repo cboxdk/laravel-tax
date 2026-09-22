@@ -14,4 +14,5 @@ replaceable.
 - [Address geocoding](geocoding.md) — resolve US/CA addresses with Geocodio or your own adapter.
 - [Local authorities](local-authorities.md) — resolve US addresses below the state line in the 12 states the shipped dataset cannot.
 - [Tax-ID validation](vat-id-validation.md) — validate VAT/registration numbers (VIES, HMRC, ABN).
+- [Marketplace liability](../core-concepts/marketplace-facilitator.md#the-contract) — bind `MarketplaceRules` to decide who collects on a facilitated sale.
 - [Flat charges](flat-charges.md) — fixed per-supply and per-delivery fees that are not a percentage of anything.

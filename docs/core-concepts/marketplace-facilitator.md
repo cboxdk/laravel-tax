@@ -8,11 +8,18 @@ description: When a marketplace is liable to collect, the seller charges nothing
 
 Every US state with a sales tax makes a qualifying marketplace the party liable to
 collect on its third-party sellers' supplies. Missouri closed the set on
-**1 January 2023**. The EU does the same through the Art. 14a deemed-supplier rule
-for electronic interfaces.
+**1 January 2023**. Where that applies, **the seller charges nothing**. A seller who
+charges anyway double-charges the customer on every marketplace order.
 
-Where that applies, **the seller charges nothing**. A seller who charges anyway
-double-charges the customer on every marketplace order.
+**The EU is not that.** Art. 14a deems an electronic interface the supplier for two
+specific limbs — a distance sale of goods imported in a consignment worth at most
+EUR 150, or goods already in the Community sold by a seller established outside it
+to a customer who is not a taxable person — and the register now publishes those
+conditions typed rather than as prose. The engine does not yet evaluate them, so it
+does the one safe thing: the **seller keeps charging**, and the rate is stamped
+`RateLimit::MarketplaceLiabilityUnread`. Reading the mandate as if it covered every
+facilitated sale would hand the tax to a platform the Directive does not reach, and
+then nobody collects it.
 
 ```php
 new TaxQuery(
@@ -42,10 +49,27 @@ Four treatments produce a zero charge and they mean opposite things:
 | `ZeroRated` | A real 0% rate applied |
 | **`MarketplaceFacilitated`** | **Tax was due, and somebody else remitted it** |
 
+A fifth outcome charges rather than zeroing: `Standard` with
+`RateLimit::MarketplaceLiabilityUnread` on the rate, which says the place deems a
+platform liable for *some* facilitated sales and this reader has not settled whether
+this is one of them. `OrderAssessment::needsReview()` is true for it, so a checkout
+that blocks on anything unsettled already blocks on this.
+
 Most states still expect the seller to report the sale in gross receipts and then
 deduct it as marketplace-facilitated. A treatment that collapsed these would file a
 wrong return while charging the right amount, so `taxWasDue()` is what a filing
 asks rather than `chargesTax()`.
+
+## The contract
+
+`MarketplaceRules::liability(CountryCode $country, DateTimeImmutable $on)` answers
+with a `MarketplaceLiability`: `PlatformOwes`, `SellerCollects`, or `Conditioned` for
+a mandate that names conditions. It replaced a boolean `platformOwes()`, which could
+not tell the third case from the second — and reported it as the first.
+
+The default binding reads the register's `marketplace_facilitator` rules for every
+jurisdiction outside the United States, whose states are read by the US regime's own
+facts. Bind your own implementation to decide it yourself.
 
 ## Only you know it happened; only the data knows if it applies
 

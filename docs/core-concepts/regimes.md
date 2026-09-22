@@ -21,6 +21,18 @@ Both share `DestinationTaxRegime`: a cross-border B2B supply to a tax-ID-validat
 customer reverse-charges; everything else is taxed at the place-of-supply rate
 (overridable per regime — the EU regime overrides it for origin sourcing).
 
+## Collection is gated on the seller's registrations
+
+A regime decides the rate and the treatment. Whether this seller collects it is a
+separate question, asked after: outside the United States, a would-be `Standard`
+supply comes back **`NotRegistered`** when the seller is neither established nor
+registered in the place of supply. Inside the Union an OSS or IOSS registration
+covers every Member State, and an EU-established seller stays on the Union's rules.
+
+This catches the common case of a shop selling abroad for the first time: the tax is
+due, but it is collected at the border from the buyer, not by a seller with no number
+to remit it under. See [seller registrations](seller-registrations.md).
+
 ## EU €10,000 micro-business threshold (Art. 59c)
 
 A seller established in a single Member State, **below** the €10,000 combined
@@ -28,7 +40,10 @@ cross-border B2C threshold (current or preceding year) and **not** opted into OS
 charges its **own (origin)** VAT on cross-border B2C supplies to other Member
 States; once it opts in or crosses the threshold, the general **destination** rule
 applies. The seller supplies these signals on `SellerRegistrations::$oss`
-(`OssStatus { registered, thresholdExceeded }`). Deny-by-default: the engine never
+(`OssStatus { registered, thresholdExceeded }`). The two are not interchangeable:
+`thresholdExceeded` moves the place of supply, while only `registered` — or an `oss`
+/ `ioss` scheme registration — is a number to collect with, which the gate above
+asks about separately. Deny-by-default: the engine never
 infers turnover, and absent an asserted status it applies destination. B2B
 reverse-charge is unaffected.
 

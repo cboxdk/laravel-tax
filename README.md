@@ -95,7 +95,8 @@ for free. The rest fall back to the state share, flagged
 **Remote-seller elections close two of those states on request.** Alabama's SSUT
 (flat 8%) and Texas' Single Local Use Tax Rate (6.25% + 1.75% for 2026) are
 statutory schemes a remote seller elects into; give the state registration the
-`remote-election` scheme and the engine prices under them — opt-in, dated, and
+`remote-election` scheme ([how](docs/core-concepts/seller-registrations.md#schemes))
+and the engine prices under them — opt-in, dated, and
 refusing rather than guessing when the published figure lapses.
 **Marketplace sales are not the seller's to collect.** Every US state with a sales
 tax now makes a qualifying marketplace the liable party — Missouri closed the set on
@@ -106,7 +107,14 @@ zero and they mean opposite things on a return, and most states still expect the
 sale reported in gross receipts and then deducted. The rule is checked **on the
 supply's date**, so a backdated Missouri sale from 2022 is still the seller's.
 
-**Canada** resolves at province level (no local tax). Every regime reads the same
+**Outside the US, collection is gated on registration.** A supply into a country
+where the seller is neither established nor registered is `NotRegistered`, not a
+charge — the tax is due at the border instead. An OSS or IOSS registration covers the
+whole Union. See [seller registrations](docs/core-concepts/seller-registrations.md).
+
+**Canada** resolves at province level (no local tax), as the federal GST plus the
+province's share: an HST replaces the federal rate, a PST is added to it, and a PST is
+collected only by a seller holding that province's own permit. Every regime reads the same
 register; to put your own source in front of it, bind `TaxRateSource` — see
 [`docs/coverage`](docs/coverage/_index.md).
 

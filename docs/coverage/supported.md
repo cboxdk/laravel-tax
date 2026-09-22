@@ -20,7 +20,12 @@ add a country to the engine's regime registry.
 | IN | `in-gst` | India GST with IGST or CGST/SGST component labels |
 | MY | `my-sst` | Malaysia service tax without the generic VAT reverse-charge treatment |
 | US | `us-sales-tax` | Registration, marketplace, taxability, sourcing and local-authority gates |
-| CA | `ca-gst` | Province-level combined rate and cross-border B2B self-assessment |
+| CA | `ca-gst` | Federal GST plus the province's PST/QST or a harmonised HST; PST needs the province's own permit |
+
+Outside the United States, collection is gated on the seller's registrations: a
+supply into a country where the seller is neither established nor registered comes
+back `NotRegistered` rather than charged. See
+[seller registrations](../core-concepts/seller-registrations.md).
 
 See [Regimes](../core-concepts/regimes.md) for the rules each implementation models
 and [Unsupported jurisdictions](not-yet-supported.md) for the remaining boundary.
@@ -36,7 +41,9 @@ ambiguous, the source uses the standard rate with `RateLimit::HeadingAmbiguous`.
 Conditions that narrow an inherited category answer are reported with
 `RateLimit::ConditionsUnevaluated`, and a category where the law names a rate the
 register declined to file — Burkina Faso's 10% for approved hotels — with
-`RateLimit::RateDeclined`. Read `confidence`, `limitedBy` and `provenance`
+`RateLimit::RateDeclined`. A place whose marketplace mandate reaches only some
+facilitated sales leaves the seller charging, with
+`RateLimit::MarketplaceLiabilityUnread`. Read `confidence`, `limitedBy` and `provenance`
 on the returned rate rather than treating an entire country's coverage as one
 confidence grade. See [Rate sources](../extension-points/rate-sources.md).
 

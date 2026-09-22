@@ -105,10 +105,40 @@ readonly class SellerRegistrations
         return $registration->coversDate($on ?? new DateTimeImmutable);
     }
 
-    public function hasScheme(string $scheme): bool
+    /**
+     * Whether the seller holds ANY registration under a scheme, wherever it is filed.
+     *
+     * A one-stop scheme is the case this answers: an OSS or IOSS number is filed in
+     * one Member State and collects for all twenty-seven, so asking whether the
+     * seller is registered in the country of the sale is the wrong question about it.
+     */
+    public function hasScheme(string $scheme, ?DateTimeInterface $on = null): bool
     {
         foreach ($this->registrations as $registration) {
-            if ($registration->scheme === $scheme) {
+            if ($registration->scheme === $scheme && $this->inForce($registration, $on)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** The one-stop schemes that collect across the whole Union from one number. */
+    public const array UNION_SCHEMES = ['oss', 'ioss'];
+
+    /**
+     * Whether a scheme registration covers a supply into the Union.
+     *
+     * {@see OssStatus} states the same fact and is what the EU regime reads for
+     * Art. 59c. This is the other way a seller can state it — as the registration it
+     * actually holds, with the window it holds it for — and a host that states it
+     * that way was getting `NotRegistered` on every EU sale, because nothing read
+     * the scheme the value object has always named.
+     */
+    public function holdsUnionScheme(?DateTimeInterface $on = null): bool
+    {
+        foreach (self::UNION_SCHEMES as $scheme) {
+            if ($this->hasScheme($scheme, $on)) {
                 return true;
             }
         }

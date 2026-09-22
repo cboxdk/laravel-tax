@@ -149,3 +149,41 @@ it('still hands an unconditional mandate to the platform', function (): void {
     expect($a->treatment)->toBe(TaxTreatment::MarketplaceFacilitated)
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
+
+it('reads a one-stop scheme stated as the registration the seller holds', function (): void {
+    // An IOSS number is filed in one Member State and collects for all twenty-seven.
+    // Stated as the registration it is — rather than as an OssStatus — nothing read
+    // it, and a seller holding one was NotRegistered on every EU sale.
+    $ioss = new SellerRegistrations(new CountryCode('US'), [
+        new SellerRegistration(new CountryCode('IE'), scheme: 'ioss', validFrom: new DateTimeImmutable('2026-01-01')),
+    ]);
+
+    $a = app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: app(JurisdictionRepository::class)->find(new CountryCode('DE')),
+        customer: CustomerType::Consumer,
+        seller: $ioss,
+        suppliedAt: new DateTimeImmutable('2026-09-22'),
+    ));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $a->tax->getAmount())->toBe('19.00');
+});
+
+it('does not read a scheme registration outside its window', function (): void {
+    $lapsed = new SellerRegistrations(new CountryCode('US'), [
+        new SellerRegistration(new CountryCode('IE'), scheme: 'ioss', validUntil: new DateTimeImmutable('2026-01-31')),
+    ]);
+
+    $a = app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: app(JurisdictionRepository::class)->find(new CountryCode('DE')),
+        customer: CustomerType::Consumer,
+        seller: $lapsed,
+        suppliedAt: new DateTimeImmutable('2026-09-22'),
+    ));
+
+    expect($a->treatment)->toBe(TaxTreatment::NotRegistered);
+});

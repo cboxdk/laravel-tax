@@ -43,7 +43,12 @@ The tax point is threaded through **every** dated lookup for that supply:
 | the rate | `TaxRateSource::rateFor($jurisdiction, $category, $at)` |
 | product taxability | `ProductTaxability::determine($jurisdiction, $category, $amount, $at)` |
 | the buyer's exemption validity | `TaxExemption` validity window |
+| the seller's registrations | `SellerRegistration` validity window (`validFrom`/`validUntil`) |
 | marketplace, holidays and sourcing | dated rules in the register |
+
+The seller's side matters for the same reason as the buyer's: recalculating last
+year's invoices with today's registrations produces a return for a period the seller
+was not registered in. See [seller registrations](seller-registrations.md).
 
 This is a correctness property, not a convenience. An assessment priced with one
 year's rate and another year's taxability is internally inconsistent, and a state
