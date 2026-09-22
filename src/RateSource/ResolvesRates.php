@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Cbox\Tax\RateSource;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
 
@@ -29,6 +31,21 @@ trait ResolvesRates
     {
         $where = $place ?? $query->place;
         $on = $query->on();
+
+        if ($query->categoryKey !== null) {
+            // A source that cannot answer a register key must not be asked about the
+            // class the key was mapped to: that is a different, broader question, and
+            // its answer would be priced as though it were this one.
+            if (! $rates instanceof CategoryKeyedRateSource) {
+                throw new UnresolvedTaxRule(sprintf(
+                    'The bound rate source (%s) cannot answer a register category key, and "%s" was asked for. Bind the register source, or state a TaxClass instead.',
+                    $rates::class,
+                    $query->categoryKey,
+                ));
+            }
+
+            return $rates->rateForKey($where, $query->categoryKey, $query->commodityCode, $on);
+        }
 
         return $rates instanceof CommodityRateSource
             ? $rates->rateForCommodity($where, $query->category, $query->commodityCode, $on)

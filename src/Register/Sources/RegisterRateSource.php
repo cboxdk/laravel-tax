@@ -6,6 +6,7 @@ namespace Cbox\Tax\Register\Sources;
 
 use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Enums\Confidence;
@@ -39,7 +40,7 @@ use DateTimeImmutable;
  * DOES carry and has no rate for returns null, which is the honest "this source
  * cannot answer" the chain is built on.
  */
-final readonly class RegisterRateSource implements CommodityRateSource
+final readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityRateSource
 {
     private const string SOURCE = 'cbox-tax';
 
@@ -63,6 +64,26 @@ final readonly class RegisterRateSource implements CommodityRateSource
         ?string $commodityCode,
         ?DateTimeImmutable $at = null,
     ): ?TaxRate {
+        return $this->rateAt($jurisdiction, CategoryMap::keyFor($category), $commodityCode, $at);
+    }
+
+    public function rateForKey(
+        Jurisdiction $jurisdiction,
+        string $categoryKey,
+        ?string $commodityCode = null,
+        ?DateTimeImmutable $at = null,
+    ): ?TaxRate {
+        $this->dataset->assertCategoryPublished($categoryKey);
+
+        return $this->rateAt($jurisdiction, $categoryKey, $commodityCode, $at);
+    }
+
+    private function rateAt(
+        Jurisdiction $jurisdiction,
+        string $key,
+        ?string $commodityCode,
+        ?DateTimeImmutable $at,
+    ): ?TaxRate {
         $version = $this->dataset->requireVersion();
         $candidates = $this->candidates($jurisdiction, $at);
 
@@ -80,15 +101,15 @@ final readonly class RegisterRateSource implements CommodityRateSource
         }
 
         foreach ($carried as $code) {
-            $rate = $this->resolve($code, $category, $commodityCode, $at, $version);
+            $rate = $this->resolve($code, $key, $commodityCode, $at, $version);
 
             if ($rate === null) {
                 continue;
             }
 
-            $stacked = $this->stacked($jurisdiction, $code, $rate, $category, $commodityCode, $at, $version) ?? $rate;
+            $stacked = $this->stacked($jurisdiction, $code, $rate, $key, $commodityCode, $at, $version) ?? $rate;
 
-            return $this->withStatewideLocal($stacked, $code, $category, $at);
+            return $this->withStatewideLocal($stacked, $code, $key, $at);
         }
 
         return null;
@@ -112,7 +133,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
         Jurisdiction $jurisdiction,
         string $code,
         TaxRate $state,
-        TaxClass $category,
+        string $key,
         ?string $commodityCode,
         ?DateTimeImmutable $at,
         string $version,
@@ -179,12 +200,12 @@ final readonly class RegisterRateSource implements CommodityRateSource
             // standard band rather than a local record.
             $record = $isState
                 ? null
-                : $this->resolver->local($this->dataset->ratesFor($authority), CategoryMap::keyFor($category), $at);
+                : $this->resolver->local($this->dataset->ratesFor($authority), $key, $at);
 
             if ($record === null) {
                 $resolved = $isState
                     ? $state
-                    : $this->resolve($authority, $category, $commodityCode, $at, $version);
+                    : $this->resolve($authority, $key, $commodityCode, $at, $version);
 
                 if ($resolved === null) {
                     // One authority this store cannot price abandons the WHOLE stack.
@@ -331,13 +352,13 @@ final readonly class RegisterRateSource implements CommodityRateSource
      * REPLACES the state share — Virginia files one of those too, for general goods —
      * and adding to it would charge the band twice.
      */
-    private function withStatewideLocal(TaxRate $rate, string $code, TaxClass $category, ?DateTimeImmutable $at): TaxRate
+    private function withStatewideLocal(TaxRate $rate, string $code, string $key, ?DateTimeImmutable $at): TaxRate
     {
         if ($code !== $this->stateOf($code)) {
             return $rate;
         }
 
-        $record = $this->resolver->local($this->dataset->ratesFor($code), CategoryMap::keyFor($category), $at);
+        $record = $this->resolver->local($this->dataset->ratesFor($code), $key, $at);
 
         if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
             return $rate;
@@ -511,7 +532,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
         return [$regional, ...$codes];
     }
 
-    private function resolve(string $code, TaxClass $category, ?string $commodityCode, ?DateTimeImmutable $at, string $version): ?TaxRate
+    private function resolve(string $code, string $key, ?string $commodityCode, ?DateTimeImmutable $at, string $version): ?TaxRate
     {
         $records = $this->dataset->ratesFor($code);
 
@@ -519,7 +540,6 @@ final readonly class RegisterRateSource implements CommodityRateSource
             return null;
         }
 
-        $key = CategoryMap::keyFor($category);
         $resolved = $this->resolver->resolve($records, $key, $commodityCode, $at);
 
         if ($resolved === null) {
@@ -541,7 +561,7 @@ final readonly class RegisterRateSource implements CommodityRateSource
             // taxed at the standard rate. Answering 0% billed nothing on a $200 coat
             // in Massachusetts, New York and Rhode Island alike: every live
             // `price_exemption` rule in the register sits behind an exempt row.
-            $standard = $this->resolver->resolve($records, CategoryMap::keyFor(TaxClass::GeneralGoods), null, $at);
+            $standard = $this->resolver->resolve($records, CategoryMap::FALLBACK, null, $at);
 
             if ($standard !== null && is_string($standard['rate']['percentage'] ?? null)) {
                 $resolved = $standard;

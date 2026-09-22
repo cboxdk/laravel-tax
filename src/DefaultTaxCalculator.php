@@ -88,7 +88,8 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return [$query, false];
         }
 
-        if ($query->category !== TaxClass::GeneralGoods) {
+        // A stated key is a stated category, as a stated class is.
+        if ($query->category !== TaxClass::GeneralGoods || $query->categoryKey !== null) {
             return [$query, false];
         }
 

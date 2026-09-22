@@ -6,7 +6,7 @@ namespace Cbox\Tax\Register\Sources;
 
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
-use Cbox\Tax\Contracts\ProductTaxability;
+use Cbox\Tax\Contracts\CategoryKeyedTaxability;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\ThresholdRule;
 use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
@@ -36,7 +36,7 @@ use DateTimeImmutable;
  * exemption removes it — is a fact about the supplier's return, not about what the
  * customer is charged, and it survives in the rate's own provenance.
  */
-final readonly class RegisterTaxability implements ProductTaxability
+final readonly class RegisterTaxability implements CategoryKeyedTaxability
 {
     public function __construct(private RegisterDataset $dataset) {}
 
@@ -46,13 +46,28 @@ final readonly class RegisterTaxability implements ProductTaxability
         Money $amount,
         ?DateTimeImmutable $at = null,
     ): TaxDetermination {
+        return $this->decide($jurisdiction, CategoryMap::keyFor($category), $category, $at);
+    }
+
+    public function determineKey(
+        Jurisdiction $jurisdiction,
+        string $categoryKey,
+        Money $amount,
+        ?DateTimeImmutable $at = null,
+    ): TaxDetermination {
+        $this->dataset->assertCategoryPublished($categoryKey);
+
+        return $this->decide($jurisdiction, $categoryKey, $categoryKey, $at);
+    }
+
+    private function decide(Jurisdiction $jurisdiction, string $key, TaxClass|string $category, ?DateTimeImmutable $at): TaxDetermination
+    {
         $code = $this->code($jurisdiction, $at);
 
         if ($code === null) {
             return TaxDetermination::taxable();
         }
 
-        $key = CategoryMap::keyFor($category);
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
 
         $threshold = $this->priceExemption($jurisdiction, $category, $code, $key, $on);
@@ -86,7 +101,7 @@ final readonly class RegisterTaxability implements ProductTaxability
         throw UnresolvedProductTaxability::for($jurisdiction, $category);
     }
 
-    private function priceExemption(Jurisdiction $jurisdiction, TaxClass $category, string $code, string $key, string $on): ?TaxDetermination
+    private function priceExemption(Jurisdiction $jurisdiction, TaxClass|string $category, string $code, string $key, string $on): ?TaxDetermination
     {
         foreach ($this->dataset->rulesFor($code, 'price_exemption') as $rule) {
             if (! $this->covers($rule, $on)) {
@@ -95,7 +110,10 @@ final readonly class RegisterTaxability implements ProductTaxability
 
             $payload = Shape::map($rule['payload'] ?? null);
 
-            if (Shape::text($payload['category'] ?? null) !== $key) {
+            // UP THE LADDER, as every category-keyed lookup here is. Massachusetts caps
+            // `goods.clothing`; a query at `goods.clothing.childrens` is still clothing,
+            // and exact matching let a child's coat through the $175 cap untaxed.
+            if (! in_array(Shape::text($payload['category'] ?? null), CategoryMap::ladder($key), true)) {
                 continue;
             }
 

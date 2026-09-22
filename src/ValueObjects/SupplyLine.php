@@ -73,5 +73,7 @@ readonly class SupplyLine
         public bool $isDeliveryCharge = false,
         /** Optional delivery component and confirmed exclusion conditions. */
         public ?DeliveryCharge $delivery = null,
+        /** The register's category key, as on {@see TaxQuery::$categoryKey}. */
+        public ?string $categoryKey = null,
     ) {}
 }

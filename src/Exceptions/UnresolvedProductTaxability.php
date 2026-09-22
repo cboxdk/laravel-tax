@@ -33,7 +33,7 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
         return $this->reason;
     }
 
-    public static function for(Jurisdiction $jurisdiction, TaxClass $category): self
+    public static function for(Jurisdiction $jurisdiction, TaxClass|string $category): self
     {
         $where = $jurisdiction->subdivision !== null
             ? $jurisdiction->subdivision->value
@@ -43,10 +43,10 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
             'No product taxability available for "%s" in "%s". Refusing to assess rather than guess. '
             .'Sync the register (`php artisan tax:data:sync`) so it carries this jurisdiction, or bind a '
             .'ProductTaxability with an explicit "%s:%s" override.',
-            $category->value,
+            $category instanceof TaxClass ? $category->value : $category,
             $where,
             $where,
-            $category->value,
+            $category instanceof TaxClass ? $category->value : $category,
         ), RefusalReason::TaxabilityUndetermined);
     }
 
@@ -57,7 +57,7 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
      * engine refuses rather than charging the full rate on a supply that may be
      * exempt.
      */
-    public static function conditional(Jurisdiction $jurisdiction, TaxClass $category): self
+    public static function conditional(Jurisdiction $jurisdiction, TaxClass|string $category): self
     {
         $where = $jurisdiction->subdivision !== null
             ? $jurisdiction->subdivision->value
@@ -65,7 +65,7 @@ class UnresolvedProductTaxability extends RuntimeException implements Refusal
 
         return new self(sprintf(
             'Taxability of "%s" in "%s" is conditional (e.g. a per-item price threshold) and cannot be decided from the category alone. Supply a taxability matrix that resolves the condition, or exclude the category.',
-            $category->value,
+            $category instanceof TaxClass ? $category->value : $category,
             $where,
         ), RefusalReason::TaxabilityConditional);
     }

@@ -8,6 +8,7 @@ use Brick\Math\BigDecimal;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\CategoryKeyedTaxability;
 use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\ProductTaxability;
@@ -195,7 +196,13 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
     private function determination(TaxQuery $query): TaxDetermination
     {
-        $determination = $this->taxability->determine($query->place, $query->category, $query->amount, $query->on());
+        if ($query->categoryKey === null) {
+            $determination = $this->taxability->determine($query->place, $query->category, $query->amount, $query->on());
+        } elseif ($this->taxability instanceof CategoryKeyedTaxability) {
+            $determination = $this->taxability->determineKey($query->place, $query->categoryKey, $query->amount, $query->on());
+        } else {
+            throw new UnresolvedTaxRule(sprintf('The bound taxability source (%s) cannot answer a register category key, and "%s" was asked for.', $this->taxability::class, $query->categoryKey));
+        }
 
         // The delivered goods were assessed before their freight. A per-item
         // exemption threshold must not be applied a second time to the freight's price.

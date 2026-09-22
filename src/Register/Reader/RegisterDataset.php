@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Reader;
 
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
@@ -277,6 +278,29 @@ final class RegisterDataset
         }
 
         return $byKey;
+    }
+
+    /**
+     * Refuse a category key this release does not publish, naming what it does
+     * publish nearby — the same two leading segments — so a typo is a one-look fix.
+     */
+    public function assertCategoryPublished(string $key): void
+    {
+        $vocabulary = $this->categories();
+
+        if (isset($vocabulary[$key])) {
+            return;
+        }
+
+        $stem = implode('.', array_slice(explode('.', $key), 0, 2));
+        $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $stem)));
+
+        if ($nearby === []) {
+            $root = explode('.', $key)[0];
+            $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $root.'.')));
+        }
+
+        throw UnknownCategory::notPublished($key, $this->requireVersion(), array_slice($nearby, 0, 8));
     }
 
     /**

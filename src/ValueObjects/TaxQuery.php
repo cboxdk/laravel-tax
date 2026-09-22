@@ -14,6 +14,7 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Register\Reader\CategoryMap;
 use DateTimeImmutable;
 
 /**
@@ -64,13 +65,20 @@ use DateTimeImmutable;
  */
 readonly class TaxQuery
 {
+    /**
+     * The class governing legal behaviour — place of supply, holiday scope. Where the
+     * caller named only a {@see self::$categoryKey}, it is derived from that key by
+     * {@see CategoryMap::governing()}; a class passed explicitly always wins.
+     */
+    public TaxClass $category;
+
     public function __construct(
         public Money $amount,
         public Pricing $pricing,
         public Jurisdiction $place,
         public CustomerType $customer,
         public SellerRegistrations $seller,
-        public TaxClass $category = TaxClass::GeneralGoods,
+        TaxClass $category = TaxClass::GeneralGoods,
         public bool $customerTaxIdValidated = false,
         public ?TaxExemption $exemption = null,
         public ?string $commodityCode = null,
@@ -135,7 +143,26 @@ readonly class TaxQuery
         /** Used only when the published policy permits a seller election. */
         public RoundingScope $roundingScope = RoundingScope::Line,
         public ?DeliveryCharge $delivery = null,
-    ) {}
+        /**
+         * The register's own category key — `services.education`,
+         * `goods.medical_equipment.prosthetic` — when a {@see TaxClass} cannot say it.
+         *
+         * The register publishes 182 categories and the enum reaches 47 of them, so
+         * education, insurance, restaurant service and every medical-equipment line a
+         * US state exempts separately could not be asked about at all. Where this is
+         * set, rates and taxability are looked up at this key, and a key the installed
+         * release does not publish is refused rather than climbed from.
+         *
+         * `category` still governs where the supply takes place. Leave it at the
+         * default and it is derived from the key — the nearest class at or above it,
+         * or the general rule for services; pass it to name a specific article.
+         */
+        public ?string $categoryKey = null,
+    ) {
+        $this->category = $categoryKey !== null && $category === TaxClass::GeneralGoods
+            ? CategoryMap::governing($categoryKey)
+            : $category;
+    }
 
     /**
      * The same query with the classification filled in from a product catalogue.
@@ -165,6 +192,7 @@ readonly class TaxQuery
             $this->itemCode,
             $this->roundingScope,
             $this->delivery,
+            $this->categoryKey,
         );
     }
 

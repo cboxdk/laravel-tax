@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\RateSource;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
@@ -35,7 +36,7 @@ use DateTimeImmutable;
  * Sources that cannot use a code are called exactly as before, so composing a
  * commodity-aware source with a static table works.
  */
-readonly class ChainTaxRateSource implements CommodityRateSource
+readonly class ChainTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource
 {
     /**
      * @param  list<TaxRateSource>  $sources
@@ -81,6 +82,46 @@ readonly class ChainTaxRateSource implements CommodityRateSource
         // the original bug in its purest form: the caller reads "no rate for this
         // jurisdiction", which is a statement about the world, when the truth is
         // "we could not find out", which is a statement about us.
+        if ($unavailable !== null) {
+            throw $unavailable;
+        }
+
+        return null;
+    }
+
+    /**
+     * A register category key, asked only of sources that can answer one.
+     *
+     * A source keyed on its own vocabulary is SKIPPED, not asked about the class the
+     * key maps to: that is a broader question, and its answer would be priced as
+     * though it were this one.
+     */
+    public function rateForKey(
+        Jurisdiction $jurisdiction,
+        string $categoryKey,
+        ?string $commodityCode = null,
+        ?DateTimeImmutable $at = null,
+    ): ?TaxRate {
+        $unavailable = null;
+
+        foreach ($this->sources as $source) {
+            if (! $source instanceof CategoryKeyedRateSource) {
+                continue;
+            }
+
+            try {
+                $rate = $source->rateForKey($jurisdiction, $categoryKey, $commodityCode, $at);
+            } catch (RateSourceUnavailable $e) {
+                $unavailable ??= $e;
+
+                continue;
+            }
+
+            if ($rate !== null) {
+                return $unavailable === null ? $rate : $rate->degraded($unavailable->why);
+            }
+        }
+
         if ($unavailable !== null) {
             throw $unavailable;
         }

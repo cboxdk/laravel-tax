@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Reader;
 
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\ValueObjects\TaxQuery;
 
 /**
  * Where each {@see TaxClass} lands in the register's category vocabulary.
@@ -19,8 +20,9 @@ use Cbox\Tax\Enums\TaxClass;
  * The answer is not to grow the enum. `TaxClass` was derived from a retired
  * dataset's 87 headings and is a hand-maintained copy of a vocabulary somebody else
  * now publishes, versions, and ships catalogue mappings into. The public API still
- * accepts TaxClass, with a commodity code to refine it within its mapped category.
- * Raw register category keys are not yet accepted by TaxQuery or TaxRateSource.
+ * accepts TaxClass, with a commodity code to refine it within its mapped category,
+ * and a query may name the register's own key instead — `categoryKey` on
+ * {@see TaxQuery} — validated against the installed release.
  *
  * Where a class has no counterpart it maps to the nearest PARENT rather than to a
  * sibling that is nearly right. A parent is honestly coarse; a near-sibling is
@@ -30,6 +32,9 @@ final class CategoryMap
 {
     /** The class every unmapped item falls to, and the reason it is safe to. */
     public const string FALLBACK = 'goods';
+
+    /** @var array<string, TaxClass>|null */
+    private static ?array $reverse = null;
 
     public static function keyFor(TaxClass $class): string
     {
@@ -109,6 +114,42 @@ final class CategoryMap
             TaxClass::SoftwarePrewritten => 'goods.software.prewritten',
             TaxClass::SoftwareCustom => 'goods.software.custom',
         };
+    }
+
+    /**
+     * The class that governs LEGAL behaviour for a register category key — which
+     * place-of-supply article applies — when the caller named a key and no class.
+     *
+     * The key decides the rate; the class decides where the supply happens, and the
+     * register's vocabulary does not say that. So this takes the nearest class whose
+     * own key is at or above this one: `goods.medical_equipment.prosthetic` is governed
+     * as a medical device, `goods.clothing.childrens` as clothing. Classes that share a
+     * key all share a place-of-supply rule, so which of them is taken does not matter.
+     *
+     * A service with no mapped ancestor — education, insurance, restaurant — falls to
+     * the Directive's GENERAL rule for B2C services, Art. 45, the supplier's
+     * establishment. That is the default the law itself applies when nothing more
+     * specific does. A caller who knows a specific article governs passes the class.
+     */
+    public static function governing(string $key): TaxClass
+    {
+        if (self::$reverse === null) {
+            $reverse = [self::FALLBACK => TaxClass::GeneralGoods];
+
+            foreach (TaxClass::cases() as $class) {
+                $reverse[self::keyFor($class)] ??= $class;
+            }
+
+            self::$reverse = $reverse;
+        }
+
+        foreach (self::ladder($key) as $rung) {
+            if (isset(self::$reverse[$rung])) {
+                return self::$reverse[$rung];
+            }
+        }
+
+        return str_starts_with($key, 'services.') ? TaxClass::ProfessionalService : TaxClass::GeneralGoods;
     }
 
     /**

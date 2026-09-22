@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Cbox\Tax\RateSource;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository;
@@ -28,7 +30,7 @@ use Illuminate\Contracts\Cache\Repository;
  * Wraps a commodity-aware inner source without hiding it: see
  * {@see ChainTaxRateSource} for why a wrapper must re-advertise the capability.
  */
-readonly class CachingTaxRateSource implements CommodityRateSource
+readonly class CachingTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource
 {
     public function __construct(
         private TaxRateSource $inner,
@@ -65,7 +67,7 @@ readonly class CachingTaxRateSource implements CommodityRateSource
             return $this->resolve($jurisdiction, $category, $commodityCode, $at);
         }
 
-        $key = $this->keyFor($jurisdiction, $category, $commodityCode);
+        $key = $this->keyFor($jurisdiction, $category->value, $commodityCode);
 
         $cached = $this->cache->get($key);
 
@@ -74,6 +76,37 @@ readonly class CachingTaxRateSource implements CommodityRateSource
         }
 
         $rate = $this->resolve($jurisdiction, $category, $commodityCode, null);
+
+        if ($rate !== null) {
+            $this->cache->put($key, $rate, $this->ttl);
+        }
+
+        return $rate;
+    }
+
+    public function rateForKey(
+        Jurisdiction $jurisdiction,
+        string $categoryKey,
+        ?string $commodityCode = null,
+        ?DateTimeImmutable $at = null,
+    ): ?TaxRate {
+        if (! $this->inner instanceof CategoryKeyedRateSource) {
+            throw new UnresolvedTaxRule(sprintf('The cached rate source (%s) cannot answer a register category key, and "%s" was asked for.', $this->inner::class, $categoryKey));
+        }
+
+        if (! $this->isCurrent($at)) {
+            return $this->inner->rateForKey($jurisdiction, $categoryKey, $commodityCode, $at);
+        }
+
+        // Prefixed so a key can never collide with a class value in the cache.
+        $key = $this->keyFor($jurisdiction, 'key='.$categoryKey, $commodityCode);
+        $cached = $this->cache->get($key);
+
+        if ($cached instanceof TaxRate) {
+            return $cached;
+        }
+
+        $rate = $this->inner->rateForKey($jurisdiction, $categoryKey, $commodityCode, null);
 
         if ($rate !== null) {
             $this->cache->put($key, $rate, $this->ttl);
@@ -99,7 +132,7 @@ readonly class CachingTaxRateSource implements CommodityRateSource
         return $at === null || $at->format('Y-m-d') === new DateTimeImmutable()->format('Y-m-d');
     }
 
-    private function keyFor(Jurisdiction $jurisdiction, TaxClass $category, ?string $commodityCode): string
+    private function keyFor(Jurisdiction $jurisdiction, string $category, ?string $commodityCode): string
     {
         $where = $jurisdiction->subdivision !== null
             ? $jurisdiction->subdivision->value
@@ -112,7 +145,7 @@ readonly class CachingTaxRateSource implements CommodityRateSource
             $this->namespace,
             $where,
             $locality,
-            $category->value,
+            $category,
             $commodityCode ?? '',
         ]);
     }
