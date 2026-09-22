@@ -7,10 +7,51 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added — register schema 2 and category keys
+
+- **Schema 2.0–2.4 is read.** Every release since 18 September was refused, and the
+  refusal said "re-run". Rates, jurisdictions, regions and boundary format 3 are
+  unchanged in schema 2; its additions are each handled on purpose, below. An
+  unsupported schema now says what to do: pin a supported release, or upgrade.
+- **Published decisions are evaluated.** Schema 2 states a conditional rule as a
+  tree over named facts. A three-valued interpreter reads the whole published
+  grammar and nothing else: an absent fact is unknown, never false, and anything
+  outside the grammar refuses. Kansas publishes its delivery rules this way — the
+  bare `included` flag is gone — so without it every Kansas delivery refused. Facts
+  arrive on `DeliveryCharge::$facts` under the register's names; a satisfied
+  decision needs no `exclusionConditionsMet`, and an unknown one refuses and names
+  every fact it needs. `DeliveryRules::included()` is now `treatment()`.
+- **Threshold operators** reach the nexus hint — "more than $500,000" against
+  "$500,000 or more". `obligations`, `measurementRules` and
+  `unresolvedQualifications` are reviewed and not applied: they no longer stop a
+  compile, and a rule carrying one refuses when read.
+- **Ask by the register's own category key.** `TaxQuery::$categoryKey` and
+  `SupplyLine::$categoryKey` take a key such as `services.education` or
+  `goods.medical_equipment.prosthetic`. The register publishes 182 categories and
+  `TaxClass` reaches 47; 103 of the rest carry live rates — education in 77
+  jurisdictions, insurance in 67, restaurant service in 36. A key the installed
+  release does not publish is refused with `UnknownCategory`, naming what is
+  nearby. `category` still governs place of supply, derived from the key when left
+  at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
+  optional capabilities; the chain and the cache pass keys through.
+
+### Fixed — memory and assumed answers
+
+- **The postal layer is sharded by ZIP.** It was decoded whole on every address
+  lookup: 107 MB for one Wisconsin address and 97 MB for Tennessee, past a default
+  PHP request. Now 11 MB and 7 MB, with identical rates. An empty postal table
+  published as `[]` (Michigan) reads as empty.
+- **An assumed US service taxability is no longer authoritative.** No state
+  publishes a rule for medical care, education, financial services or insurance
+  yet, and a doctor's visit in Kansas City billed 9.125% as authoritative. US
+  states tax services only where they enumerate them, so the rate is now `Derived`
+  and flagged `RateLimit::TaxabilityAssumed`. The figure is unchanged.
+- A price cap filed at a parent category reaches keys beneath it.
+
 ### Fixed — conditional-rule compatibility
 
-- Compilation and offline store reads now reject unreviewed schemas, including
-  newer minors beyond `1.34.x`. Unknown fields on consumed rules refuse instead of
+- Compilation and offline store reads now reject unreviewed schemas — beyond
+  `1.34.x` when written, and beyond `2.4.x` now. Unknown fields on consumed rules refuse instead of
   leaving an unconditional scalar answer. Upgrading the reader is required before
   adopting a newer schema; this does not implement the proposed predicate contract.
 - Compound remote-seller thresholds and proportional delivery bases refuse when
