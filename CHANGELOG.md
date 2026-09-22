@@ -37,6 +37,18 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Added — documentation
 
+- **The README leads with the work, not the architecture.** Install, sync, ask — three
+  steps and a real result — then what comes back, what it refuses, and where the logic
+  ends and the data begins. Stale claims went with it: rate sources no longer "compose
+  static · remote", and the jurisdiction count is the register's, not a number from
+  the design notes.
+- **A cookbook**: a webshop checkout (a basket with shipping, and what to store so the
+  invoice can be explained a year later), a marketplace sale, and a backfill.
+- **The docs landing page and quickstart carry the mental model** — the engine owns
+  the logic, the register owns the data, and three answers are kept apart — plus the
+  sync step the quickstart never mentioned and the flags worth reading before an
+  invoice goes out. Every documented example was executed against release 261.
+
 - **Seller registrations have a page.** How an entity states where it is established
   and registered, under which scheme and for which period, and what each signal
   decides — the collection gate, US nexus, a Canadian province's PST, a state's

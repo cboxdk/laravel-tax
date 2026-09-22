@@ -1,210 +1,179 @@
 # Cbox Tax
 
-**`cboxdk/laravel-tax`** — a self-hostable consumption-tax engine for Laravel. It
-**owns the calculation logic** — place-of-supply, reverse-charge, rate application,
-inclusive/exclusive — and **reads rate and rule data** through pluggable
-contracts. No forced third-party calculation SaaS.
+**Consumption tax for Laravel.** Send it a sale — who is selling, who is buying, what
+it is — and get back a number you can defend: the treatment, the rate, the authorities
+it splits across, and the published source it came from.
 
-> Built on [`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo): every
-> supply is assessed against a jurisdiction resolved from canonical ISO data, so
-> tax is a function of `(seller registrations, buyer jurisdiction, product type)`
-> — never a fuzzy country-name match.
-
-## The boundary: own the logic, source the data
+No tax SaaS in the request path. Nothing is fetched while pricing.
 
 ```php
-use Cbox\Tax\Contracts\TaxCalculator;
-use Cbox\Tax\ValueObjects\TaxQuery;
-use Cbox\Tax\ValueObjects\SellerRegistrations;
-use Cbox\Tax\Enums\{CustomerType, Pricing};
-use Cbox\Geo\ValueObjects\CountryCode;
+$assessment = app(TaxCalculator::class)->assess($query);
+
+$assessment->treatment;   // TaxTreatment::ReverseCharge
+$assessment->tax;         // Money 0.00 EUR
+$assessment->reason;      // "EU VAT: exempt intra-Community supply of goods to a
+                          //  VAT-registered customer in FR (Art. 138); the customer
+                          //  accounts for the acquisition."
+```
+
+## From install to a priced sale, in three steps
+
+**1 — Install**
+
+```bash
+composer require cboxdk/laravel-tax
+```
+
+**2 — Install the data** (once, and on every deploy — like `php artisan migrate`)
+
+```bash
+php artisan tax:data:sync
+```
+
+This compiles a published release of [the register](https://data.cboxtax.com) onto
+local disk: 11 tax regimes, every rate carrying the source and the date it was
+captured. Until it has run, the engine refuses to price anything rather than guess.
+
+**3 — Ask**
+
+```php
 use Brick\Money\Money;
+use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Tax\Contracts\TaxCalculator;
+use Cbox\Tax\Enums\{CustomerType, Pricing};
+use Cbox\Tax\ValueObjects\{SellerRegistrations, TaxQuery};
 
 $assessment = app(TaxCalculator::class)->assess(new TaxQuery(
     amount: Money::of('100.00', 'EUR'),
     pricing: Pricing::Exclusive,
-    place: $geo->find(new CountryCode('FR')),   // buyer jurisdiction (from laravel-geo)
+    place: $geo->find(new CountryCode('FR')),      // the buyer, from laravel-geo
     customer: CustomerType::Business,
     seller: new SellerRegistrations(new CountryCode('DE')),
-    customerTaxIdValidated: true,               // VIES-validated
+    customerTaxIdValidated: true,                  // VIES-validated
 ));
-
-$assessment->treatment;   // TaxTreatment::ReverseCharge — intra-EU B2B, buyer self-accounts
-$assessment->tax;         // Money 0.00 EUR
-$assessment->reason;      // human-readable explanation for the audit trail
 ```
 
-The engine decides *whether and how* to tax; the rate number comes from
-**[the register](https://data.cboxtax.com)** — 80 jurisdictions across eleven regimes,
-compiled to local disk by `php artisan tax:data:sync` and read without a network call.
-A missing rate is **refused, never assumed 0%**, and that includes the first run: until
-the register is synced the engine refuses and says so.
+A German company invoicing a validated French business is an intra-EU B2B supply, so
+nothing is charged and the buyer self-accounts. Change the seller to a French entity
+and the same query charges French VAT. That is the whole idea: **tax is a function of
+the facts you send**, and every fact has somewhere to go.
 
-The [data/engine validation matrix](conformance/validation-matrix.md) distinguishes
-published facts, engine logic, adapters and host inputs. It also records reference
-data still held in PHP and what the current tests establish for each layer.
+→ [Quickstart](docs/quickstart.md) · [Upgrading from 0.9](docs/getting-started/upgrading.md)
 
-## Multi-entity / seller-of-record routing
+## What comes back
 
-Tax depends on *which selling entity* issues the invoice. The same buyer is taxed
-differently by a German entity vs a French one:
+`TaxAssessment` is built to survive an audit, not just to add a line to a cart.
 
-| Selling entity | Buyer (FR business, validated) | Result |
-| --- | --- | --- |
-| German entity | cross-border intra-EU B2B | **reverse charge** — no VAT charged |
-| French entity | domestic supply | **French VAT** is charged |
+| | |
+| --- | --- |
+| `treatment` | `Standard`, `ReverseCharge`, `ZeroRated`, `Exempt`, `NotRegistered`, `MarketplaceFacilitated` — five different zeros that mean opposite things on a return |
+| `tax`, `net`, `gross` | exact `brick/money`, rounded by the jurisdiction's own published policy |
+| `rate->provenance` | which release, which dataset, effective from when, and a hash of the section it was read from |
+| `rate->confidence`, `rate->limitedBy` | whether this is exact, and if not, the one step that would close the gap |
+| `breakdown` | the state / county / city / district shares, allocated from the tax actually charged so they sum to it exactly |
+| `reason` | a sentence a human can read out to an accountant |
 
-`SellerRegistrations` (establishment + registrations) is the seller side of the
-calculation the billing engine supplies per invoice.
+## It refuses rather than guess
 
-## What's covered
+Three outcomes that most engines collapse into "0", kept apart on purpose:
 
-| | Regime | Status |
-| --- | --- | --- |
-| **EU VAT** | `eu-vat` — Art. 44/45/58 place-of-supply (general B2C services source at the supplier; goods and electronic services at the customer), intra-EU B2B reverse charge, Art. 59c €10k micro-business relief scoped to the supplies it covers; rates from the register, which reads the Commission's TEDB among its sources | ✅ |
-| **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, UAE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA | ✅ |
-| **India** | `in-gst` — dual GST (IGST vs CGST+SGST), OIDAR destination, B2B reverse charge | ✅ |
-| **Malaysia** | `my-sst` — SST service tax; charges B2B+B2C, no reverse charge | ✅ |
-| **US sales tax** | `us-sales-tax` — nexus, taxability and intrastate-sourcing gates, with rates, category taxability, nexus thresholds and sourcing rules from **the register** (all 51 jurisdictions) | ✅ address-exact for 30 states |
-| **Canada GST/HST** | `ca-gst` — province-level combined rate, cross-border B2B self-assessment | ✅ |
+- **No tax applies** — a resolved, authoritative zero.
+- **Zero-rated or exempt** — a real published band, with its citation.
+- **Not determinable** — an exception, not a number. A jurisdiction with no regime, a
+  missing rate, a threshold the register says it has not modelled: all refuse.
 
-See [`docs/coverage`](docs/coverage/_index.md) for supported regimes and limitations. The default geo profiles and regime registry model **52
-countries**; the register's broader data coverage does not automatically add their
-calculation rules to this engine. Unsupported regimes refuse before rate lookup.
+Between the two extremes sits the honest middle: an answer that is *probably* right
+and says why it might not be. A rate resolved from a broader category, a US service
+taxed because nothing published says otherwise, an address that only resolved to the
+state line — each comes back flagged, with a remedy attached.
+`OrderAssessment::needsReview()` is the one call that tells you whether anything on a
+document needs a human.
 
-The **US** regime gates on three things before applying a rate — the state must be
-resolved (via the `AddressGeocoder`), the seller must have **nexus** in it, and the
-product must be **taxable** there — otherwise it returns `NotRegistered` or
-`Exempt`. Price exemptions use the line amount and the published threshold rule;
-incomplete threshold records refuse. A category with no published determination in a known
-jurisdiction defaults to taxable — a behaviour change from the retired dataset's
-explicit undetermined verdicts. State rates, category taxability and economic-nexus
-thresholds come from **the register**.
-**Intrastate sourcing is applied**, not just supplied: nine states tax an in-state
-sale at the seller's location, so give the supply a `SupplyRoute(shipFrom: …)` and
-a Texas in-state sale is charged the seller's rate. Interstate stays
-destination-sourced everywhere, and a supply with no route behaves exactly as
-before. **Address-exact** rates are live for 30 states. The 24 Streamlined states resolve by
-ZIP+4 through the published boundary index — Kansas City comes out as 6.5% state + 1.0%
-county + 1.625% city — fifteen of them go finer still with a street index
-(`tax:data:sync --streets=KS`), and California and New Mexico resolve by point against their own
-polygon layers. Florida, Pennsylvania, Hawaii and Virginia need no boundary file at all,
-because the county is the only authority that can tax there and a geocoder returns it
-for free. The rest fall back to the state share, flagged
-([details](docs/coverage/the-register.md)).
-**Remote-seller elections close two of those states on request.** Alabama's SSUT
-(flat 8%) and Texas' Single Local Use Tax Rate (6.25% + 1.75% for 2026) are
-statutory schemes a remote seller elects into; give the state registration the
-`remote-election` scheme ([how](docs/core-concepts/seller-registrations.md#schemes))
-and the engine prices under them — opt-in, dated, and
-refusing rather than guessing when the published figure lapses.
-**Marketplace sales are not the seller's to collect.** Every US state with a sales
-tax now makes a qualifying marketplace the liable party — Missouri closed the set on
-2023-01-01 — so pass `marketplaceFacilitated: true` and the engine returns
-`MarketplaceFacilitated`: nothing charged, because the marketplace already charged
-it. It is kept apart from `Exempt` and `NotRegistered` on purpose. All three are a
-zero and they mean opposite things on a return, and most states still expect the
-sale reported in gross receipts and then deducted. The rule is checked **on the
-supply's date**, so a backdated Missouri sale from 2022 is still the seller's.
+## Where the logic ends and the data begins
 
-**Outside the US, collection is gated on registration.** A supply into a country
-where the seller is neither established nor registered is `NotRegistered`, not a
-charge — the tax is due at the border instead. An OSS or IOSS registration covers the
-whole Union. See [seller registrations](docs/core-concepts/seller-registrations.md).
-
-**Canada** resolves at province level (no local tax), as the federal GST plus the
-province's share: an HST replaces the federal rate, a PST is added to it, and a PST is
-collected only by a seller holding that province's own permit. Every regime reads the same
-register; to put your own source in front of it, bind `TaxRateSource` — see
-[`docs/coverage`](docs/coverage/_index.md).
-
-**EU** place of supply follows the Directive rather than a single rule: goods
-(Art. 33(a)) and electronically-supplied services (Art. 58) are taxed at the
-customer, while a general B2C service is taxed **where the supplier is
-established** (Art. 45) — so a German consultancy invoicing a French consumer owes
-German VAT. On top of that sits the **Art. 59c €10,000 micro-business threshold**,
-scoped to the supplies it actually covers (goods and TBE, not services generally):
-a below-threshold, non-opted seller charges origin VAT; opted-in or over-threshold
-charges destination. Rate sources resolve by **taxability category**, so
-reduced/zero bands apply where the installed register supplies an applicable rate.
-
-Unmodelled jurisdictions and missing rates are **refused, not guessed**.
-
-## Documents, not just single supplies
-
-A real invoice is multi-line. `TaxOrder` carries the context every line shares plus
-`SupplyLine[]`, and `OrderTaxCalculator::assessOrder()` returns each line's verdict
-tied to the id you sent:
-
-```php
-$assessment = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
-    place: $geo->find(new CountryCode('DK')),
-    customer: CustomerType::Consumer,
-    seller: new SellerRegistrations(new CountryCode('DK')),
-    pricing: Pricing::Exclusive,
-    lines: [
-        new SupplyLine('subscription', Money::of('100.00', 'DKK'), TaxClass::DigitalService),
-        new SupplyLine('usage',        Money::of('37.50',  'DKK'), TaxClass::DigitalService),
-        new SupplyLine('onboarding',   Money::of('2500.00','DKK'), TaxClass::ProfessionalService),
-    ],
-));
-
-$assessment->tax();              // summed from the rounded lines, never recomputed
-$assessment->forLine('usage');   // that line's own assessment
-$assessment->taxByAuthority();   // per-jurisdiction totals for remittance, or null
+```
+your app ──► TaxQuery ──► regime  (logic this package owns:
+                          │        place of supply, reverse charge,
+                          │        registration, exemptions, rounding)
+                          ▼
+                      the register  (data cboxtax publishes:
+                          │          rates, rules, boundaries, provenance)
+                          ▼
+                    TaxAssessment
 ```
 
-Each order line uses the same regime and input facts as a single supply. Delivery
-is assessed after the goods, and published invoice rounding reconciles the rate
-groups before totals are returned. A line may override the document's pricing or
-carry its own exemption. See [rounding and delivery](docs/core-concepts/rounding-and-delivery.md)
-for rounding elections, conditional delivery facts and supported rule shapes.
+The engine never invents a rate, and the register never decides a treatment. Both
+sides are contracts: bind your own `TaxRateSource`, `ProductTaxability`,
+`MarketplaceRules` or `DeliveryRules` and the engine keeps working.
 
-## Rate breakdown
+## Coverage
 
-Where a rate is **stacked** from several authorities — a US state share plus the
-county, city and special-district records a rooftop lookup matched — the
-assessment carries a `TaxBreakdown` splitting the tax across them, so a seller can
-remit per jurisdiction. The shares are **allocated from the tax actually charged**,
-never recomputed per authority, so they sum to it exactly and a return reconciles
-with the invoices behind it. A `null` breakdown means the split is **unknown**, not
-that one authority takes everything. See
-[`docs/core-concepts/rate-breakdown.md`](docs/core-concepts/rate-breakdown.md).
+| | |
+| --- | --- |
+| **EU VAT** | Place of supply per the Directive — goods and electronic services at the customer, general B2C services at the supplier — intra-EU B2B as an exempt Art. 138 supply, the Art. 59c €10,000 relief, and the ten special territories a country code cannot find |
+| **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, AE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA |
+| **India · Malaysia** | Dual GST (IGST vs CGST+SGST) · SST service tax |
+| **United States** | Nexus, taxability, marketplace and intrastate-sourcing gates, with local authorities stacked to the house number where a state publishes a street index, the point in California and New Mexico, and ZIP+4 across the Streamlined states |
+| **Canada** | Federal GST plus the province's PST/QST, or a harmonised HST in its place |
 
-## Buyer exemptions
+25 regime modules across 52 countries. The register carries data for more
+jurisdictions than the engine models rules for — a rate existing does not make a
+country supported, and the difference is
+[written down](docs/coverage/not-yet-supported.md).
 
-A query may carry a native buyer **exemption** (a resale / nonprofit / government
-certificate) on `TaxQuery::$exemption`. Applied deny-by-default over the regime's
-verdict, a valid exemption that covers the taxed jurisdiction rewrites a would-be
-`Standard` line to `Exempt` (net kept, tax 0, gross = net) with the certificate
-reference recorded on the assessment; reverse-charge, not-registered and zero-rated
-outcomes are left untouched, and an exemption for a different jurisdiction or an
-expired one does not exempt. The engine computes the assessment; **certificate
-capture and verification are the consumer's concern.** See
-[`docs/core-concepts/exemptions.md`](docs/core-concepts/exemptions.md).
+## Built for platforms, not just one shop
 
-## Design
+- **Every selling entity is separate.** `SellerRegistrations` travels with the query:
+  establishment, foreign numbers, US state permits, Canadian province permits, OSS or
+  IOSS, each with its own validity window. Nothing lives in global config, so a
+  multi-tenant host prices each tenant as itself.
+  → [Seller registrations](docs/core-concepts/seller-registrations.md)
+- **Invoices, not just supplies.** `TaxOrder` assesses a whole document: per-line
+  verdicts, delivery apportioned across the lines it delivers, mixed-rate freight
+  split per authority, and `taxByAuthority()` for the remittance.
+- **Marketplaces.** Say a sale was facilitated and the engine checks whether that
+  place's law actually moves the liability — and says so when the law only moves it
+  for *some* facilitated sales, instead of quietly handing the tax to a platform.
+- **Backfills are correct.** Every dated lookup — rate, taxability, exemption,
+  registration — resolves on the supply's tax point, so recalculating last year does
+  not apply this year's world to it.
 
-- **Contracts-first.** `TaxCalculator`, `TaxRegime`, `TaxRateSource`,
-  `RegimeRegistry`, `AddressGeocoder`, `VatIdValidator`, `ReturnAggregator` — bind
-  and override any of them. Rate sources compose (static · remote · caching · chain).
-- **Deny-by-default.** No regime for a jurisdiction, or no rate, → an exception,
-  never a silent zero.
-- **Money is exact.** Amounts are `brick/money`; published rounding policies control
-  method, precision and line/invoice scope, with half-up where no policy is published.
+## Data you can pin
+
+The register is compiled, content-addressed and swapped atomically:
+
+```bash
+php artisan tax:data:sync --release=2026.09.22-261   # pin a release
+php artisan tax:data:verify                          # sha256 per file, offline
+php artisan tax:data:activate previous               # instant rollback
+php artisan tax:data:status                          # what is live, what is installed
+```
+
+The package is MIT. **The register's data is licensed separately** (PolyForm Internal
+Use 1.0.0): computing your own tax is covered; redistributing the data or reselling
+lookups from it is not. → [The register](docs/getting-started/the-register.md)
+
+## Documentation
+
+| | |
+| --- | --- |
+| [Quickstart](docs/quickstart.md) | Zero to a priced supply in one read |
+| [Cookbook](docs/cookbook/_index.md) | A checkout, a marketplace sale, a backfill |
+| [Core concepts](docs/core-concepts/_index.md) | Regimes, seller registrations, dates, exemptions, rounding, breakdowns |
+| [Coverage](docs/coverage/_index.md) | What is modelled, what the register publishes, and what is neither |
+| [Extension points](docs/extension-points/_index.md) | Bind your own sources, geocoder, catalogue, resolvers |
+| [Upgrading from 0.9](docs/getting-started/upgrading.md) | The retired data sources, changed contracts, and the numbers that move |
 
 ## Requirements
 
-PHP `^8.4` with `ext-dom` and `ext-zlib`; Laravel `^13`. See `composer.json`.
+PHP `^8.4` (tested on 8.4 and 8.5) with `ext-dom` and `ext-zlib`, Laravel `^13`, and
+[`cboxdk/laravel-geo`](https://github.com/cboxdk/laravel-geo) for jurisdictions. See
+[requirements](docs/requirements.md).
 
 ## Development
 
 ```bash
 composer install
-composer qa    # pint --test, phpstan (level max), pest (including live e2e), license-check, audit
-vendor/bin/pest --exclude-group=e2e  # fixture tests when working offline
+composer qa          # pint, phpstan (level max), pest, licence check, audit
+composer test:reference   # the independent conformance corpus
 ```
-
-## License
-
-MIT.

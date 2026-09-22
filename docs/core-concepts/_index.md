@@ -25,3 +25,6 @@ description: The engine's architecture and the regimes it ships.
   every dated lookup in an assessment.
 - [EU special territories](eu-territories.md) — ten places inside a Member State
   where its VAT rules do not simply apply, and why a country code is not enough.
+
+For task-shaped examples that use these together, see the
+[cookbook](../cookbook/_index.md).
