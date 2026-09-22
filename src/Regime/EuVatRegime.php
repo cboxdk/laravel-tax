@@ -13,6 +13,7 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\TaxAssessment;
@@ -177,6 +178,21 @@ class EuVatRegime extends DestinationTaxRegime
      */
     protected function reverseChargeMentions(TaxQuery $query): array
     {
+        // GOODS ARE NOT REVERSE-CHARGED; THEY ARE AN EXEMPT INTRA-COMMUNITY SUPPLY.
+        // Art. 138 exempts the dispatch and the customer accounts for the acquisition
+        // in its own state — the same effect on the invoice total, a different
+        // provision, a different mention (Art. 226(11)), and a different line on the
+        // return and the EC Sales List. The code tells a host which one it is.
+        if ($this->intraCommunityGoods($query)) {
+            return [
+                new InvoiceMention(
+                    code: 'intra_community_supply',
+                    text: 'Exempt intra-Community supply',
+                    reference: 'Article 138 of Council Directive 2006/112/EC',
+                ),
+            ];
+        }
+
         return [
             new InvoiceMention(
                 code: 'reverse_charge',
@@ -258,6 +274,28 @@ class EuVatRegime extends DestinationTaxRegime
     private function taxableCustomer(TaxQuery $query): bool
     {
         return $query->isBusiness() && $query->customerTaxIdValidated;
+    }
+
+    protected function reverseChargeReason(TaxQuery $query): string
+    {
+        return $this->intraCommunityGoods($query)
+            ? sprintf('EU VAT: exempt intra-Community supply of goods to a VAT-registered customer in %s (Art. 138); the customer accounts for the acquisition.', $query->place->country->value)
+            : parent::reverseChargeReason($query);
+    }
+
+    /**
+     * Tangible goods dispatched to a business in another member state. Digital
+     * products and software are electronically supplied SERVICES (Art. 58) whatever
+     * the category tree files them under, and stay on the reverse charge.
+     */
+    private function intraCommunityGoods(TaxQuery $query): bool
+    {
+        $key = $query->categoryKey ?? CategoryMap::keyFor($query->category);
+
+        return str_starts_with($key.'.', 'goods.')
+            && ! str_starts_with($key, 'goods.digital_products')
+            && ! str_starts_with($key, 'goods.software')
+            && $query->place->taxProfile->isEuMember;
     }
 
     protected function sourcingPlace(TaxQuery $query): Jurisdiction

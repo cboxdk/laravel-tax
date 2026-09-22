@@ -103,3 +103,17 @@ it('does not take a marketplace assertion where no rule makes the platform liabl
 it('still reverse-charges a validated business, registered or not', function (): void {
     expect(app(TaxCalculator::class)->assess(gateQuery('DK', 'FR', customer: CustomerType::Business, validated: true))->treatment)->toBe(TaxTreatment::ReverseCharge);
 });
+
+it('marks intra-EU goods to a business as an Article 138 supply, and services as a reverse charge', function (TaxClass $class, string $code, string $article): void {
+    // Goods are exempt on dispatch and acquired by the customer (Art. 138); services
+    // are reverse-charged (Art. 196). Same total, different provision, different
+    // mention, and a different line on the return and the EC Sales List.
+    $a = app(TaxCalculator::class)->assess(gateQuery('DK', 'FR', customer: CustomerType::Business, validated: true, class: $class));
+
+    expect($a->mentions[0]->code)->toBe($code)
+        ->and($a->mentions[0]->reference)->toContain($article);
+})->with([
+    'tangible goods' => [TaxClass::GeneralGoods, 'intra_community_supply', 'Article 138'],
+    'a consultancy service' => [TaxClass::ProfessionalService, 'reverse_charge', 'Article 196'],
+    'an electronic service' => [TaxClass::DigitalService, 'reverse_charge', 'Article 196'],
+]);

@@ -97,12 +97,17 @@ abstract class DestinationTaxRegime implements TaxRegime
             gross: $query->amount,
             placeOfSupply: $query->place,
             rate: null,
-            reason: sprintf(
-                '%s reverse charge: cross-border B2B supply to a tax-registered customer in %s; customer self-accounts.',
-                $this->label(),
-                $query->place->country->value,
-            ),
+            reason: $this->reverseChargeReason($query),
             mentions: $this->reverseChargeMentions($query),
+        );
+    }
+
+    protected function reverseChargeReason(TaxQuery $query): string
+    {
+        return sprintf(
+            '%s reverse charge: cross-border B2B supply to a tax-registered customer in %s; customer self-accounts.',
+            $this->label(),
+            $query->place->country->value,
         );
     }
 
