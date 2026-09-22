@@ -7,14 +7,17 @@ it splits across, and the published source it came from.
 No tax SaaS in the request path. Nothing is fetched while pricing.
 
 ```php
-$assessment = app(TaxCalculator::class)->assess($query);
+$assessment = app(TaxCalculator::class)->assess($query);   // German seller → French business
 
-$assessment->treatment;   // TaxTreatment::ReverseCharge
-$assessment->tax;         // Money 0.00 EUR
-$assessment->reason;      // "EU VAT: exempt intra-Community supply of goods to a
-                          //  VAT-registered customer in FR (Art. 138); the customer
-                          //  accounts for the acquisition."
+$assessment->tax;                  // Money 0.00 EUR — the seller charges nothing
+$assessment->treatment;            // TaxTreatment::ReverseCharge — the customer accounts for it
+$assessment->mentions[0]->text;    // "Exempt intra-Community supply" — wording the invoice needs
+$assessment->reason;               // the whole sentence, with the article it rests on
 ```
+
+Zero, but not "no tax was due": the tax is the French customer's to account for, the
+invoice has to say so, and the return has to report it. Six treatments keep those
+distinctions apart — see [what comes back](#what-comes-back).
 
 ## From install to a priced sale, in three steps
 
