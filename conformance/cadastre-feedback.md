@@ -125,7 +125,7 @@ not assert that the current grouping and credit policy is legally universal.
 ## 6. Complete the connections in the partial territory migration
 
 **Already upstream:** `resources/overlays/eu/territories.json` and
-`EuTerritoryNormalizer` publish `eu:PT:PT-30` (Madeira) and `eu:PT:PT-20` (Azores),
+`EuTerritoryNormalizer` publish `eu:PT:MADEIRA` and `eu:PT:AZORES`,
 parent jurisdiction links, `inTaxArea`, and dated standard/intermediate/reduced
 rates. Madeira carries **22/12/5** through 30 September 2024 and **22/12/4** from
 1 October 2024; the earlier opening is marked as an inferred floor. Azores carries
@@ -135,22 +135,33 @@ rates. Madeira carries **22/12/5** through 30 September 2024 and **22/12/4** fro
 | --- | --- | --- | --- |
 | Address → territory | Package postal matches live in `StaticEuTerritories`; territorial rates already have register jurisdiction keys. | Publish dated, sourced postal coverage, normalization, overlaps/precedence and ambiguity outcomes linked to those keys. | Resolve postal/subdivision facts to a territorial key at the tax point; no automatic mainland classification for an unknown address. |
 | Territory → VAT area | Cadastre already has parent links and `inTaxArea`; the package has its own territory exclusions. | Link membership to the resolved territory, with validity/coverage and explicit exclusions; separate EU membership, EU VAT area and any local tax regime. | Feed resolved membership into place-of-supply/treatment before selecting a rate. An outside-area flag is not a zero-rate substitution. |
-| Category/operation → regional rate | Dated regional bands exist. The package substitutes by mainland percentage (`23→22`, `13→12`, `6→4/5`, etc.). | Link category/classification or legal band to the applicable regional rate, with exemptions, seller/place conditions, dates and provenance. Equal percentages must not be assumed to mean the same legal band. | Read regional rates and substitutions without flattening history; preserve exemption/zero treatment and refuse uncovered dates or ambiguous bands. |
+| Category/operation → regional rate | Dated regional bands exist, and the package now READS them: each territorial band is paired with the mainland band of the same kind on the supply date, and a territory the register does not carry refuses. No figures remain in code. | Link category/classification or legal band to the applicable regional rate, with exemptions, seller/place conditions, dates and provenance. Equal percentages must not be assumed to mean the same legal band. | Read regional rates and substitutions without flattening history; preserve exemption/zero treatment and refuse uncovered dates or ambiguous bands. |
 | Territorial exceptions | Package logic contains exclusions and limitations for operation- or seller-dependent territories. | Encode relevant seller establishment, operation and route predicates plus coverage; a regional headline rate alone is insufficient. | Evaluate supported predicates; expose unknown/unsupported outcomes. Do not generalise Portugal's band substitution to every territory. |
 
-**Public category API is an engine responsibility:** `TaxQuery`, `SupplyLine` and
-rate/taxability contracts currently accept `TaxClass`; commodity codes refine only
-within its mapped category. Several finer register categories are unreachable.
-A proposed `TaxCategory` value object would carry an exact register key alongside
-legacy `TaxClass` support. It must propagate through order queries, catalogue
-mapping, rate lookup, taxability, territory substitutions and caching, validate
-against the pinned vocabulary, and preserve classification and provenance. Unknown
-keys or narrower unevaluated conditions must not silently fall back to a general
-class. See the companion proposal for acceptance cases. This is an API extension
-to agree and implement, not a request to duplicate categories or rates upstream.
+**Public category API: implemented.** `TaxQuery::$categoryKey` and
+`SupplyLine::$categoryKey` take an exact register key, validated against the
+installed release (`UnknownCategory` names the closest published keys). It reaches
+rate lookup, taxability, orders, the chain and the cache. `TaxClass` still governs
+place of supply, derived from the key when not stated.
 
-`UsLocalStructure` also still contains local-resolution strategy facts. Its eventual
-migration needs an agreed representation; it is separate from territorial VAT rates.
+**`UsLocalStructure`**, what remains and why:
+
+- *Point-resolved states* are no longer a list in use: the geocoder reads them from
+  the installed release (a geometry artifact present). The list is only the
+  fallback for a geocoder built without a store.
+- *County-resolved states* (FL, PA, HI, VA) cannot yet be derived. The register
+  labels the local units of Hawaii, Pennsylvania and Virginia `level: territory`,
+  and labels Idaho's resort cities and Mississippi's two cities the same way, so a
+  derivation would wrongly add ID and MS. **Ask:** publish `county` (or a
+  county-equivalent level) for units that are counties, distinct from cities.
+- *Philadelphia is coterminous with its county; Virginia's independent cities are
+  county-equivalents.* Name-matching facts, stable for decades; they stay until the
+  register carries the relation.
+
+**Postal ranges for territories** are not published in any section of release
+`2026.09.21-255`, so address → territory remains in `StaticEuTerritories`. Which
+territories Article 6 places outside the VAT area also remains there: `inTaxArea`
+marks the Canary Islands `true` because IGIC is carried, which is a different fact.
 
 ## Extend the existing publication checks
 
