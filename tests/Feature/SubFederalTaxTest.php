@@ -33,6 +33,13 @@ function usSeller(string $state): SellerRegistrations
     ]);
 }
 
+function caSeller(string $province): SellerRegistrations
+{
+    return new SellerRegistrations(new CountryCode('CA'), [
+        new SellerRegistration(new CountryCode('CA'), new SubdivisionCode($province)),
+    ]);
+}
+
 function usBuyer(string $sellerState, string $buyerState, TaxClass $category = TaxClass::GeneralGoods): TaxQuery
 {
     return new TaxQuery(
@@ -119,6 +126,57 @@ it('charges the Canadian province combined rate', function () {
     expect($a->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $a->tax->getAmount())->toBe('13.00'); // ON HST 13%
 });
+
+it('adds the provincial share to the federal rate, or replaces it with a harmonised one', function (string $province, ?string $category, string $tax) {
+    $a = $this->tax->assess(new TaxQuery(
+        amount: Money::of('100.00', 'CAD'),
+        pricing: Pricing::Exclusive,
+        place: $this->geo->find(new CountryCode('CA'), new SubdivisionCode($province)),
+        customer: CustomerType::Consumer,
+        seller: caSeller($province),
+        categoryKey: $category,
+    ));
+
+    expect((string) $a->tax->getAmount())->toBe($tax);
+})->with([
+    'Alberta levies no provincial tax' => ['CA-AB', null, '5.00'],
+    'British Columbia adds its PST' => ['CA-BC', null, '12.00'],
+    'British Columbia exempts food from PST only' => ['CA-BC', 'goods.food', '5.00'],
+    'basic groceries are zero-rated on both sides' => ['CA-BC', 'goods.food.basic', '0.00'],
+    'Quebec zero-rates books under QST only' => ['CA-QC', 'goods.publications.book', '5.00'],
+    'Quebec stacks QST on GST' => ['CA-QC', null, '14.98'],
+    'HST follows a federal exemption' => ['CA-ON', 'services.medical', '0.00'],
+    'HST province zero-rates groceries' => ['CA-ON', 'goods.food.basic', '0.00'],
+    'HST applies otherwise' => ['CA-ON', 'goods.publications.book', '13.00'],
+]);
+
+it('breaks a PST province into its federal and provincial shares', function () {
+    $a = $this->tax->assess(new TaxQuery(
+        amount: Money::of('100.00', 'CAD'),
+        pricing: Pricing::Exclusive,
+        place: $this->geo->find(new CountryCode('CA'), new SubdivisionCode('CA-BC')),
+        customer: CustomerType::Consumer,
+        seller: caSeller('CA-BC'),
+    ));
+
+    expect(array_map(fn ($c) => [$c->code, (string) $c->percentage], $a->rate?->components ?? []))
+        ->toBe([['ca:CA', '5'], ['ca:BC', '7']]);
+});
+
+it('charges only the federal share when the seller is not registered for the province\'s PST', function (string $province, string $tax) {
+    $a = $this->tax->assess(new TaxQuery(
+        amount: Money::of('100.00', 'CAD'),
+        pricing: Pricing::Exclusive,
+        place: $this->geo->find(new CountryCode('CA'), new SubdivisionCode($province)),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('CA')),
+    ));
+
+    expect((string) $a->tax->getAmount())->toBe($tax);
+})->with([
+    'PST is a provincial registration' => ['CA-BC', '5.00'],
+    'HST is the federal one' => ['CA-ON', '13.00'],
+]);
 
 it('reverse-charges a cross-border B2B supply into Canada', function () {
     $a = $this->tax->assess(new TaxQuery(

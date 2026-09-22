@@ -30,7 +30,7 @@ final class RegisterCompatibility
      *
      * @var array<int, int>
      */
-    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 4];
+    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 5];
 
     /**
      * Payload fields this reader interprets, per rule kind it consumes.
@@ -46,6 +46,7 @@ final class RegisterCompatibility
         'remote_seller_election' => ['program', 'mechanic', 'ratePercent', 'statute'],
         'rounding' => ['method', 'places', 'appliesTo', 'aggregatesLocal'],
         'taxable_base' => ['component', 'included', 'category', 'proportion', 'decision'],
+        'declined_rate' => ['reason', 'names', 'category', 'rate', 'says'],
     ];
 
     /**

@@ -34,7 +34,9 @@ bundled national snapshot or illustrative province-rate fallback.
 A commodity code can refine a category lookup. If several applicable rates remain
 ambiguous, the source uses the standard rate with `RateLimit::HeadingAmbiguous`.
 Conditions that narrow an inherited category answer are reported with
-`RateLimit::ConditionsUnevaluated`. Read `confidence`, `limitedBy` and `provenance`
+`RateLimit::ConditionsUnevaluated`, and a category where the law names a rate the
+register declined to file — Burkina Faso's 10% for approved hotels — with
+`RateLimit::RateDeclined`. Read `confidence`, `limitedBy` and `provenance`
 on the returned rate rather than treating an entire country's coverage as one
 confidence grade. See [Rate sources](../extension-points/rate-sources.md).
 

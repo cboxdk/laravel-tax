@@ -100,6 +100,12 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             throw new DatasetNotInstalled($this->dataset->storeRoot());
         }
 
+        $composed = $this->composed($jurisdiction, $candidates, $carried, $key, $commodityCode, $at, $version);
+
+        if ($composed !== null) {
+            return $this->withDeclined($composed, array_slice($carried, 0, 2), $key, $at);
+        }
+
         foreach ($carried as $code) {
             $rate = $this->resolve($code, $key, $commodityCode, $at, $version);
 
@@ -109,10 +115,162 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
 
             $stacked = $this->stacked($jurisdiction, $code, $rate, $key, $commodityCode, $at, $version) ?? $rate;
 
-            return $this->withStatewideLocal($stacked, $code, $key, $at);
+            return $this->withDeclined($this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
         }
 
         return null;
+    }
+
+    /**
+     * Flag a rate where the law names a different one for this category and the
+     * register declined to file it.
+     *
+     * Only a declined rate filed AT or ABOVE the rung asked about: one declined for
+     * hotel stays says nothing about a question asked about services in general, and
+     * flagging it there would put a caveat on every service in the country. One
+     * declined without any category is skipped for the same reason — the Congo's
+     * "certain basic necessities, a set the DGI names and never lists" could be any
+     * product at all. An answer already carrying a limit keeps it; the first gap
+     * named is the one to close.
+     *
+     * @param  list<string>  $codes
+     */
+    private function withDeclined(TaxRate $rate, array $codes, string $key, ?DateTimeImmutable $at): TaxRate
+    {
+        if ($rate->limitedBy !== null) {
+            return $rate;
+        }
+
+        $ladder = CategoryMap::ladder($key);
+
+        foreach ($codes as $code) {
+            foreach ($this->dataset->rulesOn($code, 'declined_rate', $at ?? new DateTimeImmutable('today')) as $rule) {
+                $payload = Shape::map($rule['payload'] ?? null);
+                $category = Shape::text($payload['category'] ?? null);
+                $declined = Shape::text($payload['rate'] ?? null);
+
+                if ($category === null || ! in_array($category, $ladder, true)) {
+                    continue;
+                }
+
+                if ($declined !== null && is_numeric($declined) && BigDecimal::of($declined)->isEqualTo($rate->percentage)) {
+                    continue;
+                }
+
+                return new TaxRate(
+                    $rate->percentage,
+                    $rate->kind,
+                    $rate->source,
+                    Confidence::Derived,
+                    $rate->components,
+                    RateLimit::RateDeclined,
+                    $rate->provenance,
+                );
+            }
+        }
+
+        return $rate;
+    }
+
+    /**
+     * A province's tax on top of the country's, where the register carries both.
+     *
+     * Canada files like the United States — a federal rate and a provincial share —
+     * except that here the federal rate exists, on `ca:CA`, so the province is not
+     * the whole answer and neither is the country. Reading only the first one that
+     * answered charged Alberta nothing (its single row says it levies no provincial
+     * tax), British Columbia the federal 5% without its 7% PST, and an Ontario doctor
+     * the full 13% HST on a supply the federal act exempts.
+     *
+     * The province's share decides how the two meet:
+     *
+     *  - `local_component` (a PST) is ADDED to the federal rate, each side answering
+     *    for the category on its own: a book in Quebec is 5% federal and 0% QST.
+     *  - `combined` (an HST) REPLACES the federal rate, because it already includes
+     *    it — unless the federal act zero-rates or exempts the category, which the
+     *    harmonised tax follows. A provincial category row still wins over both.
+     *  - no share at all means the province adds nothing, whatever its own rows say,
+     *    so the federal answer is the whole rate.
+     *
+     * Null hands back to the ordinary most-specific-first read: no subdivision was
+     * asked, the country or the province is not carried, the country has no answer,
+     * or the province files a band of its own rather than a share of the country's.
+     *
+     * @param  list<string>  $candidates
+     * @param  list<string>  $carried
+     */
+    private function composed(
+        Jurisdiction $jurisdiction,
+        array $candidates,
+        array $carried,
+        string $key,
+        ?string $commodityCode,
+        ?DateTimeImmutable $at,
+        string $version,
+    ): ?TaxRate {
+        if ($jurisdiction->subdivision === null || count($carried) < 2 || $carried[0] !== $candidates[0]) {
+            return null;
+        }
+
+        [$province, $country] = [$carried[0], $carried[1]];
+        $federal = $this->resolve($country, $key, $commodityCode, $at, $version);
+
+        if ($federal === null) {
+            return null;
+        }
+
+        $records = $this->dataset->ratesFor($province);
+        $own = $this->resolver->resolve($records, $key, $commodityCode, $at);
+        $ownRow = $own['rate'] ?? null;
+        $ownScoped = $ownRow !== null && (($ownRow['category'] ?? null) !== null || ($ownRow['classification'] ?? null) !== null);
+        $share = $this->resolver->local($records, $key, $at);
+
+        if (($share['kind'] ?? null) === 'combined') {
+            if ($ownScoped) {
+                return null;
+            }
+
+            $federalRow = $this->resolver->resolve($this->dataset->ratesFor($country), $key, $commodityCode, $at)['rate'] ?? null;
+            $federalScoped = $federalRow !== null && (($federalRow['category'] ?? null) !== null || ($federalRow['classification'] ?? null) !== null);
+
+            return $federalScoped && $federal->percentage->isZero() ? $federal : null;
+        }
+
+        if (($share['kind'] ?? null) !== 'local_component') {
+            // No share: the province adds nothing. Its own untyped row — Alberta's
+            // single 0% exempt — says exactly that, and a band of its own would be a
+            // different shape of register this read does not assume.
+            return $ownRow === null || $ownScoped || in_array($ownRow['kind'] ?? null, ['zero', 'exempt'], true)
+                ? $federal
+                : null;
+        }
+
+        $provincial = $ownScoped ? $this->resolve($province, $key, $commodityCode, $at, $version) : null;
+        $part = $provincial->percentage ?? (is_string($share['percentage'] ?? null) ? BigDecimal::of($share['percentage']) : null);
+
+        if ($part === null) {
+            return $this->unstacked($federal);
+        }
+
+        $total = $federal->percentage->plus($part);
+        $derived = $federal->confidence !== Confidence::Authoritative || ($provincial !== null && $provincial->confidence !== Confidence::Authoritative);
+
+        return new TaxRate(
+            $total->strippedOfTrailingZeros(),
+            match (true) {
+                $total->isZero() => RateKind::Zero,
+                $federal->percentage->isZero() => RateKind::Standard,
+                default => $federal->kind,
+            },
+            self::SOURCE,
+            $derived ? Confidence::Derived : Confidence::Authoritative,
+            [
+                new RateComponent(JurisdictionLevel::Country, $federal->percentage, $country, $this->nameOf($country)),
+                new RateComponent(JurisdictionLevel::State, $part->strippedOfTrailingZeros(), $province, $this->nameOf($province)),
+            ],
+            $federal->limitedBy ?? $provincial?->limitedBy,
+            $federal->provenance,
+        );
     }
 
     /**

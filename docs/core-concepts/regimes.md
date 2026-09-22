@@ -54,8 +54,11 @@ destination tax is charged.
   polygon layer or a county name — and absent a resolved locality the state share
   applies, flagged; see [coverage](../coverage/the-register.md).
 - **`CaGstRegime`** (`ca-gst`) — Canada has no local sales tax, so a province
-  (subdivision) fully determines the combined GST/HST(/PST/QST) rate. A cross-border
-  non-resident B2B supply to a registered customer is self-assessed (reverse charge).
+  (subdivision) determines the rate: the federal GST plus the province's PST or QST,
+  or the harmonised HST in its place. A PST is collected only by a seller registered
+  in that province — a `SellerRegistration` with the subdivision; one registered
+  federally charges the federal share. A cross-border non-resident B2B supply to a
+  registered customer is self-assessed (reverse charge).
 
 A jurisdiction whose `regimeModule` is not registered at all still raises
 `UnsupportedJurisdiction` — never guessed.

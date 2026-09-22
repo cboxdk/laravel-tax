@@ -9,7 +9,7 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Added — register schema 2 and category keys
 
-- **Schema 2.0–2.4 is read.** Every release since 18 September was refused, and the
+- **Schema 2.0–2.5 is read.** Every release since 18 September was refused, and the
   refusal said "re-run". Rates, jurisdictions, regions and boundary format 3 are
   unchanged in schema 2; its additions are each handled on purpose, below. An
   unsupported schema now says what to do: pin a supported release, or upgrade.
@@ -34,6 +34,29 @@ minor bumps may carry additive features; patches are fixes and docs).
   nearby. `category` still governs place of supply, derived from the key when left
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
+
+### Fixed — Canadian provinces
+
+- **A province's tax is combined with the federal rate.** The register files Canada
+  like the United States, a federal rate on `ca:CA` plus a provincial share, and the
+  first one to answer won. Alberta came out at 0% (its one row says it adds no
+  provincial tax), British Columbia, Saskatchewan, Manitoba and Quebec at the
+  federal 5% without their PST or QST, and an Ontario doctor at the full 13% HST on
+  a federally exempt supply. A PST is now added to the federal rate with each side
+  answering for the category on its own, an HST replaces it but follows a federal
+  exemption or zero-rating, and a province with no share adds nothing. A PST rate
+  breaks down into its federal and provincial components.
+- **PST needs a provincial registration.** GST and HST are one federal registration;
+  a PST is the province's. A seller registered only federally charges the federal
+  share, and states a PST permit as a `SellerRegistration` in that subdivision.
+
+### Added — declined rates
+
+- **`RateLimit::RateDeclined`.** Schema 2.5 records rates the law names and the
+  register could not scope — Burkina Faso's 10% for approved hotels, 142 in all. A
+  rate for a category with one declined at or above it is now `Derived` and says so,
+  instead of the standard rate standing as authoritative. One declined without a
+  category, or below the rung asked about, is not flagged.
 
 ### Fixed — memory and assumed answers
 

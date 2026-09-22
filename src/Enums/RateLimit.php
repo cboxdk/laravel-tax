@@ -123,6 +123,19 @@ enum RateLimit: string
      */
     case TerritoryUnplaced = 'territory_unplaced';
 
+    /**
+     * The law names a different rate for part of this category, and the register
+     * declined to file it because it could not say which supplies it covers.
+     *
+     * Burkina Faso taxes hotel stays at 10% — at APPROVED hotels, which is a fact
+     * about the supplier the register has no way to type. Filed against the category
+     * it would discount every unapproved hotel in the country, so it is recorded as
+     * declined instead, and the category resolves to the standard rate. That rate is
+     * right for most sellers and wrong for the ones the law meant, and without this
+     * flag nothing told them apart.
+     */
+    case RateDeclined = 'rate_declined';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -151,6 +164,10 @@ enum RateLimit: string
             self::TaxabilityAssumed => 'Check whether the state taxes this service: most do not tax medical care, '
                 .'education, financial services or insurance. Where it does not, record that for the item — a '
                 .'taxability source bound ahead of the register, or a buyer exemption — rather than billing the assumption.',
+            self::RateDeclined => 'Check whether this supply is the one the law rates differently: the register '
+                .'records the rate it declined for this category, with the statute\'s own words, as a `declined_rate` '
+                .'rule on the jurisdiction. Where it applies to what you sell, put your own source in front via '
+                .'ChainTaxRateSource.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',

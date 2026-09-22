@@ -172,8 +172,24 @@ final class SuiteRegister
         $register->rate('us:TX:CITY-2109064', '1.5', 'local_component')->named('us:TX:CITY-2109064', 'Dallas');
 
         // Canada: the federal GST plus a province that files one harmonised total.
+        $register->category('goods')->category('services')
+            ->category('goods.food', 'goods')->category('goods.food.basic', 'goods.food')
+            ->category('goods.publications', 'goods')->category('goods.publications.book', 'goods.publications')
+            ->category('services.medical', 'services');
         $register->rate('ca:CA', '5', from: '1990-01-01');
         $register->rate('ca:ON', '13', 'combined', from: '1990-01-01')->named('ca:ON', 'Ontario');
+        // Federal exemptions and zero-ratings, which a harmonised tax follows.
+        $register->rate('ca:CA', '0', 'exempt', 'services.medical', from: '1990-01-01');
+        $register->rate('ca:CA', '0', 'zero', 'goods.food.basic', from: '1990-01-01');
+        $register->rate('ca:ON', '0', 'zero', 'goods.food.basic', from: '1990-01-01');
+        // A PST province: its share is ADDED to the federal rate, and answers for a
+        // category on its own — a Quebec book is 5% federal and 0% QST.
+        $register->rate('ca:BC', '7', 'local_component', from: '1990-01-01')->named('ca:BC', 'British Columbia');
+        $register->rate('ca:BC', '0', 'exempt', 'goods.food', from: '1990-01-01');
+        $register->rate('ca:QC', '9.975', 'local_component', from: '1990-01-01')->named('ca:QC', 'Quebec');
+        $register->rate('ca:QC', '0', 'zero', 'goods.publications.book', from: '1990-01-01');
+        // A province with no sales tax of its own says so with one untyped row.
+        $register->rate('ca:AB', '0', 'exempt', from: '1990-01-01')->named('ca:AB', 'Alberta');
 
         // California files ALL-IN totals, so a combined record must never be added
         // to the state share on top.
