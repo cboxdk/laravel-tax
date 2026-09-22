@@ -264,7 +264,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "general_goods",
-        "suppliedAt": "2026-09-17"
+        "suppliedAt": "2026-09-17",
+        "postalCode": "28001"
       },
       "expect": {
         "net": "100.00",
@@ -286,7 +287,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "general_goods",
-        "suppliedAt": "2026-09-17"
+        "suppliedAt": "2026-09-17",
+        "postalCode": "00100"
       },
       "expect": {
         "net": "100.00",
@@ -550,7 +552,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "general_goods",
-        "suppliedAt": "2026-09-17"
+        "suppliedAt": "2026-09-17",
+        "postalCode": "1000-001"
       },
       "expect": {
         "net": "100.00",
@@ -835,7 +838,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "groceries",
-        "suppliedAt": "2026-09-17"
+        "suppliedAt": "2026-09-17",
+        "postalCode": "00100"
       },
       "expect": {
         "net": "100.00",
@@ -857,7 +861,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "groceries",
-        "suppliedAt": "2025-12-31"
+        "suppliedAt": "2025-12-31",
+        "postalCode": "00100"
       },
       "expect": {
         "net": "100.00",
@@ -879,7 +884,8 @@
         "amount": "100.00",
         "pricing": "exclusive",
         "class": "groceries",
-        "suppliedAt": "2026-01-01"
+        "suppliedAt": "2026-01-01",
+        "postalCode": "00100"
       },
       "expect": {
         "net": "100.00",

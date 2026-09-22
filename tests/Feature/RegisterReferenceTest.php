@@ -74,6 +74,7 @@ function referenceQuery(array $spec): TaxQuery
         category: TaxClass::from($spec['class'] ?? 'general_goods'),
         customerTaxIdValidated: $spec['customerTaxIdValidated'] ?? false,
         suppliedAt: new DateTimeImmutable($spec['suppliedAt']),
+        postalCode: $spec['postalCode'] ?? null,
     );
 }
 

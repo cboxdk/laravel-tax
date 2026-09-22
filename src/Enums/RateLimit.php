@@ -115,6 +115,14 @@ enum RateLimit: string
      */
     case PerformanceLocationAssumed = 'performance_location_assumed';
 
+    /**
+     * Priced at the national rate for a country where the address could still lie in
+     * a special territory — Spain (the Canaries, Ceuta, Melilla), Portugal (the
+     * Azores, Madeira), Finland (Åland) — because neither a postcode nor a
+     * subdivision placed it. A Canary Islands delivery is an export, not 21% VAT.
+     */
+    case TerritoryUnplaced = 'territory_unplaced';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -136,6 +144,8 @@ enum RateLimit: string
                 .'they exclude; each carries the statute\'s own words. Where a jurisdiction\'s exclusions map '
                 .'onto tax classes you sell — the UK taxing confectionery and hot food at the standard rate '
                 .'while zero-rating groceries — put your own source in front via ChainTaxRateSource.',
+            self::TerritoryUnplaced => 'Pass the delivery postcode as `postalCode`, or a subdivision on the place: '
+                .'it is what tells the mainland from the Canaries, the Azores, Madeira or Åland.',
             self::PerformanceLocationAssumed => 'Pass where the service is performed as `performedAt` — the hotel, the '
                 .'venue, the site. It is taxed there, for a business customer as much as for a consumer.',
             self::TaxabilityAssumed => 'Check whether the state taxes this service: most do not tax medical care, '
@@ -163,6 +173,7 @@ enum RateLimit: string
         return $this === self::HeadingAmbiguous
             || $this === self::ItemUnmapped
             || $this === self::ClassificationInferred
-            || $this === self::PerformanceLocationAssumed;
+            || $this === self::PerformanceLocationAssumed
+            || $this === self::TerritoryUnplaced;
     }
 }

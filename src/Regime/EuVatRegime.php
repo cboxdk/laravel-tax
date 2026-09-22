@@ -7,6 +7,7 @@ namespace Cbox\Tax\Regime;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Contracts\EuTerritoriesBySubdivision;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
@@ -61,7 +62,7 @@ class EuVatRegime extends DestinationTaxRegime
      */
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
-        $territory = $this->territories?->for($query->place->country, $query->postalCode, $query->on());
+        $territory = $this->territory($query);
 
         if ($territory !== null && $territory->outsideVatArea) {
             return new TaxAssessment(
@@ -186,6 +187,34 @@ class EuVatRegime extends DestinationTaxRegime
     }
 
     /**
+     * The special territory the supply goes to: by postcode, else by ISO subdivision
+     * where the territory list can read one.
+     */
+    private function territory(TaxQuery $query): ?EuTerritory
+    {
+        $territory = $this->territories?->for($query->place->country, $query->postalCode, $query->on());
+
+        if ($territory === null && $query->place->subdivision !== null && $this->territories instanceof EuTerritoriesBySubdivision) {
+            $territory = $this->territories->forSubdivision($query->place->subdivision, $query->on());
+        }
+
+        return $territory;
+    }
+
+    /**
+     * Whether nothing placed the supply in or out of a territory where it matters: no
+     * postcode, and no subdivision that names one. The national rate is then a
+     * guess about the mainland, and is flagged as one.
+     */
+    private function placementUnknown(TaxQuery $query): bool
+    {
+        return $query->postalCode === null
+            && $this->territories instanceof EuTerritoriesBySubdivision
+            && $this->territories->needsPlacement($query->place->country)
+            && ($query->place->subdivision === null || $this->territories->forSubdivision($query->place->subdivision, $query->on()) === null);
+    }
+
+    /**
      * Not for a supply taxed where it is performed: a French company cannot
      * self-account German VAT on a room in Munich. Reverse-charged only when the
      * performance place is the customer's own country.
@@ -203,11 +232,17 @@ class EuVatRegime extends DestinationTaxRegime
 
     protected function qualify(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxRate
     {
-        return $query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed
+        if ($query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed
             && $query->performedAt === null
-            && ! $place->country->equals($query->place->country)
-                ? $rate->qualifiedBy(RateLimit::PerformanceLocationAssumed)
-                : $rate;
+            && ! $place->country->equals($query->place->country)) {
+            return $rate->qualifiedBy(RateLimit::PerformanceLocationAssumed);
+        }
+
+        // A consumer supply INTO a country where the address could still be the
+        // Canaries, Ceuta, Melilla, the Azores, Madeira or Åland.
+        return $place->country->equals($query->place->country) && $this->placementUnknown($query)
+            ? $rate->qualifiedBy(RateLimit::TerritoryUnplaced)
+            : $rate;
     }
 
     /**

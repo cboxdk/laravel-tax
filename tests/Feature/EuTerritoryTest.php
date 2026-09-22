@@ -5,12 +5,14 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
@@ -278,3 +280,31 @@ it('refuses an island supply when the register does not carry the island', funct
 
     new StaticEuTerritories(new RegisterDataset($layout, new StorePointer($layout)))->for(new CountryCode('PT'), '9500-001');
 })->throws(UnresolvedTaxRule::class, 'Refusing rather than charging the mainland rate');
+
+function spanishSale(?string $subdivision, ?string $postalCode)
+{
+    $geo = app(JurisdictionRepository::class);
+    $place = $subdivision === null ? $geo->find(new CountryCode('ES')) : $geo->find(new CountryCode('ES'), new SubdivisionCode($subdivision));
+
+    return app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $place,
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('ES')),
+        postalCode: $postalCode,
+    ));
+}
+
+it('reads the Canary Islands from a subdivision when there is no postcode', function () {
+    // An address geocoded to Santa Cruz de Tenerife, postcode absent, was priced at
+    // mainland Spanish VAT and marked reliable. It is an export.
+    expect(spanishSale('ES-TF', null)->treatment)->toBe(TaxTreatment::ZeroRated);
+});
+
+it('flags a Spanish sale nothing placed on the mainland', function () {
+    // The national rate is still the best figure — most Spanish addresses are on the
+    // mainland — but it is no longer called authoritative.
+    expect(spanishSale(null, null)->rate?->limitedBy)->toBe(RateLimit::TerritoryUnplaced)
+        ->and(spanishSale(null, '28001')->rate?->limitedBy)->toBeNull();
+});

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Tax\Territories;
 
 use Cbox\Geo\ValueObjects\CountryCode;
-use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\EuTerritoriesBySubdivision;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
@@ -61,7 +62,7 @@ use DateTimeImmutable;
  * Guiana, Réunion and Mayotte each carry their own ISO 3166-1 country code, and
  * the geo repository already resolves them as non-EU.
  */
-readonly class StaticEuTerritories implements EuTerritories
+readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 {
     /** Register codes for the territories that keep their own rates. */
     private const array OWN_RATES = ['PT-30' => ['eu:PT:MADEIRA', 'Madeira'], 'PT-20' => ['eu:PT:AZORES', 'Azores']];
@@ -110,6 +111,36 @@ readonly class StaticEuTerritories implements EuTerritories
             '52' => EuTerritory::outsideVatArea('ES-ML', 'Melilla', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
             default => null,
         };
+    }
+
+    /**
+     * The territories an ISO 3166-2 code names outright. The Canary Islands are two
+     * provinces (Las Palmas, Santa Cruz de Tenerife) and an autonomous community;
+     * Ceuta, Melilla, the Azores, Madeira and Åland each have their own code. The
+     * municipal territories — Büsingen, Heligoland, Livigno, Campione, Mount Athos —
+     * have none, and are only reachable by postcode.
+     */
+    public function forSubdivision(SubdivisionCode $subdivision, ?DateTimeImmutable $at = null): ?EuTerritory
+    {
+        return match ($subdivision->value) {
+            'ES-CN', 'ES-GC', 'ES-TF' => EuTerritory::outsideVatArea('ES-CN', 'Canary Islands', 'IGIC (Impuesto General Indirecto Canario)'),
+            'ES-CE' => EuTerritory::outsideVatArea('ES-CE', 'Ceuta', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
+            'ES-ML' => EuTerritory::outsideVatArea('ES-ML', 'Melilla', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
+            'FI-01' => EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession'),
+            'PT-20', 'PT-30' => $this->ownRates($subdivision->value, 'eu:PT', $at),
+            default => null,
+        };
+    }
+
+    /**
+     * Countries with a territory large enough that "no postcode" cannot be read as
+     * mainland: Spain (the Canaries, Ceuta, Melilla), Portugal (the islands) and
+     * Finland (Åland). The single-municipality territories elsewhere are left to the
+     * postcode alone — flagging every German sale for Büsingen would be noise.
+     */
+    public function needsPlacement(CountryCode $country): bool
+    {
+        return in_array($country->value, ['ES', 'PT', 'FI'], true);
     }
 
     private function portugal(string $digits, ?DateTimeImmutable $at): ?EuTerritory
