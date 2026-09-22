@@ -36,6 +36,26 @@ class DatasetUnreadable extends RuntimeException implements Transient
         return new self(sprintf('No top-level %s "%s" in %s.', $shape, $key, $what));
     }
 
+    /**
+     * The release is built to a schema this package has not been reviewed against.
+     *
+     * Kept apart from {@see self::corruptShard()} because the two need opposite advice:
+     * a corrupt shard is fixed by compiling again, and this is not — telling an
+     * operator to re-run a command that will fail the same way every time is worse
+     * than saying nothing. Raised before compiling (nothing is written) and before
+     * reading a store another worker installed (nothing is priced from it).
+     */
+    public static function unsupportedSchema(string $version, ?string $declared, string $supported): self
+    {
+        return new self(sprintf(
+            'Release %s has unsupported schemaVersion %s; this package reads %s, so the release is not used. '
+            .'Pin a release on a supported schema with `tax:data:sync --release=<version>`, or upgrade cboxdk/laravel-tax.',
+            $version,
+            $declared ?? '(none)',
+            $supported,
+        ));
+    }
+
     public static function cannotInstall(string $path, string $because): self
     {
         return new self(sprintf('Cannot install the compiled register at "%s": %s. The store was left as it was; re-run `tax:data:sync`.', $path, $because));

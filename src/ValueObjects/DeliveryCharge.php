@@ -15,10 +15,18 @@ final readonly class DeliveryCharge
         public ?bool $exclusionConditionsMet = null,
         /** Filled from the delivered assessment for orders; required for standalone delivery queries. */
         public ?bool $goodsTaxable = null,
+        /**
+         * Facts for a state that publishes its delivery rule as a decision, under the
+         * register's own names: `delivery.purpose`, `delivery.isDirectMail`,
+         * `delivery.separatelyStated`, `delivery.label`, `delivery.costIsTrueAndReasonable`.
+         * `delivery.containsExemptGoods` is inferred from the delivered goods when not
+         * stated. A decision that reaches a fact nobody supplied refuses and names it.
+         */
+        public DecisionFacts $facts = new DecisionFacts,
     ) {}
 
     public function forGoods(bool $taxable): self
     {
-        return new self($this->component, $this->exclusionConditionsMet, $taxable);
+        return new self($this->component, $this->exclusionConditionsMet, $taxable, $this->facts);
     }
 }

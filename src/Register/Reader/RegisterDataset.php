@@ -215,7 +215,7 @@ final class RegisterDataset
         }
 
         foreach ($rules as $rule) {
-            RegisterCompatibility::rule($rule);
+            RegisterCompatibility::applicable($rule);
         }
 
         return $rules;

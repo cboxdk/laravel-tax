@@ -251,7 +251,7 @@ final readonly class Compiler
                 continue;
             }
 
-            if ($this->boundaryArtifact($artifacts, 'zip', $partial, $base, $state, 'zip')) {
+            if ($this->postalIndex($artifacts, $partial, $base, $state)) {
                 $zip++;
             }
 
@@ -305,6 +305,78 @@ final readonly class Compiler
         $to = $partial.'/boundaries/'.$state.'.'.$suffix.'.json';
 
         return $this->fetcher->download($address, $to) !== null;
+    }
+
+    /**
+     * The postal layer, SHARDED BY ZIP the way the street layer already is.
+     *
+     * Written whole, it was read whole: every address lookup decoded its state's
+     * entire ZIP table to answer a question about one postcode. Wisconsin's is 3.6 MB
+     * on disk and cost 107 MB of memory per lookup — more than a default PHP request
+     * has — so pricing an address in Wisconsin or Tennessee could take a web request
+     * down with it.
+     *
+     * The resolver reads four things from this artifact: `formatVersion`, `sets`,
+     * `ranges` and `zip`. The first three are small and shared by every postcode in
+     * the state, so they are written once as a head; `zip` goes into a shard keyed by
+     * ZIP5, and a lookup reads the head and one record.
+     *
+     * @param  array<array-key, mixed>  $artifacts
+     */
+    private function postalIndex(array $artifacts, string $partial, string $base, string $state): bool
+    {
+        $entry = $artifacts['zip'] ?? null;
+
+        if (! is_array($entry)) {
+            return false;
+        }
+
+        $url = $entry['url'] ?? null;
+        $artifact = $entry['artifact'] ?? null;
+        $address = match (true) {
+            is_string($url) && $url !== '' => $url,
+            is_string($artifact) && $artifact !== '' => $base.'/'.$artifact,
+            default => null,
+        };
+
+        if ($address === null) {
+            return false;
+        }
+
+        $download = $partial.'/.download/'.$state.'.zip.json';
+
+        if ($this->fetcher->download($address, $download) === null) {
+            return false;
+        }
+
+        $sets = [];
+
+        foreach (JsonArrayStream::fromFile($download, 'sets') as $set) {
+            $sets[] = $set;
+        }
+
+        $ranges = [];
+
+        foreach (JsonArrayStream::fromFile($download, 'ranges') as $range) {
+            $ranges[] = $range;
+        }
+
+        $this->put($partial, 'boundaries/'.$state.'.zip.head.json', [
+            'formatVersion' => JsonArrayStream::scalarOfFile($download, 'formatVersion'),
+            'sets' => $sets,
+            'ranges' => $ranges,
+        ]);
+
+        $writer = new ShardWriter($partial.'/boundaries/'.$state.'.zip');
+
+        foreach (JsonArrayStream::membersOfFile($download, 'zip') as $zip5 => $rows) {
+            $writer->append((string) $zip5, $rows);
+        }
+
+        $writer->close();
+        @unlink($download);
+
+        return true;
     }
 
     /**

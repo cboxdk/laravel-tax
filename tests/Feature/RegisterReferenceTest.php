@@ -235,5 +235,5 @@ it('applies dated rules rounding and conditional delivery from a pinned release'
     expect((string) $delivered->forLine('delivery')?->tax->getAmount())->toBe('0.00')
         ->and($delivered->forLine('delivery')?->isExempt())->toBeTrue()
         ->and($delivered->net()->plus($delivered->tax())->isEqualTo($delivered->gross()))->toBeTrue()
-        ->and(app(DeliveryRules::class)->included(new SubdivisionCode('US-KS'), DeliveryComponent::Transport, true, new DateTimeImmutable('2026-09-13')))->toBeNull();
+        ->and(app(DeliveryRules::class)->treatment(new SubdivisionCode('US-KS'), new DeliveryCharge(DeliveryComponent::Transport, goodsTaxable: true), new DateTimeImmutable('2026-09-13')))->toBeNull();
 })->group('e2e', 'reference');

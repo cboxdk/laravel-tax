@@ -140,3 +140,36 @@ it('does not grow its buffer while hunting for a key that is not there', functio
         @unlink($path);
     }
 });
+
+it('reads an empty map published as an empty list, and nothing else as one', function (): void {
+    // PHP encodes an empty map as `[]`, and Michigan's postal table is exactly that.
+    $path = tempnam(sys_get_temp_dir(), 'jas');
+
+    try {
+        file_put_contents($path, '{"zip":[],"sets":[]}');
+        expect(iterator_to_array(JsonArrayStream::membersOfFile($path, 'zip')))->toBe([]);
+
+        file_put_contents($path, '{"zip":[["0000","9999",1]]}');
+        expect(fn (): array => iterator_to_array(JsonArrayStream::membersOfFile($path, 'zip')))->toThrow(DatasetUnreadable::class);
+
+        // ...and a map still reads, with list values as the postal layer has them.
+        file_put_contents($path, '{"zip":{"53001":[["1121","1121",2]]}}');
+        expect(iterator_to_array(JsonArrayStream::membersOfFile($path, 'zip')))->toBe(['53001' => [['1121', '1121', 2]]]);
+    } finally {
+        @unlink($path);
+    }
+});
+
+it('reads a top-level scalar without decoding the document', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'jas');
+
+    try {
+        file_put_contents($path, '{"formatVersion": 3, "state":"WI", "sets":[], "note":"formatVersion"}');
+        expect(JsonArrayStream::scalarOfFile($path, 'formatVersion'))->toBe(3)
+            ->and(JsonArrayStream::scalarOfFile($path, 'state'))->toBe('WI')
+            ->and(fn () => JsonArrayStream::scalarOfFile($path, 'sets'))->toThrow(DatasetUnreadable::class)
+            ->and(fn () => JsonArrayStream::scalarOfFile($path, 'missing'))->toThrow(DatasetUnreadable::class);
+    } finally {
+        @unlink($path);
+    }
+});

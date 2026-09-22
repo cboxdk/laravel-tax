@@ -41,11 +41,23 @@ final readonly class RegisterSourcing implements SourcingRules
             return null;
         }
 
-        $basis = Shape::text(Shape::map($rule['payload'] ?? null)['basis'] ?? null);
+        $payload = Shape::map($rule['payload'] ?? null);
+        $basis = Shape::text($payload['basis'] ?? null);
         $mode = $basis === null ? null : SourcingMode::tryFrom($basis);
 
         if ($mode === null) {
             throw new UnresolvedTaxRule('Unknown sourcing basis for '.$state->value.'.');
+        }
+
+        // A DECISION IS ONLY SAFE TO LEAVE UNEVALUATED ON A MIXED RULE. California's
+        // decision resolves to authority LAYERS in two places — state, county and
+        // city at the seller, district at the destination — and its rates are
+        // published as combined totals that cannot be split into those layers, so a
+        // mixed rule refuses here with or without it. On an origin or destination rule
+        // a decision would make that one place conditional, and reading the basis
+        // alone would apply it unconditionally.
+        if (array_key_exists('decision', $payload) && $mode !== SourcingMode::Mixed) {
+            throw new UnresolvedTaxRule('Conditional '.$mode->value.' sourcing for '.$state->value.' is published as a decision this reader does not apply to a single place.');
         }
 
         return new IntrastateSourcing($mode, Shape::text(Shape::map($rule['provenance'] ?? null)['note'] ?? null));

@@ -212,16 +212,22 @@ final class FakeRegister
             $writer->close();
         }
 
+        // Written in the shape a real compile produces — a small head and a shard per
+        // ZIP — so tests exercise the path production reads, not a convenient one.
         foreach ($this->boundaries as $state => $artifact) {
-            $this->put($directory, 'boundaries/'.$state.'.zip.json', [
+            $this->put($directory, 'boundaries/'.$state.'.zip.head.json', [
                 'formatVersion' => 3,
-                'version' => $this->version,
-                'state' => $state,
-                'provenance' => ['sourceKey' => 'fake', 'snapshotHash' => str_repeat('0', 64), 'capturedAt' => '2026-01-01T00:00:00+00:00'],
                 'sets' => $artifact['sets'],
-                'zip' => $artifact['zip'],
                 'ranges' => [],
             ]);
+
+            $postal = new ShardWriter($directory.'/boundaries/'.$state.'.zip');
+
+            foreach ($artifact['zip'] as $zip5 => $rows) {
+                $postal->append((string) $zip5, $rows);
+            }
+
+            $postal->close();
         }
 
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);

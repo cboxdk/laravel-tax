@@ -8,6 +8,7 @@ use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Enums\NexusCombinator;
+use Cbox\Tax\Enums\ThresholdOperator;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
@@ -70,6 +71,8 @@ final readonly class RegisterNexus implements NexusThresholds
                 BigDecimal::of($amount)->toInt(),
                 $transactions,
                 $this->combinator($payload, $transactions),
+                $this->operator($payload, 'amountOperator', $state),
+                $transactions === null ? null : $this->operator($payload, 'transactionsOperator', $state),
             );
         }
 
@@ -77,6 +80,25 @@ final readonly class RegisterNexus implements NexusThresholds
     }
 
     /**
+     * How one limb is crossed. Absent is permitted — most thresholds do not say — but
+     * a stated operator this reader does not know refuses, like an unknown combinator.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function operator(array $payload, string $field, SubdivisionCode $state): ?ThresholdOperator
+    {
+        if (! array_key_exists($field, $payload)) {
+            return null;
+        }
+
+        $stated = Shape::text($payload[$field]);
+
+        return ($stated === null ? null : ThresholdOperator::tryFrom($stated))
+            ?? throw new UnresolvedTaxRule(sprintf('Unsupported %s "%s" on the remote-seller threshold for %s.', $field, $stated ?? '(empty)', $state->value));
+    }
+
+    /**
+     * How the two limbs combine.    /**
      * How the two limbs combine.
      *
      * A missing count permits sales-only. Two limbs require an explicit operator;

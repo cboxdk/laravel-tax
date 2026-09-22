@@ -164,13 +164,19 @@ readonly class UsSalesTaxRegime implements TaxRegime
             throw new UnresolvedTaxRule('Delivery requires the taxability of the delivered goods.', RefusalReason::DeliveryFactsRequired);
         }
 
-        $included = $this->delivery?->included($state, $delivery->component, $delivery->goodsTaxable, $query->on());
+        $treatment = $this->delivery?->treatment($state, $delivery, $query->on());
 
-        if ($included === null) {
+        if ($treatment === null) {
             throw new UnresolvedTaxRule('No applicable delivery rule for '.$state->value.' on '.$query->on()->format('Y-m-d').'.');
         }
 
-        if (! $included) {
+        if (! $treatment->included) {
+            // A published decision has already tested the exclusion's conditions
+            // against the facts supplied; a bare flag has not.
+            if ($treatment->conditionsVerified) {
+                return true;
+            }
+
             if ($delivery->exclusionConditionsMet === null) {
                 throw new UnresolvedTaxRule('Confirm delivery exclusionConditionsMet after checking the published conditions for '.$state->value.'.', RefusalReason::DeliveryFactsRequired);
             }
@@ -222,7 +228,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
                     gross: $query->amount,
                     placeOfSupply: $query->place,
                     rate: null,
-                    reason: 'US sales tax: delivery excluded from the taxable base; the host confirmed the exclusion conditions.',
+                    reason: 'US sales tax: delivery excluded from the taxable base; its published exclusion conditions were met.',
                 );
             }
         }

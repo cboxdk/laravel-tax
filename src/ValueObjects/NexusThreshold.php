@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\ValueObjects;
 
 use Cbox\Tax\Enums\NexusCombinator;
+use Cbox\Tax\Enums\ThresholdOperator;
 
 /**
  * A US state's economic-nexus threshold: the annual sales-dollar figure and,
@@ -32,12 +33,20 @@ readonly class NexusThreshold
         public int $salesDollars,
         public ?int $transactions,
         public NexusCombinator $combinator,
+        /** How the sales figure is crossed, where the register states it. */
+        public ?ThresholdOperator $salesOperator = null,
+        /** How the transaction count is crossed, where the register states it. */
+        public ?ThresholdOperator $transactionsOperator = null,
     ) {}
 
-    /** A short human-readable description, e.g. "$100,000 or 200 transactions". */
+    /**
+     * A short human-readable description, e.g. "$100,000 or 200 transactions", or
+     * "more than $500,000 and more than 100 transactions" where the register says how
+     * each figure is crossed.
+     */
     public function describe(): string
     {
-        $sales = '$'.number_format($this->salesDollars);
+        $sales = self::limb('$'.number_format($this->salesDollars), $this->salesOperator);
 
         if ($this->transactions === null) {
             return $sales;
@@ -45,6 +54,15 @@ readonly class NexusThreshold
 
         $joiner = $this->combinator === NexusCombinator::SalesAndTransactions ? ' and ' : ' or ';
 
-        return $sales.$joiner.number_format($this->transactions).' transactions';
+        return $sales.$joiner.self::limb(number_format($this->transactions).' transactions', $this->transactionsOperator);
+    }
+
+    private static function limb(string $figure, ?ThresholdOperator $operator): string
+    {
+        return match ($operator) {
+            ThresholdOperator::Exceeds => 'more than '.$figure,
+            ThresholdOperator::AtLeast => $figure.' or more',
+            null => $figure,
+        };
     }
 }

@@ -18,11 +18,13 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\DeliveryComponent;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Testing\FakeRegister;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\DeliveryCharge;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -398,3 +400,176 @@ it('can exclude delivery of partially exempt goods when no taxable allocation is
     expect($a->forLine('delivery')->isExempt())->toBeTrue()
         ->and((string) $a->forLine('delivery')->tax->getAmount())->toBe('0.00');
 });
+
+/**
+ * Kansas' transport rule from 1 July 2023, as release 2026.09.21-255 publishes it,
+ * with the statute quotations trimmed. Installed on Arizona here only so it cannot
+ * overlap the bare-flag Kansas rule this file's setup installs.
+ *
+ * @return array<string, mixed>
+ */
+function kansasTransportDecision(): array
+{
+    $unknown = ['status' => 'unknown', 'reason' => 'Required delivery evidence is missing or has an invalid type.'];
+
+    return [
+        'version' => 1,
+        'condition' => ['all' => [
+            ['fact' => 'delivery.purpose', 'op' => 'eq', 'value' => 'customer_delivery'],
+            ['fact' => 'delivery.isDirectMail', 'op' => 'eq', 'value' => false],
+        ]],
+        'onTrue' => [
+            'version' => 1,
+            'condition' => ['all' => [
+                ['fact' => 'delivery.separatelyStated', 'op' => 'eq', 'value' => true],
+                ['fact' => 'delivery.label', 'op' => 'in', 'value' => ['delivery', 'transmission', 'transportation']],
+                ['fact' => 'delivery.costIsTrueAndReasonable', 'op' => 'eq', 'value' => true],
+            ]],
+            'onTrue' => ['status' => 'resolved', 'baseTreatment' => 'excluded', 'allocation' => 'not_needed', 'rateBasis' => 'not_needed'],
+            'onFalse' => [
+                'version' => 1,
+                'condition' => ['fact' => 'delivery.containsExemptGoods', 'op' => 'eq', 'value' => false],
+                'onTrue' => ['status' => 'resolved', 'baseTreatment' => 'included', 'allocation' => 'not_needed', 'rateBasis' => 'underlying_goods'],
+                'onFalse' => ['status' => 'unsupported', 'reason' => 'Mixed or exempt goods require a verified allocation and rate treatment.'],
+                'onUnknown' => $unknown,
+                'requiredFacts' => ['delivery.containsExemptGoods'],
+            ],
+            'onUnknown' => $unknown,
+            'requiredFacts' => ['delivery.containsExemptGoods', 'delivery.costIsTrueAndReasonable', 'delivery.label', 'delivery.separatelyStated'],
+        ],
+        'onFalse' => ['status' => 'unsupported', 'reason' => 'Freight-in, fuel surcharge, returned-goods charge-back and direct-mail treatment require their own rule.'],
+        'onUnknown' => $unknown,
+        'requiredFacts' => ['delivery.containsExemptGoods', 'delivery.costIsTrueAndReasonable', 'delivery.isDirectMail', 'delivery.label', 'delivery.purpose', 'delivery.separatelyStated'],
+    ];
+}
+
+/** @param array<string, string|bool> $facts */
+function decidedDelivery(array $facts, ?bool $confirmed = null): TaxOrder
+{
+    return ruleOrder('AZ', [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(
+            exclusionConditionsMet: $confirmed,
+            facts: new DecisionFacts($facts),
+        )),
+    ]);
+}
+
+const QUALIFYING_FREIGHT = [
+    'delivery.purpose' => 'customer_delivery',
+    'delivery.isDirectMail' => false,
+    'delivery.separatelyStated' => true,
+    'delivery.label' => 'delivery',
+    'delivery.costIsTrueAndReasonable' => true,
+];
+
+it('excludes freight when a published decision is satisfied, without a host confirmation', function (): void {
+    // Schema 2 states the exclusion's conditions as tests over named facts. Once they
+    // pass, there is nothing left for the host to confirm — the bare-flag rule needed
+    // `exclusionConditionsMet` precisely because its conditions were prose.
+    $this->rules->rule('us:AZ', 'taxable_base', ['component' => 'transport_on_taxable_goods', 'decision' => kansasTransportDecision()], '2023-07-01')->install();
+
+    $delivery = app(OrderTaxCalculator::class)->assessOrder(decidedDelivery(QUALIFYING_FREIGHT))->forLine('delivery');
+
+    expect((string) $delivery->tax->getAmount())->toBe('0.00')
+        ->and($delivery->treatment)->toBe(TaxTreatment::Exempt);
+});
+
+it('taxes freight at the goods rate when the decision includes it', function (): void {
+    // Not separately stated. The goods are taxable, so `containsExemptGoods` is
+    // inferred false and the decision includes the charge at the goods' rate.
+    $this->rules->rule('us:AZ', 'taxable_base', ['component' => 'transport_on_taxable_goods', 'decision' => kansasTransportDecision()], '2023-07-01')->install();
+
+    $delivery = app(OrderTaxCalculator::class)->assessOrder(decidedDelivery([...QUALIFYING_FREIGHT, 'delivery.separatelyStated' => false]))->forLine('delivery');
+
+    expect((string) $delivery->tax->getAmount())->toBe('0.56');
+});
+
+it('lets neither a missing fact nor a host confirmation stand in for the published tests', function (): void {
+    // The host confirmed the exclusion, but supplied none of the facts the decision
+    // tests. A bare-flag rule would accept the confirmation; a decision cannot,
+    // because it states exactly what has to be true.
+    $this->rules->rule('us:AZ', 'taxable_base', ['component' => 'transport_on_taxable_goods', 'decision' => kansasTransportDecision()], '2023-07-01')->install();
+
+    try {
+        app(OrderTaxCalculator::class)->assessOrder(decidedDelivery([], confirmed: true));
+        $this->fail('A decision reaching an unknown must refuse.');
+    } catch (UnresolvedTaxRule $e) {
+        expect($e->reason())->toBe(RefusalReason::DeliveryFactsRequired)
+            // ...and it names every fact it needs, not one per attempt.
+            ->and($e->getMessage())->toContain('delivery.purpose')->toContain('delivery.separatelyStated')
+            // containsExemptGoods is inferred from the goods, so it is never asked for.
+            ->and($e->getMessage())->not->toContain('delivery.containsExemptGoods');
+    }
+});
+
+it('refuses the branches the register marks unsupported', function (array $facts, string $reason): void {
+    $this->rules->rule('us:AZ', 'taxable_base', ['component' => 'transport_on_taxable_goods', 'decision' => kansasTransportDecision()], '2023-07-01')->install();
+
+    expect(fn () => app(OrderTaxCalculator::class)->assessOrder(decidedDelivery($facts)))
+        ->toThrow(UnresolvedTaxRule::class, $reason);
+})->with([
+    'direct mail' => [[...QUALIFYING_FREIGHT, 'delivery.isDirectMail' => true], 'direct-mail'],
+    // The host knows the parcel also held exempt goods; the engine saw one taxable line.
+    'a mixed parcel, stated by the host' => [[...QUALIFYING_FREIGHT, 'delivery.separatelyStated' => false, 'delivery.containsExemptGoods' => true], 'allocation'],
+]);
+
+it('still reads a bare inclusion flag from the states that publish one', function (): void {
+    // Twenty-three states publish `included` without a decision. The confirmation
+    // path is unchanged for them.
+    $a = app(OrderTaxCalculator::class)->assessOrder(ruleOrder('KS', [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(exclusionConditionsMet: true)),
+    ]));
+
+    expect((string) $a->forLine('delivery')->tax->getAmount())->toBe('0.00');
+});
+
+it('names how each nexus limb is crossed where the register states it', function (): void {
+    // New York: sales that EXCEED $500,000 and more than 100 transactions. One dollar
+    // and one sale is the whole difference, and a hint naming the wrong one is wrong.
+    $this->rules->rule('us:NY', 'threshold', [
+        'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller', 'transactions' => 100,
+        'combinator' => 'sales_and_transactions', 'amountOperator' => 'exceeds', 'transactionsOperator' => 'exceeds',
+    ])->rule('us:TX', 'threshold', [
+        'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller', 'amountOperator' => 'at_least',
+    ])->install();
+
+    $nexus = app(NexusThresholds::class);
+
+    expect($nexus->for(new SubdivisionCode('US-NY'))?->describe())->toBe('more than $500,000 and more than 100 transactions')
+        ->and($nexus->for(new SubdivisionCode('US-TX'))?->describe())->toBe('$500,000 or more')
+        // Unstated stays as it always read.
+        ->and($nexus->for(new SubdivisionCode('US-AZ'))?->describe())->toBe('$100,000');
+});
+
+it('refuses a nexus operator it does not know rather than guessing one', function (): void {
+    $this->rules->rule('us:NY', 'threshold', [
+        'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller', 'amountOperator' => 'approximately',
+    ])->install();
+
+    app(NexusThresholds::class)->for(new SubdivisionCode('US-NY'));
+})->throws(UnresolvedTaxRule::class, 'amountOperator');
+
+it('compiles a qualified registration threshold but refuses to read it as unconditional', function (): void {
+    // Schema 2 publishes `obligations`, `measurementRules` and `unresolvedQualifications`
+    // on registration thresholds. None is read here, so a rule carrying one must not
+    // be answered as though it said nothing — but neither may it stop the compile:
+    // Egypt's registration obligation should not block a Danish shop's rate update.
+    $this->rules->rule('us:NY', 'threshold', [
+        'amount' => '500000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+        'unresolvedQualifications' => [['ref' => 'Tax Law § 1101(b)(8)(iv)', 'effect' => 'adds_trigger']],
+    ])->install();
+
+    app(NexusThresholds::class)->for(new SubdivisionCode('US-NY'));
+})->throws(UnresolvedTaxRule::class, 'payload.unresolvedQualifications');
+
+it('accepts a decision only on a mixed sourcing rule', function (): void {
+    // On a mixed rule the decision splits authority layers across two places, which
+    // combined rates cannot express, so the regime refuses either way. On an origin
+    // rule a decision would make that place conditional — ignoring it would apply it
+    // unconditionally.
+    $this->rules->rule('us:IL', 'sourcing', ['basis' => 'origin', 'decision' => ['version' => 1, 'condition' => ['fact' => 'route.intrastate', 'op' => 'eq', 'value' => true], 'onTrue' => ['status' => 'resolved'], 'onFalse' => ['status' => 'unsupported'], 'onUnknown' => ['status' => 'unknown']]], '2027-01-01')->install();
+
+    app(SourcingRules::class)->for(new SubdivisionCode('US-IL'), new DateTimeImmutable('2027-06-01'));
+})->throws(UnresolvedTaxRule::class, 'Conditional origin sourcing');

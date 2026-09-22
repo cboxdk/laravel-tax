@@ -134,6 +134,62 @@ final class JsonArrayStream
     }
 
     /**
+     * One SCALAR at a top-level key — a version number, a state code — read without
+     * decoding the document around it.
+     *
+     * Exists for the postal layer: its `formatVersion` has to travel with the pieces a
+     * compile splits it into, and decoding a 3.6 MB file to read one integer is the
+     * thing this class is here to avoid.
+     */
+    public static function scalarOfFile(string $path, string $key): string|int|float|bool|null
+    {
+        $handle = @fopen($path, 'rb');
+
+        if ($handle === false) {
+            throw DatasetUnreadable::cannotOpen($path);
+        }
+
+        try {
+            return new self($handle)->scalar($key, $path);
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    private function scalar(string $key, string $what): string|int|float|bool|null
+    {
+        if (! $this->seekToValue($key, null)) {
+            throw DatasetUnreadable::noSuchSection($what, $key, 'value');
+        }
+
+        $next = $this->peek();
+
+        if ($next === '"') {
+            $this->take();
+
+            return $this->readStringBody();
+        }
+
+        if ($next === null || $next === '{' || $next === '[') {
+            throw DatasetUnreadable::unexpectedElement($what, $key, (string) $next);
+        }
+
+        $token = '';
+
+        while (($char = $this->peek()) !== null && ! in_array($char, [',', '}', ']', ' ', "\n", "\r", "\t"], true)) {
+            $token .= $this->take();
+        }
+
+        $value = json_decode($token, flags: JSON_BIGINT_AS_STRING);
+
+        if ($value === null && $token !== 'null' || ! (is_scalar($value) || $value === null)) {
+            throw DatasetUnreadable::unexpectedElement($what, $key, $token);
+        }
+
+        return $value;
+    }
+
+    /**
      * Every member of the OBJECT at a top-level key, as `name => value`.
      *
      * The street artifacts are keyed by ZIP rather than listed, and Georgia's is
@@ -144,7 +200,25 @@ final class JsonArrayStream
      */
     public function members(string $key, string $what = 'document'): Generator
     {
-        if (! $this->seekToValue($key, '{')) {
+        if (! $this->seekToValue($key, null)) {
+            throw DatasetUnreadable::noSuchSection($what, $key, 'object');
+        }
+
+        // AN EMPTY MAP MAY ARRIVE AS `[]`. That is how PHP encodes one, and Michigan's
+        // postal table is exactly that: a state with no ZIP rows. An empty list is
+        // read as an empty object; a list with anything in it is not a map at all.
+        if ($this->peek() === '[') {
+            $this->take();
+            $this->skipWhitespace();
+
+            if ($this->take() !== ']') {
+                throw DatasetUnreadable::unexpectedElement($what, $key, '[');
+            }
+
+            return;
+        }
+
+        if ($this->take() !== '{') {
             throw DatasetUnreadable::noSuchSection($what, $key, 'object');
         }
 
@@ -175,7 +249,10 @@ final class JsonArrayStream
 
             $this->skipInsignificant();
 
-            if ($this->peek() !== '{') {
+            // An object or a list. The street layer maps a ZIP to an object of streets;
+            // the postal layer maps a ZIP to a list of span rows. A scalar here is a
+            // document that is not the shape asked for.
+            if ($this->peek() !== '{' && $this->peek() !== '[') {
                 throw DatasetUnreadable::unexpectedElement($what, $key, (string) $this->peek());
             }
 
@@ -194,7 +271,7 @@ final class JsonArrayStream
     }
 
     /** Position the cursor just inside the `[` or `{` belonging to `$key`. */
-    private function seekToValue(string $key, string $opener): bool
+    private function seekToValue(string $key, ?string $opener): bool
     {
         $depth = 0;
 
@@ -239,6 +316,11 @@ final class JsonArrayStream
 
                     $this->take();
                     $this->skipWhitespace();
+
+                    // No opener asked for: the caller wants whatever value follows.
+                    if ($opener === null) {
+                        return true;
+                    }
 
                     if ($this->peek() === $opener) {
                         $this->take();

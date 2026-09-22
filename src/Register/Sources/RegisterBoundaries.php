@@ -7,7 +7,9 @@ namespace Cbox\Tax\Register\Sources;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Enums\LocalityScheme;
+use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Territories\UsLocalStructure;
@@ -42,6 +44,12 @@ final class RegisterBoundaries implements LocalAuthorityResolver
 {
     /** @var array<string, ShardReader> */
     private array $streetShards = [];
+
+    /** @var array<string, ShardReader> */
+    private array $postalShards = [];
+
+    /** @var array<string, array<string, mixed>|null> */
+    private array $postalHeads = [];
 
     public function __construct(
         private StoreLayout $layout,
@@ -238,8 +246,7 @@ final class RegisterBoundaries implements LocalAuthorityResolver
             return null;
         }
 
-        $artifact = $this->read($state.'.zip.json');
-        $sets = $artifact['sets'] ?? null;
+        $sets = $this->postalHead($state)['sets'] ?? null;
 
         if (! is_array($sets) || $sets === []) {
             // NO BOUNDARY DATA TO CHECK THE CALLER AGAINST. Texas publishes none — it
@@ -393,15 +400,78 @@ final class RegisterBoundaries implements LocalAuthorityResolver
 
     private function postal(string $state, string $zip5): BoundaryData
     {
-        $main = $this->read($state.'.zip.json');
+        $head = $this->postalHead($state);
 
-        if ($main === null) {
+        if ($head === null) {
             // No postal artifact for this state. An EMPTY BoundaryData resolves to
             // null rather than to [], which is what "we hold nothing here" means.
             return new BoundaryData;
         }
 
-        return BoundaryData::fromArtifacts($main, $this->streets($state, $zip5));
+        return BoundaryData::fromArtifacts([...$head, 'zip' => $this->postalRows($state, $zip5, $head)], $this->streets($state, $zip5));
+    }
+
+    /**
+     * The state's postal artifact WITHOUT its ZIP table: format version, the sets
+     * every row points into, and the cross-ZIP ranges. Small, shared by every lookup
+     * in the state, so it is read once per instance.
+     *
+     * A store compiled before the postal layer was sharded holds the artifact whole.
+     * That is still read — it is what those stores have — but only to split it once.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function postalHead(string $state): ?array
+    {
+        if (array_key_exists($state, $this->postalHeads)) {
+            return $this->postalHeads[$state];
+        }
+
+        $head = $this->read($state.'.zip.head.json');
+
+        if ($head === null) {
+            $whole = $this->read($state.'.zip.json');
+
+            if ($whole !== null) {
+                $head = ['formatVersion' => $whole['formatVersion'] ?? null, 'sets' => $whole['sets'] ?? [], 'ranges' => $whole['ranges'] ?? [], 'zip' => $whole['zip'] ?? []];
+            }
+        }
+
+        return $this->postalHeads[$state] = $head;
+    }
+
+    /**
+     * The ZIP table narrowed to the one postcode asked about — which is all the
+     * resolver consults for an address in it. A sharded store reads one record; a
+     * whole artifact is narrowed in memory.
+     *
+     * @param  array<string, mixed>  $head
+     * @return array<string, mixed>
+     */
+    private function postalRows(string $state, string $zip5, array $head): array
+    {
+        if (array_key_exists('zip', $head)) {
+            $whole = Shape::map($head['zip']);
+
+            return array_key_exists($zip5, $whole) ? [$zip5 => $whole[$zip5]] : [];
+        }
+
+        $reader = $this->postalShards[$state] ??= new ShardReader(
+            $this->layout->file($this->version, 'boundaries/'.$state.'.zip'),
+        );
+
+        if (! $reader->exists() || ! $reader->has($zip5)) {
+            return [];
+        }
+
+        // One record per postcode, as the compile appends it; the reader hands back the
+        // list of records under a key, and the rows are the first.
+        $records = $reader->read($zip5);
+
+        return count($records) === 1 ? [$zip5 => $records[0]] : throw DatasetUnreadable::corruptShard(
+            $this->layout->file($this->version, 'boundaries/'.$state.'.zip'),
+            sprintf('postcode %s has %d records where the compile writes one', $zip5, count($records)),
+        );
     }
 
     /**
