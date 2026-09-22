@@ -179,9 +179,25 @@ readonly class TaxAssessment
         return $this->treatment === TaxTreatment::Standard;
     }
 
+    /**
+     * Whether the seller charges nothing because the CUSTOMER accounts for the tax.
+     *
+     * True for an intra-Community supply of goods as well, which is a different
+     * provision reaching the same invoice: the seller charges nothing and the
+     * customer self-accounts. Code that asks this question is asking about the
+     * invoice, and the answer has not changed — {@see isIntraCommunitySupply()}
+     * tells the two apart where the return or the EC Sales List needs it.
+     */
     public function isReverseCharge(): bool
     {
-        return $this->treatment === TaxTreatment::ReverseCharge;
+        return $this->treatment === TaxTreatment::ReverseCharge
+            || $this->treatment === TaxTreatment::IntraCommunitySupply;
+    }
+
+    /** An Art. 138 exempt supply of goods, as opposed to an Art. 196 reverse charge. */
+    public function isIntraCommunitySupply(): bool
+    {
+        return $this->treatment === TaxTreatment::IntraCommunitySupply;
     }
 
     public function isExempt(): bool

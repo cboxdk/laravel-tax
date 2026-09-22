@@ -45,6 +45,25 @@ enum TaxTreatment: string
      */
     case MarketplaceFacilitated = 'marketplace_facilitated';
 
+    /**
+     * A supply of GOODS to a business in another Member State: exempt in the
+     * seller's state under Art. 138, with the customer accounting for the
+     * acquisition in its own.
+     *
+     * Kept apart from {@see self::ReverseCharge} because it is a different
+     * provision with different paperwork, not a synonym. A reverse charge under
+     * Arts. 194–199 moves the liability for a tax on THIS supply; Art. 138 exempts
+     * this supply and taxes a different one — the customer's acquisition. They cite
+     * differently on the invoice (Art. 226(11)), they sit in different boxes on the
+     * return, and the EC Sales List reports goods and services separately. An
+     * engine that called both "reverse charge" left a host unable to file either
+     * correctly from the treatment alone.
+     *
+     * {@see TaxAssessment::isReverseCharge()} answers true for both, because the
+     * invoice-side question — does the seller charge tax? — has the same answer.
+     */
+    case IntraCommunitySupply = 'intra_community_supply';
+
     /** Whether the seller charges tax on the invoice for this treatment. */
     public function chargesTax(): bool
     {
@@ -61,7 +80,7 @@ enum TaxTreatment: string
     public function taxWasDue(): bool
     {
         return match ($this) {
-            self::Standard, self::MarketplaceFacilitated, self::ReverseCharge => true,
+            self::Standard, self::MarketplaceFacilitated, self::ReverseCharge, self::IntraCommunitySupply => true,
             self::ZeroRated, self::Exempt, self::NotRegistered => false,
         };
     }

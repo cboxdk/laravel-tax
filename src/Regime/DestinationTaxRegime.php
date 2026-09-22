@@ -91,7 +91,7 @@ abstract class DestinationTaxRegime implements TaxRegime
     private function reverseCharge(TaxQuery $query): TaxAssessment
     {
         return new TaxAssessment(
-            treatment: TaxTreatment::ReverseCharge,
+            treatment: $this->reverseChargeTreatment($query),
             net: $query->amount,
             tax: $this->zero($query),
             gross: $query->amount,
@@ -100,6 +100,15 @@ abstract class DestinationTaxRegime implements TaxRegime
             reason: $this->reverseChargeReason($query),
             mentions: $this->reverseChargeMentions($query),
         );
+    }
+
+    /**
+     * Which treatment the shifted liability is. A regime that models a provision
+     * with its own reporting — the EU's Art. 138 supply of goods — says so here.
+     */
+    protected function reverseChargeTreatment(TaxQuery $query): TaxTreatment
+    {
+        return TaxTreatment::ReverseCharge;
     }
 
     protected function reverseChargeReason(TaxQuery $query): string

@@ -35,6 +35,27 @@ minor bumps may carry additive features; patches are fixes and docs).
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
 
+### Fixed — an intra-Community supply is not a reverse charge
+
+- **`TaxTreatment::IntraCommunitySupply`.** Goods sold to a validated business in
+  another Member State were reported as `ReverseCharge`, which is a different
+  provision: Art. 138 exempts the dispatch and the customer accounts for the
+  acquisition, while Arts. 194–199 move the liability for the tax on this supply.
+  They cite differently on the invoice, sit in different boxes on a return, and are
+  separate columns on the EC Sales List. `TaxAssessment::isReverseCharge()` answers
+  true for both, so host code asking the invoice-side question is unaffected;
+  `isIntraCommunitySupply()` tells them apart. The conformance vector that pinned
+  the old label now pins the distinction and says why.
+- **A return line splits by treatment.** `ReturnLine::$byTreatment` and
+  `forTreatment()` carry what the line is made of — charged, exempt under Art. 138,
+  reverse-charged, marketplace-remitted. Every one of those but the first is a zero,
+  so a single total could not be taken apart afterwards, and no filing could be built
+  from the aggregator at all.
+- **The register's conformance deck is skipped, loudly, when a release ships
+  without one.** Release 2026.09.22-274 publishes none, and the test follows
+  `latest`, so it failed with a raw HTTP 404 that said nothing about whether the two
+  readers agree.
+
 ### Added — what the data does and does not guarantee
 
 - **The register's data is in beta, and the docs now say so plainly.** A new

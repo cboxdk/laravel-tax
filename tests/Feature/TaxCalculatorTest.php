@@ -67,7 +67,12 @@ it('reverse-charges an intra-EU B2B supply to a validated customer', function ()
         customerTaxIdValidated: true,
     ));
 
-    expect($a->treatment)->toBe(TaxTreatment::ReverseCharge)
+    // GOODS, so it is an Art. 138 exempt supply rather than an Art. 196 reverse
+    // charge — a different box on the return and a different column on the EC Sales
+    // List. `isReverseCharge()` still answers the invoice-side question for both.
+    expect($a->treatment)->toBe(TaxTreatment::IntraCommunitySupply)
+        ->and($a->isReverseCharge())->toBeTrue()
+        ->and($a->treatment->taxWasDue())->toBeTrue()
         ->and((string) $a->tax->getAmount())->toBe('0.00')
         ->and($a->rate)->toBeNull();
 });
@@ -114,7 +119,7 @@ it('routes tax by the selling entity: same buyer, different seller, different ta
     // French entity → domestic supply → French VAT is charged.
     $viaFr = $this->tax->assess($buyer('FR'));
 
-    expect($viaDe->treatment)->toBe(TaxTreatment::ReverseCharge)
+    expect($viaDe->treatment)->toBe(TaxTreatment::IntraCommunitySupply)
         ->and((string) $viaDe->tax->getAmount())->toBe('0.00')
         ->and($viaFr->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $viaFr->tax->getAmount())->toBe('20.00');

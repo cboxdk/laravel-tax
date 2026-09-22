@@ -281,6 +281,13 @@ class EuVatRegime extends DestinationTaxRegime
         return $query->isBusiness() && $query->customerTaxIdValidated;
     }
 
+    protected function reverseChargeTreatment(TaxQuery $query): TaxTreatment
+    {
+        return $this->intraCommunityGoods($query)
+            ? TaxTreatment::IntraCommunitySupply
+            : TaxTreatment::ReverseCharge;
+    }
+
     protected function reverseChargeReason(TaxQuery $query): string
     {
         return $this->intraCommunityGoods($query)

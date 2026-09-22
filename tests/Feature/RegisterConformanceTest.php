@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Compile\Compiler;
 use Cbox\Tax\Register\Compile\SectionFetcher;
 use Cbox\Tax\Register\Reader\RegisterDataset;
@@ -38,7 +39,18 @@ afterEach(function (): void {
 it('resolves the register\'s own conformance deck the way the register does', function (): void {
     $fetcher = app(SectionFetcher::class);
     $version = $fetcher->resolve('latest');
-    $deck = $fetcher->json("/api/v1/releases/{$version}/conformance");
+
+    // A RELEASE WITHOUT A DECK IS THE REGISTER'S GAP, NOT A DISAGREEMENT. This test
+    // follows `latest`, so it would otherwise turn every release published without
+    // one into a red build here — which says nothing about whether the two readers
+    // agree. It is skipped, loudly and by name, so the gap is visible and reportable
+    // rather than either invisible or fatal. Release 2026.09.22-274 shipped without
+    // one; 261 carried it.
+    try {
+        $deck = $fetcher->json("/api/v1/releases/{$version}/conformance");
+    } catch (RateSourceUnavailable) {
+        $this->markTestSkipped("Release {$version} publishes no conformance deck; nothing to check this engine against.");
+    }
 
     // TWO STATES, not the fifteen the deck covers. Every rung of the ladder is
     // exercised by these — Kansas has the narrow-span-beats-whole-ZIP case and an

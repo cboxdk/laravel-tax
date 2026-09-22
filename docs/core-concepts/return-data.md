@@ -70,3 +70,23 @@ invisible.
 
 The jurisdiction-level `net`, `tax` and `count` on the line stay correct either
 way — only the split goes unreported.
+
+## One line, split by treatment
+
+A period's total for a country is not a filing. `ReturnLine::$byTreatment` carries
+the same line split into what it is made of, so each figure can go to the box that
+asks for it:
+
+```php
+$line = $return->lineFor(new CountryCode('FR'), 'EUR');
+
+$line->net;                                                   // the whole period
+$line->forTreatment(TaxTreatment::Standard)?->tax;            // what was charged
+$line->forTreatment(TaxTreatment::IntraCommunitySupply)?->net; // Art. 138 goods
+$line->forTreatment(TaxTreatment::ReverseCharge)?->net;       // Art. 196 services
+```
+
+Every treatment but `Standard` contributes a zero to the line's tax, so a single
+total cannot be taken apart again afterwards — which is why the split is built
+during aggregation rather than offered as a helper over the result. A treatment the
+period never saw is **absent**, not a zero row: nothing was supplied under it.

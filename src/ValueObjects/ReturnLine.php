@@ -7,6 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Enums\TaxTreatment;
 
 /**
  * One line of an aggregated tax return: the net and tax totals (and the number of
@@ -39,5 +40,25 @@ readonly class ReturnLine
          * @var list<AuthorityTotal>|null
          */
         public ?array $authorities = null,
+        /**
+         * What this line is made of, per treatment, keyed by the treatment's value.
+         *
+         * The line's own `net` and `tax` are the whole period for that place; a form
+         * asks for it split — an exempt intra-Community supply of goods apart from a
+         * service the customer reverse-charges, both apart from what the seller
+         * actually charged, and all three apart from what a marketplace remitted.
+         * Every one of those but the first is a zero, so a single total cannot be
+         * taken apart again afterwards. Added last, so positional callers are
+         * unaffected.
+         *
+         * @var array<string, ReturnTotal>
+         */
+        public array $byTreatment = [],
     ) {}
+
+    /** One treatment's share of this line, or null where the period held none. */
+    public function forTreatment(TaxTreatment $treatment): ?ReturnTotal
+    {
+        return $this->byTreatment[$treatment->value] ?? null;
+    }
 }

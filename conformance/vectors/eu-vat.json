@@ -96,7 +96,7 @@
         },
         {
             "id": "b2b-cross-border-reverse-charge",
-            "pins": "A cross-border B2B supply to a validated VAT number is reverse charged: no tax, and the invoice must say so.",
+            "pins": "A cross-border B2B supply of GOODS to a validated VAT number is an exempt intra-Community supply (Art. 138): no tax, and the invoice must say so. It is reported as `intra_community_supply` rather than `reverse_charge` because the two cite differently, sit in different boxes on the return, and are separate columns on the EC Sales List; the Art. 196 reverse charge covers services. `isReverseCharge()` answers true for both.",
             "query": {
                 "amount": "1000.00",
                 "currency": "EUR",
@@ -111,7 +111,7 @@
                 ]
             },
             "expect": {
-                "treatment": "reverse_charge",
+                "treatment": "intra_community_supply",
                 "tax": "0.00",
                 "gross": "1000.00",
                 "hasInvoiceMention": true

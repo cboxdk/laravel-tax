@@ -72,7 +72,8 @@ it('leaves B2B reverse-charge unchanged regardless of OSS status', function () {
         customerTaxIdValidated: true,
     ));
 
-    expect($a->treatment)->toBe(TaxTreatment::ReverseCharge)
+    expect($a->treatment)->toBe(TaxTreatment::IntraCommunitySupply)
+        ->and($a->isReverseCharge())->toBeTrue()
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
 

@@ -47,13 +47,27 @@ asks about separately. Deny-by-default: the engine never
 infers turnover, and absent an asserted status it applies destination. B2B
 reverse-charge is unaffected.
 
-## Reverse charge
+## Reverse charge, and the supply that is not one
 
 Reverse charge applies only when the supply is **cross-border** (the selling
 entity is not established in the buyer's country), the customer is a **business**,
 and their tax ID is **validated** (`customerTaxIdValidated: true`) — because
 zero-rating legally hinges on a valid customer VAT/registration number. Otherwise
 destination tax is charged.
+
+**Goods inside the EU are not a reverse charge.** Art. 138 exempts the dispatch and
+the customer accounts for the *acquisition* in its own state: a different provision
+from the Art. 196 reverse charge on services, with a different invoice citation, a
+different box on the return and its own column on the EC Sales List. The engine
+reports it as `TaxTreatment::IntraCommunitySupply`, and
+`TaxAssessment::isReverseCharge()` answers true for both — the invoice-side question
+("does the seller charge?") has the same answer, while
+`isIntraCommunitySupply()` tells them apart for a filing.
+
+| Supply | Treatment | Invoice mention |
+| --- | --- | --- |
+| Goods, DE → validated FR business | `IntraCommunitySupply` | Exempt intra-Community supply (Art. 138) |
+| Service, DE → validated FR business | `ReverseCharge` | Reverse charge (Art. 196) |
 
 ## Sub-federal regimes
 

@@ -9,6 +9,7 @@ use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\ValueObjects\AuthorityTotal;
 use Cbox\Tax\ValueObjects\ReturnLine;
 use Cbox\Tax\ValueObjects\ReturnPeriod;
+use Cbox\Tax\ValueObjects\ReturnTotal;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxReturn;
 
@@ -80,10 +81,37 @@ readonly class DefaultReturnAggregator implements ReturnAggregator
                 $line->tax,
                 $line->count,
                 $this->authorities($grouped[$key]),
+                $this->byTreatment($grouped[$key]),
             );
         }
 
         return new TaxReturn($complete, $period);
+    }
+
+    /**
+     * The line, split by treatment.
+     *
+     * A form does not ask what a country's supplies came to; it asks what was
+     * charged, what was exempt under Art. 138, what the customer reverse-charged and
+     * what a marketplace remitted, each in its own box — and the EC Sales List
+     * reports goods and services in different columns.
+     *
+     * @param  list<TaxAssessment>  $assessments
+     * @return array<string, ReturnTotal>
+     */
+    private function byTreatment(array $assessments): array
+    {
+        $totals = [];
+
+        foreach ($assessments as $assessment) {
+            $key = $assessment->treatment->value;
+
+            $totals[$key] = isset($totals[$key])
+                ? $totals[$key]->plus($assessment->net, $assessment->tax)
+                : new ReturnTotal($assessment->treatment, $assessment->net, $assessment->tax, 1);
+        }
+
+        return $totals;
     }
 
     /**

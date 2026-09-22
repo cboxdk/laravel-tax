@@ -175,7 +175,8 @@ it('leaves a reverse-charge supply untouched even with a covering exemption', fu
         exemption: $this->taxExemption(reference: 'RC-FR', countries: ['FR']),
     ));
 
-    expect($a->treatment)->toBe(TaxTreatment::ReverseCharge)
+    expect($a->treatment)->toBe(TaxTreatment::IntraCommunitySupply)
+        ->and($a->isReverseCharge())->toBeTrue()
         ->and((string) $a->tax->getAmount())->toBe('0.00')
         ->and($a->exemption)->toBeNull();
 });

@@ -10,6 +10,8 @@ use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -117,4 +119,49 @@ it('keeps each EU member state on its own line for an OSS-style set', function (
         ->and((string) $fr->tax->getAmount())->toBe('20.00')
         ->and($de->count)->toBe(2)
         ->and((string) $de->tax->getAmount())->toBe('38.00');
+});
+
+it('splits a line by treatment, because a form asks for it that way', function () {
+    // One period, one country, three kinds of supply. Summed into a single net and
+    // tax the line reconciles with the invoices and fits no box on the form: a
+    // domestic charge, an exempt intra-Community supply of goods and a service the
+    // customer reverse-charges go to three different places on a return, and goods
+    // and services are separate columns on the EC Sales List.
+    $b2b = fn (TaxClass $class): TaxQuery => new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $this->geo->find(new CountryCode('FR')),
+        customer: CustomerType::Business,
+        seller: new SellerRegistrations(new CountryCode('DE')),
+        category: $class,
+        customerTaxIdValidated: true,
+    );
+
+    $domestic = new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $this->geo->find(new CountryCode('FR')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('FR')),
+    );
+
+    $return = $this->aggregator->aggregate([
+        $this->tax->assess($domestic),
+        $this->tax->assess($b2b(TaxClass::GeneralGoods)),
+        $this->tax->assess($b2b(TaxClass::ProfessionalService)),
+    ]);
+
+    $line = $return->lineFor(new CountryCode('FR'), 'EUR');
+    $goods = $line?->forTreatment(TaxTreatment::IntraCommunitySupply);
+    $services = $line?->forTreatment(TaxTreatment::ReverseCharge);
+    $charged = $line?->forTreatment(TaxTreatment::Standard);
+
+    expect((string) $line?->net->getAmount())->toBe('300.00')
+        ->and((string) $goods?->net->getAmount())->toBe('100.00')
+        ->and((string) $goods?->tax->getAmount())->toBe('0.00')
+        ->and($goods?->count)->toBe(1)
+        ->and((string) $services?->net->getAmount())->toBe('100.00')
+        ->and((string) $charged?->tax->getAmount())->toBe('20.00')
+        // A treatment the period never saw is absent, not a zero row.
+        ->and($line?->forTreatment(TaxTreatment::MarketplaceFacilitated))->toBeNull();
 });
