@@ -95,6 +95,8 @@ beforeEach(function (): void {
                 ['fact' => 'product.isCake', 'op' => 'eq', 'value' => true, 'says' => 'not including cakes…'],
             ]],
         ]]])
+        ->fact('product.isLiveAnimalOfAKindYieldingHumanFood', 'Is this a live animal of a kind generally used as, or yielding or producing, food for human consumption?')
+        ->fact('recipient.isCharityServingDisabledPersons', 'Is the buyer a charity providing care for disabled people?', subject: 'recipient')
         ->category('goods.medical_equipment', 'goods')
         ->rate('europe:GB', '5', 'reduced', 'goods.medical_equipment', from: '1990-01-01', extra: ['conditions' => [[
             'kind' => 'excludes',
@@ -302,6 +304,9 @@ it('audits a catalogue against a market, and says what each product is missing',
         ->and($by['SKU-FEED']->settleableByCommodityCode())->toBeTrue()
         ->and($by['SKU-FEED']->factsNeeded())->toBe([])
         ->and($by['SKU-LAMB']->factsNeeded())->toBe(['product.isLiveAnimalOfAKindYieldingHumanFood'])
+        // The register's own question, and only because it is about the product.
+        ->and(array_map(fn ($q) => $q->question, $by['SKU-LAMB']->productQuestions()))
+        ->toBe(['Is this a live animal of a kind generally used as, or yielding or producing, food for human consumption?'])
         ->and($by['SKU-NOBODY-MAPPED']->isUnmapped())->toBeTrue();
 });
 
@@ -319,4 +324,13 @@ it('flags an exclusion the seller answered in part, even at the exact category',
         ->and($cake?->confidence)->toBe(Confidence::Authoritative)
         // Said nothing at all: still the Ireland case, still quiet.
         ->and(gbRate('goods.snacks')?->limitedBy)->toBeNull();
+});
+
+it('reads the fact vocabulary, and keeps sale facts off the product', function (): void {
+    $dataset = app(RegisterDataset::class);
+
+    expect($dataset->fact('product.isLiveAnimalOfAKindYieldingHumanFood')?->isAboutTheProduct())->toBeTrue()
+        ->and($dataset->fact('recipient.isCharityServingDisabledPersons')?->isAboutTheProduct())->toBeFalse()
+        ->and($dataset->fact('recipient.isCharityServingDisabledPersons')?->askedPer)->toBe('sale')
+        ->and($dataset->fact('product.neverPublished'))->toBeNull();
 });

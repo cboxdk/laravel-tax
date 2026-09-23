@@ -105,6 +105,7 @@ class TaxServiceProvider extends ServiceProvider
         $this->app->bind(CatalogueAudit::class, static fn (Application $app): CatalogueAudit => new CatalogueAudit(
             $app->make(ProductCatalogue::class),
             new RegisterRateSource($app->make(RegisterDataset::class)),
+            $app->make(RegisterDataset::class),
         ));
 
         // ONE RATE SOURCE. The register covers 80 jurisdictions across eleven

@@ -168,6 +168,39 @@ final readonly class SectionFetcher
     }
 
     /**
+     * A section an older release may not publish: null on 404, a refusal on anything
+     * else. Only for advisory documents — a section the engine prices from is never
+     * optional, and a missing one must stop the compile.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function jsonIfPublished(string $path): ?array
+    {
+        try {
+            $response = $this->http->timeout($this->timeout)->acceptJson()->get($this->url($path));
+        } catch (Throwable $e) {
+            throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
+        }
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
+        }
+
+        $decoded = $response->json();
+
+        if (! is_array($decoded)) {
+            throw RateSourceUnavailable::unreadable(self::SOURCE);
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
+    }
+
+    /**
      * Stream a document straight to disk, never through memory.
      *
      * `regions/us` is 48.8 MB and `json_decode` on it peaks at 315 MB. It reaches
@@ -187,7 +220,25 @@ final readonly class SectionFetcher
         }
 
         try {
-            $response = $this->http->timeout($this->timeout)->sink($to)->get($this->url($path));
+            // A DOWNLOAD IS ABANDONED WHEN IT STALLS, NOT WHEN IT IS LARGE. A fixed
+            // total timeout failed street indexes at random: Arkansas's is 31 MB and
+            // Georgia's 36, the store serves them anywhere between 12 KB/s and a few
+            // MB/s, and at 120 seconds anything slower than 260 KB/s was cut off
+            // mid-file. So the connection has to open in reasonable time, and the
+            // transfer is aborted only if it moves less than a kilobyte a second for a
+            // full minute — never merely for taking a while.
+            $response = $this->http
+                ->connectTimeout(30)
+                ->timeout(0)
+                ->withOptions([
+                    'read_timeout' => 60,
+                    'curl' => defined('CURLOPT_LOW_SPEED_LIMIT') ? [
+                        CURLOPT_LOW_SPEED_LIMIT => 1024,
+                        CURLOPT_LOW_SPEED_TIME => 60,
+                    ] : [],
+                ])
+                ->sink($to)
+                ->get($this->url($path));
         } catch (Throwable $e) {
             @unlink($to);
 

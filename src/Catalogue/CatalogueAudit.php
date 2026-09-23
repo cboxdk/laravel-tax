@@ -7,8 +7,10 @@ namespace Cbox\Tax\Catalogue;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\CatalogueFinding;
+use Cbox\Tax\ValueObjects\RegisterFact;
 use DateTimeImmutable;
 
 /**
@@ -33,6 +35,7 @@ final readonly class CatalogueAudit
     public function __construct(
         private ProductCatalogue $catalogue,
         private RegisterRateSource $rates,
+        private ?RegisterDataset $dataset = null,
     ) {}
 
     /**
@@ -61,11 +64,39 @@ final readonly class CatalogueAudit
                 $open = $source->unsettledConditions($market, $key, $mapping->commodityCode, $at);
 
                 if ($open !== []) {
-                    $findings[] = new CatalogueFinding($itemCode, $market, $open);
+                    $finding = new CatalogueFinding($itemCode, $market, $open);
+                    $findings[] = new CatalogueFinding($itemCode, $market, $open, $this->questions($finding->factsNeeded()));
                 }
             }
         }
 
         return $findings;
+    }
+
+    /**
+     * The register's own wording for each fact, where the installed release carries
+     * the vocabulary. A fact it does not know is left out rather than invented: the
+     * name is still on the finding.
+     *
+     * @param  list<string>  $names
+     * @return list<RegisterFact>
+     */
+    private function questions(array $names): array
+    {
+        if ($this->dataset === null) {
+            return [];
+        }
+
+        $questions = [];
+
+        foreach ($names as $name) {
+            $fact = $this->dataset->fact($name);
+
+            if ($fact !== null) {
+                $questions[] = $fact;
+            }
+        }
+
+        return $questions;
     }
 }

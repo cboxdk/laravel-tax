@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Testing;
 
+use Cbox\Tax\Catalogue\CatalogueAudit;
 use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardWriter;
 use Cbox\Tax\Register\Store\StoreLayout;
@@ -39,6 +40,9 @@ final class FakeRegister
 
     /** @var list<array<string, mixed>> */
     private array $categories = [];
+
+    /** @var list<array<string, mixed>> */
+    private array $facts = [];
 
     /** @var array<string, array{sets: list<list<array<string, string>>>, zip: array<string, list<array{0: string, 1: string, 2: int}>>}> */
     private array $boundaries = [];
@@ -150,6 +154,28 @@ final class FakeRegister
         return $this;
     }
 
+    /**
+     * Publish one fact in the release's vocabulary, the way `/facts` does — so a
+     * product form built on {@see CatalogueAudit} can be tested
+     * without the network.
+     *
+     * @param  list<string>  $values
+     */
+    public function fact(string $name, string $question, string $subject = 'product', string $type = 'boolean', ?string $note = null, array $values = []): self
+    {
+        $this->facts[] = array_filter([
+            'fact' => $name,
+            'type' => $type,
+            'subject' => $subject,
+            'askedPer' => in_array($subject, ['product', 'seller'], true) ? $subject : 'sale',
+            'question' => $question,
+            'note' => $note,
+            'values' => $values === [] ? null : $values,
+        ], static fn (mixed $value): bool => $value !== null);
+
+        return $this;
+    }
+
     public function category(string $key, ?string $parent = null): self
     {
         $this->categories[] = ['key' => $key, 'name' => $key, 'parent' => $parent, 'description' => null, 'regions' => [], 'cites' => null];
@@ -231,6 +257,10 @@ final class FakeRegister
         }
 
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);
+
+        if ($this->facts !== []) {
+            $this->put($directory, 'facts.json', ['formatVersion' => 1, 'facts' => $this->facts]);
+        }
         $this->put($directory, 'standard-rates.json', ['standardRates' => []]);
         $this->put($directory, 'coverage.json', ['version' => $this->version, 'summary' => []]);
         $this->put($directory, 'meta.json', [

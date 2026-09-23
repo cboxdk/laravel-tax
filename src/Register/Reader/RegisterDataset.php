@@ -10,6 +10,7 @@ use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
+use Cbox\Tax\ValueObjects\RegisterFact;
 use DateTimeImmutable;
 
 /**
@@ -44,6 +45,9 @@ final class RegisterDataset
 
     /** @var array<string, list<array<string, mixed>>>|null */
     private ?array $rulesByJurisdiction = null;
+
+    /** @var array<string, RegisterFact>|null */
+    private ?array $factIndex = null;
 
     public function __construct(
         private readonly StoreLayout $layout,
@@ -399,6 +403,40 @@ final class RegisterDataset
     public function coverage(): array
     {
         return $this->document('coverage');
+    }
+
+    /**
+     * The question behind one of the register's fact names, or null where the
+     * installed release carries no vocabulary or does not know the fact.
+     */
+    public function fact(string $name): ?RegisterFact
+    {
+        if ($this->factIndex === null) {
+            $index = [];
+
+            foreach (Shape::records($this->document('facts')['facts'] ?? null) as $fact) {
+                $key = Shape::text($fact['fact'] ?? null);
+                $question = Shape::text($fact['question'] ?? null);
+
+                if ($key === null || $question === null) {
+                    continue;
+                }
+
+                $index[$key] = new RegisterFact(
+                    $key,
+                    Shape::text($fact['type'] ?? null) ?? 'boolean',
+                    Shape::text($fact['subject'] ?? null) ?? 'sale',
+                    Shape::text($fact['askedPer'] ?? null) ?? 'sale',
+                    $question,
+                    Shape::text($fact['note'] ?? null),
+                    array_values(array_filter((array) ($fact['values'] ?? []), is_string(...))),
+                );
+            }
+
+            $this->factIndex = $index;
+        }
+
+        return $this->factIndex[$name] ?? null;
     }
 
     /**

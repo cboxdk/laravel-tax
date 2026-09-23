@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Compile;
 
 use Cbox\Tax\Exceptions\DatasetUnreadable;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\ShardWriter;
@@ -84,6 +85,24 @@ final readonly class Compiler
         $this->put($partial, 'coverage.json', $this->fetcher->json("{$base}/coverage"));
         $this->put($partial, 'standard-rates.json', $this->fetcher->json("{$base}/sections/standard-rates"));
         $say('  rules, coverage, standard rates');
+
+        // THE FACT VOCABULARY IS ADVISORY. It turns `product.isConfectionery` into the
+        // question a product form asks, and nothing is priced from it — so a release
+        // that predates it, or a format this reader has not been written for, compiles
+        // without it rather than failing a sync over a label.
+        try {
+            $facts = $this->fetcher->jsonIfPublished("{$base}/facts");
+        } catch (RateSourceUnavailable $e) {
+            $facts = null;
+            $say('  fact vocabulary skipped: '.$e->getMessage());
+        }
+
+        if ($facts !== null && ($facts['formatVersion'] ?? null) === 1) {
+            $this->put($partial, 'facts.json', $facts);
+            $say('  fact vocabulary');
+        } elseif ($facts !== null) {
+            $say('  fact vocabulary skipped: format '.Shape::scalar($facts['formatVersion'] ?? null).' is not one this package reads');
+        }
 
         $wanted = $this->regionsOf($release, $regions);
 

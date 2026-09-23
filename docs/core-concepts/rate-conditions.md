@@ -104,9 +104,17 @@ foreach ($findings as $finding) {
     $finding->market;                      // the jurisdiction, or null if unmapped
     $finding->settleableByCommodityCode(); // would adding the CN/HS code settle it?
     $finding->factsNeeded();               // the register facts that would settle the rest
+    $finding->productQuestions();          // those facts as questions for a product form
     $finding->conditions;                  // each with the statute's own words
 }
 ```
+
+`productQuestions()` returns the register's own wording — "Is this confectionery, such
+as sweets, candy, chocolate or chewing gum?" — and only for facts about the **product**.
+Facts about the buyer, the use or the sale are answered per sale and never belong on a
+product form; they stay in `questions` with their subject. The vocabulary is compiled
+with the release by `tax:data:sync` (older releases do not publish one, and the audit
+then gives the fact names alone).
 
 A product that is fully described does not appear. Nothing here blocks a sale — an
 open condition is still priced at the published rate, flagged — this is how the flag

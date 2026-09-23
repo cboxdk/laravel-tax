@@ -79,3 +79,15 @@ $assessment = $calc->assess(new TaxQuery(
 
 $this->assertExempt($assessment, 'CA-RESALE-42'); // Exempt, tax 0, gross = net, reference present
 ```
+
+## Testing a product form
+
+`FakeRegister::fact()` publishes a fact in the release's vocabulary, so a product form
+driven by `CatalogueAudit::productQuestions()` can be tested without the network:
+
+```php
+FakeRegister::at(config('tax.register.store'))
+    ->fact('product.isConfectionery', 'Is this confectionery, such as sweets, candy, chocolate or chewing gum?')
+    ->fact('recipient.isCharityServingDisabledPersons', 'Is the buyer a charity providing care for disabled people?', subject: 'recipient')
+    ->install();
+```

@@ -60,6 +60,24 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Added — the register's questions
+
+- **The fact vocabulary is compiled with the release.** `tax:data:sync` fetches
+  `/facts` — about a thousand facts, each with the question a person answers, its
+  subject and where it is asked — and `RegisterDataset::fact()` reads it.
+  `CatalogueFinding::productQuestions()` gives a product form the register's own
+  wording for exactly the facts that belong on a product; facts about the buyer, the
+  use or the sale stay off it. A release that predates the vocabulary compiles
+  without it. `FakeRegister::fact()` publishes one in tests.
+
+### Fixed — downloads abandoned for being large
+
+- **A street index could fail to download at random.** A fixed two-minute timeout
+  cut off any file served slower than 260 KB/s, and the register's store serves them
+  anywhere from 12 KB/s to a few MB/s — Arkansas's 31 MB index failed that way. A
+  download is now abandoned only when it stalls: under a kilobyte a second for a full
+  minute.
+
 ### Fixed — release 280, checked as a consumer
 
 - **`latest` follows the newest release this package can read.** A sync asked for

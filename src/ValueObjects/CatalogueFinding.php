@@ -14,11 +14,13 @@ final readonly class CatalogueFinding
 {
     /**
      * @param  list<UnsettledCondition>  $conditions
+     * @param  list<RegisterFact>  $questions  the facts needed, as questions, where the register words them
      */
     public function __construct(
         public string $itemCode,
         public ?Jurisdiction $market,
         public array $conditions = [],
+        public array $questions = [],
     ) {}
 
     public static function unmapped(string $itemCode): self
@@ -51,5 +53,17 @@ final readonly class CatalogueFinding
         sort($facts);
 
         return $facts;
+    }
+
+    /**
+     * The questions a PRODUCT FORM should ask: facts about the thing sold, answered
+     * once and the same in every market. The rest — who buys, what for, how it is
+     * billed — are answered per sale and do not belong on a product.
+     *
+     * @return list<RegisterFact>
+     */
+    public function productQuestions(): array
+    {
+        return array_values(array_filter($this->questions, static fn (RegisterFact $fact): bool => $fact->isAboutTheProduct()));
     }
 }
