@@ -36,6 +36,10 @@ final class SyncCommand extends Command
         $pin = Shape::text($config->get('tax.register.version'));
         $release = Shape::text($this->option('release')) ?? $pin ?? 'latest';
 
+        if ($release === 'latest') {
+            $release = $this->newestReadable($fetcher);
+        }
+
         if ($this->option('check')) {
             return $this->check($fetcher, $dataset, $release);
         }
@@ -75,6 +79,26 @@ final class SyncCommand extends Command
         $this->comment('The register is licensed PolyForm Internal Use 1.0.0: use it inside your own organisation for anything, including commercially. Do not redistribute it or resell lookups from it.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The newest release this package can read, warning when `latest` is not it.
+     */
+    private function newestReadable(SectionFetcher $fetcher): string
+    {
+        $readable = $fetcher->newestReadable();
+
+        if ($readable['version'] !== $readable['latest']) {
+            $this->warn(sprintf(
+                'The latest release, %s, is on schema %s, which this version of cboxdk/laravel-tax cannot read. '
+                .'Using %s, the newest release it can. Upgrade the package to follow the register again.',
+                $readable['latest'],
+                $readable['latestSchema'] ?? '(none)',
+                $readable['version'],
+            ));
+        }
+
+        return $readable['version'];
     }
 
     /**

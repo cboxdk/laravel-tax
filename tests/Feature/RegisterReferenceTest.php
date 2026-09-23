@@ -20,6 +20,7 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\SourcingMode;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\DeliveryCharge;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -229,12 +230,24 @@ it('applies dated rules rounding and conditional delivery from a pinned release'
         $ks->place, $ks->customer, $ks->seller, $ks->pricing,
         [
             new SupplyLine('goods', Money::of('100.00', 'USD')),
-            new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(exclusionConditionsMet: true)),
+            // Both vocabularies, because the corpus runs against a schema-1 release by
+            // default and a schema-2 one when pinned. Schema 1 reads the blanket
+            // `exclusionConditionsMet`; schema 2 asks the facts by name — separately
+            // stated, labelled as delivery, at a true and reasonable cost — and infers
+            // purpose and direct mail from the shape of the sale.
+            new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(exclusionConditionsMet: true, facts: new DecisionFacts([
+                'delivery.separatelyStated' => true,
+                'delivery.label' => 'delivery',
+                'delivery.costIsTrueAndReasonable' => true,
+            ]))),
         ],
         suppliedAt: $ks->suppliedAt,
     ));
     expect((string) $delivered->forLine('delivery')?->tax->getAmount())->toBe('0.00')
         ->and($delivered->forLine('delivery')?->isExempt())->toBeTrue()
         ->and($delivered->net()->plus($delivered->tax())->isEqualTo($delivered->gross()))->toBeTrue()
-        ->and(app(DeliveryRules::class)->treatment(new SubdivisionCode('US-KS'), new DeliveryCharge(DeliveryComponent::Transport, goodsTaxable: true), new DateTimeImmutable('2026-09-13')))->toBeNull();
+        // A date no published rule covers answers nothing rather than today's rule.
+        // It used to sit just before the capture floor; from release 280 Kansas's rule
+        // is dated from the 2023 amendment itself, so the date moves before any start.
+        ->and(app(DeliveryRules::class)->treatment(new SubdivisionCode('US-KS'), new DeliveryCharge(DeliveryComponent::Transport, goodsTaxable: true), new DateTimeImmutable('2020-01-01')))->toBeNull();
 })->group('e2e', 'reference');

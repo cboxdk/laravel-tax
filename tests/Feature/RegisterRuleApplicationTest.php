@@ -499,9 +499,12 @@ it('lets neither a missing fact nor a host confirmation stand in for the publish
     } catch (UnresolvedTaxRule $e) {
         expect($e->reason())->toBe(RefusalReason::DeliveryFactsRequired)
             // ...and it names every fact it needs, not one per attempt.
-            ->and($e->getMessage())->toContain('delivery.purpose')->toContain('delivery.separatelyStated')
-            // containsExemptGoods is inferred from the goods, so it is never asked for.
-            ->and($e->getMessage())->not->toContain('delivery.containsExemptGoods');
+            ->and($e->getMessage())->toContain('delivery.separatelyStated')->toContain('delivery.label')
+            // containsExemptGoods is inferred from the goods, and purpose and direct
+            // mail from the shape of the sale, so none of them is ever asked for.
+            ->and($e->getMessage())->not->toContain('delivery.containsExemptGoods')
+            ->and($e->getMessage())->not->toContain('delivery.purpose')
+            ->and($e->getMessage())->not->toContain('delivery.isDirectMail');
     }
 });
 

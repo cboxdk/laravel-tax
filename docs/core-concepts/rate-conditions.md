@@ -69,8 +69,11 @@ comes back 20%, authoritative; fertiliser with no code comes back 0%, flagged
 books "but excluding newspapers". Asked about a book, that exclusion is about
 something else — flagging it would put a caveat on a large share of all answers to
 warn about a few. Asked about sweets, which only reach the UK's food zero rate by
-climbing to it, the same exclusion is the whole question, and it is flagged. This only
-decides whether an *unknown* is flagged; a settled exclusion always counts.
+climbing to it, the same exclusion is the whole question, and it is flagged — and so
+is any exclusion the seller answered in part: told a product is confectionery and
+nothing about cakes, "confectionery, not including cakes" is about this product and
+still open. This only decides whether an *unknown* is flagged; a settled exclusion
+always counts.
 
 **A bare code list on an exclusion is not read.** Where an exclusion carries only a
 list of codes and no predicate, nothing says whether the codes name what is carved out

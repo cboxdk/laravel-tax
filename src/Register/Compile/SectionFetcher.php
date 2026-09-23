@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Compile;
 
+use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
+use Cbox\Tax\Register\Reader\RegisterCompatibility;
+use Cbox\Tax\Register\Reader\Shape;
 use Illuminate\Http\Client\Factory;
 use Throwable;
 
@@ -54,6 +57,65 @@ final readonly class SectionFetcher
         }
 
         return $resolved;
+    }
+
+    /**
+     * The newest release this package can read, and what `latest` is if that differs.
+     *
+     * `latest` FOLLOWS THE REGISTER, and the register moves ahead of the package: a
+     * release on a schema this package has not been reviewed against cannot be
+     * compiled, and refusing it outright used to freeze the installed data until
+     * somebody upgraded — every correction the register published on the old schema in
+     * the meantime left behind. So a sync that asked for `latest` takes the newest
+     * release it can read and says what it skipped. A release asked for BY NAME still
+     * refuses: the operator wanted that one.
+     *
+     * @return array{version: string, latest: string, latestSchema: ?string}
+     */
+    public function newestReadable(): array
+    {
+        // The common case costs what it always did: one small request, and `latest`
+        // is readable. Only a register that has moved ahead is walked back.
+        $head = $this->json('/api/v1/releases/latest');
+        $headVersion = Shape::text($head['version'] ?? null);
+
+        if ($headVersion === null) {
+            throw RateSourceUnavailable::unreadable(self::SOURCE);
+        }
+
+        // Read from the release itself where the pointer does not carry it — the same
+        // document the compile reads next, so the decision and the compile agree.
+        $headSchema = Shape::text($head['schemaVersion'] ?? null)
+            ?? Shape::text($this->json('/api/v1/releases/'.$headVersion)['schemaVersion'] ?? null);
+
+        if (RegisterCompatibility::reads($headSchema)) {
+            return ['version' => $headVersion, 'latest' => $headVersion, 'latestSchema' => $headSchema];
+        }
+
+        $releases = $this->releases();
+
+        usort($releases, static fn (array $a, array $b): int => strcmp(
+            Shape::text($b['publishedAt'] ?? null) ?? '',
+            Shape::text($a['publishedAt'] ?? null) ?? '',
+        ));
+
+        $latest = Shape::text($releases[0]['version'] ?? null);
+
+        if ($latest === null) {
+            throw RateSourceUnavailable::unreadable(self::SOURCE);
+        }
+
+        $latestSchema = Shape::text($releases[0]['schemaVersion'] ?? null);
+
+        foreach ($releases as $release) {
+            $version = Shape::text($release['version'] ?? null);
+
+            if ($version !== null && RegisterCompatibility::reads($release['schemaVersion'] ?? null)) {
+                return ['version' => $version, 'latest' => $latest, 'latestSchema' => $latestSchema];
+            }
+        }
+
+        throw DatasetUnreadable::unsupportedSchema($latest, $latestSchema, RegisterCompatibility::supported());
     }
 
     /**

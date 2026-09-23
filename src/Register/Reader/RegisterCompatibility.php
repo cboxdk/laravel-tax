@@ -73,17 +73,21 @@ final class RegisterCompatibility
 
     public static function schema(mixed $schema, string $where): void
     {
-        $major = null;
-        $minor = null;
-
-        if (is_string($schema) && preg_match('/^([1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/D', $schema, $parts) === 1) {
-            $major = (int) $parts[1];
-            $minor = (int) $parts[2];
-        }
-
-        if ($major === null || ! isset(self::LAST_REVIEWED_MINOR[$major]) || $minor > self::LAST_REVIEWED_MINOR[$major]) {
+        if (! self::reads($schema)) {
             throw DatasetUnreadable::unsupportedSchema($where, is_string($schema) ? $schema : null, self::supported());
         }
+    }
+
+    /** Whether this package has been reviewed against a schema version. */
+    public static function reads(mixed $schema): bool
+    {
+        if (! is_string($schema) || preg_match('/^([1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/D', $schema, $parts) !== 1) {
+            return false;
+        }
+
+        $major = (int) $parts[1];
+
+        return isset(self::LAST_REVIEWED_MINOR[$major]) && (int) $parts[2] <= self::LAST_REVIEWED_MINOR[$major];
     }
 
     /**

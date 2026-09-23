@@ -84,6 +84,17 @@ beforeEach(function (): void {
             ],
         ]])
         // A bare code list on an exclusion states no direction, and is not read.
+        // The UK's confectionery exclusion as release 280 writes it: the zero rate
+        // holds if the product is NOT confectionery, OR it is a cake.
+        ->category('goods.snacks', 'goods')
+        ->rate('europe:GB', '0', 'zero', 'goods.snacks', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'excludes',
+            'says' => 'Confectionery, not including cakes or biscuits other than biscuits wholly or partly covered with chocolate.',
+            'predicate' => ['any' => [
+                ['not' => ['fact' => 'product.isConfectionery', 'op' => 'eq', 'value' => true, 'says' => 'Confectionery…']],
+                ['fact' => 'product.isCake', 'op' => 'eq', 'value' => true, 'says' => 'not including cakes…'],
+            ]],
+        ]]])
         ->category('goods.medical_equipment', 'goods')
         ->rate('europe:GB', '5', 'reduced', 'goods.medical_equipment', from: '1990-01-01', extra: ['conditions' => [[
             'kind' => 'excludes',
@@ -292,4 +303,20 @@ it('audits a catalogue against a market, and says what each product is missing',
         ->and($by['SKU-FEED']->factsNeeded())->toBe([])
         ->and($by['SKU-LAMB']->factsNeeded())->toBe(['product.isLiveAnimalOfAKindYieldingHumanFood'])
         ->and($by['SKU-NOBODY-MAPPED']->isUnmapped())->toBeTrue();
+});
+
+it('flags an exclusion the seller answered in part, even at the exact category', function (): void {
+    // Told a product IS confectionery and nothing about cakes, the exclusion is open —
+    // and it is about this product. Quiet here returned sweets at 0%, authoritative.
+    $sweetsHalfDescribed = gbRate('goods.snacks', facts: ['product.isConfectionery' => true]);
+    $sweets = gbRate('goods.snacks', facts: ['product.isConfectionery' => true, 'product.isCake' => false]);
+    $cake = gbRate('goods.snacks', facts: ['product.isConfectionery' => true, 'product.isCake' => true]);
+
+    expect((string) $sweetsHalfDescribed?->percentage)->toBe('0')
+        ->and($sweetsHalfDescribed?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and((string) $sweets?->percentage)->toBe('20')
+        ->and((string) $cake?->percentage)->toBe('0')
+        ->and($cake?->confidence)->toBe(Confidence::Authoritative)
+        // Said nothing at all: still the Ireland case, still quiet.
+        ->and(gbRate('goods.snacks')?->limitedBy)->toBeNull();
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Compile\Compiler;
+use Cbox\Tax\Register\Compile\SectionFetcher;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
@@ -77,4 +78,60 @@ it('rejects unknown applicability fields on the rule envelope during offline rea
     expect(fn () => app(RegisterDataset::class)->rulesOn('us:KS', 'sourcing', new DateTimeImmutable('2026-09-18')))
         ->toThrow(UnresolvedTaxRule::class, 'conditions');
     Http::assertNothingSent();
+});
+
+function releasesAhead(string $readable, string $ahead = '2026.12.01-900', string $aheadSchema = '3.0.0'): void
+{
+    Http::fake([
+        'https://data.cboxtax.com/api/v1/releases/latest' => Http::response(['version' => $ahead, 'schemaVersion' => $aheadSchema, 'publishedAt' => '2026-12-01T10:00:00+00:00']),
+        'https://data.cboxtax.com/api/v1/releases' => Http::response(['releases' => [
+            ['version' => $readable, 'schemaVersion' => '2.6.1', 'publishedAt' => '2026-11-30T10:00:00+00:00'],
+            ['version' => $ahead, 'schemaVersion' => $aheadSchema, 'publishedAt' => '2026-12-01T10:00:00+00:00'],
+            ['version' => '2026.01.01-1', 'schemaVersion' => '2.0.0', 'publishedAt' => '2026-01-01T10:00:00+00:00'],
+        ]]),
+    ]);
+}
+
+it('takes the newest release it can read when latest is on a schema it cannot', function (): void {
+    // The register moves ahead of the package. Refusing `latest` outright froze the
+    // installed data until somebody upgraded, and every correction published on the
+    // old schema in the meantime was left behind.
+    releasesAhead('2026.11.30-899');
+
+    expect(app(SectionFetcher::class)->newestReadable())->toBe([
+        'version' => '2026.11.30-899',
+        'latest' => '2026.12.01-900',
+        'latestSchema' => '3.0.0',
+    ]);
+});
+
+it('refuses when nothing published is readable', function (): void {
+    Http::fake([
+        'https://data.cboxtax.com/api/v1/releases/latest' => Http::response(['version' => '2026.12.01-900', 'schemaVersion' => '3.0.0']),
+        'https://data.cboxtax.com/api/v1/releases' => Http::response(['releases' => [
+            ['version' => '2026.12.01-900', 'schemaVersion' => '3.0.0', 'publishedAt' => '2026-12-01T10:00:00+00:00'],
+        ]]),
+    ]);
+
+    expect(fn () => app(SectionFetcher::class)->newestReadable())
+        ->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion 3.0.0');
+});
+
+it('checks against the newest readable release and says what it skipped', function (): void {
+    $installed = app(RegisterDataset::class)->version();
+    releasesAhead((string) $installed);
+
+    $this->artisan('tax:data:sync', ['--check' => true])
+        ->expectsOutputToContain('cannot read')
+        ->expectsOutputToContain('Up to date')
+        ->assertSuccessful();
+});
+
+it('still refuses a release asked for by name on a schema it cannot read', function (): void {
+    Http::fake(['https://data.cboxtax.com/api/v1/releases/2026.12.01-900' => Http::response([
+        'version' => '2026.12.01-900', 'schemaVersion' => '3.0.0',
+    ])]);
+
+    expect(fn () => app(Compiler::class)->compile('2026.12.01-900', null, null, false, [], static fn () => null))
+        ->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
 });

@@ -60,6 +60,25 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Fixed — release 280, checked as a consumer
+
+- **`latest` follows the newest release this package can read.** A sync asked for
+  `latest` used to refuse outright when the register had moved to a schema the
+  package had not been reviewed against, and the installed data froze until somebody
+  upgraded. It now installs the newest readable release and warns, naming what it
+  skipped; `--check` compares against the same release. A release asked for by name,
+  or pinned, still refuses.
+- **Kansas delivery infers purpose and direct mail.** From release 280 Kansas's rule
+  asks whether a delivery charge is delivery to the customer and whether the goods are
+  direct mail, and every Kansas order with shipping refused. A delivery line on a
+  customer's own invoice is delivery to that customer, and a sale delivered to one
+  place is not mail to a list; both are defaults a host can override.
+- **An exclusion the seller answered in part is flagged at the exact category.**
+  The UK's zero rate on food excludes "confectionery, not including cakes"; told a
+  product is confectionery and nothing about cakes, the answer was 0%, authoritative.
+- The reference corpus passes against both its pinned schema-1 release and 280, and
+  the register's conformance deck runs again now that it is published.
+
 ### Added — describing a product once
 
 - **`TaxQuery::$facts`, `SupplyLine::$facts`**, and `ProductTaxMapping` gains

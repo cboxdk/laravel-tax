@@ -171,3 +171,12 @@ your customers what the rates are* (not covered). The second needs a licence fro
 — something you buy when you cross the line, not a gate on getting started. There is no
 key, no signup, and nothing about the register you cannot evaluate before deciding to
 depend on it.
+
+## When the register moves to a schema this package cannot read
+
+`tax:data:sync` asked for `latest` installs the **newest release this package can
+read** and warns that a newer one exists on a schema it has not been reviewed
+against — so corrections published on the old schema keep arriving until you
+upgrade. `tax:data:sync --check` compares against the same release. A release asked
+for by name (`--release=`, or pinned with `TAX_REGISTER_VERSION`) still refuses: you
+asked for that one. Nothing is downloaded or replaced for a release that is refused.

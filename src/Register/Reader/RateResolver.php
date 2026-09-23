@@ -169,7 +169,7 @@ final readonly class RateResolver
     {
         $unsettled = array_values(array_filter(
             RateConditions::verdict($answer['rate'], $facts)['unsettled'],
-            static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung),
+            static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung, $facts),
         ));
 
         return [...$answer, 'narrowed' => $unsettled !== [], 'unsettled' => $unsettled];

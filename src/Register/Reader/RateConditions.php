@@ -86,13 +86,24 @@ final class RateConditions
      * exclusion is the whole question: sweets climb to the United Kingdom's food zero
      * rate, which excludes confectionery.
      *
+     * An exclusion the seller answered in part is flagged at the exact rung too.
+     *
      * A condition the facts SETTLE is never flagged either way — a false one has
      * already removed the rate before this is asked, and a true one is the rate's own
      * scope confirmed.
      */
-    public static function worthFlagging(UnsettledCondition $condition, bool $exactRung): bool
+    public static function worthFlagging(UnsettledCondition $condition, bool $exactRung, DecisionFacts $facts): bool
     {
-        return $condition->kind !== 'excludes' || ! $exactRung;
+        if ($condition->kind !== 'excludes' || ! $exactRung) {
+            return true;
+        }
+
+        // UNLESS THE SELLER TOUCHED IT. An exclusion the seller said nothing about is
+        // usually about something else; one it answered in part is about this product.
+        // The UK's food zero rate excludes "confectionery, not including cakes or
+        // biscuits": told a product IS confectionery and nothing about cakes, it is
+        // still open — and staying quiet returned sweets at 0%, authoritative.
+        return array_any($condition->facts, $facts->has(...));
     }
 
     /**

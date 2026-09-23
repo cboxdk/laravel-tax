@@ -78,7 +78,19 @@ final readonly class RegisterDelivery implements DeliveryRules
     {
         // The engine knows whether the delivered goods were taxable; it does not know
         // what else shared the parcel. A host that states the fact is believed.
-        $facts = $delivery->facts->withDefault('delivery.containsExemptGoods', ! $delivery->goodsTaxable);
+        //
+        // TWO MORE IT KNOWS FROM THE SHAPE OF THE SALE. A delivery charge here is a
+        // line on the customer's own invoice for delivering the goods on it, so its
+        // purpose is delivery to the customer — freight-in, a fuel surcharge or a
+        // charge-back on returned goods is not a line on a sale. And a sale is
+        // delivered to ONE place, where direct mail is by definition sent to the
+        // addressees on a mailing list. Kansas asks both from release 280, and without
+        // them every Kansas order with shipping refused. A host that knows otherwise —
+        // a printer mailing a client's list — says so and is believed.
+        $facts = $delivery->facts
+            ->withDefault('delivery.containsExemptGoods', ! $delivery->goodsTaxable)
+            ->withDefault('delivery.purpose', 'customer_delivery')
+            ->withDefault('delivery.isDirectMail', false);
         $outcome = Decision::evaluate($decision, $facts, $where);
 
         if (! $outcome->resolved()) {
