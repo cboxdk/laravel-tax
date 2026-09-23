@@ -49,8 +49,13 @@ minor bumps may carry additive features; patches are fixes and docs).
 - **Conditions are evaluated.** The register's typed predicates are read in full —
   boolean, enum and numeric facts, `prefix_in` on tariff codes, `all`, `any`, `not`
   and `unsettled` — three-valued, so an absent fact is unknown and never false. A
-  condition that settles against the rate removes it, and the ladder carries on to the
-  rate that does apply.
+  true predicate means the rate applies **for every kind of condition**: the register
+  writes an exclusion already negated (`not(product.isConfectionery)`), and the kind
+  only describes the clause. All true, the rate applies; any false removes it and the
+  ladder carries on to the rate that does apply. A first reading that dropped the rate
+  when an `excludes` was true inverted 549 conditions on 387 rates — the UK zero rate
+  on sweets and 20% on bread — and never left the branch. A bare code list on an
+  exclusion states no direction and is not read.
 - **A commodity code settles conditions written in codes.** `classification.cnCode`
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.

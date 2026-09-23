@@ -68,10 +68,27 @@ beforeEach(function (): void {
                 ['fact' => 'classification.cnCode', 'op' => 'prefix_in', 'value' => ['0102', '0103', '0104'], 'says' => 'bovine, swine, sheep and goats'],
             ]],
         ]]])
-        ->rate('europe:GB', '0', 'zero', 'goods.food', from: '1990-01-01', extra: ['conditions' => [[
+        // Exclusions as the register writes them: ALREADY NEGATED. The predicate is true
+        // for what the rate still covers — bread — and `excludes` only describes the
+        // clause. Two exclusions on one rate, both must hold.
+        ->rate('europe:GB', '0', 'zero', 'goods.food', from: '1990-01-01', extra: ['conditions' => [
+            [
+                'kind' => 'excludes',
+                'says' => 'Confectionery, not including cakes or biscuits other than biscuits wholly or partly covered with chocolate.',
+                'predicate' => ['not' => ['fact' => 'product.isConfectionery', 'op' => 'eq', 'value' => true, 'says' => 'Confectionery…']],
+            ],
+            [
+                'kind' => 'excludes',
+                'says' => 'Ice cream, ice lollies, frozen yogurt, water ices and similar frozen products.',
+                'predicate' => ['not' => ['fact' => 'product.isIceCreamOrSimilarFrozenProduct', 'op' => 'eq', 'value' => true, 'says' => 'Ice cream…']],
+            ],
+        ]])
+        // A bare code list on an exclusion states no direction, and is not read.
+        ->category('goods.medical_equipment', 'goods')
+        ->rate('europe:GB', '5', 'reduced', 'goods.medical_equipment', from: '1990-01-01', extra: ['conditions' => [[
             'kind' => 'excludes',
-            'says' => 'Confectionery, not including cakes or biscuits other than biscuits wholly or partly covered with chocolate.',
-            'predicate' => ['fact' => 'product.isConfectionery', 'op' => 'eq', 'value' => true, 'says' => 'Confectionery…'],
+            'says' => 'Of base metal or of other materials (excluding of precious metal); 9003 19 00',
+            'codes' => ['9003 19 00'],
         ]]])
         ->install();
 });
@@ -116,13 +133,37 @@ it('settles a condition written in tariff codes from the commodity code alone', 
         ->and($fertiliser?->limitedBy)->toBeNull();
 });
 
-it('drops a rate whose exclusion the facts make true, at any rung', function (): void {
-    $sweets = gbRate('goods.food', facts: ['product.isConfectionery' => true]);
-    $bread = gbRate('goods.food', facts: ['product.isConfectionery' => false]);
+it('reads an exclusion the way the register writes it: true means the rate applies', function (): void {
+    // THE REGRESSION THIS PINS. The register negates an exclusion inside its
+    // predicate — `not(product.isConfectionery)` — so the predicate is TRUE for bread.
+    // Reading `excludes` as "drop the rate when true" inverted 549 conditions on 387
+    // rates: the zero rate went on sweets and bread was taxed at 20%.
+    $bread = gbRate('goods.food', facts: ['product.isConfectionery' => false, 'product.isIceCreamOrSimilarFrozenProduct' => false]);
+    $sweets = gbRate('goods.food', facts: ['product.isConfectionery' => true, 'product.isIceCreamOrSimilarFrozenProduct' => false]);
+    $iceCream = gbRate('goods.food', facts: ['product.isConfectionery' => false, 'product.isIceCreamOrSimilarFrozenProduct' => true]);
 
-    expect((string) $sweets?->percentage)->toBe('20')
-        ->and((string) $bread?->percentage)->toBe('0')
-        ->and($bread?->confidence)->toBe(Confidence::Authoritative);
+    expect((string) $bread?->percentage)->toBe('0')
+        ->and($bread?->confidence)->toBe(Confidence::Authoritative)
+        ->and((string) $sweets?->percentage)->toBe('20')
+        ->and((string) $iceCream?->percentage)->toBe('20');
+});
+
+it('removes the rate when any condition is false, whatever its kind', function (): void {
+    // All true, the rate applies; any false removes it. One exclusion settled false
+    // is enough even while the other is still open.
+    $sweets = gbRate('goods.food', facts: ['product.isConfectionery' => true]);
+
+    expect((string) $sweets?->percentage)->toBe('20');
+});
+
+it('does not read a bare code list on an exclusion, because it states no direction', function (): void {
+    $frames = gbRate('goods.medical_equipment', '9003 19 00');
+    $other = gbRate('goods.medical_equipment', '9018 90 00');
+
+    // Neither removed nor confirmed: the published rate, and at a broader rung it
+    // would be flagged. Asked at its own rung, an unsettled exclusion stays quiet.
+    expect((string) $frames?->percentage)->toBe('5')
+        ->and((string) $other?->percentage)->toBe('5');
 });
 
 it('lets a code confirm an either-or condition but never refute it alone', function (): void {
@@ -182,6 +223,7 @@ it('takes a product\'s facts, key and code from the catalogue, stated once', fun
         'SKU-FERT' => new ProductTaxMapping(TaxClass::GeneralGoods, '3102 10 10', 'goods.agricultural_inputs'),
         // What a code cannot say, stated as a fact once.
         'SKU-SWEETS' => new ProductTaxMapping(TaxClass::GeneralGoods, null, 'goods.food', new DecisionFacts(['product.isConfectionery' => true])),
+        'SKU-BREAD' => new ProductTaxMapping(TaxClass::GeneralGoods, null, 'goods.food', new DecisionFacts(['product.isConfectionery' => false, 'product.isIceCreamOrSimilarFrozenProduct' => false])),
     ]));
     app()->forgetInstance(TaxCalculator::class);
 
@@ -196,7 +238,8 @@ it('takes a product\'s facts, key and code from the catalogue, stated once', fun
 
     expect((string) app(TaxCalculator::class)->assess($sell('SKU-CATTLE'))->tax->getAmount())->toBe('0.00')
         ->and((string) app(TaxCalculator::class)->assess($sell('SKU-FERT'))->tax->getAmount())->toBe('20.00')
-        ->and((string) app(TaxCalculator::class)->assess($sell('SKU-SWEETS'))->tax->getAmount())->toBe('20.00');
+        ->and((string) app(TaxCalculator::class)->assess($sell('SKU-SWEETS'))->tax->getAmount())->toBe('20.00')
+        ->and((string) app(TaxCalculator::class)->assess($sell('SKU-BREAD'))->tax->getAmount())->toBe('0.00');
 });
 
 it('keys a cache on the facts, so two products in one category get two answers', function (): void {
@@ -204,7 +247,7 @@ it('keys a cache on the facts, so two products in one category get two answers',
     $gb = app(JurisdictionRepository::class)->find(new CountryCode('GB'));
 
     $sweets = $cached->withFacts(new DecisionFacts(['product.isConfectionery' => true]))->rateForKey($gb, 'goods.food');
-    $bread = $cached->withFacts(new DecisionFacts(['product.isConfectionery' => false]))->rateForKey($gb, 'goods.food');
+    $bread = $cached->withFacts(new DecisionFacts(['product.isConfectionery' => false, 'product.isIceCreamOrSimilarFrozenProduct' => false]))->rateForKey($gb, 'goods.food');
 
     expect((string) $sweets?->percentage)->toBe('20')
         ->and((string) $bread?->percentage)->toBe('0');

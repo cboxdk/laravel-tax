@@ -18,19 +18,18 @@ use Cbox\Tax\ValueObjects\UnsettledCondition;
  * because it had been asked about exactly that category.
  *
  * Each condition is read from what the register typed: a predicate over named facts, a
- * list of tariff codes, or — where neither exists — only the statute's words. The
- * condition's KIND says what its truth value does to the rate:
+ * list of tariff codes, or — where neither exists — only the statute's words.
  *
- *  - `excludes` carves supplies OUT: the rate stops applying when it is true.
- *  - every other kind qualifies the rate IN — `applies_only_to`, `supplier_is`,
- *    `recipient_is`, `use_is` and the rest — and the rate stops applying when it is
- *    false.
- *  - `set_by_instrument` and `unsettled` say the substance is somewhere the register
- *    has not read, and are unknown whatever the facts.
+ * A PREDICATE BEING TRUE MEANS THE RATE APPLIES, FOR EVERY KIND. The register writes an
+ * exclusion already negated: the United Kingdom's food zero rate "excludes ice cream"
+ * as `not(product.isIceCreamOrSimilarFrozenProduct)`, which is true for bread. The kind
+ * describes the clause; it does not flip the predicate. Reading `excludes` as "drop the
+ * rate when true" inverted 549 conditions on 387 rates and charged the zero rate on
+ * sweets while taxing bread — so every kind is read the same way: all true, the rate
+ * applies; any false, it does not; otherwise it is unsettled.
  *
- * They are not inverses, and the schema says so: heading 0101 minus race horses is
- * still mostly reduced, while "applies only to draught horses" leaves everything else
- * out.
+ * `set_by_instrument` and `unsettled` say the substance is somewhere the register has
+ * not read, and are unknown whatever the facts.
  *
  * AN UNKNOWN CONDITION KEEPS THE RATE AND SAYS SO. It does not drop it — dropping would
  * move the price of every supply whose seller has not yet described its products, all
@@ -58,11 +57,9 @@ final class RateConditions
 
         foreach (Shape::records($rate['conditions'] ?? null) as $condition) {
             $kind = Shape::text($condition['kind'] ?? null) ?? 'unsettled';
-            $truth = in_array($kind, self::UNREADABLE, true) ? null : self::truth($condition, $facts);
+            $truth = in_array($kind, self::UNREADABLE, true) ? null : self::truth($kind, $condition, $facts);
 
-            $excluded = $kind === 'excludes' ? $truth === true : $truth === false;
-
-            if ($excluded) {
+            if ($truth === false) {
                 return ['status' => self::DOES_NOT_APPLY, 'unsettled' => []];
             }
 
@@ -89,8 +86,9 @@ final class RateConditions
      * exclusion is the whole question: sweets climb to the United Kingdom's food zero
      * rate, which excludes confectionery.
      *
-     * A condition the facts SETTLE is never flagged either way — a true exclusion or a
-     * false qualification has already removed the rate before this is asked.
+     * A condition the facts SETTLE is never flagged either way — a false one has
+     * already removed the rate before this is asked, and a true one is the rate's own
+     * scope confirmed.
      */
     public static function worthFlagging(UnsettledCondition $condition, bool $exactRung): bool
     {
@@ -132,7 +130,7 @@ final class RateConditions
     /**
      * @param  array<string, mixed>  $condition
      */
-    private static function truth(array $condition, DecisionFacts $facts): ?bool
+    private static function truth(string $kind, array $condition, DecisionFacts $facts): ?bool
     {
         $predicate = $condition['predicate'] ?? null;
 
@@ -140,18 +138,36 @@ final class RateConditions
             return Predicate::evaluate(Shape::map($predicate), $facts);
         }
 
-        // A bare code list: the older way of writing a condition in tariff terms, and
-        // the same test a `prefix_in` predicate makes.
-        $codes = array_values(array_filter((array) ($condition['codes'] ?? []), is_string(...)));
+        // A bare code list: the older way of writing a condition in tariff terms. On a
+        // qualifying clause the codes are the rate's scope, the same test a
+        // `prefix_in` predicate makes. On an EXCLUSION the direction is not stated —
+        // a list can name what is carved out or what is left in, and 28 such lists are
+        // published with nothing to tell which — so it is not read at all rather than
+        // read one way and risk inverting it. It stays unsettled until it is typed.
+        $codes = self::codes($condition);
 
-        if ($codes !== []) {
-            return Predicate::evaluate(['fact' => 'classification.cnCode', 'op' => 'prefix_in', 'value' => array_map(
-                static fn (string $code): string => preg_replace('/[^0-9]/', '', $code) ?? '',
-                $codes,
-            )], $facts);
+        if ($codes !== [] && $kind !== 'excludes') {
+            return Predicate::evaluate(['fact' => 'classification.cnCode', 'op' => 'prefix_in', 'value' => $codes], $facts);
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $condition
+     * @return list<string>
+     */
+    private static function codes(array $condition): array
+    {
+        $codes = [];
+
+        foreach ((array) ($condition['codes'] ?? []) as $code) {
+            if (is_string($code) && ($digits = preg_replace('/[^0-9]/', '', $code) ?? '') !== '') {
+                $codes[] = $digits;
+            }
+        }
+
+        return $codes;
     }
 
     /**
@@ -162,7 +178,7 @@ final class RateConditions
         $predicate = $condition['predicate'] ?? null;
         $facts = is_array($predicate) ? Predicate::facts(Shape::map($predicate)) : [];
         $byCode = $facts !== [] && array_any($facts, static fn (string $fact): bool => str_starts_with($fact, 'classification.'))
-            || ($condition['codes'] ?? []) !== [];
+            || (! is_array($predicate) && $kind !== 'excludes' && self::codes($condition) !== []);
 
         return new UnsettledCondition(
             kind: $kind,

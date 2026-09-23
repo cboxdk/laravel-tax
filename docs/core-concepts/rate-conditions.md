@@ -48,22 +48,33 @@ Each condition is read three ways — true, false or **unknown** — from what t
 register typed: a list of tariff codes, a predicate over named facts, or only the
 statute's words. A fact nobody supplied is unknown, never false.
 
-| The condition is | A qualifying condition (`applies_only_to`, `supplier_is`, …) | An exclusion (`excludes`) |
-| --- | --- | --- |
-| **true** | the rate applies | the rate does **not** apply |
-| **false** | the rate does **not** apply | the rate applies |
-| **unknown** | the rate applies, **flagged** | the rate applies — flagged only if reached from a broader category |
+**True means the rate applies, for every kind of condition.** The register writes an
+exclusion already negated: the United Kingdom's food zero rate excludes ice cream as
+`not(product.isIceCreamOrSimilarFrozenProduct)`, which is true for bread. The kind —
+`applies_only_to`, `excludes`, `supplier_is` — describes the clause; it does not flip
+how the predicate is read.
+
+| Across a rate's conditions | The rate |
+| --- | --- |
+| **all true** | applies |
+| **any false** | does **not** apply |
+| otherwise — something unknown | applies, **flagged** (an exclusion at the exact category is left unflagged, below) |
 
 A rate that does not apply is not a candidate at all: the engine carries on to the
 answer that does, which is usually the standard rate. So fertiliser with its code
 comes back 20%, authoritative; fertiliser with no code comes back 0%, flagged
 `RateLimit::ConditionsUnevaluated`, and `OrderAssessment::needsReview()` catches it.
 
-**Why exclusions are treated differently at the exact category.** Ireland zero-rates
+**Why an unknown exclusion at the exact category is not flagged.** Ireland zero-rates
 books "but excluding newspapers". Asked about a book, that exclusion is about
 something else — flagging it would put a caveat on a large share of all answers to
 warn about a few. Asked about sweets, which only reach the UK's food zero rate by
-climbing to it, the same kind of exclusion is the whole question, and it is flagged.
+climbing to it, the same exclusion is the whole question, and it is flagged. This only
+decides whether an *unknown* is flagged; a settled exclusion always counts.
+
+**A bare code list on an exclusion is not read.** Where an exclusion carries only a
+list of codes and no predicate, nothing says whether the codes name what is carved out
+or what is left in. Rather than pick a direction, the engine leaves it unsettled.
 
 ## A code settles both ways only when the condition is written in codes
 
