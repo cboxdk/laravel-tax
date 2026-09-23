@@ -176,6 +176,18 @@ readonly class TaxQuery
          * $150 coats on one line are two exempt coats, not one $300 taxable one.
          */
         public int $quantity = 1,
+        /**
+         * What the product is, who is buying it and how it will be used, under the
+         * register's own fact names — `product.isConfectionery`,
+         * `recipient.isCharityServingDisabledPersons` — for the conditions a
+         * published rate carries.
+         *
+         * Most products need none: a commodity code answers every condition the
+         * register writes in tariff terms, and the rest of a product's facts belong in
+         * the catalogue, stated once. A fact left out is UNKNOWN, never false, and the
+         * rate it would have settled comes back flagged rather than guessed.
+         */
+        public DecisionFacts $facts = new DecisionFacts,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
@@ -206,8 +218,16 @@ readonly class TaxQuery
      * this copies the two fields the catalogue owns and nothing else, so adding a
      * parameter to the constructor cannot silently drop it here.
      */
-    public function classifiedAs(TaxClass $category, ?string $commodityCode): self
+    public function classifiedAs(TaxClass $category, ?string $commodityCode, ?string $categoryKey = null, ?DecisionFacts $facts = null): self
     {
+        // THE QUERY'S OWN FACTS WIN. A catalogue describes the product in general; a
+        // query can know something about this sale the catalogue cannot.
+        $merged = $this->facts;
+
+        foreach (($facts ?? new DecisionFacts)->values as $name => $value) {
+            $merged = $merged->withDefault($name, $value);
+        }
+
         return new self(
             $this->amount,
             $this->pricing,
@@ -226,9 +246,10 @@ readonly class TaxQuery
             $this->itemCode,
             $this->roundingScope,
             $this->delivery,
-            $this->categoryKey,
+            $this->categoryKey ?? $categoryKey,
             $this->performedAt,
             $this->quantity,
+            $merged,
         );
     }
 

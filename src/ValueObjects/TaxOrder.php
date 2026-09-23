@@ -149,6 +149,7 @@ readonly class TaxOrder
             categoryKey: $line->categoryKey,
             performedAt: $line->performedAt,
             quantity: $line->quantity,
+            facts: $line->facts,
         );
     }
 

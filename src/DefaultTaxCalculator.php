@@ -112,7 +112,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         // The line's own code still wins: a caller who knows this particular supply
         // is classified differently from the product in general has said so
         // deliberately.
-        return [$query->classifiedAs($mapping->class, $query->commodityCode ?? $mapping->commodityCode), false];
+        return [$query->classifiedAs($mapping->class, $query->commodityCode ?? $mapping->commodityCode, $mapping->categoryKey, $mapping->facts), false];
     }
 
     /**

@@ -80,5 +80,7 @@ readonly class SupplyLine
         public ?Jurisdiction $performedAt = null,
         /** How many items `$amount` covers — the whole of it, quantity × price. See {@see TaxQuery::$quantity}. */
         public int $quantity = 1,
+        /** The register-named facts of this product, as on {@see TaxQuery::$facts}. */
+        public DecisionFacts $facts = new DecisionFacts,
     ) {}
 }

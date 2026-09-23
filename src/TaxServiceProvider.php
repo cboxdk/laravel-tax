@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Catalogue\CatalogueAudit;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
@@ -97,6 +98,14 @@ class TaxServiceProvider extends ServiceProvider
         // sends a code with nothing bound gets its lines flagged unmapped, which is
         // the honest report rather than a silent fallback.
         $this->app->singleton(ProductCatalogue::class, static fn (): ProductCatalogue => new EmptyProductCatalogue);
+
+        // Read against the register itself rather than whatever TaxRateSource is bound:
+        // the audit asks what the register's CONDITIONS need, which a host's own source
+        // in front of it does not publish.
+        $this->app->bind(CatalogueAudit::class, static fn (Application $app): CatalogueAudit => new CatalogueAudit(
+            $app->make(ProductCatalogue::class),
+            new RegisterRateSource($app->make(RegisterDataset::class)),
+        ));
 
         // ONE RATE SOURCE. The register covers 80 jurisdictions across eleven
         // regimes; the compiled datasets it replaces reached two, and the static

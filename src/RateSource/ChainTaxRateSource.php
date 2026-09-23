@@ -7,9 +7,11 @@ namespace Cbox\Tax\RateSource;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 
@@ -36,12 +38,25 @@ use DateTimeImmutable;
  * Sources that cannot use a code are called exactly as before, so composing a
  * commodity-aware source with a static table works.
  */
-readonly class ChainTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource
+readonly class ChainTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource, FactAwareRateSource
 {
     /**
      * @param  list<TaxRateSource>  $sources
      */
     public function __construct(private array $sources) {}
+
+    /**
+     * Every source in the chain that can read facts is given them; one that cannot is
+     * asked as before. A chain that dropped the facts would answer the register's
+     * conditional rates as though nobody had described the product.
+     */
+    public function withFacts(DecisionFacts $facts): self
+    {
+        return new self(array_map(
+            static fn (TaxRateSource $source): TaxRateSource => $source instanceof FactAwareRateSource ? $source->withFacts($facts) : $source,
+            $this->sources,
+        ));
+    }
 
     public function rateFor(
         Jurisdiction $jurisdiction,

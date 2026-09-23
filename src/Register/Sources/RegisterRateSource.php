@@ -8,6 +8,7 @@ use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
@@ -20,9 +21,11 @@ use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
+use Cbox\Tax\ValueObjects\UnsettledCondition;
 use DateTimeImmutable;
 
 /**
@@ -40,7 +43,7 @@ use DateTimeImmutable;
  * DOES carry and has no rate for returns null, which is the honest "this source
  * cannot answer" the chain is built on.
  */
-final readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityRateSource
+final readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityRateSource, FactAwareRateSource
 {
     private const string SOURCE = 'cbox-tax';
 
@@ -48,7 +51,54 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         private RegisterDataset $dataset,
         private RateResolver $resolver = new RateResolver,
         private LocalAuthorityResolver $authorities = new DefersLocalAuthorities,
+        private DecisionFacts $facts = new DecisionFacts,
     ) {}
+
+    public function withFacts(DecisionFacts $facts): static
+    {
+        return new self($this->dataset, $this->resolver, $this->authorities, $facts);
+    }
+
+    /**
+     * The published conditions a rate for this supply depends on that the facts given
+     * cannot settle — the question a catalogue asks when a seller opens a market.
+     *
+     * Empty when the answer is settled, including when no condition was published at
+     * all. Read against the same ladder, the same facts and the same commodity code the
+     * rate itself would be, so it describes the answer a checkout would actually get.
+     *
+     * @return list<UnsettledCondition>
+     */
+    public function unsettledConditions(
+        Jurisdiction $jurisdiction,
+        string $key,
+        ?string $commodityCode = null,
+        ?DateTimeImmutable $at = null,
+    ): array {
+        $unsettled = [];
+
+        foreach ($this->candidates($jurisdiction, $at) as $code) {
+            if (! $this->dataset->carries($code)) {
+                continue;
+            }
+
+            $resolved = $this->resolver->resolve($this->dataset->ratesFor($code), $key, $commodityCode, $at, $this->facts);
+
+            if ($resolved === null) {
+                continue;
+            }
+
+            array_push($unsettled, ...($resolved['unsettled'] ?? []));
+
+            // The province answers alongside the country in Canada; everywhere else the
+            // first place that answers is the answer.
+            if ($jurisdiction->subdivision === null || $jurisdiction->country->value === 'US') {
+                break;
+            }
+        }
+
+        return $unsettled;
+    }
 
     public function rateFor(
         Jurisdiction $jurisdiction,
@@ -220,7 +270,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         }
 
         $records = $this->dataset->ratesFor($province);
-        $own = $this->resolver->resolve($records, $key, $commodityCode, $at);
+        $own = $this->resolver->resolve($records, $key, $commodityCode, $at, $this->facts);
         $ownRow = $own['rate'] ?? null;
         $ownScoped = $ownRow !== null && (($ownRow['category'] ?? null) !== null || ($ownRow['classification'] ?? null) !== null);
         $share = $this->resolver->local($records, $key, $at);
@@ -230,7 +280,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
                 return null;
             }
 
-            $federalRow = $this->resolver->resolve($this->dataset->ratesFor($country), $key, $commodityCode, $at)['rate'] ?? null;
+            $federalRow = $this->resolver->resolve($this->dataset->ratesFor($country), $key, $commodityCode, $at, $this->facts)['rate'] ?? null;
             $federalScoped = $federalRow !== null && (($federalRow['category'] ?? null) !== null || ($federalRow['classification'] ?? null) !== null);
 
             return $federalScoped && $federal->percentage->isZero() ? $federal : null;
@@ -698,7 +748,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             return null;
         }
 
-        $resolved = $this->resolver->resolve($records, $key, $commodityCode, $at);
+        $resolved = $this->resolver->resolve($records, $key, $commodityCode, $at, $this->facts);
 
         if ($resolved === null) {
             return null;
@@ -793,7 +843,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
     }
 
     /**
-     * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool}  $resolved
+     * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled?: list<UnsettledCondition>}  $resolved
      */
     private function limit(array $resolved): ?RateLimit
     {

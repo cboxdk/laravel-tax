@@ -28,6 +28,35 @@ new TaxQuery(/* … */, itemCode: 'SHOE-001');
 with fifty SKUs. Anything larger implements the contract against your own product
 table.
 
+## What a mapping carries
+
+A mapping is the product's whole tax description, and none of it depends on where the
+product is sold:
+
+```php
+new ProductTaxMapping(
+    TaxClass::GeneralGoods,
+    commodityCode: '0102 21 10',                 // CN or HS — customs needs it anyway
+    categoryKey: 'goods.agricultural_inputs',    // the register's key, where the class cannot say it
+    facts: new DecisionFacts([                   // what a code cannot say
+        'product.isLiveAnimalOfAKindYieldingHumanFood' => true,
+    ]),
+);
+```
+
+The commodity code is the one worth filling in. It settles every
+[condition](../core-concepts/rate-conditions.md) the register writes in tariff terms,
+in every market, without anyone knowing which markets those are. Facts are for the
+rest. A query's own facts win over the catalogue's, so a sale can still say something
+the product description cannot.
+
+## Opening a market
+
+`CatalogueAudit` reads the catalogue against a list of markets and reports which
+products need more description there — and whether the commodity code or a named fact
+would supply it. Run it when a seller opens a market, not on every checkout. See
+[rate conditions](../core-concepts/rate-conditions.md#finding-what-is-missing-before-the-first-invoice).
+
 ## Resolution is three-deep
 
 | | Wins over | When to use it |

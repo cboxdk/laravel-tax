@@ -78,19 +78,26 @@ enum RateLimit: string
     case BracketSchedule = 'bracket_schedule';
 
     /**
-     * The rate was found on a BROADER category than the one asked about, and that
-     * rate carries conditions narrowing what it reaches.
+     * The rate carries conditions narrowing what it reaches, and nothing supplied
+     * settled them.
      *
-     * The register states a condition as prose — the statute's own words, plus a
-     * short label — never as a link to a category, so a consumer can read THAT a
-     * rate is narrowed and not read what it was narrowed to. The United Kingdom
-     * zero-rates food and excludes confectionery and catering from that zero; asked
-     * about sweets, the engine climbs to `goods.food`, finds 0%, and returns the
-     * exact figure the exclusion exists to deny.
+     * A category finds the neighbourhood; the conditions decide the house. The United
+     * Kingdom zero-rates agricultural inputs — only seeds and live animals of a kind
+     * used for food — and zero-rates food except confectionery. Asked about fertiliser
+     * or sweets without saying more, the engine finds the zero rate and cannot tell
+     * whether this product is one the condition reaches.
      *
-     * The figure is still the best one available — refusing would also break the
-     * cases where the exclusion is about something else entirely — so it is returned
-     * and marked rather than withheld.
+     * Most conditions are published typed — as tariff codes, or as predicates over
+     * named facts — and settle the moment the product is described: a commodity code
+     * answers every one written in codes, and a fact such as `product.isConfectionery`
+     * answers the rest. A condition published only as the statute's words cannot be
+     * settled by anything the caller sends. Either way the figure is the best one
+     * available, so it is returned and marked rather than withheld.
+     *
+     * A qualifying condition is flagged wherever it is met; an exclusion is flagged only
+     * when the answer came from a broader category than the one asked about, because at
+     * the exact category it is usually about something else — Ireland's zero rate on
+     * books excludes newspapers.
      */
     case ConditionsUnevaluated = 'conditions_unevaluated';
 
@@ -166,10 +173,11 @@ enum RateLimit: string
             self::ClassificationInferred => 'Supply the code at the length the register publishes it. Codes run to '
                 .'two, four, six and eight digits, and a chapter can disagree with a subheading beneath it — '
                 .'so `04` is not a safe stand-in for `0401 10`.',
-            self::ConditionsUnevaluated => 'Read the conditions on the rate and decide whether this supply is one '
-                .'they exclude; each carries the statute\'s own words. Where a jurisdiction\'s exclusions map '
-                .'onto tax classes you sell — the UK taxing confectionery and hot food at the standard rate '
-                .'while zero-rating groceries — put your own source in front via ChainTaxRateSource.',
+            self::ConditionsUnevaluated => 'Describe the product: its CN or HS code as `commodityCode` settles every '
+                .'condition written in tariff terms, and the register\'s facts (`product.isConfectionery`, …) on '
+                .'`facts` — or once, in the ProductCatalogue — settle the rest. CatalogueAudit lists what each '
+                .'product needs in each market. A condition published only as the statute\'s words cannot be '
+                .'settled by input; read it and decide.',
             self::TerritoryUnplaced => 'Pass the delivery postcode as `postalCode`, or a subdivision on the place: '
                 .'it is what tells the mainland from the Canaries, the Azores, Madeira or Åland.',
             self::PerformanceLocationAssumed => 'Pass where the service is performed as `performedAt` — the hotel, the '
@@ -201,13 +209,14 @@ enum RateLimit: string
      */
     public function callerCanClose(): bool
     {
-        // ConditionsUnevaluated is deliberately absent: no input the caller can supply
-        // settles it. The register would have to publish a rate at the excluded rung,
-        // or the host bind a source that does.
+        // ConditionsUnevaluated is closable now that conditions are read: a commodity
+        // code or a fact settles every typed one. The few published only as prose are
+        // not, and CatalogueAudit says which per product — an enum cannot.
         return $this === self::HeadingAmbiguous
             || $this === self::ItemUnmapped
             || $this === self::ClassificationInferred
             || $this === self::PerformanceLocationAssumed
-            || $this === self::TerritoryUnplaced;
+            || $this === self::TerritoryUnplaced
+            || $this === self::ConditionsUnevaluated;
     }
 }

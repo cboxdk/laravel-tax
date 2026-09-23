@@ -7,9 +7,11 @@ namespace Cbox\Tax\RateSource;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\TaxRate;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Repository;
@@ -30,7 +32,7 @@ use Illuminate\Contracts\Cache\Repository;
  * Wraps a commodity-aware inner source without hiding it: see
  * {@see ChainTaxRateSource} for why a wrapper must re-advertise the capability.
  */
-readonly class CachingTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource
+readonly class CachingTaxRateSource implements CategoryKeyedRateSource, CommodityRateSource, FactAwareRateSource
 {
     public function __construct(
         private TaxRateSource $inner,
@@ -42,7 +44,24 @@ readonly class CachingTaxRateSource implements CategoryKeyedRateSource, Commodit
          * otherwise overwrite each other's rates.
          */
         private string $namespace = 'default',
+        private DecisionFacts $facts = new DecisionFacts,
     ) {}
+
+    /**
+     * FACTS ARE PART OF THE QUESTION, SO THEY ARE PART OF THE KEY. Fertiliser and
+     * seed are the same category in the United Kingdom and different answers; a cache
+     * keyed on the category alone would hand whichever was asked first to both.
+     */
+    public function withFacts(DecisionFacts $facts): self
+    {
+        return new self(
+            $this->inner instanceof FactAwareRateSource ? $this->inner->withFacts($facts) : $this->inner,
+            $this->cache,
+            $this->ttl,
+            $this->namespace,
+            $facts,
+        );
+    }
 
     public function rateFor(
         Jurisdiction $jurisdiction,
@@ -140,6 +159,9 @@ readonly class CachingTaxRateSource implements CategoryKeyedRateSource, Commodit
 
         $locality = $jurisdiction->locality !== null ? (string) $jurisdiction->locality : '';
 
+        $facts = $this->facts->values;
+        ksort($facts);
+
         return implode(':', [
             'cbox-tax:rate',
             $this->namespace,
@@ -147,6 +169,7 @@ readonly class CachingTaxRateSource implements CategoryKeyedRateSource, Commodit
             $locality,
             $category,
             $commodityCode ?? '',
+            $facts === [] ? '' : hash('xxh128', serialize($facts)),
         ]);
     }
 }

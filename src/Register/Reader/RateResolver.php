@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\ValueObjects\DecisionFacts;
+use Cbox\Tax\ValueObjects\UnsettledCondition;
 use DateTimeImmutable;
 
 /**
@@ -45,12 +47,23 @@ final readonly class RateResolver
 
     /**
      * @param  list<array<string, mixed>>  $rates
-     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}|null
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled?: list<UnsettledCondition>}|null
      */
-    public function resolve(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null): ?array
+    public function resolve(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null, ?DecisionFacts $facts = null): ?array
     {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
-        $live = $this->live($rates, $on);
+        $facts = RateConditions::withCommodityCode($facts ?? new DecisionFacts, $commodityCode);
+
+        // CONDITIONS FILTER BEFORE ANYTHING IS CHOSEN. A row whose conditions say it
+        // does not reach this supply is not a candidate at all — not a competing
+        // answer to be disambiguated, not a rate to fall back from. Removing it here
+        // is what lets the ladder carry on to the answer that does apply: fertiliser
+        // filed under agricultural inputs climbs past the zero rate for seeds and
+        // lands on the standard band.
+        $live = array_values(array_filter(
+            $this->live($rates, $on),
+            static fn (array $rate): bool => RateConditions::verdict($rate, $facts)['status'] !== RateConditions::DOES_NOT_APPLY,
+        ));
 
         if ($live === []) {
             return null;
@@ -70,7 +83,8 @@ final readonly class RateResolver
             $byCode = $this->byClassification($within, $commodityCode);
 
             if ($byCode !== null) {
-                return $byCode;
+                // A code is narrower than any category: the rung it answers is exact.
+                return $this->settled($byCode, $facts, exactRung: true);
             }
         }
 
@@ -107,7 +121,7 @@ final readonly class RateResolver
             ));
 
             if (count($bare) === 1) {
-                return ['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => $this->narrowed($bare[0], $rung, $category)];
+                return $this->settled(['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category);
             }
 
             $distinct = $this->distinct($atRung);
@@ -121,7 +135,7 @@ final readonly class RateResolver
                 // nobody reads. Only a SHORTENED COMMODITY CODE is an inference,
                 // because there the register demonstrably disagrees with itself
                 // between one length and the next.
-                return ['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => $this->narrowed($atRung[0], $rung, $category)];
+                return $this->settled(['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category);
             }
 
             // More than one live answer at the rung the item actually is. Climbing
@@ -129,12 +143,36 @@ final readonly class RateResolver
             // rate, flagged — the caller closes this by supplying a commodity code.
             $standard = $this->standard($live);
 
-            return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false];
+            return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false], $facts, false);
         }
 
         $standard = $this->standard($live);
 
-        return $standard === null ? null : ['rate' => $standard, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false];
+        return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, false);
+    }
+
+    /**
+     * Attach what the chosen rate's conditions left open.
+     *
+     * A QUALIFYING CONDITION AT EVERY RUNG. This used to be asked only when the answer
+     * came from a broader category than the one asked about, on the reasoning that a
+     * caller who named the exact category had classified the product. They had
+     * classified it into the NEIGHBOURHOOD: the United Kingdom's zero rate for
+     * agricultural inputs reaches only seeds and food animals, and a seller who filed
+     * fertiliser there got 0%, authoritative. An exclusion at the exact rung is still
+     * left alone — see {@see RateConditions::worthFlagging()}.
+     *
+     * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}  $answer
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled: list<UnsettledCondition>}
+     */
+    private function settled(array $answer, DecisionFacts $facts, bool $exactRung): array
+    {
+        $unsettled = array_values(array_filter(
+            RateConditions::verdict($answer['rate'], $facts)['unsettled'],
+            static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung),
+        ));
+
+        return [...$answer, 'narrowed' => $unsettled !== [], 'unsettled' => $unsettled];
     }
 
     /**
@@ -332,43 +370,6 @@ final readonly class RateResolver
 
             return ! (is_string($until) && $until < $on);
         }));
-    }
-
-    /**
-     * Whether this answer came from a BROADER rung whose own conditions narrow it.
-     *
-     * The register publishes conditions as `kind`, the statute's own words in `says`,
-     * and a short label in `names` — all three prose, none of them a link to a
-     * category. So a consumer can read that a rate has been narrowed and cannot read
-     * what it was narrowed to.
-     *
-     * That is survivable when the question was asked AT the rung the rate is filed
-     * on: the exclusions are then about things beside or beneath the answer, which is
-     * the ordinary shape. Ireland zero-rates books and excludes newspapers from that
-     * zero — asked about a book, the exclusion is not about you.
-     *
-     * It is NOT survivable after a climb. The United Kingdom zero-rates food and
-     * excludes confectionery, catering and the rest, and every one of those
-     * exclusions is a child of the rung climbed to — so answering 0% for
-     * `goods.food.candy` returns the exact figure the condition exists to deny.
-     * There is no way to tell from the data which of the twenty-five live cases are
-     * caught, so none of them is returned as authoritative.
-     *
-     * @param  array<string, mixed>  $rate
-     */
-    private function narrowed(array $rate, string $rung, string $asked): bool
-    {
-        if ($rung === $asked) {
-            return false;
-        }
-
-        foreach (Shape::records($rate['conditions'] ?? null) as $condition) {
-            if (in_array(Shape::text($condition['kind'] ?? null), ['excludes', 'applies_only_to'], true)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

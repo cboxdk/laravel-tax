@@ -362,8 +362,9 @@ it('marks a rate reached by climbing to a rung whose conditions narrow it', func
     expect((string) $sweets?->percentage)->toBe('0')
         ->and($sweets?->confidence)->toBe(Confidence::Derived)
         ->and($sweets?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
-        // Nothing the caller can send closes this one.
-        ->and($sweets?->limitedBy->callerCanClose())->toBeFalse();
+        // Closable in general — a commodity code or a fact settles every typed
+        // condition — though this one is prose only; CatalogueAudit tells them apart.
+        ->and($sweets?->limitedBy->callerCanClose())->toBeTrue();
 });
 
 it('leaves a rate asked for at its own rung alone, conditions and all', function (): void {

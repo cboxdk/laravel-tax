@@ -35,5 +35,14 @@ readonly class ProductTaxMapping
          * bare code is read as CN; quote a service as `cpa:…`.
          */
         public ?string $commodityCode = null,
+        /** The register's own category key, where the class cannot say it. */
+        public ?string $categoryKey = null,
+        /**
+         * What the product is, in the register's fact names, stated once for every
+         * market it is ever sold into — `product.isConfectionery`,
+         * `product.isLiveAnimalOfAKindYieldingHumanFood`. The commodity code answers
+         * everything written in tariff terms; this is for what a code cannot say.
+         */
+        public DecisionFacts $facts = new DecisionFacts,
     ) {}
 }

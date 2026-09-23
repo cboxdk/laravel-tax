@@ -35,6 +35,39 @@ minor bumps may carry additive features; patches are fixes and docs).
   at the default. `CategoryKeyedRateSource` and `CategoryKeyedTaxability` are
   optional capabilities; the chain and the cache pass keys through.
 
+### Fixed — conditions on a rate are read, at every category
+
+- **A qualifying condition was ignored at the category asked about.** The United
+  Kingdom zero-rates agricultural inputs only for seeds and food animals; fertiliser
+  filed there came back 0%, authoritative, because conditions were read only when the
+  engine climbed to a broader category. In release 274, 1,625 of 5,955
+  category-scoped rates carry such a condition. No figure changes for a caller who
+  supplies nothing new — those answers are now `Derived` with
+  `RateLimit::ConditionsUnevaluated`, as they always should have been. An exclusion at
+  the exact category is still left unflagged: Ireland's zero rate on books excludes
+  newspapers, and a book is not a newspaper.
+- **Conditions are evaluated.** The register's typed predicates are read in full —
+  boolean, enum and numeric facts, `prefix_in` on tariff codes, `all`, `any`, `not`
+  and `unsettled` — three-valued, so an absent fact is unknown and never false. A
+  condition that settles against the rate removes it, and the ladder carries on to the
+  rate that does apply.
+- **A commodity code settles conditions written in codes.** `classification.cnCode`
+  and `classification.hsCode` are derived from the line's code, so a product
+  classified once for customs answers them in every market.
+
+### Added — describing a product once
+
+- **`TaxQuery::$facts`, `SupplyLine::$facts`**, and `ProductTaxMapping` gains
+  `categoryKey` and `facts`, so a product's whole tax description lives in the
+  catalogue. A query's own facts win over the catalogue's.
+- **`FactAwareRateSource`**, an optional capability the register source,
+  `ChainTaxRateSource` and `CachingTaxRateSource` implement; the cache keys on the
+  facts, so two products in one category cannot share an answer.
+- **`CatalogueAudit`** reports which products need more description in which market,
+  and whether their commodity code or a named fact would supply it — run once when a
+  market opens rather than discovered on every checkout.
+- `RateLimit::ConditionsUnevaluated` is now closable by the caller.
+
 ### Fixed — an intra-Community supply is not a reverse charge
 
 - **`TaxTreatment::IntraCommunitySupply`.** Goods sold to a validated business in

@@ -49,6 +49,13 @@ cannot name — `goods.publications.book`, `services.education`,
 `goods.medical_equipment.prosthetic`. An unknown key refuses and names the nearest
 published ones rather than quietly pricing as general goods.
 
+**Give the product its commodity code if you have it.** A category finds the
+candidate rates; the conditions on those rates decide which one applies. The United
+Kingdom zero-rates agricultural inputs only for seeds and food animals, so fertiliser
+filed there needs its CN code to come back at 20% rather than 0%, flagged. The code
+customs already needs settles every condition written in tariff terms, in every
+market — see [rate conditions](../core-concepts/rate-conditions.md).
+
 **Shipping is a line, flagged as one.** It is assessed after the goods, because what
 freight is taxed at depends on what it delivered. Where the goods carry several
 rates, the freight is split between them by value.

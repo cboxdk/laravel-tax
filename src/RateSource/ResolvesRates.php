@@ -7,6 +7,7 @@ namespace Cbox\Tax\RateSource;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
+use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -31,6 +32,13 @@ trait ResolvesRates
     {
         $where = $place ?? $query->place;
         $on = $query->on();
+
+        // Bound on EVERY lookup, facts or none: a source that reads conditions must
+        // not be left holding the last supply's facts, and an empty set is itself an
+        // answer — nothing is known about this product beyond its code.
+        if ($rates instanceof FactAwareRateSource) {
+            $rates = $rates->withFacts($query->facts);
+        }
 
         if ($query->categoryKey !== null) {
             // A source that cannot answer a register key must not be asked about the
