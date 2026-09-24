@@ -8,6 +8,7 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
+use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
@@ -52,4 +53,28 @@ it('splits tax per authority even when freight is shared across rates', function
     expect(count($a->forLine('freight')->portions))->toBe(2)
         ->and($split)->not->toBeNull()
         ->and((string) $sum?->getAmount())->toBe((string) $a->tax()->getAmount());
+});
+
+it('files a split delivery by its portions, not as one line in the first place', function (): void {
+    // The same cart, aggregated for a return. The freight line's own authority split
+    // is null — each share has its own — and the aggregator read only the parent, so
+    // the whole jurisdiction's authority totals came out unknown. It files each
+    // portion now, which is what the invoice rounding already reconciles.
+    $place = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-KS'))
+        ->withLocality(new LocalityCode(new SubdivisionCode('US-KS'), LocalityScheme::Zip9->value, '66101-1366'));
+    $seller = new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-KS'))]);
+    $order = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($place, CustomerType::Consumer, $seller, Pricing::Exclusive, [
+        new SupplyLine('laptop', Money::of('100.00', 'USD')),
+        new SupplyLine('groceries', Money::of('100.00', 'USD'), TaxClass::Groceries),
+        new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true),
+    ], suppliedAt: new DateTimeImmutable('2026-09-22')));
+
+    $return = app(ReturnAggregator::class)->aggregate($order->assessments());
+    $line = $return->lineFor(new CountryCode('US'), 'USD', new SubdivisionCode('US-KS'));
+    $sum = array_reduce($line?->authorities ?? [], static fn (?Money $carry, $t) => $carry === null ? $t->tax : $carry->plus($t->tax));
+
+    expect($line?->authorities)->not->toBeNull()
+        ->and((string) $sum?->getAmount())->toBe((string) $order->tax()->getAmount())
+        ->and((string) $line?->tax->getAmount())->toBe((string) $order->tax()->getAmount())
+        ->and((string) $line?->net->getAmount())->toBe('210.00');
 });

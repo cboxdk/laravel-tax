@@ -37,7 +37,7 @@ readonly class DefaultReturnAggregator implements ReturnAggregator
         /** @var array<string, ReturnLine> $lines */
         $lines = [];
 
-        foreach ($assessments as $assessment) {
+        foreach ($this->filed($assessments) as $assessment) {
             // Outside the period being filed. An assessment with no reporting date
             // is EXCLUDED rather than assumed in: a supply that cannot say which
             // period it belongs to must not silently land in the one being filed.
@@ -86,6 +86,34 @@ readonly class DefaultReturnAggregator implements ReturnAggregator
         }
 
         return new TaxReturn($complete, $period);
+    }
+
+    /**
+     * What is actually filed: each portion of a split charge, not the charge.
+     *
+     * A delivery shared between supplies taxed differently is ONE line on the invoice
+     * and SEVERAL on a return. Its own assessment carries the first portion's place, a
+     * treatment of Standard if any part is taxed, and no single breakdown — so filed
+     * whole, the zero-rated share of the freight went into the standard box, a share
+     * taxed in another place went into the first, and the missing breakdown made the
+     * whole jurisdiction's authority split unknown. Each portion has its own place,
+     * treatment, rate and breakdown, and invoice rounding rebuilds the charge from its
+     * portions, so they add up to it exactly.
+     *
+     * @param  iterable<TaxAssessment>  $assessments
+     * @return iterable<TaxAssessment>
+     */
+    private function filed(iterable $assessments): iterable
+    {
+        foreach ($assessments as $assessment) {
+            if ($assessment->portions === []) {
+                yield $assessment;
+
+                continue;
+            }
+
+            yield from $assessment->portions;
+        }
     }
 
     /**

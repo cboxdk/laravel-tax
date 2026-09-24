@@ -60,6 +60,18 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Fixed — a split delivery is filed by its portions
+
+- **The return aggregator filed a shared delivery charge as one line.** Freight
+  split between supplies taxed differently carries the first portion's place, a
+  treatment of Standard if any part is taxed, and no single breakdown. Filed whole,
+  the zero-rated share went into the standard box, a share taxed in another place
+  went into the first, and the missing breakdown made the jurisdiction's whole
+  authority split unknown. Each portion is filed now; invoice rounding already
+  rebuilds the charge from them, so they add up exactly. `TaxAssessment::$portions`
+  and `$placeOfSupply` say to book a split charge by its portions. Pointed out by the
+  cbox-tax integration, which books its ledger that way.
+
 ### Fixed — a split ZIP was priced as one of its answers, marked certain
 
 - **`RateLimit::PostcodeSpansLocalities`.** A bare five-digit ZIP is looked up at

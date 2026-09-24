@@ -8,6 +8,7 @@ use Brick\Money\Money;
 use Brick\Money\RationalMoney;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Returns\DefaultReturnAggregator;
 use DateTimeImmutable;
 
 /**
@@ -50,6 +51,7 @@ readonly class TaxAssessment
         public Money $net,
         public Money $tax,
         public Money $gross,
+        /** Where the supply is taxed — for a charge split into `portions`, the first portion's; see there. */
         public Jurisdiction $placeOfSupply,
         public ?TaxRate $rate,
         public string $reason,
@@ -65,7 +67,21 @@ readonly class TaxAssessment
         /** Policy and exact amount used to reconcile invoice rounding. */
         public ?TaxRounding $rounding = null,
         public ?RationalMoney $unroundedTax = null,
-        /** @var list<TaxAssessment> Delivery portions, before or after invoice reconciliation. */
+        /**
+         * The parts of a charge shared between supplies taxed differently — a
+         * delivery split across a standard-rated and a zero-rated line, or across
+         * lines taxed in different places. Each carries its own place, treatment,
+         * rate and breakdown, and they add up to this assessment exactly.
+         *
+         * WHERE THIS IS NOT EMPTY, `placeOfSupply`, `treatment` and `rate` describe
+         * the charge as one line on an invoice, not where or how it is taxed: the
+         * place is the first portion's, the treatment is Standard if any part is
+         * taxed, and the rate is null when the portions differ. Book, file or remit a
+         * split charge by its portions — {@see DefaultReturnAggregator}
+         * does — or the whole charge lands in the first portion's country and box.
+         *
+         * @var list<TaxAssessment>
+         */
         public array $portions = [],
         /** The taxable net base, retained even when rounded line tax is zero. */
         public ?Money $taxableBase = null,
