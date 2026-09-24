@@ -68,14 +68,20 @@ versions.
 
 Enable `tax.geocodio.rooftop` (`GEOCODIO_ROOFTOP=true`) and sync the boundary
 artifacts to attach ZIP+4 or point localities. A `Jurisdiction` carries one locality,
-chosen for the state's resolution path:
+chosen for the state's resolution path. The path is read from the installed register,
+not from a list in the package, so a state that gains polygons or a county-level
+answer in a new release is picked up by the next `tax:data:sync`:
 
-| State | Locality attached | Resolved by |
+| State (release 293) | Locality attached | Resolved by |
 | --- | --- | --- |
-| California, New Mexico | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from each state's own GIS |
+| a state the register publishes polygons for — California, New Mexico, Texas | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from each state's own GIS |
 | the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the register's boundary index, via `RegisterBoundaries` |
-| Florida, Pennsylvania, Hawaii, Virginia | county or independent-city name, scheme `county` | register jurisdiction names; works with rooftop disabled |
+| a state whose `resolution` says `county` — Florida, Hawaii, Pennsylvania, Virginia | county or independent-city name, scheme `county` | register jurisdiction names; works with rooftop disabled |
 | other states | none | state share, flagged where local tax may be missing |
+
+A county name matches however the register writes it: "Honolulu County" finds "City
+and County of Honolulu", and "Hawaii County" finds "County of Hawaii", never the state
+of Hawaii. A name that matches two jurisdictions is refused, not guessed.
 
 Coordinates come back on every Geocodio result; the ZIP+4 needs the `zip4` append,
 which the adapter requests when rooftop is on:

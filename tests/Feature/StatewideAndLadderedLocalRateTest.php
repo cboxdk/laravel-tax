@@ -615,3 +615,28 @@ it('does not call a stack authoritative when the state share it stands on is not
         ->and($allegheny?->limitedBy)->toBe(RateLimit::BracketSchedule)
         ->and($allegheny?->confidence)->toBe(Confidence::Derived);
 });
+
+it('does not read a polygon that carries no rate as no local tax', function (): void {
+    // Release 294 draws Haines Borough as a feature with no rate of its own: three
+    // codes levy inside it and no state layer draws them, so the borough stands for
+    // all three (`contains`). A point there has local tax the store cannot price —
+    // the state share, flagged — while a point outside every polygon, with nothing
+    // left in blockedBy, is Anchorage: no local tax, and certain of it.
+    ladderRegister()
+        ->rate('us:AK', '0', from: '1990-01-01')
+        ->rate('us:AK:CITY-800036', '5.5', 'local_component', from: '1990-01-01')
+        ->geometry('AK', [
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:AK:COUNTY-HAINES-BOROUGH', 'level' => 'county', 'contains' => ['us:AK:COUNTY-800032', 'us:AK:COUNTY-800034', 'us:AK:CITY-800036']], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-135.45, 59.24, 0.5)]],
+        ])
+        ->usLocal('AK', absence: [])
+        ->install();
+
+    $haines = pointRateFor('US-AK', 59.24, -135.45);
+    $anchorage = pointRateFor('US-AK', 61.22, -149.9);
+
+    expect($haines?->limitedBy)->toBe(RateLimit::NoLocalResolution)
+        ->and($haines?->confidence)->not->toBe(Confidence::Authoritative)
+        ->and((string) $anchorage?->percentage)->toBe('0')
+        ->and($anchorage?->limitedBy)->toBeNull()
+        ->and($anchorage?->confidence)->toBe(Confidence::Authoritative);
+});

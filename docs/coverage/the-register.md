@@ -53,13 +53,16 @@ Two details that decide real invoices:
 | Street range | 15 states, with `--streets` | House number |
 | ZIP+4 | 24 Streamlined states | Add-on |
 | Polygon | California, New Mexico, Texas | The point |
-| County name | Florida, Pennsylvania, Hawaii, Virginia | The county |
+| County name | Florida, Hawaii, Pennsylvania, Virginia — where `resolution` says `county` | The county |
 | State rate | everywhere else | The state share, flagged |
 
 Every authority that applies is summed, or none of them: inside Kansas City a county
 and a city both levy (6.5 + 1.0 + 1.625), and a rate short by one authority's share
 would be an under-charge stamped authoritative. A local record the store cannot price
-abandons the whole stack and returns the state share **flagged** instead.
+abandons the whole stack and returns the state share **flagged** instead. A stack is
+also no surer than the state share it stands on: Pennsylvania's 6% is a bracket
+table's per-dollar figure, so Allegheny's 7% is `Derived` with `BracketSchedule`, not
+authoritative.
 
 **A ZIP is a mail route, not a tax boundary.** Washington's 98001 holds Federal Way
 and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five

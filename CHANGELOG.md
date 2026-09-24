@@ -90,6 +90,9 @@ minor bumps may carry additive features; patches are fixes and docs).
   stacked on it came back authoritative while still carrying the bracket flag. A
   stacked total, and a state with no local share, now carry the state share's
   confidence. A combined local rate is unaffected — it is the whole rate on its own.
+- The geocoding guide listed its states by hand, and Texas was missing from the
+  point row. It now says the path comes from the installed register, and shows
+  what release 293 publishes.
 
 ### Fixed — Texas by point, and the state share a polygon leaves out
 
