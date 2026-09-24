@@ -60,6 +60,16 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Fixed — the address gap no longer hides the product gap
+
+- **A US answer at the state line kept only the address flag.** In a state with
+  local taxes, a state-level answer is flagged `NoLocalResolution` — and that flag
+  replaced whatever the rate already carried. An unsettled condition, an ambiguous
+  heading, a bracket schedule or a declined rate then pointed the seller at its
+  geocoding when what was open was the product. The rate's own gap is kept, as it is
+  everywhere else; the confidence was and stays `Derived`. Found checking Hawaii's
+  financial exemption in release 287.
+
 ### Added — whose words a condition quotes
 
 - **`UnsettledCondition::$source`.** Schema 2.6.2 marks a condition that quotes a

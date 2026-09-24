@@ -634,7 +634,12 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             self::SOURCE,
             Confidence::Derived,
             [],
-            RateLimit::NoLocalResolution,
+            // THE FIRST GAP NAMED IS THE ONE TO CLOSE. A rate that already carries a
+            // limit — an unsettled condition, an ambiguous heading, a bracket
+            // schedule — keeps it: "resolve the address" settles none of those, and
+            // overwriting them sent a seller to fix its geocoding when what was open
+            // was the product. The confidence is Derived either way.
+            $state->limitedBy ?? RateLimit::NoLocalResolution,
             $state->provenance,
         );
     }

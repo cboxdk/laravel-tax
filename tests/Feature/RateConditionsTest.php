@@ -412,3 +412,29 @@ it('prices Hawaii\'s financial exemption against its general rate, made disjoint
     // stand, and the engine returns the recoverable answer, flagged.
     'bank, payment: open on both rows' => ['payment_or_transfer', '4', false],
 ]);
+
+it('keeps a rate\'s own gap when the address also stopped at the state line', function (): void {
+    // A state-level US answer in a state with local taxes is flagged for the missing
+    // locality — and that flag used to OVERWRITE whatever the rate already carried.
+    // An unsettled condition, an ambiguous heading or a bracket schedule then read
+    // "resolve the address", which does not settle any of them. The first gap named
+    // is the one to close, as everywhere else.
+    config()->set('tax.register.store', config('tax.register.store').'/state-line');
+
+    FakeRegister::at(config('tax.register.store'))
+        ->category('goods')->category('services')->category('services.financial', 'services')
+        ->rate('us:HI', '4', from: '1990-01-01')
+        ->rate('us:HI:COUNTY-HONOLULU', '0.5', 'local_component', from: '1990-01-01')
+        ->rate('us:HI', '0', 'exempt', 'services.financial', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'financial institutions …',
+            'predicate' => ['fact' => 'seller.financialInstitutionAuthorised', 'op' => 'eq', 'value' => true, 'says' => '…'],
+        ]]])
+        ->install();
+
+    $source = new RegisterRateSource(app(RegisterDataset::class));
+    $hi = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-HI'));
+
+    expect($source->rateForKey($hi, 'services.financial')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        // Nothing else open: the locality is the gap, and it is still named.
+        ->and($source->rateFor($hi, TaxClass::GeneralGoods)?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});
