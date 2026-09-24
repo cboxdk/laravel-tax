@@ -106,7 +106,16 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
         $authorities = $this->resolveParsed($state, $address);
 
         if ($authorities === null) {
-            return null;
+            // A POINT IN NO POLYGON IS NO LOCAL TAX — only where the register says its
+            // layers leave no levying ground out on that date. California's and New
+            // Mexico's do; Texas's do not yet (a district in force with no polygon, and
+            // districts that start before the layer carries them), and there "outside
+            // every feature" stays unresolved. A ZIP missing from a postal file is never
+            // read this way: it is a gap in the file, not ground without tax.
+            return $address->point !== null
+                && $this->dataset?->usLocalAbsenceHolds($state, $at ?? new DateTimeImmutable('today')) === true
+                ? []
+                : null;
         }
 
         $codes = array_map(fn (Authority $authority): string => $this->code($state, $authority), $authorities);
@@ -224,6 +233,20 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
     }
 
     /**
+     * Whether a local answer in the state needs nothing finer than the county — read
+     * from the register where it says so, and from the engine's own list only for a
+     * release that predates the field.
+     */
+    private function resolvesByCounty(string $state): bool
+    {
+        $needs = $this->dataset?->usLocalResolution($state);
+
+        return $needs !== null
+            ? $needs === 'county'
+            : in_array('US-'.$state, UsLocalStructure::countyResolvedStates(), true);
+    }
+
+    /**
      * A county resolved by NAME, for the four states where the county is the only
      * local authority that can apply and no boundary artifact exists.
      *
@@ -237,7 +260,7 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
      */
     private function byName(string $state, string $county): ?array
     {
-        if ($this->dataset === null || ! in_array('US-'.$state, UsLocalStructure::countyResolvedStates(), true)) {
+        if ($this->dataset === null || ! $this->resolvesByCounty($state)) {
             return null;
         }
 

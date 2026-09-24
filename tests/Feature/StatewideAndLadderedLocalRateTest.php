@@ -431,13 +431,25 @@ function square(float $lng, float $lat, float $half): array
     return [[[$lng - $half, $lat - $half], [$lng + $half, $lat - $half], [$lng + $half, $lat + $half], [$lng - $half, $lat + $half], [$lng - $half, $lat - $half]]];
 }
 
-function pointRateFor(string $state, float $lat, float $lng)
+function pointRateFor(string $state, float $lat, float $lng, ?string $on = null)
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
     $place = app(JurisdictionRepository::class)
         ->find(new CountryCode('US'), new SubdivisionCode($state))
         ->withLocality(new LocalityCode(new SubdivisionCode($state), LocalityScheme::LatLng->value, $lat.','.$lng));
+
+    return new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
+        ->rateFor($place, TaxClass::GeneralGoods, $on === null ? null : new DateTimeImmutable($on));
+}
+
+function countyRateFor(string $state, string $county)
+{
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $place = app(JurisdictionRepository::class)
+        ->find(new CountryCode('US'), new SubdivisionCode($state))
+        ->withLocality(new LocalityCode(new SubdivisionCode($state), LocalityScheme::County->value, $county));
 
     return new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
         ->rateFor($place, TaxClass::GeneralGoods);
@@ -493,4 +505,74 @@ it('falls back to the state share, flagged, when a polygon file cannot be read',
 
     expect((string) $rate?->percentage)->toBe('6.25')
         ->and($rate?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});
+
+it('reads a point outside every polygon as no local tax only where the register says so, on the supply date', function (): void {
+    // "Outside every feature" is not knowledge until the register says its layers
+    // leave no levying ground out. California's and New Mexico's do; Texas's do not yet
+    // — a district in force with no polygon, and districts starting 1 October before
+    // the layer carries them. So the claim is dated, and read on the supply date.
+    $city = [['type' => 'Feature', 'properties' => ['authority' => 'us:TX:CITY-2227001', 'level' => 'city'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.75, 30.27, 0.1)]]];
+    $outside = [31.5, -100.5];
+
+    $install = function (array|string|null $absence) use ($city): void {
+        ladderRegister()
+            ->rate('us:TX', '6.25', from: '1990-01-01')
+            ->rate('us:TX:CITY-2227001', '1', 'local_component', from: '1990-01-01')
+            ->geometry('TX', $city)
+            ->usLocal('TX', absence: $absence)
+            ->install();
+    };
+
+    // Nothing blocks it: no polygon means no local tax, and the state share is the
+    // whole rate.
+    $install([]);
+    $none = pointRateFor('US-TX', ...$outside);
+    expect((string) $none?->percentage)->toBe('6.25')
+        ->and($none?->limitedBy)->toBeNull()
+        ->and($none?->confidence)->toBe(Confidence::Authoritative);
+
+    // A district with no polygon, in force from 1 October: before it, none; from it, unresolved.
+    $install([['code' => 'us:TX:DISTRICT-5070559', 'from' => '2026-10-01', 'until' => null]]);
+    expect(pointRateFor('US-TX', ...[...$outside, '2026-09-30'])?->limitedBy)->toBeNull()
+        ->and(pointRateFor('US-TX', ...[...$outside, '2026-10-01'])?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+
+    // Known only from a floor: blocks every earlier date too.
+    $install([['code' => 'us:TX:DISTRICT-6246610', 'from' => null, 'until' => null]]);
+    expect(pointRateFor('US-TX', ...[...$outside, '2020-01-01'])?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+
+    // "unknown", or a release that says nothing: unresolved, as before the field.
+    $install('unknown');
+    expect(pointRateFor('US-TX', ...$outside)?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+    $install(null);
+    expect(pointRateFor('US-TX', ...$outside)?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});
+
+it('resolves by county name where the register says a state needs no more, not by a list in the engine', function (): void {
+    // Tennessee is on no hardcoded list. Told that a local answer there needs only the
+    // county, the county's name resolves it; told nothing, it does not.
+    $install = function (?string $needs): void {
+        ladderRegister()
+            ->rate('us:TN', '7')
+            ->rate('us:TN:COUNTY-SHELBY', '2.25', 'local_component')->named('us:TN:COUNTY-SHELBY', 'Shelby County')
+            ->usLocal('TN', needs: $needs)
+            ->install();
+    };
+
+    $install('county');
+    $shelby = countyRateFor('US-TN', 'Shelby County');
+    expect((string) $shelby?->percentage)->toBe('9.25')
+        ->and($shelby?->confidence)->toBe(Confidence::Authoritative);
+
+    $install(null);
+    expect(countyRateFor('US-TN', 'Shelby County')?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+
+    // And the data overrides the engine's list the other way: Florida told it needs
+    // an address is no longer answered from the county name.
+    ladderRegister()
+        ->rate('us:FL', '6')
+        ->rate('us:FL:COUNTY-MIAMI-DADE', '1', 'local_component')->named('us:FL:COUNTY-MIAMI-DADE', 'Miami-Dade County')
+        ->usLocal('FL', needs: 'address')
+        ->install();
+    expect(countyRateFor('US-FL', 'Miami-Dade County')?->limitedBy)->toBe(RateLimit::NoLocalResolution);
 });

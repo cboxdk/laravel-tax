@@ -286,6 +286,17 @@ final readonly class Compiler
             }
         }
 
+        // WHAT THE REGISTER SAYS ABOUT RESOLVING BELOW THE STATE LINE, per state: which
+        // level a local answer needs (`resolution`), and whether ground no artifact
+        // places is ground without local tax (`absence`). Kept whole — it is small and
+        // it describes every state, including the ones with no artifact at all.
+        $absence = is_array($listing['absence'] ?? null) ? $listing['absence'] : null;
+        $resolution = is_array($listing['resolution'] ?? null) ? $listing['resolution'] : null;
+
+        if ($absence !== null || $resolution !== null) {
+            $this->put($partial, 'us-local.json', ['absence' => $absence, 'resolution' => $resolution]);
+        }
+
         $say(sprintf('  boundaries — %d ZIP, %d geometry, %d street index', $zip, $geo, $street));
     }
 

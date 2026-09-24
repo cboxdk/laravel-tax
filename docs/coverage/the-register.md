@@ -70,6 +70,17 @@ set is decided by its five digits and is not flagged. A host can ask before it
 geocodes: `RegisterBoundaries::zipIsUniform('WA', '98001')` is `false`, `true` for a
 uniform ZIP, and `null` where the store holds no postal data for it.
 
+**Outside every polygon is not automatically "no local tax".** The register says per
+state whether its artifacts leave any levying ground out, as a dated list of the codes
+they never place (`absence.blockedBy`). Where none of those is in force on the supply
+date — California and New Mexico — a point in no polygon is priced at the state rate,
+authoritative. Where one is — Texas has a district in force with no polygon, and
+districts starting on 1 October before its layer carries them — the point stays
+unresolved and flagged. A ZIP missing from a postal file is never read as "no local
+tax": it is a gap in the file. The register also says which level a local answer needs
+(`resolution`); a state that needs only the county is resolved from the county's name.
+A release that predates these fields behaves as before.
+
 California files all-in totals rather than components, so a combined record replaces
 the state share instead of adding to it — and still decomposes into the state share
 and the aggregate local share, because a return is filed against authorities.

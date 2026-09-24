@@ -406,6 +406,50 @@ final class RegisterDataset
     }
 
     /**
+     * What a local answer in a US state needs, as the register states it —
+     * `state`, `county` or `address` — or null where the release does not say.
+     */
+    public function usLocalResolution(string $state): ?string
+    {
+        $entry = Shape::map(Shape::map($this->document('us-local')['resolution'] ?? null)[$state] ?? null);
+
+        return Shape::text($entry['needs'] ?? null);
+    }
+
+    /**
+     * Whether ground no artifact places is ground without local tax in a US state, on
+     * a date.
+     *
+     * True only where the register publishes an absence claim for the state and none
+     * of the codes blocking it is in force on the date. A blocker with no `from` is
+     * one known only from a floor, so it blocks every earlier date too. False where the
+     * claim is "unknown", and false where the release makes none — which is what every
+     * release before the field meant.
+     */
+    public function usLocalAbsenceHolds(string $state, DateTimeImmutable $on): bool
+    {
+        $claim = Shape::map($this->document('us-local')['absence'] ?? null)[$state] ?? null;
+
+        if (! is_array($claim) || ! array_key_exists('blockedBy', $claim) || ! is_array($claim['blockedBy'])) {
+            return false;
+        }
+
+        $day = $on->format('Y-m-d');
+
+        foreach ($claim['blockedBy'] as $blocker) {
+            $blocker = Shape::map($blocker);
+            $from = Shape::text($blocker['from'] ?? null);
+            $until = Shape::text($blocker['until'] ?? null);
+
+            if (($from === null || $from <= $day) && ($until === null || $until >= $day)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * The question behind one of the register's fact names, or null where the
      * installed release carries no vocabulary or does not know the fact.
      */

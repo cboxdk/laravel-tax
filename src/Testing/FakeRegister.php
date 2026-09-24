@@ -9,6 +9,7 @@ use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardWriter;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
+use Illuminate\Filesystem\Filesystem;
 
 /**
  * Builds a small register store on disk, for tests that need the engine to have
@@ -46,6 +47,9 @@ final class FakeRegister
 
     /** @var array<string, array<string, mixed>> */
     private array $geometries = [];
+
+    /** @var array{absence?: array<string, mixed>, resolution?: array<string, mixed>} */
+    private array $usLocal = [];
 
     /** @var array<string, array{sets: list<list<array<string, string>>>, zip: array<string, list<array{0: string, 1: string, 2: int}>>}> */
     private array $boundaries = [];
@@ -158,6 +162,26 @@ final class FakeRegister
     }
 
     /**
+     * Publish what the register says about local resolution in a US state, the way the
+     * `/boundaries` listing carries it: the level a local answer needs, and the codes
+     * whose ground no artifact places — or "unknown".
+     *
+     * @param  list<array{code: string, from?: ?string, until?: ?string}>|'unknown'|null  $absence
+     */
+    public function usLocal(string $state, ?string $needs = null, array|string|null $absence = null): self
+    {
+        if ($needs !== null) {
+            $this->usLocal['resolution'][$state] = ['needs' => $needs, 'localLevels' => []];
+        }
+
+        if ($absence !== null) {
+            $this->usLocal['absence'][$state] = is_array($absence) ? ['blockedBy' => $absence] : $absence;
+        }
+
+        return $this;
+    }
+
+    /**
      * Publish a state's polygon layer, the way `boundaries/{state}.geo.json` ships:
      * a GeoJSON FeatureCollection whose features name the register's own codes in
      * `properties.authority`. Format 3 adds `properties.replaces`, the codes a combined
@@ -224,6 +248,13 @@ final class FakeRegister
     public function install(): string
     {
         $directory = $this->layout->version($this->version);
+
+        // A REINSTALL IS A NEW REGISTER, not an overlay. Installing over the same
+        // version left the last one's optional documents behind — a boundary file, a
+        // fact vocabulary, a local-resolution claim this one never published — and a
+        // test that meant "the release says nothing" read what an earlier one said.
+        (new Filesystem)->deleteDirectory($directory);
+
         $regions = [];
         $writers = [];
         $jurisdictions = [];
@@ -275,6 +306,10 @@ final class FakeRegister
         }
 
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);
+
+        if ($this->usLocal !== []) {
+            $this->put($directory, 'us-local.json', ['absence' => $this->usLocal['absence'] ?? null, 'resolution' => $this->usLocal['resolution'] ?? null]);
+        }
 
         foreach ($this->geometries as $state => $collection) {
             $this->put($directory, 'boundaries/'.$state.'.geo.json', $collection);

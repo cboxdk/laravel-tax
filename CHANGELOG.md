@@ -60,6 +60,21 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Added — what the register says about resolving below the state line
+
+- **`absence`: a point outside every polygon can be "no local tax".** Where the
+  register lists no code its artifacts leave unplaced that is in force on the supply
+  date, a point in no polygon is the state rate, authoritative. The list is dated —
+  a Texas district starting 1 October blocks the claim from that day, not before — so
+  an installed store cannot go stale against a new quarter, and a backfill reads the
+  claim as it stood. A ZIP missing from a postal file is never read this way.
+- **`resolution`: county-name resolution comes from the data.** A state the register
+  says needs only the county is resolved by name; one it says needs an address is not.
+  `UsLocalStructure::countyResolvedStates()` is kept only for releases that predate
+  the field.
+- `FakeRegister::usLocal()` publishes both in tests, and a reinstall now starts from a
+  clean version directory instead of keeping the previous register's optional files.
+
 ### Fixed — Texas by point, and the state share a polygon leaves out
 
 - **`cboxdk/tax-resolver ^1.1`.** Texas ships as a polygon layer in geometry format 3,
