@@ -26,6 +26,15 @@ final readonly class UnsettledCondition
         public ?string $names = null,
         public array $facts = [],
         public bool $settledByCommodityCode = false,
+        /**
+         * The source whose document `says` quotes, when it is not the rate's own —
+         * null means the rate's own source. The law sometimes narrows one section
+         * from another: Hawaii taxes every service business at 4% in HRS § 237-13
+         * and takes financial institutions out in another section, so the 4% rate's
+         * condition quotes a document that is not the 4% rate's. Showing `says`
+         * without this attributes the quote to the wrong statute.
+         */
+        public ?string $source = null,
     ) {}
 
     /** Whether anything a seller can supply would settle it. */

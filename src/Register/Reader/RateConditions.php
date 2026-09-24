@@ -197,6 +197,7 @@ final class RateConditions
             names: Shape::text($condition['names'] ?? null),
             facts: array_values(array_filter($facts, static fn (string $fact): bool => ! str_starts_with($fact, 'classification.'))),
             settledByCommodityCode: $byCode,
+            source: Shape::text($condition['source'] ?? null),
         );
     }
 }

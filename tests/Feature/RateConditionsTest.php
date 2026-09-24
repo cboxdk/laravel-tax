@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Catalogue\ArrayProductCatalogue;
 use Cbox\Tax\Catalogue\CatalogueAudit;
 use Cbox\Tax\Contracts\ProductCatalogue;
@@ -333,4 +334,32 @@ it('reads the fact vocabulary, and keeps sale facts off the product', function (
         ->and($dataset->fact('recipient.isCharityServingDisabledPersons')?->isAboutTheProduct())->toBeFalse()
         ->and($dataset->fact('recipient.isCharityServingDisabledPersons')?->askedPer)->toBe('sale')
         ->and($dataset->fact('product.neverPublished'))->toBeNull();
+});
+
+it('says whose document a condition quotes when it is not the rate\'s own', function (): void {
+    // Schema 2.6.2: Hawaii's 4% service rate is narrowed by the financial-institution
+    // exemption in another section, and the condition quotes that section. The quote
+    // is shown to sellers, so it has to carry its own source.
+    config()->set('tax.register.store', config('tax.register.store').'/borrowed-quote');
+
+    FakeRegister::at(config('tax.register.store'))
+        ->category('goods')->category('services')->category('services.financial', 'services')
+        ->category('services.financial.lending', 'services.financial')
+        ->rate('us:HI', '4', 'standard', 'services.financial', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'excludes',
+            'source' => 'hi-hrs-237-24-3',
+            'says' => 'This chapter shall not apply to … financial institutions.',
+            'predicate' => ['not' => ['fact' => 'seller.financialInstitutionAuthorised', 'op' => 'eq', 'value' => true, 'says' => '…']],
+        ]]])
+        ->install();
+
+    $source = new RegisterRateSource(app(RegisterDataset::class));
+    $hi = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-HI'));
+
+    // Reached by climbing from a narrower key, so the unsettled exclusion is reported.
+    $open = $source->unsettledConditions($hi, 'services.financial.lending');
+
+    expect($open)->not->toBe([])
+        ->and($open[0]->source)->toBe('hi-hrs-237-24-3')
+        ->and($source->withFacts(new DecisionFacts(['seller.financialInstitutionAuthorised' => true]))->rateForKey($hi, 'services.financial.lending'))->toBeNull();
 });

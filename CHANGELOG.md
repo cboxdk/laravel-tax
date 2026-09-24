@@ -60,6 +60,13 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Added — whose words a condition quotes
+
+- **`UnsettledCondition::$source`.** Schema 2.6.2 marks a condition that quotes a
+  document other than its rate's own — Hawaii's 4% service rate is narrowed by the
+  financial-institution exemption in another section. The quote reaches sellers
+  through `CatalogueAudit`, so it now carries its source; null means the rate's own.
+
 ### Added — the register's questions
 
 - **The fact vocabulary is compiled with the release.** `tax:data:sync` fetches
