@@ -400,7 +400,9 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
                 $state->percentage,
                 $state->kind,
                 self::SOURCE,
-                Confidence::Authoritative,
+                // The state share is the whole rate, and exactly as sure as it is: a
+                // bracket table's per-dollar figure is still that, with no local share.
+                $state->confidence,
                 [],
                 $state->limitedBy,
                 $state->provenance,
@@ -483,7 +485,11 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             $total->strippedOfTrailingZeros(),
             $state->kind,
             self::SOURCE,
-            Confidence::Authoritative,
+            // NO SURER THAN WHAT IT STANDS ON. Every local share resolved, so the stack
+            // is complete — but a state share that is a bracket table's per-dollar
+            // figure, or an assumed taxability, makes the total exactly that sure. It
+            // used to call itself authoritative while carrying the state's flag.
+            $state->confidence,
             $components,
             $state->limitedBy,
             $state->provenance,

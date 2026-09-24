@@ -264,9 +264,16 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
             return null;
         }
 
-        $names = $this->dataset->namesIn('us/'.$state);
+        // THE STATE IS NOT A COUNTY. Its own name is in the list, and a state and a
+        // county can share one — Hawaii and the County of Hawaii — so counting it made
+        // "Hawaii County" match two and refuse.
+        $names = array_filter(
+            $this->dataset->namesIn('us/'.$state),
+            static fn (string $code): bool => $code !== 'us:'.$state,
+            ARRAY_FILTER_USE_KEY,
+        );
         $wanted = $this->fold($county);
-        $bare = $this->fold(preg_replace('/\s+(county|city|parish|borough)$/i', '', $county) ?? $county);
+        $bare = $this->bareName($county);
         $exact = null;
         $loose = [];
 
@@ -279,7 +286,7 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
                 break;
             }
 
-            if ($folded === $bare || $this->fold(preg_replace('/\s+(county|city|parish|borough)$/i', '', $name) ?? $name) === $bare) {
+            if ($folded === $bare || $this->bareName($name) === $bare) {
                 $loose[] = $code;
             }
         }
@@ -448,6 +455,20 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
         }
 
         return array_values($matched)[0];
+    }
+
+    /**
+     * A place name without the unit word, wherever it sits.
+     *
+     * A geocoder says "Honolulu County"; a charter says "City and County of Honolulu"
+     * and "County of Maui". The unit word comes after the name in one and before it in
+     * the other, so both are stripped before the names are compared.
+     */
+    private function bareName(string $value): string
+    {
+        $value = preg_replace('/^(city and county|county|city|town|borough|parish|municipality) of\s+/i', '', trim($value)) ?? $value;
+
+        return $this->fold(preg_replace('/\s+(county|city|parish|borough)$/i', '', $value) ?? $value);
     }
 
     private function fold(string $value): string

@@ -77,6 +77,20 @@ minor bumps may carry additive features; patches are fixes and docs).
 - `FakeRegister::usLocal()` publishes both in tests, and a reinstall now starts from a
   clean version directory instead of keeping the previous register's optional files.
 
+### Fixed — release 293, checked by county
+
+- **A county named as its charter names it was not found.** From release 293 Hawaii
+  publishes "City and County of Honolulu" and "County of Maui"; a geocoder says
+  "Honolulu County". The unit word was stripped only after the name, so Honolulu fell
+  to the state share, flagged, and "Hawaii County" also matched the state itself and
+  refused as ambiguous. The unit word is now stripped on either side, and the state is
+  never a candidate county. All four Hawaii counties resolve to 4.5 %.
+- **A stack called itself authoritative when its state share was not.** Pennsylvania's
+  state share is a bracket table's per-dollar figure, marked derived; Allegheny's 7 %
+  stacked on it came back authoritative while still carrying the bracket flag. A
+  stacked total, and a state with no local share, now carry the state share's
+  confidence. A combined local rate is unaffected — it is the whole rate on its own.
+
 ### Fixed — Texas by point, and the state share a polygon leaves out
 
 - **`cboxdk/tax-resolver ^1.1`.** Texas ships as a polygon layer in geometry format 3,

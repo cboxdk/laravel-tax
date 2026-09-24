@@ -576,3 +576,42 @@ it('resolves by county name where the register says a state needs no more, not b
         ->install();
     expect(countyRateFor('US-FL', 'Miami-Dade County')?->limitedBy)->toBe(RateLimit::NoLocalResolution);
 });
+
+it('matches a county the register names formally, and never the state that shares its name', function (): void {
+    // From release 293 Hawaii's counties are named as their charters name them — "City
+    // and County of Honolulu", "County of Hawaii" — where a geocoder says "Honolulu
+    // County" and "Hawaii County". Matching stripped only a trailing unit word, so
+    // neither resolved and Honolulu lost its 0.5% surcharge. And the STATE is named
+    // "Hawaii" too: counted as a candidate, "Hawaii County" would match two and refuse.
+    ladderRegister()
+        ->rate('us:HI', '4')->named('us:HI', 'Hawaii')
+        ->rate('us:HI:COUNTY-HONOLULU', '0.5', 'local_component')->named('us:HI:COUNTY-HONOLULU', 'City and County of Honolulu')
+        ->rate('us:HI:COUNTY-HAWAII', '0.5', 'local_component')->named('us:HI:COUNTY-HAWAII', 'County of Hawaii')
+        ->usLocal('HI', needs: 'county')
+        ->install();
+
+    $honolulu = countyRateFor('US-HI', 'Honolulu County');
+    $hawaii = countyRateFor('US-HI', 'Hawaii County');
+
+    expect((string) $honolulu?->percentage)->toBe('4.5')
+        ->and($honolulu?->confidence)->toBe(Confidence::Authoritative)
+        ->and((string) $hawaii?->percentage)->toBe('4.5')
+        ->and(collect($hawaii?->components ?? [])->pluck('code')->all())->toContain('us:HI:COUNTY-HAWAII');
+});
+
+it('does not call a stack authoritative when the state share it stands on is not', function (): void {
+    // Pennsylvania publishes a bracket table, so its 6% is the table's per-dollar rate
+    // and flagged. Stacked with a county share, the total kept the flag and called
+    // itself authoritative anyway — two answers to one question.
+    ladderRegister()
+        ->rate('us:PA', '6', extra: ['basis' => 'bracket', 'percentage' => null, 'brackets' => ['above' => ['perWholeUnit' => ['amount' => '0.06', 'currency' => 'USD', 'per' => 'dollar']]]])
+        ->rate('us:PA:COUNTY-ALLEGHENY', '1', 'local_component')->named('us:PA:COUNTY-ALLEGHENY', 'Allegheny County')
+        ->usLocal('PA', needs: 'county')
+        ->install();
+
+    $allegheny = countyRateFor('US-PA', 'Allegheny County');
+
+    expect((string) $allegheny?->percentage)->toBe('7')
+        ->and($allegheny?->limitedBy)->toBe(RateLimit::BracketSchedule)
+        ->and($allegheny?->confidence)->toBe(Confidence::Derived);
+});
