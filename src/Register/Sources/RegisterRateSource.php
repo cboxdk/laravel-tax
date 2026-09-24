@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\RateKind;
@@ -164,6 +165,14 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             }
 
             $stacked = $this->stacked($jurisdiction, $code, $rate, $key, $commodityCode, $at, $version) ?? $rate;
+
+            // A SPLIT ZIP IS ONE OF ITS ANSWERS, NOT THIS ADDRESS'S. The resolver
+            // returns the set a bare five-digit ZIP falls in first; where the ZIP holds
+            // several, that total is plausible and not necessarily right, so it is
+            // flagged with the step that settles it — the ZIP+4, or the street.
+            if ($this->authorities instanceof ReportsSplitPostcodes && $this->authorities->spansSeveralSets($jurisdiction, $at)) {
+                $stacked = $stacked->qualifiedBy(RateLimit::PostcodeSpansLocalities);
+            }
 
             return $this->withDeclined($this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
         }

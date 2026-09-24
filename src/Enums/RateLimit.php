@@ -156,6 +156,16 @@ enum RateLimit: string
      */
     case MarketplaceLiabilityUnread = 'marketplace_liability_unread';
 
+    /**
+     * Priced from a bare five-digit ZIP that is split between local tax areas, so the
+     * rate is one of that ZIP's answers and not necessarily this address's.
+     *
+     * A ZIP is a mail route, not a tax boundary. Washington's 98001 holds Federal Way
+     * and Auburn at 10.4% and unincorporated King County at 10.3%, and from the five
+     * digits the store can only return one of them. It used to return it as certain.
+     */
+    case PostcodeSpansLocalities = 'postcode_spans_localities';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -193,6 +203,8 @@ enum RateLimit: string
                 .'`marketplace_facilitator` rule, whose conditions carry the statute\'s own words, and where the '
                 .'platform is the deemed supplier bill the sale as facilitated by it. Nothing the caller passes '
                 .'settles it yet — the conditions are read but not evaluated.',
+            self::PostcodeSpansLocalities => 'Pass the ZIP+4, or geocode the street address: this ZIP is split '
+                .'between local tax areas and the five digits cannot say which one the address is in.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',
@@ -217,6 +229,7 @@ enum RateLimit: string
             || $this === self::ClassificationInferred
             || $this === self::PerformanceLocationAssumed
             || $this === self::TerritoryUnplaced
-            || $this === self::ConditionsUnevaluated;
+            || $this === self::ConditionsUnevaluated
+            || $this === self::PostcodeSpansLocalities;
     }
 }

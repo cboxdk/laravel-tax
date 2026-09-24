@@ -6,6 +6,7 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Register\Reader\RegisterDataset;
@@ -40,7 +41,7 @@ use Throwable;
  * the state rate; an empty list is a row saying no local authority levies there, and
  * is priced as the whole rate. Nothing here collapses them.
  */
-final class RegisterBoundaries implements LocalAuthorityResolver
+final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPostcodes
 {
     /** @var array<string, ShardReader> */
     private array $streetShards = [];
@@ -106,6 +107,76 @@ final class RegisterBoundaries implements LocalAuthorityResolver
         return $authorities === null
             ? null
             : array_map(fn (Authority $authority): string => $this->code($state, $authority), $authorities);
+    }
+
+    /**
+     * Whether a bare five-digit ZIP was asked about where the ZIP is split between
+     * authority sets. A ZIP+4, a street or a point is never split: the resolver
+     * narrows those to one span.
+     */
+    public function spansSeveralSets(Jurisdiction $jurisdiction, ?DateTimeImmutable $at = null): bool
+    {
+        $subdivision = $jurisdiction->subdivision;
+        $locality = $jurisdiction->locality;
+
+        if ($subdivision === null || $locality === null || $locality->scheme !== LocalityScheme::Zip9->value) {
+            return false;
+        }
+
+        $digits = preg_replace('/\D/', '', $locality->value) ?? '';
+
+        if (strlen($digits) !== 5) {
+            return false;
+        }
+
+        return $this->zipIsUniform(substr($subdivision->value, 3), $digits) === false;
+    }
+
+    /**
+     * Whether every address in a ZIP falls in the same set of taxing authorities —
+     * so a host can skip geocoding a street where the five digits already decide it.
+     *
+     * Null where the store holds no postal artifact for the state, or none for this
+     * ZIP: that is not knowledge either way. Compared by the authorities themselves,
+     * not by set number, because two entries in the table can list the same ones.
+     */
+    public function zipIsUniform(string $state, string $zip5): ?bool
+    {
+        $head = $this->postalHead($state);
+
+        if ($head === null) {
+            return null;
+        }
+
+        $spans = Shape::map($this->postalRows($state, $zip5, $head))[$zip5] ?? null;
+
+        if (! is_array($spans) || $spans === []) {
+            return null;
+        }
+
+        $sets = is_array($head['sets'] ?? null) ? $head['sets'] : [];
+        $distinct = [];
+
+        foreach ($spans as $span) {
+            $index = is_array($span) ? ($span[2] ?? null) : null;
+
+            if (! is_int($index)) {
+                return null;
+            }
+
+            $members = [];
+
+            foreach ((array) ($sets[$index] ?? []) as $entry) {
+                $members[] = is_array($entry)
+                    ? Shape::scalar($entry['level'] ?? null).':'.Shape::scalar($entry['code'] ?? null)
+                    : Shape::scalar($entry);
+            }
+
+            sort($members);
+            $distinct[implode('|', $members)] = true;
+        }
+
+        return count($distinct) <= 1;
     }
 
     /**

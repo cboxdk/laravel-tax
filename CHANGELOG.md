@@ -60,6 +60,19 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Fixed — a split ZIP was priced as one of its answers, marked certain
+
+- **`RateLimit::PostcodeSpansLocalities`.** A bare five-digit ZIP is looked up at
+  add-on 0000, and the store returns whichever authority set that falls in. Where
+  the ZIP is split, that is one of its answers and not necessarily the address's:
+  Washington's 98001 came back 10.5%, authoritative, where its addresses are 10.4%
+  and 10.3%. Such an answer is now `Derived` and flagged, with the ZIP+4 or the
+  street as the remedy. A ZIP with one authority set is not flagged. Found by the
+  cbox-tax integration against release 283 and confirmed on 287.
+- **`RegisterBoundaries::zipIsUniform()`** tells a host whether the five digits
+  decide a ZIP, so it can skip geocoding where they do. `ReportsSplitPostcodes` is the
+  optional capability a host's own resolver can implement to raise the same flag.
+
 ### Fixed — the address gap no longer hides the product gap
 
 - **A US answer at the state line kept only the address flag.** In a state with

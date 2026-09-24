@@ -61,6 +61,15 @@ and a city both levy (6.5 + 1.0 + 1.625), and a rate short by one authority's sh
 would be an under-charge stamped authoritative. A local record the store cannot price
 abandons the whole stack and returns the state share **flagged** instead.
 
+**A ZIP is a mail route, not a tax boundary.** Washington's 98001 holds Federal Way
+and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five
+digits, the store can only return one of the ZIP's answers, so a ZIP split between
+authority sets comes back flagged `RateLimit::PostcodeSpansLocalities` with the ZIP+4
+or the street as the remedy; the ZIP+4 settles it. A ZIP whose addresses all share one
+set is decided by its five digits and is not flagged. A host can ask before it
+geocodes: `RegisterBoundaries::zipIsUniform('WA', '98001')` is `false`, `true` for a
+uniform ZIP, and `null` where the store holds no postal data for it.
+
 California files all-in totals rather than components, so a combined record replaces
 the state share instead of adding to it — and still decomposes into the state share
 and the aggregate local share, because a return is filed against authorities.

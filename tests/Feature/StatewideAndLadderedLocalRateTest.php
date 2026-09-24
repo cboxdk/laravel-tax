@@ -384,3 +384,39 @@ it('leaves a rate asked for at its own rung alone, conditions and all', function
         ->and($book?->confidence)->toBe(Confidence::Authoritative)
         ->and($book?->limitedBy)->toBeNull();
 });
+
+it('flags a bare ZIP that is split between authority sets, and not one that is uniform', function (): void {
+    // A ZIP is a mail route, not a tax boundary. Washington's 98001 holds Federal Way
+    // and Auburn beside unincorporated King County; asked from the five digits alone,
+    // the store returned the set 98001-0000 falls in, marked certain.
+    ladderRegister()
+        ->rate('us:WA', '6.5')
+        ->rate('us:WA:DISTRICT-L1702', '4', 'local_component')
+        ->rate('us:WA:CITY-FEDERAL-WAY', '3.9', 'local_component')
+        ->boundary('WA', '98001', ['state:WA', 'district:L1702'], '0000', '1399')
+        ->boundary('WA', '98001', ['state:WA', 'city:FEDERAL-WAY'], '1400', '9999')
+        ->boundary('WA', '98002', ['state:WA', 'district:L1702'])
+        ->install();
+
+    $split = ladderRateFor('US-WA', '98001', TaxClass::GeneralGoods);
+    $address = ladderRateFor('US-WA', '98001-1400', TaxClass::GeneralGoods);
+    $uniform = ladderRateFor('US-WA', '98002', TaxClass::GeneralGoods);
+
+    expect($split?->limitedBy)->toBe(RateLimit::PostcodeSpansLocalities)
+        ->and($split?->confidence)->toBe(Confidence::Derived)
+        // The ZIP+4 narrows it to one span, and that answer is exact.
+        ->and((string) $address?->percentage)->toBe('10.4')
+        ->and($address?->limitedBy)->toBeNull()
+        ->and($address?->confidence)->toBe(Confidence::Authoritative)
+        // A ZIP with one set is decided by its five digits: no caveat.
+        ->and($uniform?->limitedBy)->toBeNull()
+        ->and($uniform?->confidence)->toBe(Confidence::Authoritative);
+
+    $layout = new StoreLayout(ladderStore());
+    $boundaries = new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', new RegisterDataset($layout, new StorePointer($layout)));
+
+    expect($boundaries->zipIsUniform('WA', '98001'))->toBeFalse()
+        ->and($boundaries->zipIsUniform('WA', '98002'))->toBeTrue()
+        ->and($boundaries->zipIsUniform('WA', '99999'))->toBeNull()
+        ->and($boundaries->zipIsUniform('TX', '78701'))->toBeNull();
+});
