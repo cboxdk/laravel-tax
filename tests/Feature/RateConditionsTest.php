@@ -363,3 +363,52 @@ it('says whose document a condition quotes when it is not the rate\'s own', func
         ->and($open[0]->source)->toBe('hi-hrs-237-24-3')
         ->and($source->withFacts(new DecisionFacts(['seller.financialInstitutionAuthorised' => true]))->rateForKey($hi, 'services.financial.lending'))->toBeNull();
 });
+
+it('prices Hawaii\'s financial exemption against its general rate, made disjoint by a negated copy', function (string $kind, string $percentage, bool $confident): void {
+    // Cadastre's shape for 2.6.2: the 4% row carries not(<the exemption's OWN
+    // predicate>), word for word, unsettled limb included — so the two rows are exact
+    // complements and at most one of them ever holds. The negation quotes § 237-24.8,
+    // not the 4% row's own § 237-13, and says so in `source`.
+    config()->set('tax.register.store', config('tax.register.store').'/hawaii-financial');
+
+    $relief = ['all' => [
+        ['fact' => 'seller.financialInstitutionAuthorised', 'op' => 'eq', 'value' => true, 'says' => '"Financial institution" means banks, …'],
+        ['any' => [
+            ['fact' => 'service.financialServiceKind', 'op' => 'in', 'value' => ['credit', 'deposit_or_current_account'], 'says' => 'interest and fees on loans and deposits …'],
+            ['all' => [
+                ['fact' => 'service.financialServiceKind', 'op' => 'eq', 'value' => 'payment_or_transfer', 'says' => '… payment or transfer …'],
+                ['unsettled' => ['says' => 'whether the charge is within the heads of § 237-24.8']],
+            ]],
+        ]],
+    ]];
+
+    FakeRegister::at(config('tax.register.store'))
+        ->category('goods')->category('services')->category('services.financial', 'services')
+        ->rate('us:HI', '4', from: '1990-01-01')
+        ->rate('us:HI', '0', 'exempt', 'services.financial', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'applies_only_to', 'says' => '(a) In addition to the amounts not taxable under section 237-24, …', 'predicate' => $relief,
+        ]]])
+        ->rate('us:HI', '4', 'standard', 'services.financial', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'excludes', 'source' => 'us-hi-financial-institutions',
+            'says' => '(a) In addition to the amounts not taxable under section 237-24, …', 'predicate' => ['not' => $relief],
+        ]]])
+        ->install();
+
+    $facts = $kind === 'not-a-bank'
+        ? ['seller.financialInstitutionAuthorised' => false]
+        : ['seller.financialInstitutionAuthorised' => true, 'service.financialServiceKind' => $kind];
+
+    $rate = (new RegisterRateSource(app(RegisterDataset::class)))
+        ->withFacts(new DecisionFacts($facts))
+        ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-HI')), 'services.financial');
+
+    expect((string) $rate?->percentage)->toBe($percentage)
+        ->and($rate?->confidence === Confidence::Authoritative)->toBe($confident);
+})->with([
+    'bank, credit: exempt' => ['credit', '0', true],
+    'bank, currency: outside the heads, 4%' => ['currency', '4', true],
+    'not a bank: 4%' => ['not-a-bank', '4', true],
+    // Unsettled on the exemption, so unsettled on its complement too: both rows
+    // stand, and the engine returns the recoverable answer, flagged.
+    'bank, payment: open on both rows' => ['payment_or_transfer', '4', false],
+]);
