@@ -91,3 +91,21 @@ FakeRegister::at(config('tax.register.store'))
     ->fact('recipient.isCharityServingDisabledPersons', 'Is the buyer a charity providing care for disabled people?', subject: 'recipient')
     ->install();
 ```
+
+## Testing address resolution by point
+
+`FakeRegister::geometry()` publishes a state's polygon layer, so a point lookup can be
+tested without the network. Features name the register's own codes; format 3 adds
+`replaces` for a combined area that stands in place of others:
+
+```php
+FakeRegister::at(config('tax.register.store'))
+    ->rate('us:TX', '6.25')
+    ->rate('us:TX:CITY-2227001', '1', 'local_component')
+    ->geometry('TX', [[
+        'type' => 'Feature',
+        'properties' => ['authority' => 'us:TX:CITY-2227001', 'level' => 'city'],
+        'geometry' => ['type' => 'Polygon', 'coordinates' => [[[-97.8, 30.2], [-97.7, 30.2], [-97.7, 30.3], [-97.8, 30.3], [-97.8, 30.2]]]],
+    ]])
+    ->install();
+```

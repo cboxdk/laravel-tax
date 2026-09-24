@@ -23,6 +23,7 @@ use Cboxdk\TaxResolver\Point;
 use Cboxdk\TaxResolver\Resolver;
 use Cboxdk\TaxResolver\UnsupportedFormatVersion;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -104,9 +105,25 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
 
         $authorities = $this->resolveParsed($state, $address);
 
-        return $authorities === null
-            ? null
-            : array_map(fn (Authority $authority): string => $this->code($state, $authority), $authorities);
+        if ($authorities === null) {
+            return null;
+        }
+
+        $codes = array_map(fn (Authority $authority): string => $this->code($state, $authority), $authorities);
+
+        // A POLYGON LAYER NAMES THE LOCALS, NOT THE STATE. A postal set carries the
+        // state as a member where the state's rate applies; a polygon file lists
+        // cities, combined areas, transit and districts, and the state share is due
+        // over all of them. Where locals are filed as COMPONENTS — Texas — leaving it
+        // out summed the locals alone: an Austin address came back at 2.5%,
+        // authoritative, where 8.75% is due. Where they are COMBINED totals —
+        // California, New Mexico — the combined record replaces the state share, so
+        // listing the state beside it changes nothing.
+        if ($address->point !== null && $codes !== [] && ! in_array('us:'.$state, $codes, true)) {
+            array_unshift($codes, 'us:'.$state);
+        }
+
+        return $codes;
     }
 
     /**
@@ -194,10 +211,12 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
     {
         try {
             $assignment = $this->resolver->resolve($address, $this->postal($state, $address->zip5), $this->geometry($state));
-        } catch (UnsupportedFormatVersion) {
-            // The store holds an artifact this resolver cannot read. Deferring sends
-            // the engine to the state rate, which is short but honest; reading it
-            // anyway is how you get a confident answer that is wrong.
+        } catch (UnsupportedFormatVersion|InvalidArgumentException) {
+            // The store holds an artifact this resolver cannot read — a format it does
+            // not implement, or a geometry `replaces` that is not a list of codes.
+            // Deferring sends the engine to the state rate, which is short but honest;
+            // reading it anyway is how you get a confident answer that is wrong, and
+            // letting the refusal escape stopped every sale into the state.
             return null;
         }
 

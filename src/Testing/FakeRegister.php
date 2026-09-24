@@ -44,6 +44,9 @@ final class FakeRegister
     /** @var list<array<string, mixed>> */
     private array $facts = [];
 
+    /** @var array<string, array<string, mixed>> */
+    private array $geometries = [];
+
     /** @var array<string, array{sets: list<list<array<string, string>>>, zip: array<string, list<array{0: string, 1: string, 2: int}>>}> */
     private array $boundaries = [];
 
@@ -155,6 +158,21 @@ final class FakeRegister
     }
 
     /**
+     * Publish a state's polygon layer, the way `boundaries/{state}.geo.json` ships:
+     * a GeoJSON FeatureCollection whose features name the register's own codes in
+     * `properties.authority`. Format 3 adds `properties.replaces`, the codes a combined
+     * area stands in place of.
+     *
+     * @param  list<array<string, mixed>>  $features
+     */
+    public function geometry(string $state, array $features, int $formatVersion = 3): self
+    {
+        $this->geometries[$state] = ['type' => 'FeatureCollection', 'formatVersion' => $formatVersion, 'features' => $features];
+
+        return $this;
+    }
+
+    /**
      * Publish one fact in the release's vocabulary, the way `/facts` does — so a
      * product form built on {@see CatalogueAudit} can be tested
      * without the network.
@@ -257,6 +275,10 @@ final class FakeRegister
         }
 
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);
+
+        foreach ($this->geometries as $state => $collection) {
+            $this->put($directory, 'boundaries/'.$state.'.geo.json', $collection);
+        }
 
         if ($this->facts !== []) {
             $this->put($directory, 'facts.json', ['formatVersion' => 1, 'facts' => $this->facts]);

@@ -420,3 +420,77 @@ it('flags a bare ZIP that is split between authority sets, and not one that is u
         ->and($boundaries->zipIsUniform('WA', '99999'))->toBeNull()
         ->and($boundaries->zipIsUniform('TX', '78701'))->toBeNull();
 });
+
+/**
+ * A square polygon, as a GeoJSON ring in [lng, lat] order.
+ *
+ * @return list<list<list<float>>>
+ */
+function square(float $lng, float $lat, float $half): array
+{
+    return [[[$lng - $half, $lat - $half], [$lng + $half, $lat - $half], [$lng + $half, $lat + $half], [$lng - $half, $lat + $half], [$lng - $half, $lat - $half]]];
+}
+
+function pointRateFor(string $state, float $lat, float $lng)
+{
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $place = app(JurisdictionRepository::class)
+        ->find(new CountryCode('US'), new SubdivisionCode($state))
+        ->withLocality(new LocalityCode(new SubdivisionCode($state), LocalityScheme::LatLng->value, $lat.','.$lng));
+
+    return new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
+        ->rateFor($place, TaxClass::GeneralGoods);
+}
+
+it('adds the state share to a polygon answer in a state that files local components', function (): void {
+    // Texas's polygon layers are cities, combined areas, transit, special purpose
+    // districts and counties — no state. Its local rates are COMPONENTS, so a point
+    // answered from polygons alone summed the locals and left out the 6.25% state
+    // share: an Austin address at 2%, authoritative. California and New Mexico file
+    // all-in COMBINED totals, which is why the gap never showed there.
+    //
+    // A combined area REPLACES the city, district or county it combines (geometry
+    // format 3): summing every polygon over a point in Bee Cave gave 5.5% where 2% is
+    // due.
+    ladderRegister()
+        ->rate('us:TX', '6.25')
+        ->rate('us:TX:COUNTY-2227', '0.5', 'local_component')->named('us:TX:COUNTY-2227', 'Travis County')
+        ->rate('us:TX:CITY-2227001', '1', 'local_component')->named('us:TX:CITY-2227001', 'Austin')
+        ->rate('us:TX:TRANSIT-3227999', '1', 'local_component')->named('us:TX:TRANSIT-3227999', 'Capital Metro')
+        ->rate('us:TX:COMBINED-5227500', '2', 'local_component')->named('us:TX:COMBINED-5227500', 'Bee Cave combined area')
+        ->geometry('TX', [
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:COUNTY-2227', 'level' => 'county', 'name' => 'Travis'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.8, 30.3, 0.5)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:CITY-2227001', 'level' => 'city', 'name' => 'Austin'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.75, 30.27, 0.1)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:TRANSIT-3227999', 'level' => 'transit', 'name' => 'Capital Metro'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.75, 30.27, 0.3)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:COMBINED-5227500', 'level' => 'combined', 'name' => 'Bee Cave', 'replaces' => ['us:TX:COUNTY-2227', 'us:TX:TRANSIT-3227999']], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.95, 30.31, 0.02)]],
+        ])
+        ->install();
+
+    $austin = pointRateFor('US-TX', 30.27, -97.75);
+    $beeCave = pointRateFor('US-TX', 30.31, -97.95);
+
+    // 6.25 state + 0.5 county + 1 city + 1 transit.
+    expect((string) $austin?->percentage)->toBe('8.75')
+        ->and($austin?->confidence)->toBe(Confidence::Authoritative)
+        // 6.25 state + 2 combined; the county and transit it replaces are dropped.
+        ->and((string) $beeCave?->percentage)->toBe('8.25');
+});
+
+it('falls back to the state share, flagged, when a polygon file cannot be read', function (): void {
+    // A `replaces` that is not a list of codes is refused by the resolver. Refused
+    // loudly inside a price, it stopped every Texas sale; deferred, it is the state
+    // share with the gap named — short, but honest.
+    ladderRegister()
+        ->rate('us:TX', '6.25')
+        ->rate('us:TX:CITY-2227001', '1', 'local_component')
+        ->geometry('TX', [
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:CITY-2227001', 'level' => 'city', 'replaces' => 'not-a-list'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.75, 30.27, 0.1)]],
+        ])
+        ->install();
+
+    $rate = pointRateFor('US-TX', 30.27, -97.75);
+
+    expect((string) $rate?->percentage)->toBe('6.25')
+        ->and($rate?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});

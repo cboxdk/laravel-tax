@@ -60,6 +60,23 @@ minor bumps may carry additive features; patches are fixes and docs).
   and `classification.hsCode` are derived from the line's code, so a product
   classified once for customs answers them in every market.
 
+### Fixed — Texas by point, and the state share a polygon leaves out
+
+- **`cboxdk/tax-resolver ^1.1`.** Texas ships as a polygon layer in geometry format 3,
+  where a combined area `replaces` the city, district or county it combines; 1.0
+  refused the format, which left Texas at the state rate. Summing every polygon over
+  a point in Bee Cave gave 5.5% of locals where 2% is due.
+- **A point answer includes the state.** A polygon layer lists the locals and not
+  the state, and Texas files its locals as components — so a point answered from
+  polygons alone summed the locals and left the 6.25% state share out: an Austin
+  address at 2.5%, authoritative, where 8.75% is due. It never showed in California
+  or New Mexico, whose local records are all-in combined totals. Caught before the
+  bump shipped; the tests fail on the old adapter.
+- **An unreadable polygon file defers instead of stopping every sale.** A `replaces`
+  that is not a list of codes is refused by the resolver; that refusal escaped into
+  pricing. The state share is returned, flagged, as for any file it cannot read.
+- `FakeRegister::geometry()` publishes a polygon layer in tests.
+
 ### Fixed — a split delivery is filed by its portions
 
 - **The return aggregator filed a shared delivery charge as one line.** Freight

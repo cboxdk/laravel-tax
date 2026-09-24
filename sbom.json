@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:630c4d28-49f8-4f19-87bf-efd6d9157d71",
+    "serialNumber": "urn:uuid:6437a0d2-fbaa-4f0d-a06a-a3778e552733",
     "version": 1,
     "metadata": {
         "tools": [
@@ -85,11 +85,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/tax-resolver@v1.0.0",
+            "bom-ref": "pkg:composer/cboxdk/tax-resolver@v1.1.0",
             "group": "cboxdk",
             "name": "tax-resolver",
-            "version": "v1.0.0",
-            "purl": "pkg:composer/cboxdk/tax-resolver@v1.0.0",
+            "version": "v1.1.0",
+            "purl": "pkg:composer/cboxdk/tax-resolver@v1.1.0",
             "description": "Pure address\u2192jurisdiction resolver over the Cbox Tax boundary dataset. No framework, no I/O, no geocoder \u2014 the shared brain the register verifies with and the tax engines resolve with.",
             "licenses": [
                 {

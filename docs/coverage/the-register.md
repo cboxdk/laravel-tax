@@ -52,7 +52,7 @@ Two details that decide real invoices:
 | --- | --- | --- |
 | Street range | 15 states, with `--streets` | House number |
 | ZIP+4 | 24 Streamlined states | Add-on |
-| Polygon | California, New Mexico | The point |
+| Polygon | California, New Mexico, Texas | The point |
 | County name | Florida, Pennsylvania, Hawaii, Virginia | The county |
 | State rate | everywhere else | The state share, flagged |
 
@@ -74,8 +74,14 @@ California files all-in totals rather than components, so a combined record repl
 the state share instead of adding to it — and still decomposes into the state share
 and the aggregate local share, because a return is filed against authorities.
 
-**Texas gets no boundary data.** It is not a Streamlined member and publishes no
-polygons, so an address there resolves at the state rate, visibly.
+**Texas resolves by point.** The Comptroller publishes the Rate Locator's layers —
+cities, combined areas, transit, special purpose districts and counties — and the
+register ships them as a polygon file. A combined area stands **in place of** the
+city, district or county it combines (geometry format 3, `replaces`), so those are
+dropped wherever it covers the point. A polygon layer lists the locals, not the state:
+the state share is added to every point answer, which is what a state filing local
+**components** needs, and changes nothing where locals are **combined** totals
+(California, New Mexico).
 
 ## Proved against the register's own deck
 
