@@ -157,11 +157,22 @@ readonly class GeocodioGeocoder implements AddressGeocoder
     {
         // A jurisdiction carries ONE locality, so the useful key differs by state.
         //
-        // Florida, Pennsylvania and Hawaii need only the COUNTY, because nothing
-        // can tax below it there — so the county name is not a proxy for the
-        // authority, it names the authority. This branch runs whether or not
-        // rooftop resolution is enabled: it costs nothing extra and is exact.
-        if (in_array($subdivision->value, UsLocalStructure::countyResolvedStates(), true)) {
+        // A state whose local answer needs only the COUNTY — Florida, Pennsylvania,
+        // Hawaii, Virginia — is resolved by the county's name, because nothing can tax
+        // below it there: the name is not a proxy for the authority, it names it. This
+        // branch runs whether or not rooftop resolution is enabled: it costs nothing
+        // extra and is exact.
+        //
+        // Which states those are is a fact about the register's data, so it is read
+        // from the installed store where the release states it (`resolution`), the
+        // same way geometry is below; the list is only the fallback for a store that
+        // predates the field, or a geocoder built without one.
+        $needs = $this->register?->usLocalResolution(substr($subdivision->value, 3));
+        $byCounty = $needs !== null
+            ? $needs === 'county'
+            : in_array($subdivision->value, UsLocalStructure::countyResolvedStates(), true);
+
+        if ($byCounty) {
             return $this->countyLocality($result, $subdivision);
         }
 

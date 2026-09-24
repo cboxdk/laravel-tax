@@ -70,6 +70,8 @@ minor bumps may carry additive features; patches are fixes and docs).
   claim as it stood. A ZIP missing from a postal file is never read this way.
 - **`resolution`: county-name resolution comes from the data.** A state the register
   says needs only the county is resolved by name; one it says needs an address is not.
+  The Geocodio geocoder reads the same field from the installed store to decide
+  whether to attach a county or look further, as it already did for geometry.
   `UsLocalStructure::countyResolvedStates()` is kept only for releases that predate
   the field.
 - `FakeRegister::usLocal()` publishes both in tests, and a reinstall now starts from a

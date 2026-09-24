@@ -6,7 +6,9 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
+use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\TaxServiceProvider;
+use Cbox\Tax\Testing\FakeRegister;
 use Illuminate\Http\Client\Factory;
 
 beforeEach(function () {
@@ -259,4 +261,35 @@ it('keeps the ZIP+4 key for states resolved by the boundary index', function () 
 
     expect($jurisdiction?->locality?->scheme)->toBe(LocalityScheme::Zip9->value)
         ->and($jurisdiction?->locality?->value)->toBe('66101-3064');
+});
+
+it('asks the installed register which states need only the county, not a list in the engine', function () {
+    // Whether a state's local answer needs the county or an address is a fact about
+    // the register's data. The geocoder read it from a list in this package; it reads
+    // it from the store now, and the list is only the fallback for a store that
+    // predates the field.
+    config()->set('tax.register.store', config('tax.register.store').'/geocoder-resolution');
+    FakeRegister::at(config('tax.register.store'))
+        ->rate('us:TN', '7')
+        ->rate('us:FL', '6')
+        ->usLocal('TN', needs: 'county')
+        ->usLocal('FL', needs: 'address')
+        ->install();
+
+    $locate = function (string $state, string $county) {
+        $http = new Factory;
+        $http->fake(['api.geocod.io/*' => $http->response(['results' => [[
+            'address_components' => ['country' => 'US', 'state_province' => $state, 'county' => $county],
+            'fields' => ['zip4' => ['plus4' => ['1234'], 'zip9' => ['38103-1234']]],
+        ]]])]);
+
+        return new GeocodioGeocoder($http, $this->geo, 'test-key', register: app(RegisterDataset::class))
+            ->locate(['line1' => '1 Main St', 'subdivision' => $state, 'country' => 'US']);
+    };
+
+    // Tennessee is on no list in the engine; the register says the county decides it.
+    expect($locate('TN', 'Shelby County')?->locality?->scheme)->toBe(LocalityScheme::County->value)
+        // Florida is on the engine's list; the register now says it needs an address,
+        // so without rooftop enabled nothing finer is attached.
+        ->and($locate('FL', 'Miami-Dade County')?->locality)->toBeNull();
 });
