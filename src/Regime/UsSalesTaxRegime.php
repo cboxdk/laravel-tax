@@ -400,7 +400,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
         return new TaxAssessment(
-            treatment: TaxTreatment::Standard,
+            treatment: $this->treatmentFor($rate),
             net: $net,
             tax: $tax,
             gross: $gross,
@@ -452,7 +452,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
         return new TaxAssessment(
-            treatment: TaxTreatment::Standard,
+            treatment: $this->treatmentFor($rate),
             net: $net,
             tax: $tax,
             gross: $gross,

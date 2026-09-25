@@ -69,7 +69,7 @@ the facts you send**, and every fact has somewhere to go.
 
 | | |
 | --- | --- |
-| `treatment` | `Standard`, `ReverseCharge`, `ZeroRated`, `Exempt`, `NotRegistered`, `MarketplaceFacilitated` — five different zeros that mean opposite things on a return |
+| `treatment` | `Standard`, `ReverseCharge`, `IntraCommunitySupply`, `ZeroRated`, `Exempt`, `NotRegistered`, `MarketplaceFacilitated` — six different zeros that mean different things on a return |
 | `tax`, `net`, `gross` | exact `brick/money`, rounded by the jurisdiction's own published policy |
 | `rate->provenance` | which release, which dataset, effective from when, and a hash of the section it was read from |
 | `rate->confidence`, `rate->limitedBy` | whether this is exact, and if not, the one step that would close the gap |
@@ -81,7 +81,7 @@ the facts you send**, and every fact has somewhere to go.
 Three outcomes that most engines collapse into "0", kept apart on purpose:
 
 - **No tax applies** — a resolved, authoritative zero.
-- **Zero-rated or exempt** — a real published band, with its citation.
+- **Zero-rated or exempt** — a real published band, and the treatment says which: they go in different boxes on a return.
 - **Not determinable** — an exception, not a number. A jurisdiction with no regime, a
   missing rate, a threshold the register says it has not modelled: all refuse.
 

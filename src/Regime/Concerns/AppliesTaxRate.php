@@ -9,6 +9,8 @@ use Brick\Money\AllocationMode;
 use Brick\Money\Money;
 use Brick\Money\RationalMoney;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\TaxBreakdown;
@@ -76,6 +78,25 @@ trait AppliesTaxRate
     protected function zero(TaxQuery $query): Money
     {
         return Money::zero($query->amount->getCurrency(), $query->amount->getContext());
+    }
+
+    /**
+     * What charging this rate IS, for the return.
+     *
+     * A 0% rate is not a standard supply at nothing: it is zero-rated or it is
+     * exempt, and which one decides both the box it is filed in and whether the
+     * seller may deduct the input tax behind it. The register files the two as
+     * different kinds; the rate carries that through, and this reads it. A 0% rate
+     * of any other kind — a standard band that happens to be nothing, as in a state
+     * with no sales tax filed as `standard` — is zero-rated: taxable, at nothing.
+     */
+    protected function treatmentFor(TaxRate $rate): TaxTreatment
+    {
+        return match (true) {
+            $rate->kind === RateKind::Exempt => TaxTreatment::Exempt,
+            $rate->isZero() => TaxTreatment::ZeroRated,
+            default => TaxTreatment::Standard,
+        };
     }
 
     /**

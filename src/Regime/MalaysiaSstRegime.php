@@ -6,7 +6,6 @@ namespace Cbox\Tax\Regime;
 
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
-use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
@@ -36,7 +35,7 @@ readonly class MalaysiaSstRegime implements TaxRegime
         [$net, $tax, $gross] = $this->split($query, $rate);
 
         return new TaxAssessment(
-            treatment: TaxTreatment::Standard,
+            treatment: $this->treatmentFor($rate),
             net: $net,
             tax: $tax,
             gross: $gross,

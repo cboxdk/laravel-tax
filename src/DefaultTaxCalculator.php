@@ -248,14 +248,20 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      *    state, and an EU-established seller stays on the rules its regime applies.
      *
      * The United States is left to its own regime, which gates on state registration,
-     * marketplace law and nexus itself. A reverse charge, an exemption or a zero rate
-     * is not a charge, and is not touched.
+     * marketplace law and nexus itself. A reverse charge is the customer's to account
+     * for, and an export to a territory outside the tax area carries no rate: neither
+     * is touched. A supply the RATE made zero-rated or exempt is: whether the seller
+     * collects there comes before which kind of nothing it collects, and a seller that
+     * files no return there has no zero-rated or exempt line on one either.
      */
     private function gateCollection(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
     {
         $place = $assessment->placeOfSupply;
 
-        if ($assessment->treatment !== TaxTreatment::Standard || $place->country->value === 'US') {
+        $rated = $assessment->treatment === TaxTreatment::Standard
+            || ($assessment->rate !== null && in_array($assessment->treatment, [TaxTreatment::ZeroRated, TaxTreatment::Exempt], true));
+
+        if (! $rated || $place->country->value === 'US') {
             return $assessment;
         }
 

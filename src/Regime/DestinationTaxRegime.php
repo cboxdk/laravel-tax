@@ -46,6 +46,19 @@ abstract class DestinationTaxRegime implements TaxRegime
         return [];
     }
 
+    /**
+     * Legal statements an exempt supply's invoice must carry under this regime.
+     *
+     * Empty by default, for the same reason as {@see reverseChargeMentions()}: only a
+     * regime knows whether its law requires wording.
+     *
+     * @return list<InvoiceMention>
+     */
+    protected function exemptMentions(TaxQuery $query): array
+    {
+        return [];
+    }
+
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
         if ($query->isCrossBorder() && $query->isBusiness() && $query->customerTaxIdValidated && $this->reverseChargeApplies($query)) {
@@ -124,17 +137,20 @@ abstract class DestinationTaxRegime implements TaxRegime
     {
         [$net, $tax, $gross] = $this->split($query, $rate);
 
-        // No breakdown on a zero-rated supply: there is no tax to split, and a
-        // stack of zero shares would imply a decomposition that says nothing.
+        // No breakdown on a zero-rated or exempt supply: there is no tax to split,
+        // and a stack of zero shares would imply a decomposition that says nothing.
         if ($rate->isZero()) {
+            $exempt = $this->treatmentFor($rate) === TaxTreatment::Exempt;
+
             return new TaxAssessment(
-                treatment: TaxTreatment::ZeroRated,
+                treatment: $exempt ? TaxTreatment::Exempt : TaxTreatment::ZeroRated,
                 net: $net,
                 tax: $tax,
                 gross: $gross,
                 placeOfSupply: $place,
                 rate: $rate,
-                reason: sprintf('%s: zero-rated in %s.', $this->label(), $place->country->value),
+                reason: sprintf('%s: %s in %s.', $this->label(), $exempt ? 'exempt' : 'zero-rated', $place->country->value),
+                mentions: $exempt ? $this->exemptMentions($query) : [],
             );
         }
 

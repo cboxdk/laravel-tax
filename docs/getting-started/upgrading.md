@@ -110,6 +110,10 @@ applications only bind them.
 | `NexusThresholds`, `SourcingRules` | take an optional `?DateTimeImmutable $at = null`; a one-argument call still means today |
 | `ReturnAggregator` | `aggregate($assessments, ?ReturnPeriod $period = null)` |
 
+`RateKind` gained `Exempt`. A `match` over it with no default needs the case; code
+comparing `=== RateKind::Zero` to mean "charges nothing" should use
+`$kind->isNil()`.
+
 A rate source that cannot answer must now **throw** `RateSourceUnavailable` rather
 than return `null`: null meant four different things, and one of them was silently
 pricing history at today's rate.
@@ -157,9 +161,17 @@ treatment an application in production is already producing.
   per article, so two $150 coats on one line are two coats now: set
   `SupplyLine::$quantity` / `TaxQuery::$quantity`, which defaults to 1.
 - **Intra-EU B2B goods invoice as an exempt Art. 138 supply**, not an Art. 196
-  reverse charge. The treatment stays `ReverseCharge`, so code reading
-  `isReverseCharge()` is unaffected, but the invoice wording and the EC Sales List
-  filing change.
+  reverse charge. The treatment is `IntraCommunitySupply`; `isReverseCharge()` still
+  answers true for it, so code asking "does the seller charge?" is unaffected, but
+  the invoice wording, the return box and the EC Sales List filing change.
+- **Exempt is no longer reported as zero-rated.** Where the register files a supply
+  as exempt — financial services, insurance, education, most healthcare — the
+  treatment is `Exempt` and the rate's kind `RateKind::Exempt`; a zero-rated supply
+  stays `ZeroRated`. The amount is 0 either way, and the return box and the input-tax
+  deduction are not. Outside the EU a 0% rate used to come back as `Standard`; it is
+  now `ZeroRated` or `Exempt` there too. An exempt EU invoice carries an `exempt`
+  mention. A seller not registered in the country now gets `NotRegistered` for these
+  supplies too, as it already did for standard-rated ones.
 - **A service is taxed where it is performed** — hotels, events, works, restaurant
   and passenger transport — for business customers as much as consumers. Without
   `performedAt` the supplier's country is assumed and flagged

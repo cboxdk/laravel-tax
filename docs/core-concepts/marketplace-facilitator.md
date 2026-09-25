@@ -44,9 +44,9 @@ Four treatments produce a zero charge and they mean opposite things:
 
 | Treatment | What it says |
 | --- | --- |
-| `Exempt` | No tax was due |
+| `Exempt` | No tax was due: the supply is outside tax |
 | `NotRegistered` | This seller had no obligation in that state |
-| `ZeroRated` | A real 0% rate applied |
+| `ZeroRated` | Taxable, at a real 0% rate |
 | **`MarketplaceFacilitated`** | **Tax was due, and somebody else remitted it** |
 
 A fifth outcome charges rather than zeroing: `Standard` with

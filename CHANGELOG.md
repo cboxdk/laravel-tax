@@ -94,6 +94,34 @@ minor bumps may carry additive features; patches are fixes and docs).
   point row. It now says the path comes from the installed register, and shows
   what release 293 publishes.
 
+### Fixed — exempt is not zero-rated
+
+- **Every exempt supply was reported as zero-rated.** The register files the two as
+  different kinds — Ireland zero-rates books and exempts financial services; 516 EU
+  rows are exempt and 222 zero — and the engine folded both into `RateKind::Zero`,
+  so the treatment was `ZeroRated` either way. Both are 0% to a price; to a return
+  they are opposite facts. Zero-rating keeps the seller's right to deduct the input
+  tax behind the sale, exemption removes it, and they go in different boxes. The
+  kind is now carried as `RateKind::Exempt` and the treatment is `Exempt`.
+- **Outside the EU a 0% rate was a standard-rated supply.** Canada, India, Malaysia
+  and the US reported every rate as `Standard`, so an exempt medical service in
+  Ontario came back standard-rated at 0%. Every regime now reads the treatment off
+  the rate: `Exempt`, `ZeroRated` or `Standard`.
+- **An exempt EU invoice says so.** Art. 226(11) requires it. The register names no
+  article per rate, and the Directive accepts "any other reference indicating that
+  the supply is exempt", so the mention (`exempt`, "Exempt from VAT") carries no
+  citation rather than one guessed from the category.
+- **A seller not registered in the country collected zero-rated and exempt supplies
+  anyway.** The collection gate only looked at standard-rated supplies, so a
+  zero-rated sale by a seller with no number there went on its return. It now
+  answers `NotRegistered` for any supply the rate decided; a reverse charge and a
+  territory export are untouched.
+
+### Changed
+
+- `RateKind` gained `Exempt`, and `RateKind::isNil()` answers "charges nothing" for
+  both. A `match` over `RateKind` without a default needs the new case.
+
 ### Fixed — release 297, Illinois by address
 
 - **A split ZIP with no answer of its own sent the seller to sync.** Illinois files

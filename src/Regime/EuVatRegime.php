@@ -167,6 +167,25 @@ class EuVatRegime extends DestinationTaxRegime
     }
 
     /**
+     * @return list<InvoiceMention>
+     */
+    protected function exemptMentions(TaxQuery $query): array
+    {
+        // Art. 226(11) requires an exempt supply's invoice to reference "the
+        // applicable provision of this Directive, or ... the corresponding national
+        // provision, or any other reference indicating that the supply is exempt".
+        // The register names no article per rate, so the mention is the last of
+        // those — the words — and not a citation guessed from the category. A host
+        // that knows its own legal basis prints it beside these.
+        return [
+            new InvoiceMention(
+                code: 'exempt',
+                text: 'Exempt from VAT',
+            ),
+        ];
+    }
+
+    /**
      * Art. 226(11a): an invoice for a reverse-charged supply must carry the words
      * **"Reverse charge"**. Not a paraphrase, and not the audit-trail reason — the
      * CJEU held in *Luxury Trust Automobil* (C-247/21) that a missing mention

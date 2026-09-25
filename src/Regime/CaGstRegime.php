@@ -61,7 +61,7 @@ readonly class CaGstRegime implements TaxRegime
         [$net, $tax, $gross] = $this->split($query, $rate);
 
         return new TaxAssessment(
-            treatment: TaxTreatment::Standard,
+            treatment: $this->treatmentFor($rate),
             net: $net,
             tax: $tax,
             gross: $gross,

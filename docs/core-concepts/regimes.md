@@ -68,6 +68,19 @@ reports it as `TaxTreatment::IntraCommunitySupply`, and
 | --- | --- | --- |
 | Goods, DE → validated FR business | `IntraCommunitySupply` | Exempt intra-Community supply (Art. 138) |
 | Service, DE → validated FR business | `ReverseCharge` | Reverse charge (Art. 196) |
+| Financial service, IE → IE consumer | `Exempt` | Exempt from VAT (Art. 226(11)) |
+| Printed book, IE → IE consumer | `ZeroRated` | none |
+
+**Exempt is not zero-rated.** Both charge 0%, and they are opposite facts to a
+return: a zero-rated supply is taxable at nothing, so the seller keeps the right to
+deduct the input tax behind it; an exempt supply is outside tax, and the deduction
+goes with it. They are filed in different boxes. The register files the two as
+different kinds, the rate carries it as `RateKind::Zero` or `RateKind::Exempt`, and
+the treatment follows — in every regime, so a Canadian exempt medical service is
+`Exempt` and a zero-rated grocery `ZeroRated`. An exempt EU invoice carries the
+`exempt` mention. The register names no article per rate, and Art. 226(11) accepts
+"any other reference indicating that the supply is exempt", so the mention is the
+words alone; a host that knows the provision it relies on prints it beside them.
 
 ## Sub-federal regimes
 

@@ -56,7 +56,7 @@ readonly class IndiaGstRegime implements TaxRegime
         $component = $this->isIntraState($query) ? 'CGST+SGST' : 'IGST';
 
         return new TaxAssessment(
-            treatment: TaxTreatment::Standard,
+            treatment: $this->treatmentFor($rate),
             net: $net,
             tax: $tax,
             gross: $gross,

@@ -317,7 +317,9 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         return new TaxRate(
             $total->strippedOfTrailingZeros(),
             match (true) {
-                $total->isZero() => RateKind::Zero,
+                // Nothing due at either level: the federal band says which kind of
+                // nothing. An exempt GST supply is exempt from the HST built on it.
+                $total->isZero() => $federal->kind === RateKind::Exempt ? RateKind::Exempt : RateKind::Zero,
                 $federal->percentage->isZero() => RateKind::Standard,
                 default => $federal->kind,
             },
@@ -600,7 +602,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             return $rate;
         }
 
-        if (($record['category'] ?? null) === null && $rate->kind === RateKind::Zero) {
+        if (($record['category'] ?? null) === null && $rate->kind->isNil()) {
             // AN UNTYPED SHARE FOLLOWS THE CATEGORY IT IS ADDED TO. Brazil files a
             // 0.1% IBS component with no category — the general local share — beside
             // zero-rated rows for basic food, books and newspapers, and adding it to
@@ -857,12 +859,12 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
     }
 
     /**
-     * The register's band, in the three the engine models.
+     * The register's band, in the four the engine models.
      *
      * `zero` and `exempt` are separate facts — zero-rating preserves the right to
-     * deduct input tax and exemption removes it — but both are 0% to a price, and
-     * the engine's {@see RateKind} carries the price side. The distinction survives
-     * in the provenance rather than being lost.
+     * deduct input tax and exemption removes it — and both are kept. They were once
+     * folded into one on the grounds that both are 0% to a price, and every exempt
+     * supply then went on the return as zero-rated.
      *
      * @param  array<string, mixed>  $rate
      */
@@ -870,7 +872,8 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
     {
         return match ($rate['kind'] ?? null) {
             'standard', 'combined' => RateKind::Standard,
-            'zero', 'exempt' => RateKind::Zero,
+            'zero' => RateKind::Zero,
+            'exempt' => RateKind::Exempt,
             default => RateKind::Reduced,
         };
     }
