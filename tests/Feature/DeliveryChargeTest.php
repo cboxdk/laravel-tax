@@ -11,6 +11,7 @@ use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
+use Cbox\Tax\ValueObjects\LineAssessment;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
@@ -24,19 +25,17 @@ use Cbox\Tax\ValueObjects\TaxOrder;
  * visible in one order: the identical courier doing the identical work is a 5.5%
  * cost for the groceries and a 20% one for the laptop.
  */
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 
-    $this->order = function (array $lines, ApportionmentBasis $basis = ApportionmentBasis::NetValue): TaxOrder {
-        return new TaxOrder(
-            place: test()->geo->find(new CountryCode('FR')),
-            customer: CustomerType::Consumer,
-            seller: new SellerRegistrations(new CountryCode('FR'), [new SellerRegistration(new CountryCode('FR'))]),
-            pricing: Pricing::Exclusive,
-            lines: $lines,
-            apportionment: $basis,
-        );
-    };
+    $this->order = (fn (array $lines, ApportionmentBasis $basis = ApportionmentBasis::NetValue): TaxOrder => new TaxOrder(
+        place: test()->geo->find(new CountryCode('FR')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('FR'), [new SellerRegistration(new CountryCode('FR'))]),
+        pricing: Pricing::Exclusive,
+        lines: $lines,
+        apportionment: $basis,
+    ));
 });
 
 function deliveryLine(string $amount): SupplyLine
@@ -56,7 +55,7 @@ function assessOrder(TaxOrder $order): array
     return $byId;
 }
 
-it('charges delivery at the rate of the single thing it delivers', function () {
+it('charges delivery at the rate of the single thing it delivers', function (): void {
     // The everyday case. Books at 5.5% means the postage is 5.5% too — not 20%,
     // which is what happens today when a caller has to pick a class for it.
     $lines = assessOrder(($this->order)([
@@ -68,7 +67,7 @@ it('charges delivery at the rate of the single thing it delivers', function () {
         ->and((string) $lines['shipping']->rate?->percentage)->toBe('5.5');
 });
 
-it('splits delivery across a mixed cart by net value', function () {
+it('splits delivery across a mixed cart by net value', function (): void {
     // 100 of groceries at 5.5% and 300 of electronics at 20%, so a quarter of the
     // postage rides at the reduced rate: 5.00 × 5.5% + 15.00 × 20% = 0.275 + 3.00.
     $lines = assessOrder(($this->order)([
@@ -86,7 +85,7 @@ it('splits delivery across a mixed cart by net value', function () {
         ->and($lines['shipping']->reason)->toContain('20%');
 });
 
-it('splits equally when the document says to', function () {
+it('splits equally when the document says to', function (): void {
     // Value tracks nothing about what a parcel costs to move. Two identical boxes,
     // one cheap and one dear, and an equal split is the defensible one — which is
     // why the basis is the caller's to state.
@@ -101,7 +100,7 @@ it('splits equally when the document says to', function () {
     expect((string) $lines['shipping']->tax->getAmount())->toBe('2.55');
 });
 
-it('never loses a minor unit to rounding', function () {
+it('never loses a minor unit to rounding', function (): void {
     // Three lines and a charge that does not divide: the shares must still sum to
     // the charge exactly. An invoice whose lines do not add up to its total is what
     // an auditor opens with.
@@ -116,7 +115,7 @@ it('never loses a minor unit to rounding', function () {
         ->and((string) $lines['shipping']->gross->getAmount())->toBe('10.55');
 });
 
-it('carries the sign on a refunded delivery', function () {
+it('carries the sign on a refunded delivery', function (): void {
     // Returning the order returns the postage, and it must refund the tax that was
     // charged on it rather than quietly refunding the net alone.
     $lines = assessOrder(($this->order)([
@@ -127,7 +126,7 @@ it('carries the sign on a refunded delivery', function () {
     expect((string) $lines['shipping']->tax->getAmount())->toBe('-0.55');
 });
 
-it('preserves delivery pricing, including overrides and refunds', function (Pricing $pricing, ?Pricing $override, string $amount, string $net, string $tax, string $gross) {
+it('preserves delivery pricing, including overrides and refunds', function (Pricing $pricing, ?Pricing $override, string $amount, string $net, string $tax, string $gross): void {
     $order = new TaxOrder(
         place: $this->geo->find(new CountryCode('DK')),
         customer: CustomerType::Consumer,
@@ -152,7 +151,7 @@ it('preserves delivery pricing, including overrides and refunds', function (Pric
     'inclusive refund' => [Pricing::Inclusive, null, '-12.50', '-10.00', '-2.50', '-12.50'],
 ]);
 
-it('can apportion mixed inclusive delivery by gross selling prices', function () {
+it('can apportion mixed inclusive delivery by gross selling prices', function (): void {
     $document = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
         place: $this->geo->find(new CountryCode('FR')),
         customer: CustomerType::Consumer,
@@ -175,11 +174,11 @@ it('can apportion mixed inclusive delivery by gross selling prices', function ()
         ->and((string) $document->gross()->getAmount())->toBe('92.00');
 });
 
-it('refuses an order that is nothing but delivery', function () {
+it('refuses an order that is nothing but delivery', function (): void {
     ($this->order)([deliveryLine('10.00')]);
 })->throws(InvalidTaxOrder::class, 'nothing for it to be delivering');
 
-it('leaves the caller line order intact', function () {
+it('leaves the caller line order intact', function (): void {
     // Delivery is assessed after the goods out of necessity. A host mapping
     // assessments onto invoice rows by position must not find them shuffled.
     $document = app(OrderTaxCalculator::class)->assessOrder(($this->order)([
@@ -187,6 +186,6 @@ it('leaves the caller line order intact', function () {
         new SupplyLine('food', Money::of('100.00', 'EUR'), TaxClass::Groceries),
     ]));
 
-    expect(array_map(static fn ($line): string => $line->id, $document->lines))
+    expect(array_map(static fn (LineAssessment $line): string => $line->id, $document->lines))
         ->toBe(['shipping', 'food']);
 });

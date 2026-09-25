@@ -17,7 +17,7 @@ use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxExemption;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -34,7 +34,7 @@ function dkB2c(?TaxExemption $exemption = null): TaxQuery
     );
 }
 
-it('exempts a would-be standard supply when a valid exemption covers the jurisdiction', function () {
+it('exempts a would-be standard supply when a valid exemption covers the jurisdiction', function (): void {
     $a = $this->tax->assess(dkB2c($this->taxExemption(
         type: ExemptionType::Resale,
         reference: 'RESALE-DK-001',
@@ -51,7 +51,7 @@ it('exempts a would-be standard supply when a valid exemption covers the jurisdi
         ->and($a->reason)->toContain('RESALE-DK-001');
 });
 
-it('charges the normal standard tax when no exemption is supplied (BC)', function () {
+it('charges the normal standard tax when no exemption is supplied (BC)', function (): void {
     $a = $this->tax->assess(dkB2c());
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
@@ -60,7 +60,7 @@ it('charges the normal standard tax when no exemption is supplied (BC)', functio
         ->and($a->exemption)->toBeNull();
 });
 
-it('does not exempt when the exemption covers a different jurisdiction', function () {
+it('does not exempt when the exemption covers a different jurisdiction', function (): void {
     $a = $this->tax->assess(dkB2c($this->taxExemption(
         reference: 'RESALE-FR-001',
         countries: ['FR'], // buyer is in DK
@@ -71,7 +71,7 @@ it('does not exempt when the exemption covers a different jurisdiction', functio
         ->and($a->exemption)->toBeNull();
 });
 
-it('does not exempt when the exemption is expired', function () {
+it('does not exempt when the exemption is expired', function (): void {
     $a = $this->tax->assess(dkB2c($this->taxExemption(
         reference: 'RESALE-DK-EXPIRED',
         countries: ['DK'],
@@ -83,7 +83,7 @@ it('does not exempt when the exemption is expired', function () {
         ->and($a->exemption)->toBeNull();
 });
 
-it('does not exempt when the exemption is not yet valid', function () {
+it('does not exempt when the exemption is not yet valid', function (): void {
     $a = $this->tax->assess(dkB2c($this->taxExemption(
         reference: 'RESALE-DK-FUTURE',
         countries: ['DK'],
@@ -94,7 +94,7 @@ it('does not exempt when the exemption is not yet valid', function () {
         ->and((string) $a->tax->getAmount())->toBe('25.00');
 });
 
-it('honours an open-ended exemption whose window contains now', function () {
+it('honours an open-ended exemption whose window contains now', function (): void {
     $a = $this->tax->assess(dkB2c($this->taxExemption(
         reference: 'RESALE-DK-OPEN',
         countries: ['DK'],
@@ -105,7 +105,7 @@ it('honours an open-ended exemption whose window contains now', function () {
     $this->assertExempt($a, 'RESALE-DK-OPEN');
 });
 
-it('exempts a US state supply when the certificate covers that subdivision', function () {
+it('exempts a US state supply when the certificate covers that subdivision', function (): void {
     $query = new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -124,7 +124,7 @@ it('exempts a US state supply when the certificate covers that subdivision', fun
     $this->assertExempt($this->tax->assess($query), 'CA-RESALE-42');
 });
 
-it('does not exempt a US state supply from a certificate for a different state', function () {
+it('does not exempt a US state supply from a certificate for a different state', function (): void {
     $query = new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -146,7 +146,7 @@ it('does not exempt a US state supply from a certificate for a different state',
         ->and($a->exemption)->toBeNull();
 });
 
-it('does not let a country-level certificate exempt a sub-federal state supply', function () {
+it('does not let a country-level certificate exempt a sub-federal state supply', function (): void {
     $query = new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -164,7 +164,7 @@ it('does not let a country-level certificate exempt a sub-federal state supply',
     expect($this->tax->assess($query)->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('leaves a reverse-charge supply untouched even with a covering exemption', function () {
+it('leaves a reverse-charge supply untouched even with a covering exemption', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -181,7 +181,7 @@ it('leaves a reverse-charge supply untouched even with a covering exemption', fu
         ->and($a->exemption)->toBeNull();
 });
 
-it('leaves a not-registered US supply untouched even with a covering exemption', function () {
+it('leaves a not-registered US supply untouched even with a covering exemption', function (): void {
     $query = new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -199,7 +199,7 @@ it('leaves a not-registered US supply untouched even with a covering exemption',
         ->and($a->exemption)->toBeNull();
 });
 
-it('matches coverage against the origin-sourced place for EU micro-business relief', function () {
+it('matches coverage against the origin-sourced place for EU micro-business relief', function (): void {
     // Below-threshold DE micro-business selling B2C into FR sources at origin (DE),
     // so an exemption must cover DE — the taxed jurisdiction — not FR.
     $seller = new SellerRegistrations(
@@ -220,7 +220,7 @@ it('matches coverage against the origin-sourced place for EU micro-business reli
     $this->assertExempt($exemptDe, 'DE-EXEMPT');
 });
 
-it('honours a certificate for the whole of its last day', function () {
+it('honours a certificate for the whole of its last day', function (): void {
     // Built from a date column, the end is midnight; compared as an instant, the
     // certificate expired one second into its last valid day.
     $exemption = new TaxExemption(

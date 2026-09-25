@@ -28,7 +28,7 @@ function texas(): Jurisdiction
         ?? throw new RuntimeException('US-TX is not resolvable.');
 }
 
-it('names itself when no rate is published', function () {
+it('names itself when no rate is published', function (): void {
     $refusal = UnresolvedTaxRate::for(texas());
 
     expect($refusal->reason())->toBe(RefusalReason::RateUnavailable)
@@ -37,7 +37,7 @@ it('names itself when no rate is published', function () {
 
 // The two that share a class are NOT the same to a caller, and a class-level answer
 // would have to lie about one of them.
-it('tells a disagreement apart from a missing fact', function () {
+it('tells a disagreement apart from a missing fact', function (): void {
     $undetermined = UnresolvedProductTaxability::for(texas(), TaxClass::Clothing);
     $conditional = UnresolvedProductTaxability::conditional(texas(), TaxClass::Clothing);
 
@@ -49,7 +49,7 @@ it('tells a disagreement apart from a missing fact', function () {
 // be fixed and retried; where it is false, retrying is pointless and the honest
 // response is to fall back and flag the line. Telling a caller to try again on a
 // jurisdiction we do not model would be a lie they would act on.
-it('separates what the caller can fix from what they cannot', function () {
+it('separates what the caller can fix from what they cannot', function (): void {
     $closeable = array_values(array_filter(
         RefusalReason::cases(),
         static fn (RefusalReason $r): bool => $r->callerCanClose(),
@@ -62,7 +62,7 @@ it('separates what the caller can fix from what they cannot', function () {
     ]);
 });
 
-it('gives every reason a remedy worth reading', function () {
+it('gives every reason a remedy worth reading', function (): void {
     foreach (RefusalReason::cases() as $reason) {
         expect($reason->remedy())->toBeString()
             ->and(strlen($reason->remedy()))->toBeGreaterThan(60);
@@ -71,7 +71,7 @@ it('gives every reason a remedy worth reading', function () {
 
 // A remedy that says "try again" on something the caller cannot change is the exact
 // lie this enum exists to prevent, so the wording is held to the flag beside it.
-it('does not tell a caller to act on something they cannot close', function () {
+it('does not tell a caller to act on something they cannot close', function (): void {
     foreach (RefusalReason::cases() as $reason) {
         if ($reason->callerCanClose()) {
             continue;
@@ -84,7 +84,7 @@ it('does not tell a caller to act on something they cannot close', function () {
 // Every Refusal in the package must implement reason(). Without this a new one
 // compiles, throws, and reaches an HTTP layer as an uncategorised 422 — which is
 // where this started.
-it('leaves no refusal unable to name itself', function () {
+it('leaves no refusal unable to name itself', function (): void {
     $silent = [];
 
     foreach (glob(dirname(__DIR__, 2).'/src/Exceptions/*.php') ?: [] as $file) {

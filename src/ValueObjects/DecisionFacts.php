@@ -31,7 +31,7 @@ final readonly class DecisionFacts
      */
     public function __construct(array $values = [])
     {
-        foreach ($values as $name => $value) {
+        foreach (array_keys($values) as $name) {
             self::assertName($name);
         }
 

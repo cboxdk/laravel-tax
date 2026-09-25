@@ -14,12 +14,12 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
 
-it('charges India IGST at 18% on a foreign B2C digital supply (OIDAR)', function () {
+it('charges India IGST at 18% on a foreign B2C digital supply (OIDAR)', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -36,7 +36,7 @@ it('charges India IGST at 18% on a foreign B2C digital supply (OIDAR)', function
         ->and($a->reason)->toContain('IGST');
 });
 
-it('reverse-charges an India B2B supply to a GST-registered recipient', function () {
+it('reverse-charges an India B2B supply to a GST-registered recipient', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -50,7 +50,7 @@ it('reverse-charges an India B2B supply to a GST-registered recipient', function
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
 
-it('charges Singapore GST at 9%', function () {
+it('charges Singapore GST at 9%', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'SGD'),
         pricing: Pricing::Exclusive,

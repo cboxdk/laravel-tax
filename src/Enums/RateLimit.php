@@ -238,13 +238,6 @@ enum RateLimit: string
         // ConditionsUnevaluated is closable now that conditions are read: a commodity
         // code or a fact settles every typed one. The few published only as prose are
         // not, and CatalogueAudit says which per product — an enum cannot.
-        return $this === self::HeadingAmbiguous
-            || $this === self::ItemUnmapped
-            || $this === self::ClassificationInferred
-            || $this === self::PerformanceLocationAssumed
-            || $this === self::TerritoryUnplaced
-            || $this === self::ConditionsUnevaluated
-            || $this === self::PostcodeSpansLocalities
-            || $this === self::DistrictNeedsPoint;
+        return in_array($this, [self::HeadingAmbiguous, self::ItemUnmapped, self::ClassificationInferred, self::PerformanceLocationAssumed, self::TerritoryUnplaced, self::ConditionsUnevaluated, self::PostcodeSpansLocalities, self::DistrictNeedsPoint], true);
     }
 }

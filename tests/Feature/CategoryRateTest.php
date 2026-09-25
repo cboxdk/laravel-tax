@@ -14,11 +14,11 @@ use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
-it('ships no reduced bands by default — every category resolves the standard rate', function () {
+it('ships no reduced bands by default — every category resolves the standard rate', function (): void {
     $source = rateSourceFor([]);
     $fr = $this->geo->find(new CountryCode('FR'));
 
@@ -30,7 +30,7 @@ it('ships no reduced bands by default — every category resolves the standard r
         ->and((string) $digital->percentage)->toBe('20');
 });
 
-it('resolves a configured reduced band for a category, else the standard rate', function () {
+it('resolves a configured reduced band for a category, else the standard rate', function (): void {
     // Test-source band, not shipped national data: a reduced digital-service rate in FR.
     $source = rateSourceFor([], [
         'FR:digital_service' => new RateBand('5.5', RateKind::Reduced),
@@ -46,7 +46,7 @@ it('resolves a configured reduced band for a category, else the standard rate', 
         ->and($standard->kind)->toBe(RateKind::Standard);
 });
 
-it('resolves a zero band and leaves other jurisdictions on standard', function () {
+it('resolves a zero band and leaves other jurisdictions on standard', function (): void {
     $source = rateSourceFor([], [
         'DK:digital_service' => new RateBand('0', RateKind::Zero),
     ]);
@@ -59,7 +59,7 @@ it('resolves a zero band and leaves other jurisdictions on standard', function (
         ->and((string) $de->percentage)->toBe('19'); // no band -> standard
 });
 
-it('drives a reduced band end-to-end through the calculator', function () {
+it('drives a reduced band end-to-end through the calculator', function (): void {
     $calc = $this->taxCalculator(null, ['FR:digital_service' => new RateBand('5.5', RateKind::Reduced)]);
 
     $a = $calc->assess(new TaxQuery(

@@ -14,7 +14,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -31,7 +31,7 @@ function deToFrB2c(?OssStatus $oss): TaxQuery
     );
 }
 
-it('sources at origin (German VAT) for a below-threshold, non-opted micro-business', function () {
+it('sources at origin (German VAT) for a below-threshold, non-opted micro-business', function (): void {
     $a = $this->tax->assess(deToFrB2c(new OssStatus(registered: false, thresholdExceeded: false)));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
@@ -40,7 +40,7 @@ it('sources at origin (German VAT) for a below-threshold, non-opted micro-busine
         ->and($a->reason)->toContain('origin');
 });
 
-it('sources at destination (French VAT) once the €10k threshold is exceeded', function () {
+it('sources at destination (French VAT) once the €10k threshold is exceeded', function (): void {
     $a = $this->tax->assess(deToFrB2c(new OssStatus(registered: false, thresholdExceeded: true)));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
@@ -48,21 +48,21 @@ it('sources at destination (French VAT) once the €10k threshold is exceeded', 
         ->and((string) $a->tax->getAmount())->toBe('20.00'); // FR 20%
 });
 
-it('sources at destination (French VAT) when the seller has opted into OSS', function () {
+it('sources at destination (French VAT) when the seller has opted into OSS', function (): void {
     $a = $this->tax->assess(deToFrB2c(new OssStatus(registered: true, thresholdExceeded: false)));
 
     expect($a->placeOfSupply->country->value)->toBe('FR')
         ->and((string) $a->tax->getAmount())->toBe('20.00');
 });
 
-it('defaults to destination when the seller asserts no OSS status', function () {
+it('defaults to destination when the seller asserts no OSS status', function (): void {
     $a = $this->tax->assess(deToFrB2c(null));
 
     expect($a->placeOfSupply->country->value)->toBe('FR')
         ->and((string) $a->tax->getAmount())->toBe('20.00');
 });
 
-it('leaves B2B reverse-charge unchanged regardless of OSS status', function () {
+it('leaves B2B reverse-charge unchanged regardless of OSS status', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -77,7 +77,7 @@ it('leaves B2B reverse-charge unchanged regardless of OSS status', function () {
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
 
-it('does not grant origin relief to a non-EU seller shipping into the EU', function () {
+it('does not grant origin relief to a non-EU seller shipping into the EU', function (): void {
     // A US micro-business selling B2C into France must charge destination VAT — the
     // €10k relief is for EU-established sellers only. Registered in France so it is
     // its tax to collect; below the threshold, so relief WOULD apply to an EU seller.
@@ -93,7 +93,7 @@ it('does not grant origin relief to a non-EU seller shipping into the EU', funct
         ->and((string) $a->tax->getAmount())->toBe('20.00');
 });
 
-it('keeps a domestic German B2C supply on German VAT', function () {
+it('keeps a domestic German B2C supply on German VAT', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,

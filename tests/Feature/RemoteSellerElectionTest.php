@@ -22,7 +22,7 @@ use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyRoute;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->rates = app(TaxRateSource::class);
@@ -72,7 +72,7 @@ function electionQuery(
 // The two mechanics
 // ---------------------------------------------------------------------------
 
-it('prices a remote Alabama sale at the flat 8% under an elected SSUT', function () {
+it('prices a remote Alabama sale at the flat 8% under an elected SSUT', function (): void {
     $assessment = $this->regime->assess(electionQuery('US-AL'), $this->rates);
 
     // Flat total: 8% replaces the whole state+local stack — never AL's 4%
@@ -85,7 +85,7 @@ it('prices a remote Alabama sale at the flat 8% under an elected SSUT', function
         ->and($assessment->reason)->toContain('40-23-193');
 });
 
-it('prices a remote Texas sale at state plus the single local rate', function () {
+it('prices a remote Texas sale at state plus the single local rate', function (): void {
     $assessment = $this->regime->assess(electionQuery('US-TX'), $this->rates);
 
     // 6.25% state (from the dataset, not hard-coded) + 1.75% elected local.
@@ -99,7 +99,7 @@ it('prices a remote Texas sale at state plus the single local rate', function ()
 // The election is the seller's, and only a remote supply is covered
 // ---------------------------------------------------------------------------
 
-it('prices the ordinary path when the seller has not elected', function () {
+it('prices the ordinary path when the seller has not elected', function (): void {
     $assessment = $this->regime->assess(electionQuery('US-TX', elected: false), $this->rates);
 
     // Opt-in by construction: without the scheme nothing changes — the state
@@ -109,7 +109,7 @@ it('prices the ordinary path when the seller has not elected', function () {
         ->and((string) $assessment->rate?->percentage)->toBe('6.25');
 });
 
-it('bypasses the election for a supply shipped from inside the state', function () {
+it('bypasses the election for a supply shipped from inside the state', function (): void {
     $assessment = $this->regime->assess(electionQuery('US-TX', shipFromState: 'US-TX'), $this->rates);
 
     // Shipped from within Texas the seller is not remote for this supply — the
@@ -121,14 +121,14 @@ it('bypasses the election for a supply shipped from inside the state', function 
 // Refusals: an asserted election nothing can price
 // ---------------------------------------------------------------------------
 
-it('refuses a Texas supply dated outside the published determination', function () {
+it('refuses a Texas supply dated outside the published determination', function (): void {
     // The 2026 figure expires 2026-12-31; pricing 2027 with it would charge a
     // rate nobody published, and pricing as if unelected would charge rates the
     // election replaced.
     $this->regime->assess(electionQuery('US-TX', on: '2027-02-01'), $this->rates);
 })->throws(UnresolvedTaxRate::class, 'elected');
 
-it('refuses an asserted election in a state that publishes no scheme', function () {
+it('refuses an asserted election in a state that publishes no scheme', function (): void {
     $this->regime->assess(electionQuery('US-NY'), $this->rates);
 })->throws(UnresolvedTaxRate::class, 'elected');
 
@@ -136,7 +136,7 @@ it('refuses an asserted election in a state that publishes no scheme', function 
 // The gates above the rate still speak first
 // ---------------------------------------------------------------------------
 
-it('still exempts a category the state does not tax before any election rate', function () {
+it('still exempts a category the state does not tax before any election rate', function (): void {
     // SaaS is not taxable in California; an elected scheme (none exists there,
     // but the gate order is the point) must never turn exempt into 8%.
     $assessment = $this->regime->assess(

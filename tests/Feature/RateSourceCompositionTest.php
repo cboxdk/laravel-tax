@@ -15,17 +15,17 @@ use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
-it('chains sources and returns the first hit', function () {
+it('chains sources and returns the first hit', function (): void {
     $chain = new ChainTaxRateSource([rateSourceFor([]), rateSourceFor(['DK' => '25'])]);
 
     expect((string) $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods)->percentage)->toBe('25');
 });
 
-it('caches the resolved rate so the inner source is queried once', function () {
+it('caches the resolved rate so the inner source is queried once', function (): void {
     $inner = new class implements TaxRateSource
     {
         public int $calls = 0;
@@ -70,7 +70,7 @@ function brokenSource(): TaxRateSource
     };
 }
 
-it('still answers from a fallback when the preferred source is down', function () {
+it('still answers from a fallback when the preferred source is down', function (): void {
     // Falling back is right — the snapshot is real, reviewed data. What was wrong
     // was doing it invisibly.
     $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DK' => '25'])]);
@@ -80,7 +80,7 @@ it('still answers from a fallback when the preferred source is down', function (
     expect((string) $rate?->percentage)->toBe('25');
 });
 
-it('marks that fallback as degraded, so it cannot pass for a clean answer', function () {
+it('marks that fallback as degraded, so it cannot pass for a clean answer', function (): void {
     $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DK' => '25'])]);
 
     $rate = $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods);
@@ -91,7 +91,7 @@ it('marks that fallback as degraded, so it cannot pass for a clean answer', func
         ->and($rate?->source)->toContain('connection refused');
 });
 
-it('leaves a clean fallback alone', function () {
+it('leaves a clean fallback alone', function (): void {
     // A source with nothing to say is not a fault, and the chain moving past it is
     // the behaviour that has always been correct. Nothing about that result is
     // degraded, and marking it so would cry wolf on every normal lookup.
@@ -101,7 +101,7 @@ it('leaves a clean fallback alone', function () {
         ->not->toBe(Confidence::LowConfidence);
 });
 
-it('refuses outright when nothing answered and something was broken', function () {
+it('refuses outright when nothing answered and something was broken', function (): void {
     // The original bug in its purest form. Returning null here tells the caller
     // "there is no rate for this jurisdiction" — a statement about the world —
     // when the truth is "we could not find out", a statement about us. The engine
@@ -109,11 +109,11 @@ it('refuses outright when nothing answered and something was broken', function (
     // feed is down.
     $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DE' => '19'])]);
 
-    expect(fn () => $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))
+    expect(fn (): ?\Cbox\Tax\ValueObjects\TaxRate => $chain->rateFor($this->geo->find(new CountryCode('DK')), TaxClass::GeneralGoods))
         ->toThrow(RateSourceUnavailable::class);
 });
 
-it('names the source that failed, not just that something did', function () {
+it('names the source that failed, not just that something did', function (): void {
     $chain = new ChainTaxRateSource([brokenSource(), rateSourceFor(['DE' => '19'])]);
 
     try {

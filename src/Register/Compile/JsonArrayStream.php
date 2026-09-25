@@ -48,7 +48,7 @@ final class JsonArrayStream
      * @param  resource  $stream
      */
     public function __construct(
-        private mixed $stream,
+        private readonly mixed $stream,
         int $chunk = 262144,
     ) {
         // Clamped rather than trusted: a zero-byte read loops for ever, which looks

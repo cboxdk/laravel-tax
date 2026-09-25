@@ -57,7 +57,7 @@ function gateQuery(string $seller, string $buyer, array $registeredIn = [], ?Oss
         pricing: Pricing::Exclusive,
         place: app(JurisdictionRepository::class)->find(new CountryCode($buyer)),
         customer: $customer,
-        seller: new SellerRegistrations(new CountryCode($seller), array_map(fn (string $cc) => new SellerRegistration(new CountryCode($cc)), $registeredIn), $oss),
+        seller: new SellerRegistrations(new CountryCode($seller), array_map(fn (string $cc): SellerRegistration => new SellerRegistration(new CountryCode($cc)), $registeredIn), $oss),
         category: $class,
         customerTaxIdValidated: $validated,
         suppliedAt: new DateTimeImmutable('2026-09-22'),

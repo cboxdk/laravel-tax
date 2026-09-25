@@ -44,13 +44,7 @@ readonly class SellerRegistrations
             return true;
         }
 
-        foreach ($this->registrations as $registration) {
-            if ($registration->country->equals($country) && $this->inForce($registration, $on)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->registrations, fn (SellerRegistration $registration): bool => $registration->country->equals($country) && $this->inForce($registration, $on));
     }
 
     /**
@@ -60,15 +54,9 @@ readonly class SellerRegistrations
      */
     public function isRegisteredInSubdivision(SubdivisionCode $subdivision, ?DateTimeInterface $on = null): bool
     {
-        foreach ($this->registrations as $registration) {
-            if ($registration->subdivision !== null
-                && $registration->subdivision->equals($subdivision)
-                && $this->inForce($registration, $on)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->registrations, fn (SellerRegistration $registration): bool => $registration->subdivision !== null
+            && $registration->subdivision->equals($subdivision)
+            && $this->inForce($registration, $on));
     }
 
     /**
@@ -81,16 +69,10 @@ readonly class SellerRegistrations
      */
     public function holdsSubdivisionScheme(SubdivisionCode $subdivision, string $scheme, ?DateTimeInterface $on = null): bool
     {
-        foreach ($this->registrations as $registration) {
-            if ($registration->subdivision !== null
-                && $registration->subdivision->equals($subdivision)
-                && $registration->scheme === $scheme
-                && $this->inForce($registration, $on)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->registrations, fn (SellerRegistration $registration): bool => $registration->subdivision !== null
+            && $registration->subdivision->equals($subdivision)
+            && $registration->scheme === $scheme
+            && $this->inForce($registration, $on));
     }
 
     /**
@@ -114,13 +96,7 @@ readonly class SellerRegistrations
      */
     public function hasScheme(string $scheme, ?DateTimeInterface $on = null): bool
     {
-        foreach ($this->registrations as $registration) {
-            if ($registration->scheme === $scheme && $this->inForce($registration, $on)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->registrations, fn (SellerRegistration $registration): bool => $registration->scheme === $scheme && $this->inForce($registration, $on));
     }
 
     /** The one-stop schemes that collect across the whole Union from one number. */
@@ -137,12 +113,6 @@ readonly class SellerRegistrations
      */
     public function holdsUnionScheme(?DateTimeInterface $on = null): bool
     {
-        foreach (self::UNION_SCHEMES as $scheme) {
-            if ($this->hasScheme($scheme, $on)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(self::UNION_SCHEMES, fn (string $scheme): bool => $this->hasScheme($scheme, $on));
     }
 }

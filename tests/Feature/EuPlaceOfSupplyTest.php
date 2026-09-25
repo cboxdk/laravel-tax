@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // Art. 58 for telecoms/broadcasting/electronic services, Art. 33(a) for goods —
 // not the rule. The engine had it the other way round.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -43,7 +43,7 @@ function euSupply(
     );
 }
 
-it('taxes a cross-border B2C consultancy where the SUPPLIER is established', function () {
+it('taxes a cross-border B2C consultancy where the SUPPLIER is established', function (): void {
     // A German consultancy invoicing a French consumer owes German VAT, and owes no
     // OSS obligation for that supply at all. The engine charged French VAT.
     $assessment = $this->tax->assess(euSupply('DE', 'FR', TaxClass::ProfessionalService));
@@ -53,7 +53,7 @@ it('taxes a cross-border B2C consultancy where the SUPPLIER is established', fun
         ->and((string) $assessment->tax->getAmount())->toBe('19.00');
 });
 
-it('keeps electronically supplied services at the customer, which is the carve-out', function () {
+it('keeps electronically supplied services at the customer, which is the carve-out', function (): void {
     // Art. 58. This is the case the old blanket rule got right, and it must not
     // move.
     $assessment = $this->tax->assess(euSupply('DE', 'FR', TaxClass::DigitalService));
@@ -62,14 +62,14 @@ it('keeps electronically supplied services at the customer, which is the carve-o
         ->and((string) $assessment->rate?->percentage)->toBe('20');
 });
 
-it('keeps goods at the customer under the distance-sales rule', function () {
+it('keeps goods at the customer under the distance-sales rule', function (): void {
     // Art. 33(a).
     $assessment = $this->tax->assess(euSupply('DE', 'FR', TaxClass::GeneralGoods));
 
     expect($assessment->placeOfSupply->country->value)->toBe('FR');
 });
 
-it('leaves B2B alone — the general rule there is the customer, and reverse charge handles it', function () {
+it('leaves B2B alone — the general rule there is the customer, and reverse charge handles it', function (): void {
     // Art. 44, and a validated cross-border B2B supply reverse-charges regardless.
     $assessment = $this->tax->assess(
         euSupply('DE', 'FR', TaxClass::ProfessionalService, CustomerType::Business),
@@ -79,7 +79,7 @@ it('leaves B2B alone — the general rule there is the customer, and reverse cha
         ->and((string) $assessment->tax->getAmount())->toBe('0.00');
 });
 
-it('taxes a domestic consultancy at home, unchanged', function () {
+it('taxes a domestic consultancy at home, unchanged', function (): void {
     $assessment = $this->tax->assess(euSupply('DE', 'DE', TaxClass::ProfessionalService));
 
     expect($assessment->placeOfSupply->country->value)->toBe('DE')
@@ -88,7 +88,7 @@ it('taxes a domestic consultancy at home, unchanged', function () {
 
 // ---- Art. 59c relief covers what it covers, and no more -------------------
 
-it('does not grant micro-business relief to a supply Art. 59c never covered', function () {
+it('does not grant micro-business relief to a supply Art. 59c never covered', function (): void {
     // Art. 59c disapplies Art. 33(a) and Art. 58 — goods and TBE services. It is not
     // a general small-seller exemption. For a general service the answer is the
     // supplier's country anyway under Art. 45, so the figure agrees; what changes is
@@ -111,7 +111,7 @@ it('does not grant micro-business relief to a supply Art. 59c never covered', fu
         ->and($optedIn->placeOfSupply->country->value)->toBe('DE');
 });
 
-it('still grants relief to the goods and TBE supplies it does cover', function () {
+it('still grants relief to the goods and TBE supplies it does cover', function (): void {
     $belowThreshold = new OssStatus(registered: false, thresholdExceeded: false);
 
     $digital = $this->tax->assess(euSupply('DE', 'FR', TaxClass::DigitalService, oss: $belowThreshold));
@@ -122,7 +122,7 @@ it('still grants relief to the goods and TBE supplies it does cover', function (
 
 // ---- The classification itself --------------------------------------------
 
-it('classifies every category under a place-of-supply rule', function () {
+it('classifies every category under a place-of-supply rule', function (): void {
     // Goods are the default, so a new category added without thought lands on
     // destination — which is right for goods and is where the old code put
     // everything anyway. The named ones are the ones that had to be decided.

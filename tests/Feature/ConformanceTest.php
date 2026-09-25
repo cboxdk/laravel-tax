@@ -21,6 +21,7 @@ use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\Territories\StaticEuTerritories;
+use Cbox\Tax\ValueObjects\LineAssessment;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
@@ -229,11 +230,11 @@ function conformanceFailures(TaxAssessment $got, array $expect): array
     }
 
     if (is_string($expect['confidence'] ?? null) && $got->rate?->confidence->value !== $expect['confidence']) {
-        $bad[] = "confidence: expected {$expect['confidence']}, got ".((string) $got->rate?->confidence->value);
+        $bad[] = "confidence: expected {$expect['confidence']}, got ".($got->rate?->confidence->value);
     }
 
     if (is_string($expect['limitedBy'] ?? null) && $got->rate?->limitedBy?->value !== $expect['limitedBy']) {
-        $bad[] = "limitedBy: expected {$expect['limitedBy']}, got ".((string) $got->rate?->limitedBy?->value);
+        $bad[] = "limitedBy: expected {$expect['limitedBy']}, got ".($got->rate?->limitedBy?->value);
     }
 
     if (($expect['hasNoBreakdown'] ?? false) === true && ($got->breakdown?->lines ?? []) !== []) {
@@ -268,7 +269,7 @@ function conformanceFailures(TaxAssessment $got, array $expect): array
     return $bad;
 }
 
-it('answers the published conformance corpus', function (string $id, array $vector) {
+it('answers the published conformance corpus', function (string $id, array $vector): void {
     $expect = is_array($vector['expect'] ?? null) ? $vector['expect'] : [];
     $query = is_array($vector['query'] ?? null) ? $vector['query'] : [];
 
@@ -311,14 +312,14 @@ function conformanceOrders(): array
 // promise this corpus makes about itself: the first order vector passed only because
 // the default source happened to answer 25% for Denmark too, so it asserted nothing.
 // Binding the fixture here is what makes an order vector mean what a line vector does.
-beforeEach(function () {
-    $this->app->bind(TaxRateSource::class, fn () => conformanceRates());
+beforeEach(function (): void {
+    $this->app->bind(TaxRateSource::class, fn (): TaxRateSource => conformanceRates());
 });
 
 // The document shape, not the line shape. Some things are only wrong at order level —
 // a per-delivery fee charged once per line, a postcode that never reached the lines —
 // and a corpus of single supplies cannot see any of them.
-it('answers the published order-shaped vectors', function (string $id, array $vector) {
+it('answers the published order-shaped vectors', function (string $id, array $vector): void {
     $spec = is_array($vector['order'] ?? null) ? $vector['order'] : [];
     $expect = is_array($vector['expect'] ?? null) ? $vector['expect'] : [];
 
@@ -365,7 +366,7 @@ it('answers the published order-shaped vectors', function (string $id, array $ve
     // rates on one document leave a residue that reconciles to nothing.
     if (($expect['sameRateAcrossLines'] ?? false) === true) {
         $rates = array_unique(array_map(
-            static fn ($line): string => (string) $line->assessment->rate?->percentage,
+            static fn (LineAssessment $line): string => (string) $line->assessment->rate?->percentage,
             $document->lines,
         ));
 
@@ -405,7 +406,7 @@ it('answers the published order-shaped vectors', function (string $id, array $ve
 // this one — shipping following the goods under Art. 78(b) — is the most common line
 // in e-commerce. Each entry must carry both why it is absent and what decision is
 // open, so it cannot decay into a shrug.
-it('states what it deliberately does not model', function () {
+it('states what it deliberately does not model', function (): void {
     $path = dirname(__DIR__, 2).'/conformance/vectors/eu-vat.json';
     $corpus = json_decode((string) file_get_contents($path), true);
     $gaps = is_array($corpus) && is_array($corpus['notModelled'] ?? null) ? $corpus['notModelled'] : [];
@@ -427,7 +428,7 @@ it('states what it deliberately does not model', function () {
 // A misspelled expectation key is READ BY NOBODY and the vector passes anyway — the
 // same silence that hid three broken guards elsewhere this week. Every key a vector
 // asserts must be one the runner actually understands.
-it('understands every expectation a vector states', function () {
+it('understands every expectation a vector states', function (): void {
     $known = [
         'treatment', 'treatmentNot', 'net', 'tax', 'gross', 'ratePercentage',
         'ratePercentageBelow', 'taxGreaterThanZero', 'hasInvoiceMention',
@@ -455,7 +456,7 @@ it('understands every expectation a vector states', function () {
 // Every vector must say what it pins. A corpus meant to be handed to someone else is
 // worth nothing as a list of opaque assertions — the sentence is the deliverable as
 // much as the numbers are.
-it('documents what every vector pins', function () {
+it('documents what every vector pins', function (): void {
     $undocumented = [];
 
     foreach (conformanceVectors() as [$id, $vector]) {

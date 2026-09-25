@@ -210,13 +210,7 @@ readonly class OrderAssessment
     /** Whether any rate on the document is less than authoritative. */
     public function needsReview(): bool
     {
-        foreach ($this->rated() as $rate) {
-            if ($rate->confidence !== Confidence::Authoritative || $rate->limitedBy !== null) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->rated(), fn (TaxRate $rate): bool => $rate->confidence !== Confidence::Authoritative || $rate->limitedBy !== null);
     }
 
     /** @return list<TaxRate> */

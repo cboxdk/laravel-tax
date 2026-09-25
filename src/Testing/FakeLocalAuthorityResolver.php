@@ -75,12 +75,6 @@ class FakeLocalAuthorityResolver implements LocalAuthorityResolver
     /** Whether the resolver was consulted for a jurisdiction at all. */
     public function wasConsultedFor(Jurisdiction $jurisdiction): bool
     {
-        foreach ($this->calls as $call) {
-            if ($call['jurisdiction'] === self::key($jurisdiction)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->calls, fn (array $call): bool => $call['jurisdiction'] === self::key($jurisdiction));
     }
 }

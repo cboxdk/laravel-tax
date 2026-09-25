@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->rates = app(TaxRateSource::class);
@@ -60,7 +60,7 @@ function holidayQuery(
 // The window
 // ---------------------------------------------------------------------------
 
-it('exempts a qualifying item during the holiday', function () {
+it('exempts a qualifying item during the holiday', function (): void {
     // Texas, back-to-school, 7-9 August, clothing at or under $100.
     $assessment = $this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-08'), $this->rates);
 
@@ -68,20 +68,20 @@ it('exempts a qualifying item during the holiday', function () {
         ->and($assessment->tax->getAmount()->toFloat())->toBe(0.0);
 });
 
-it('charges the same item the day before', function () {
+it('charges the same item the day before', function (): void {
     $assessment = $this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-06'), $this->rates);
 
     expect($assessment->treatment)->toBe(TaxTreatment::Standard)
         ->and($assessment->tax->getAmount()->toFloat())->toBeGreaterThan(0.0);
 });
 
-it('charges the same item the day after', function () {
+it('charges the same item the day after', function (): void {
     $assessment = $this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-10'), $this->rates);
 
     expect($assessment->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('includes both boundary days', function (string $date) {
+it('includes both boundary days', function (string $date): void {
     expect($this->regime->assess(holidayQuery('US-TX', '80.00', $date), $this->rates)->treatment)
         ->toBe(TaxTreatment::Exempt);
 })->with(['first day' => ['2026-08-07'], 'last day' => ['2026-08-09']]);
@@ -90,7 +90,7 @@ it('includes both boundary days', function (string $date) {
 // The cap, which is where the two mechanics would be confused
 // ---------------------------------------------------------------------------
 
-it('taxes an item exactly at a "less than" cap', function () {
+it('taxes an item exactly at a "less than" cap', function (): void {
     // This test asserted the opposite and was WRONG. Tex. Tax Code 151.326(a)(1)
     // exempts clothing whose sales price is "less than $100" — an item at exactly
     // $100.00 is taxable. Whether the cap itself qualifies is per statute and is not
@@ -100,12 +100,12 @@ it('taxes an item exactly at a "less than" cap', function () {
         ->toBe(TaxTreatment::Standard);
 });
 
-it('exempts a cent below it', function () {
+it('exempts a cent below it', function (): void {
     expect($this->regime->assess(holidayQuery('US-TX', '99.99', '2026-08-08'), $this->rates)->treatment)
         ->toBe(TaxTreatment::Exempt);
 });
 
-it('does not let a credit note qualify on its negative amount', function () {
+it('does not let a credit note qualify on its negative amount', function (): void {
     // Every negative is below every cap. Unguarded, a $500 coat refunded inside a
     // holiday window was assessed exempt — so nothing was credited back against the
     // tax originally collected and the seller kept the state's money.
@@ -115,7 +115,7 @@ it('does not let a credit note qualify on its negative amount', function () {
         ->and($assessment->tax->getAmount()->isNegative())->toBeTrue();
 });
 
-it('taxes an item over the cap IN FULL, not just the excess', function () {
+it('taxes an item over the cap IN FULL, not just the excess', function (): void {
     // The whole point. Massachusetts' permanent clothing threshold exempts the
     // first $175 of any coat and taxes the rest; a holiday cap is all-or-nothing.
     // A $101 coat in a $100-cap state is taxed on all $101, and a partial
@@ -126,7 +126,7 @@ it('taxes an item over the cap IN FULL, not just the excess', function () {
         ->and($assessment->net->getAmount()->toFloat())->toBe(101.0);
 });
 
-it('reads each state\'s own cap rather than a shared one', function () {
+it('reads each state\'s own cap rather than a shared one', function (): void {
     // Ohio caps clothing at $75 where Texas caps it at $100, and both holidays run
     // the same weekend. An $80 shirt is exempt in one and taxed in the other.
     expect($this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-08'), $this->rates)->treatment)
@@ -139,7 +139,7 @@ it('reads each state\'s own cap rather than a shared one', function () {
 // What it refuses to guess
 // ---------------------------------------------------------------------------
 
-it('charges a class the holiday does not cover', function () {
+it('charges a class the holiday does not cover', function (): void {
     // Texas's holiday covers clothing and footwear here. Furniture is not modelled
     // and is charged normally — over-collecting for a weekend rather than exempting
     // a supply the state taxes.
@@ -147,12 +147,12 @@ it('charges a class the holiday does not cover', function () {
         ->toBe(TaxTreatment::Standard);
 });
 
-it('charges normally in a state that holds no holiday', function () {
+it('charges normally in a state that holds no holiday', function (): void {
     expect($this->regime->assess(holidayQuery('US-CA', '80.00', '2026-08-08'), $this->rates)->treatment)
         ->toBe(TaxTreatment::Standard);
 });
 
-it('charges rather than refusing when the line is not in dollars', function () {
+it('charges rather than refusing when the line is not in dollars', function (): void {
     // The caps are dollar figures in state statutes, so a euro line cannot be
     // compared without an exchange rate. The threshold path THROWS on this, and
     // here it must not: a holiday is a few days of relief, and refusing the whole
@@ -165,7 +165,7 @@ it('charges rather than refusing when the line is not in dollars', function () {
     expect($assessment->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('names the holiday and the cap so the exemption can be defended', function () {
+it('names the holiday and the cap so the exemption can be defended', function (): void {
     $assessment = $this->regime->assess(holidayQuery('US-TX', '80.00', '2026-08-08'), $this->rates);
 
     expect($assessment->reason)->toContain('Back-to-School')
@@ -173,7 +173,7 @@ it('names the holiday and the cap so the exemption can be defended', function ()
         ->and($assessment->reason)->toContain('2026-08-08');
 });
 
-it('no longer carries Illinois, whose holiday is a rate cut rather than an exemption', function () {
+it('no longer carries Illinois, whose holiday is a rate cut rather than an exemption', function (): void {
     // Illinois drops the STATE share 6.25% -> 1.25% and leaves every local tax in
     // force. Modelled as an exemption it zeroed the whole charge — under-collecting
     // the 1.25% plus the local stack, about nine points in Chicago. Out until the
@@ -182,7 +182,7 @@ it('no longer carries Illinois, whose holiday is a rate cut rather than an exemp
         ->toBe(TaxTreatment::Standard);
 });
 
-it('honours a stated date rather than shifting it across a timezone', function () {
+it('honours a stated date rather than shifting it across a timezone', function (): void {
     // A tax point is a legal fact the seller determines. Given "7 August", the
     // engine treats it as the seventh where the supply happened and does NOT
     // reinterpret it — converting a stated date into a jurisdiction's zone would

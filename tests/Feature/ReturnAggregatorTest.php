@@ -16,7 +16,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
     $this->aggregator = $this->app->make(ReturnAggregator::class);
@@ -33,7 +33,7 @@ function dkSupply(float|string $amount): TaxQuery
     );
 }
 
-it('sums net and tax per jurisdiction and currency', function () {
+it('sums net and tax per jurisdiction and currency', function (): void {
     $assessments = [
         $this->tax->assess(dkSupply('100.00')), // DK 25% -> net 100, tax 25
         $this->tax->assess(dkSupply('200.00')), // DK 25% -> net 200, tax 50
@@ -48,7 +48,7 @@ it('sums net and tax per jurisdiction and currency', function () {
         ->and($line->count)->toBe(2);
 });
 
-it('keeps different jurisdictions on separate lines', function () {
+it('keeps different jurisdictions on separate lines', function (): void {
     $gb = new TaxQuery(
         amount: Money::of('100.00', 'GBP'),
         pricing: Pricing::Exclusive,
@@ -66,8 +66,8 @@ it('keeps different jurisdictions on separate lines', function () {
         ->and((string) $return->lineFor(new CountryCode('GB'), 'GBP')->tax->getAmount())->toBe('20.00');
 });
 
-it('produces a per-state line for a mixed multi-state US set', function () {
-    $us = fn (string $state) => new TaxQuery(
+it('produces a per-state line for a mixed multi-state US set', function (): void {
+    $us = fn (string $state): TaxQuery => new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
         place: $this->geo->find(new CountryCode('US'), new SubdivisionCode($state)),
@@ -97,8 +97,8 @@ it('produces a per-state line for a mixed multi-state US set', function () {
         ->and($return->lineFor(new CountryCode('US'), 'USD'))->toBeNull();
 });
 
-it('keeps each EU member state on its own line for an OSS-style set', function () {
-    $euB2c = fn (string $country) => new TaxQuery(
+it('keeps each EU member state on its own line for an OSS-style set', function (): void {
+    $euB2c = fn (string $country): TaxQuery => new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
         place: $this->geo->find(new CountryCode($country)),
@@ -121,7 +121,7 @@ it('keeps each EU member state on its own line for an OSS-style set', function (
         ->and((string) $de->tax->getAmount())->toBe('38.00');
 });
 
-it('splits a line by treatment, because a form asks for it that way', function () {
+it('splits a line by treatment, because a form asks for it that way', function (): void {
     // One period, one country, three kinds of supply. Summed into a single net and
     // tax the line reconciles with the invoices and fits no box on the form: a
     // domestic charge, an exempt intra-Community supply of goods and a service the

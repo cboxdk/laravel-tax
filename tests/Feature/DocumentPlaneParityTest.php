@@ -27,11 +27,11 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  * conversion and the promise quietly stopped holding, which is exactly the kind of
  * divergence a document plane accumulates when nothing pins it.
  */
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
-it('applies the postcode gate to a document, as it does to one supply', function () {
+it('applies the postcode gate to a document, as it does to one supply', function (): void {
     // Tenerife sits inside Spain and outside its VAT area. Without the postcode a
     // two-line invoice was charged 21% mainland VAT while the identical single
     // supply correctly treated it as an export.
@@ -61,7 +61,7 @@ it('applies the postcode gate to a document, as it does to one supply', function
         ->toBe($single->tax->getAmount()->toFloat());
 });
 
-it('applies the marketplace gate to a document', function () {
+it('applies the marketplace gate to a document', function (): void {
     // Without it, a marketplace invoicing a multi-line order charged tax the
     // marketplace had already collected — a double charge on every such invoice.
     $subdivision = new SubdivisionCode('US-WA');
@@ -83,7 +83,7 @@ it('applies the marketplace gate to a document', function () {
         ->and($document->tax()->getAmount()->toFloat())->toBe(0.0);
 });
 
-it('resolves a document line\'s class from the product catalogue', function () {
+it('resolves a document line\'s class from the product catalogue', function (): void {
     // The catalogue was unreachable from a document: assessLine() called
     // assessSupply() directly and skipped classification entirely.
     $this->app->instance(ProductCatalogue::class, new ArrayProductCatalogue([
@@ -101,7 +101,7 @@ it('resolves a document line\'s class from the product catalogue', function () {
     expect($document->forLine('a')?->rate?->limitedBy)->toBeNull();
 });
 
-it('flags an unmapped SKU on a document line', function () {
+it('flags an unmapped SKU on a document line', function (): void {
     // The review loop the catalogue exists for reported nothing on the path most
     // invoices actually take.
     $this->app->instance(ProductCatalogue::class, new ArrayProductCatalogue);
@@ -117,7 +117,7 @@ it('flags an unmapped SKU on a document line', function () {
     expect($document->forLine('a')?->rate?->limitedBy)->toBe(RateLimit::ItemUnmapped);
 });
 
-it('carries every field a query has, so the next one cannot fall out unnoticed', function () {
+it('carries every field a query has, so the next one cannot fall out unnoticed', function (): void {
     // The structural guard. `queryFor()` is the one place a line becomes a supply,
     // and three fields were lost by being added to TaxQuery and forgotten here.
     // This fails the moment a fourth is.

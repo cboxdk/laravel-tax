@@ -13,12 +13,12 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
 
-it('applies the primary-source-verified national rate', function (string $country, string $expectedTax) {
+it('applies the primary-source-verified national rate', function (string $country, string $expectedTax): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -46,7 +46,7 @@ it('applies the primary-source-verified national rate', function (string $countr
     'Ukraine 20%' => ['UA', '20.00'],
 ]);
 
-it('charges Malaysia SST on cross-border B2B with NO reverse charge', function () {
+it('charges Malaysia SST on cross-border B2B with NO reverse charge', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,

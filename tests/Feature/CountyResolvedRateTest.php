@@ -19,7 +19,7 @@ use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->source = $this->app->make(TaxRateSource::class);
 });
@@ -39,7 +39,7 @@ function atCounty(string $state, string $county): Jurisdiction
 // The rate itself
 // ---------------------------------------------------------------------------
 
-it('stacks the county surtax onto the state share in Florida', function () {
+it('stacks the county surtax onto the state share in Florida', function (): void {
     $rate = $this->source->rateFor(atCounty('US-FL', 'Alachua County'), TaxClass::GeneralGoods);
 
     // 6% state + 1.5% county. Before the county resolved, this address priced at
@@ -48,7 +48,7 @@ it('stacks the county surtax onto the state share in Florida', function () {
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('reports the state and county shares separately so each can be remitted', function () {
+it('reports the state and county shares separately so each can be remitted', function (): void {
     $rate = $this->source->rateFor(atCounty('US-FL', 'Alachua County'), TaxClass::GeneralGoods);
 
     expect($rate?->components)->toHaveCount(2)
@@ -59,7 +59,7 @@ it('reports the state and county shares separately so each can be remitted', fun
         ->and($rate?->components[1]->name)->toBe('Alachua County');
 });
 
-it('treats a county that levies no surtax as an authoritative all-in rate', function () {
+it('treats a county that levies no surtax as an authoritative all-in rate', function (): void {
     $rate = $this->source->rateFor(atCounty('US-FL', 'Citrus County'), TaxClass::GeneralGoods);
 
     // Citrus levies 0%. That is not "we could not resolve a local rate" — it is a
@@ -69,7 +69,7 @@ it('treats a county that levies no surtax as an authoritative all-in rate', func
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('resolves Philadelphia, where the city IS the county', function () {
+it('resolves Philadelphia, where the city IS the county', function (): void {
     // The dataset carries Philadelphia as a CITY because that is its name, while a
     // geocoder returns "Philadelphia County". Coterminous, so the county resolves it.
     $rate = $this->source->rateFor(atCounty('US-PA', 'Philadelphia County'), TaxClass::GeneralGoods);
@@ -78,13 +78,13 @@ it('resolves Philadelphia, where the city IS the county', function () {
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('resolves Allegheny alongside it without confusing the two', function () {
+it('resolves Allegheny alongside it without confusing the two', function (): void {
     $rate = $this->source->rateFor(atCounty('US-PA', 'Allegheny County'), TaxClass::GeneralGoods);
 
     expect((string) $rate?->percentage)->toBe('7');
 });
 
-it('leaves the rest of Pennsylvania at the state rate, authoritatively', function () {
+it('leaves the rest of Pennsylvania at the state rate, authoritatively', function (): void {
     // Only two Pennsylvania authorities exist. Everywhere else the 6% state rate is
     // the whole rate — but the county has to fail to match for that to be reached,
     // and an unmatched county is UNKNOWN, not zero. So this is the honest partial.
@@ -94,7 +94,7 @@ it('leaves the rest of Pennsylvania at the state rate, authoritatively', functio
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
 
-it('adds the Hawaii county surcharge to the general excise rate', function () {
+it('adds the Hawaii county surcharge to the general excise rate', function (): void {
     $rate = $this->source->rateFor(atCounty('US-HI', 'Honolulu County'), TaxClass::GeneralGoods);
 
     // 4% GET + 0.5% county surcharge. This is the LEGAL rate on the seller's gross
@@ -108,7 +108,7 @@ it('adds the Hawaii county surcharge to the general excise rate', function () {
 // Virginia: cities that are not inside counties
 // ---------------------------------------------------------------------------
 
-it('resolves a Virginia county to its regional rate', function () {
+it('resolves a Virginia county to its regional rate', function (): void {
     // 5.3% state (which already contains the mandatory statewide 1% local) plus
     // the Historic Triangle's 1.7%.
     $rate = $this->source->rateFor(atCounty('US-VA', 'James City County'), TaxClass::GeneralGoods);
@@ -117,7 +117,7 @@ it('resolves a Virginia county to its regional rate', function () {
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('resolves a Virginia independent city, which sits in no county at all', function () {
+it('resolves a Virginia independent city, which sits in no county at all', function (): void {
     // Williamsburg is a city, and under Virginia law that means it is independent
     // of every county — a county-equivalent, not something inside one. The dataset
     // stores it bare; a geocoder says "Williamsburg City".
@@ -126,7 +126,7 @@ it('resolves a Virginia independent city, which sits in no county at all', funct
     expect((string) $rate?->percentage)->toBe('7');
 });
 
-it('tells Fairfax City and Fairfax County apart', function (string $given, string $expectedName) {
+it('tells Fairfax City and Fairfax County apart', function (string $given, string $expectedName): void {
     // The trap the ordered match exists for. Both are real Virginia authorities
     // over different ground, and comparing both names stripped would find two
     // matches and refuse — costing Fairfax its regional rate for no reason.
@@ -139,7 +139,7 @@ it('tells Fairfax City and Fairfax County apart', function (string $given, strin
     'the independent city' => ['Fairfax City', 'Fairfax'],
 ]);
 
-it('leaves an unlisted Virginia locality at the statewide rate', function () {
+it('leaves an unlisted Virginia locality at the statewide rate', function (): void {
     // Most of Virginia levies no regional addition, and 5.3% is genuinely the whole
     // rate there — but it is reached by the county failing to match, which is
     // "unknown", not "nothing applies". Derived says so honestly.
@@ -153,7 +153,7 @@ it('leaves an unlisted Virginia locality at the statewide rate', function () {
 // The name join, which is the fragile part
 // ---------------------------------------------------------------------------
 
-it('matches county names through punctuation and the governing-unit suffix', function (string $given, string $expected) {
+it('matches county names through punctuation and the governing-unit suffix', function (string $given, string $expected): void {
     $authorities = app(LocalAuthorityResolver::class)->authoritiesFor(atCounty('US-FL', $given));
 
     expect($authorities)->toBe(['us:FL', $expected]);
@@ -165,11 +165,11 @@ it('matches county names through punctuation and the governing-unit suffix', fun
     'abbreviation with a period' => ['St. Johns County', 'us:FL:COUNTY-ST-JOHNS'],
 ]);
 
-it('refuses a county the state does not carry rather than guessing a neighbour', function () {
+it('refuses a county the state does not carry rather than guessing a neighbour', function (): void {
     expect(app(LocalAuthorityResolver::class)->authoritiesFor(atCounty('US-FL', 'Nonesuch County')))->toBeNull();
 });
 
-it('falls back to the honest state rate when the county does not resolve', function () {
+it('falls back to the honest state rate when the county does not resolve', function (): void {
     $rate = $this->source->rateFor(atCounty('US-FL', 'Nonesuch County'), TaxClass::GeneralGoods);
 
     // Deny-by-default in the safe direction: a partial answer labelled partial,
@@ -182,7 +182,7 @@ it('falls back to the honest state rate when the county does not resolve', funct
 // The claim the whole mechanism rests on
 // ---------------------------------------------------------------------------
 
-it('only claims county resolution where nothing can tax below the county', function () {
+it('only claims county resolution where nothing can tax below the county', function (): void {
     $states = UsLocalStructure::countyResolvedStates();
 
     // South Carolina is the case this list exists to exclude: 46 of its 47
@@ -193,7 +193,7 @@ it('only claims county resolution where nothing can tax below the county', funct
         ->and($states)->toBe(['US-FL', 'US-PA', 'US-HI', 'US-VA']);
 });
 
-it('carries no authority below the county in any county-resolved state', function () {
+it('carries no authority below the county in any county-resolved state', function (): void {
     // The claim the list rests on: in these four states nothing sits under the
     // county line. A city record that is not coterminous with its county would make
     // county-only resolution an UNDER-charge, which is the error a refund cannot fix.
@@ -221,7 +221,7 @@ it('carries no authority below the county in any county-resolved state', functio
 // The geocoder end of it
 // ---------------------------------------------------------------------------
 
-it('attaches the county without the rooftop append being enabled', function () {
+it('attaches the county without the rooftop append being enabled', function (): void {
     Http::fake(['*' => Http::response(['results' => [[
         'address_components' => ['country' => 'US', 'state_province' => 'FL', 'county' => 'Alachua County'],
     ]]])]);
@@ -241,7 +241,7 @@ it('attaches the county without the rooftop append being enabled', function () {
         ->and($jurisdiction?->locality?->value)->toBe('Alachua County');
 });
 
-it('does not attach a county in a state that needs finer resolution', function () {
+it('does not attach a county in a state that needs finer resolution', function (): void {
     Http::fake(['*' => Http::response(['results' => [[
         'address_components' => ['country' => 'US', 'state_province' => 'KS', 'county' => 'Wyandotte County'],
     ]]])]);
@@ -259,7 +259,7 @@ it('does not attach a county in a state that needs finer resolution', function (
     expect($geocoder->locate(['line1' => '701 N 7th St', 'state' => 'KS', 'country' => 'US'])?->locality)->toBeNull();
 });
 
-it('keeps the state rate when the geocoder returns no county', function () {
+it('keeps the state rate when the geocoder returns no county', function (): void {
     Http::fake(['*' => Http::response(['results' => [[
         'address_components' => ['country' => 'US', 'state_province' => 'FL'],
     ]]])]);

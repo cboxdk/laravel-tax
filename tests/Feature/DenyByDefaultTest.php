@@ -28,11 +28,13 @@ use Cbox\Tax\Taxability\AlwaysTaxable;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
+use Cbox\Tax\ValueObjects\TaxAssessment;
+use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Illuminate\Contracts\Cache\Repository as Cache;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->taxability = new RegisterTaxability($this->dataset);
@@ -67,7 +69,7 @@ function denyPlace(string $state): Jurisdiction
 
 // ---- Undetermined categories refuse rather than defaulting to taxable -----
 
-it('refuses a US category the dataset leaves undetermined', function () {
+it('refuses a US category the dataset leaves undetermined', function (): void {
     // The dataset omits these pairs DELIBERATELY — its sources disagree. Inheriting
     // that as "taxable" turns a documented gap into a silent over-collection.
     // WHAT CHANGED, AND IT IS A REAL LOSS. The retired us-tax-data dataset carried
@@ -89,7 +91,7 @@ it('refuses a US category the dataset leaves undetermined', function () {
     }
 });
 
-it('still taxes general tangible goods by default, which is the one honest default', function () {
+it('still taxes general tangible goods by default, which is the one honest default', function (): void {
     // Every US sales-tax state taxes general merchandise, so this rule states the
     // law rather than guessing. Alaska is the only state the dataset leaves
     // undetermined for it.
@@ -97,12 +99,12 @@ it('still taxes general tangible goods by default, which is the one honest defau
         ->and(new AlwaysTaxable()->determine(denyPlace('US-TX'), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
-it('keeps the goods default outside the US', function () {
+it('keeps the goods default outside the US', function (): void {
     expect($this->taxability->determine($this->geo->find(new CountryCode('DE')), TaxClass::GeneralGoods, anyAmount())->isExemptFor(anyAmount()))->toBeFalse()
         ->and($this->taxability->determine($this->geo->find(new CountryCode('DE')), TaxClass::Book, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
-it('honours an explicit override instead of refusing', function () {
+it('honours an explicit override instead of refusing', function (): void {
     $configured = new AlwaysTaxable(['US-CA:software_prewritten' => false]);
 
     expect($configured->determine(denyPlace('US-CA'), TaxClass::SoftwarePrewritten, anyAmount())->isExemptFor(anyAmount()))->toBeTrue();
@@ -110,7 +112,7 @@ it('honours an explicit override instead of refusing', function () {
 
 // ---- Conditional rules refuse rather than charging the full rate ----------
 
-it('refuses a threshold rule that does not say how the threshold applies', function () {
+it('refuses a threshold rule that does not say how the threshold applies', function (): void {
     // The seam now receives the amount, so a threshold is decidable — but only if
     // the data says WHICH threshold it is. Massachusetts taxes the amount over
     // $175; New York taxes the whole item once it reaches $110. A rule carrying
@@ -118,29 +120,29 @@ it('refuses a threshold rule that does not say how the threshold applies', funct
     // guessing wrong under-collects on every garment over the line in New York.
     $incomplete = new RegisterTaxability(registerWithBrokenCap('above'));
 
-    expect(fn () => $incomplete->determine(denyPlace('US-MA'), TaxClass::Clothing, anyAmount('200.00')))
+    expect(fn (): TaxDetermination => $incomplete->determine(denyPlace('US-MA'), TaxClass::Clothing, anyAmount('200.00')))
         ->toThrow(UnresolvedProductTaxability::class, 'conditional');
 });
 
-it('is unaffected where clothing carries a plain determination', function () {
+it('is unaffected where clothing carries a plain determination', function (): void {
     // California taxes clothing outright — no condition, no refusal.
     expect($this->taxability->determine(denyPlace('US-CA'), TaxClass::Clothing, anyAmount())->isExemptFor(anyAmount()))->toBeFalse();
 });
 
 // ---- A rate outside 0-100% is corrupt data, not a rate --------------------
 
-it('refuses a negative rate, which would credit tax back on every invoice', function () {
-    expect(fn () => new TaxRate('-25'))->toThrow(ImplausibleTaxRate::class);
+it('refuses a negative rate, which would credit tax back on every invoice', function (): void {
+    expect(fn (): TaxRate => new TaxRate('-25'))->toThrow(ImplausibleTaxRate::class);
 });
 
-it('refuses an absurd rate, the signature of a fraction/percent unit mismatch', function () {
+it('refuses an absurd rate, the signature of a fraction/percent unit mismatch', function (): void {
     // A schemaVersion change publishing 7.25 where 0.0725 was expected, multiplied
     // by 100, lands here as 725%.
-    expect(fn () => new TaxRate('725'))->toThrow(ImplausibleTaxRate::class)
-        ->and(fn () => new TaxRate('100.01'))->toThrow(ImplausibleTaxRate::class);
+    expect(fn (): TaxRate => new TaxRate('725'))->toThrow(ImplausibleTaxRate::class)
+        ->and(fn (): TaxRate => new TaxRate('100.01'))->toThrow(ImplausibleTaxRate::class);
 });
 
-it('accepts the whole legitimate range', function () {
+it('accepts the whole legitimate range', function (): void {
     expect((string) new TaxRate('0')->percentage)->toBe('0')
         ->and((string) new TaxRate('100')->percentage)->toBe('100')
         ->and((string) new TaxRate('27')->percentage)->toBe('27'); // Hungary, the EU maximum
@@ -148,7 +150,7 @@ it('accepts the whole legitimate range', function () {
 
 // ---- A zero state share under real local taxes is not an answer -----------
 
-it('refuses Alaska rather than reporting an affirmative 0%', function () {
+it('refuses Alaska rather than reporting an affirmative 0%', function (): void {
     // Alaska levies no STATE sales tax while its boroughs and cities levy their
     // own (Juneau 5%, Wrangell 7%). Unlike DE/MT/NH/OR — which carry
     // noSalesTax and already resolve null — Alaska's baseline is stateRate 0 with
@@ -159,7 +161,7 @@ it('refuses Alaska rather than reporting an affirmative 0%', function () {
     expect($rate)->toBeNull();
 });
 
-it('still returns the state share where it is a genuine floor', function () {
+it('still returns the state share where it is a genuine floor', function (): void {
     // Every other state's share under-states the total but is a real number a
     // caller can reason about at Derived confidence.
     // WITH an address, because that is what makes it a floor rather than the whole
@@ -178,7 +180,7 @@ it('still returns the state share where it is a genuine floor', function () {
 
 // ---- A commodity code must survive the wrappers ---------------------------
 
-it('forwards a commodity code through a chain to a source that can use one', function () {
+it('forwards a commodity code through a chain to a source that can use one', function (): void {
     $aware = new class implements CommodityRateSource
     {
         public function rateFor($jurisdiction, $category, ?DateTimeImmutable $at = null): ?TaxRate
@@ -199,7 +201,7 @@ it('forwards a commodity code through a chain to a source that can use one', fun
         ->and((string) $chain->rateFor($place, TaxClass::Groceries)?->percentage)->toBe('23');
 });
 
-it('resolves the commodity code through the calculator, not just the source', function () {
+it('resolves the commodity code through the calculator, not just the source', function (): void {
     // The regression this guards: the provider composes a chain whenever a live
     // source is enabled, and ResolvesRates decides by testing the OUTERMOST source.
     // A chain that hid the capability made every commodity-aware source beneath it
@@ -236,7 +238,7 @@ it('resolves the commodity code through the calculator, not just the source', fu
         ->and((string) $assessment->tax->getAmount())->toBe('5.00');
 });
 
-it('composes a chain that advertises the capability', function () {
+it('composes a chain that advertises the capability', function (): void {
     // Guards the contract itself: ResolvesRates branches on instanceof.
     expect(new ChainTaxRateSource([]))->toBeInstanceOf(CommodityRateSource::class)
         ->and(new CachingTaxRateSource(rateSourceFor([]), $this->app->make(Cache::class)))
@@ -245,7 +247,7 @@ it('composes a chain that advertises the capability', function () {
 
 // ---- The rate cache must not serve one rooftop's rate for another ---------
 
-it('keys the rate cache by rooftop locality', function () {
+it('keys the rate cache by rooftop locality', function (): void {
     $inner = app(TaxRateSource::class);
     $caching = new CachingTaxRateSource($inner, $this->app->make(Cache::class));
 
@@ -259,7 +261,7 @@ it('keys the rate cache by rooftop locality', function () {
         ->and((string) $caching->rateFor(denyPlace('US-KS'), TaxClass::GeneralGoods)?->percentage)->toBe('6.5');
 });
 
-it('keys the rate cache by commodity code', function () {
+it('keys the rate cache by commodity code', function (): void {
     // The inner source MUST answer differently for the two lookups, or the test
     // passes whether or not the code is in the key — which is exactly the bug it
     // is supposed to catch.
@@ -287,7 +289,7 @@ it('keys the rate cache by commodity code', function () {
         ->and((string) $caching->rateFor($place, TaxClass::Groceries)?->percentage)->toBe('23');
 });
 
-it('caches today but never serves a historical rate from the current-rate cache', function () {
+it('caches today but never serves a historical rate from the current-rate cache', function (): void {
     // Threading the supply date made every calculator call carry one. A cache that
     // bypassed on "a date was supplied" rather than "the date is not today" would
     // silently stop caching altogether and put the live feed back on the hot path.
@@ -321,7 +323,7 @@ it('caches today but never serves a historical rate from the current-rate cache'
 
 // ---- The calculator refuses, it does not guess ----------------------------
 
-it('refuses to assess in a jurisdiction the register does not carry', function () {
+it('refuses to assess in a jurisdiction the register does not carry', function (): void {
     $calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults($this->taxability, $this->geo),
         app(TaxRateSource::class),
@@ -338,5 +340,5 @@ it('refuses to assess in a jurisdiction the register does not carry', function (
         category: TaxClass::SoftwarePrewritten,
     );
 
-    expect(fn () => $calculator->assess($query))->toThrow(UnresolvedProductTaxability::class);
+    expect(fn (): TaxAssessment => $calculator->assess($query))->toThrow(UnresolvedProductTaxability::class);
 });

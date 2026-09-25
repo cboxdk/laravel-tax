@@ -195,6 +195,8 @@ PHP `^8.4` (tested on 8.4 and 8.5) with `ext-dom` and `ext-zlib`, Laravel `^13`,
 
 ```bash
 composer install
-composer qa          # pint, phpstan (level max), pest, licence check, audit
+composer qa          # pint, rector (dry run), phpstan level 10, pest, licence check, audit
+composer format      # apply pint
+composer refactor    # apply rector
 composer test:reference   # the independent conformance corpus
 ```

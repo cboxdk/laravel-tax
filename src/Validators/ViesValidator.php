@@ -18,7 +18,7 @@ use Throwable;
 readonly class ViesValidator implements VatIdValidator
 {
     /** @var list<string> */
-    private const EU = [
+    private const array EU = [
         'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
         'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
         'SI', 'ES', 'SE',

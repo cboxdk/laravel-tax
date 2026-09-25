@@ -142,15 +142,18 @@ it('matches 41 independent rate, amount, treatment and order references from a r
             ksort($expected['components']);
             $actual['components'] = $components;
 
-            expect($assessment->breakdown?->total()?->isEqualTo($assessment->tax), $label)->toBeTrue();
+            expect($assessment->breakdown?->total()?->isEqualTo($assessment->tax))->toBeTrue($label);
         }
 
-        expect($actual, $label)->toBe($expected)
-            ->and($assessment->net->plus($assessment->tax)->isEqualTo($assessment->gross), $label)->toBeTrue();
+        // The label names the case, the release and the source it was checked against.
+        // It goes on the MATCHER: expect() takes one argument, and a label passed to it
+        // as a second was never shown when a case failed.
+        expect($actual)->toBe($expected, $label)
+            ->and($assessment->net->plus($assessment->tax)->isEqualTo($assessment->gross))->toBeTrue($label);
 
         if ($rate !== null) {
-            expect($rate->source, $label)->toBe('cbox-tax')
-                ->and($rate->provenance?->version, $label)->toBe($version);
+            expect($rate->source)->toBe('cbox-tax', $label)
+                ->and($rate->provenance?->version)->toBe($version, $label);
         }
     }
 
@@ -187,8 +190,9 @@ it('matches 41 independent rate, amount, treatment and order references from a r
             'tax' => (string) $order->tax()->getAmount(),
             'gross' => (string) $order->gross()->getAmount(),
             'lines' => $lines,
-        ], $label)->toBe($case['expect'])
-            ->and($order->forLine('delivery')?->reason, $label)->toContain('9.00 at 13.5%', '3.00 at 25.5%');
+        ])->toBe($case['expect'], $label)
+            ->and(str_contains($order->forLine('delivery')->reason ?? '', '9.00 at 13.5%')
+                && str_contains($order->forLine('delivery')->reason ?? '', '3.00 at 25.5%'))->toBeTrue($label);
     }
 })->group('e2e', 'reference');
 

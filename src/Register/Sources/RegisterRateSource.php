@@ -143,7 +143,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             return null;
         }
 
-        $carried = array_values(array_filter($candidates, fn (string $code): bool => $this->dataset->carries($code)));
+        $carried = array_values(array_filter($candidates, $this->dataset->carries(...)));
 
         if ($carried === []) {
             // Every place this country could be is in a regime nobody compiled. The
@@ -803,13 +803,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             return false;
         }
 
-        foreach (array_keys($this->dataset->namesIn('us/'.$parts[1])) as $jurisdiction) {
-            if (substr_count($jurisdiction, ':') > 1) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(array_keys($this->dataset->namesIn('us/'.$parts[1])), fn (string $jurisdiction): bool => substr_count($jurisdiction, ':') > 1);
     }
 
     /** The bare state code a local authority sits under. */

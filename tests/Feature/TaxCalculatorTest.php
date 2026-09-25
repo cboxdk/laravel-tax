@@ -15,7 +15,7 @@ use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -30,7 +30,7 @@ function seller(string $country): SellerRegistrations
     return new SellerRegistrations(new CountryCode($country));
 }
 
-it('charges domestic VAT on a tax-exclusive B2C supply', function () {
+it('charges domestic VAT on a tax-exclusive B2C supply', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -44,7 +44,7 @@ it('charges domestic VAT on a tax-exclusive B2C supply', function () {
         ->and((string) $a->gross->getAmount())->toBe('125.00');
 });
 
-it('extracts VAT from a tax-inclusive amount', function () {
+it('extracts VAT from a tax-inclusive amount', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('125.00', 'EUR'),
         pricing: Pricing::Inclusive,
@@ -57,7 +57,7 @@ it('extracts VAT from a tax-inclusive amount', function () {
         ->and((string) $a->tax->getAmount())->toBe('25.00');
 });
 
-it('reverse-charges an intra-EU B2B supply to a validated customer', function () {
+it('reverse-charges an intra-EU B2B supply to a validated customer', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -77,7 +77,7 @@ it('reverse-charges an intra-EU B2B supply to a validated customer', function ()
         ->and($a->rate)->toBeNull();
 });
 
-it('charges destination VAT to an unvalidated cross-border business', function () {
+it('charges destination VAT to an unvalidated cross-border business', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -91,7 +91,7 @@ it('charges destination VAT to an unvalidated cross-border business', function (
         ->and((string) $a->tax->getAmount())->toBe('20.00'); // FR 20%
 });
 
-it('charges destination VAT on a cross-border B2C digital supply', function () {
+it('charges destination VAT on a cross-border B2C digital supply', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
@@ -104,8 +104,8 @@ it('charges destination VAT on a cross-border B2C digital supply', function () {
     expect((string) $a->tax->getAmount())->toBe('20.00');
 });
 
-it('routes tax by the selling entity: same buyer, different seller, different tax', function () {
-    $buyer = fn (string $sellerCountry) => new TaxQuery(
+it('routes tax by the selling entity: same buyer, different seller, different tax', function (): void {
+    $buyer = fn (string $sellerCountry): TaxQuery => new TaxQuery(
         amount: Money::of('100.00', 'EUR'),
         pricing: Pricing::Exclusive,
         place: place('FR'),
@@ -125,7 +125,7 @@ it('routes tax by the selling entity: same buyer, different seller, different ta
         ->and((string) $viaFr->tax->getAmount())->toBe('20.00');
 });
 
-it('handles a national (non-EU) regime — UK domestic VAT', function () {
+it('handles a national (non-EU) regime — UK domestic VAT', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'GBP'),
         pricing: Pricing::Exclusive,
@@ -138,7 +138,7 @@ it('handles a national (non-EU) regime — UK domestic VAT', function () {
         ->and((string) $a->tax->getAmount())->toBe('20.00');
 });
 
-it('refuses an unmodelled jurisdiction rather than guessing', function () {
+it('refuses an unmodelled jurisdiction rather than guessing', function (): void {
     $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CNY'),
         pricing: Pricing::Exclusive,
@@ -148,7 +148,7 @@ it('refuses an unmodelled jurisdiction rather than guessing', function () {
     ));
 })->throws(UnsupportedJurisdiction::class);
 
-it('refuses to assess when no rate is available rather than assuming 0%', function () {
+it('refuses to assess when no rate is available rather than assuming 0%', function (): void {
     $calc = $this->taxCalculator(['DE' => '19']); // no FR rate
 
     $calc->assess(new TaxQuery(
@@ -160,7 +160,7 @@ it('refuses to assess when no rate is available rather than assuming 0%', functi
     ));
 })->throws(UnresolvedTaxRate::class);
 
-it('rounds tax half-up on an odd net amount', function () {
+it('rounds tax half-up on an odd net amount', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('99.99', 'EUR'),
         pricing: Pricing::Exclusive,

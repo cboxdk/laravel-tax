@@ -22,6 +22,7 @@ use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
+use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
 // Ten territories sit inside a Member State and outside its VAT rules. Before
@@ -38,7 +39,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // Azores, Madeira, Åland and Corsica are unreachable that way, while every one of
 // them has had its own postal range for decades.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -55,7 +56,7 @@ function delivery(string $country, ?string $postalCode): TaxQuery
     );
 }
 
-it('charges no EU VAT on a delivery to the Canary Islands', function () {
+it('charges no EU VAT on a delivery to the Canary Islands', function (): void {
     // 38xxx is Santa Cruz de Tenerife. The supply is an export from the EU VAT
     // area, so nothing is due here — and the reason names IGIC, which is what the
     // customer actually owes, rather than leaving a bare zero.
@@ -67,13 +68,13 @@ it('charges no EU VAT on a delivery to the Canary Islands', function () {
         ->and($assessment->reason)->toContain('IGIC');
 });
 
-it('covers both Canary provinces, not just the one', function () {
+it('covers both Canary provinces, not just the one', function (): void {
     // 35xxx is Las Palmas. Half the archipelago would otherwise be taxed as
     // mainland Spain.
     expect($this->tax->assess(delivery('ES', '35001'))->treatment)->toBe(TaxTreatment::ZeroRated);
 });
 
-it('stops charging Spanish VAT in Ceuta and Melilla', function () {
+it('stops charging Spanish VAT in Ceuta and Melilla', function (): void {
     // These two resolve as ordinary Spanish subdivisions with isEuMember = true,
     // so the engine did not merely fail to place them — it placed them wrongly and
     // charged 21%.
@@ -82,13 +83,13 @@ it('stops charging Spanish VAT in Ceuta and Melilla', function () {
         ->and($this->tax->assess(delivery('ES', '51001'))->reason)->toContain('IPSI');
 });
 
-it('leaves mainland Spain alone', function () {
+it('leaves mainland Spain alone', function (): void {
     // Madrid is 28xxx. The territories are the exception, and a seam that caught
     // anything else would break every ordinary Spanish sale.
     expect($this->tax->assess(delivery('ES', '28001'))->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('recognises the single-municipality territories', function () {
+it('recognises the single-municipality territories', function (): void {
     // Büsingen, Heligoland, Livigno and Campione d'Italia are one postcode each,
     // and are outside the VAT area for reasons that predate the Union.
     expect($this->tax->assess(delivery('DE', '78266'))->treatment)->toBe(TaxTreatment::ZeroRated)
@@ -97,14 +98,14 @@ it('recognises the single-municipality territories', function () {
         ->and($this->tax->assess(delivery('IT', '22061'))->treatment)->toBe(TaxTreatment::ZeroRated);
 });
 
-it('does not catch the neighbouring postcodes of those municipalities', function () {
+it('does not catch the neighbouring postcodes of those municipalities', function (): void {
     // A single-code territory must match that code and nothing near it. Konstanz
     // is 78462 and Como 22100 — both ordinary.
     expect($this->tax->assess(delivery('DE', '78462'))->treatment)->toBe(TaxTreatment::Standard)
         ->and($this->tax->assess(delivery('IT', '22100'))->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('treats a missing postcode as unplaceable, not as mainland', function () {
+it('treats a missing postcode as unplaceable, not as mainland', function (): void {
     // The honest reading of no postcode is "we cannot tell", and the national
     // rules are what the engine applies — but it must not be because a missing
     // code was taken as proof of mainland. The seam returns null; the deduction
@@ -117,7 +118,7 @@ it('treats a missing postcode as unplaceable, not as mainland', function () {
 
 // ---- The territories that keep their own rates -------------------------------
 
-it('identifies the Portuguese islands, which are inside the VAT area', function () {
+it('identifies the Portuguese islands, which are inside the VAT area', function (): void {
     // A different case from Spain's, and the reason territory is modelled rather
     // than "special = no tax": the Azores charge 16% and Madeira 22% where the
     // mainland charges 23%. They are IN the VAT area with their own rates.
@@ -133,11 +134,11 @@ it('identifies the Portuguese islands, which are inside the VAT area', function 
         ->and($territories->for(new CountryCode('PT'), '1000-001'))->toBeNull();  // Lisbon
 });
 
-it('is bound by default so a host gets this without wiring anything', function () {
+it('is bound by default so a host gets this without wiring anything', function (): void {
     expect($this->app->make(EuTerritories::class))->toBeInstanceOf(StaticEuTerritories::class);
 });
 
-it('charges Madeira its own 22% rather than the mainland 23%', function () {
+it('charges Madeira its own 22% rather than the mainland 23%', function (): void {
     // The other kind of territory: inside the VAT area, own rates. Identifying it
     // was only half the job — until now the rate came from Portugal.
     $assessment = $this->tax->assess(delivery('PT', '9000-001'));
@@ -148,18 +149,18 @@ it('charges Madeira its own 22% rather than the mainland 23%', function () {
         ->and($assessment->reason)->toContain('Madeira');
 });
 
-it('charges the Azores 16%, the largest gap of the three', function () {
+it('charges the Azores 16%, the largest gap of the three', function (): void {
     // Seven points below the mainland. Charged as Portugal, every invoice into the
     // Azores over-collects by 7%.
     expect((string) $this->tax->assess(delivery('PT', '9500-001'))->rate?->percentage)->toBe('16');
 });
 
-it('leaves mainland Portugal on its own rate', function () {
+it('leaves mainland Portugal on its own rate', function (): void {
     // Lisbon is 1000-xxx.
     expect((string) $this->tax->assess(delivery('PT', '1000-001'))->rate?->percentage)->toBe('23');
 });
 
-it('marks the regional rate as derived, not authoritative', function () {
+it('marks the regional rate as derived, not authoritative', function (): void {
     // It comes from a shipped territory map rather than from a rate feed, and the
     // confidence should say so — an operator filtering on Authoritative is asking
     // exactly the right question.
@@ -169,7 +170,7 @@ it('marks the regional rate as derived, not authoritative', function () {
 
 // ---- The territories' own rates, at every level --------------------------------
 
-it('charges Madeira its own reduced rate, not the mainland band', function () {
+it('charges Madeira its own reduced rate, not the mainland band', function (): void {
     // The gap this closes. The regime substituted the STANDARD rate only, so a
     // Madeira grocery line kept mainland Portugal's 6% with a caveat saying it might
     // be two points high. It was: Madeira charges 4%.
@@ -186,7 +187,7 @@ it('charges Madeira its own reduced rate, not the mainland band', function () {
         ->and($territory?->rateFor('6'))->toBe('4');
 });
 
-it('prices a Madeira supply with the reduced rate in force on its date', function () {
+it('prices a Madeira supply with the reduced rate in force on its date', function (): void {
     // Madeira's reduced rate went from 5% to 4% on 2024-10-01 (DLR 6/2024/M art.
     // 21.º, effective under art. 121.º n.º 2). An invoice corrected afterwards must
     // reprice at what applied then.
@@ -197,7 +198,7 @@ it('prices a Madeira supply with the reduced rate in force on its date', functio
         ->and($after?->rateFor('6'))->toBe('4');
 });
 
-it('charges the Azores 30% below every national level', function () {
+it('charges the Azores 30% below every national level', function (): void {
     // DLR 15-A/2021/A cut the national rates by 30% from 2021-07-01, turning
     // 6/13/23 into 4/9/16 — one rule, three levels, and the engine must apply it at
     // whichever level the supply lands on.
@@ -209,13 +210,13 @@ it('charges the Azores 30% below every national level', function () {
         ->and($territory?->rateFor('6'))->toBe('4');
 });
 
-it('leaves a level it does not carry on the mainland band, and says so', function () {
+it('leaves a level it does not carry on the mainland band, and says so', function (): void {
     // Deny-by-default at the level lookup: an unknown mainland rate is not silently
     // mapped to the standard one.
     expect(new StaticEuTerritories(app(RegisterDataset::class))->for(new CountryCode('PT'), '9000-001')?->rateFor('99'))->toBeNull();
 });
 
-it('lets a host rebind the territory list and actually reach the regime', function () {
+it('lets a host rebind the territory list and actually reach the regime', function (): void {
     // The provider bound EuTerritories while DefaultRegimeRegistry hardcoded
     // StaticEuTerritories, so a host following the documented instruction to rebind
     // it changed nothing. A silent no-op on a seam the docs point at, and the
@@ -254,7 +255,7 @@ it('lets a host rebind the territory list and actually reach the regime', functi
     expect($assessment->tax->getAmount()->toFloat())->toBe(0.0);
 });
 
-it('takes the islands\' rates from the register, not from code', function () {
+it('takes the islands\' rates from the register, not from code', function (): void {
     // The figures used to live in this package, copied from the register that already
     // published them. A copy is correct until Portugal changes a rate. Change it in
     // the register, and the territory follows — there is nothing here to update.
@@ -271,7 +272,7 @@ it('takes the islands\' rates from the register, not from code', function () {
         ->and($madeira?->rateFor('6'))->toBe('3');
 });
 
-it('refuses an island supply when the register does not carry the island', function () {
+it('refuses an island supply when the register does not carry the island', function (): void {
     // Never the mainland's 23% in its place: that is a confident wrong rate on every
     // invoice into the region.
     $store = sys_get_temp_dir().'/cbox-tax-islands-'.getmypid().'-'.bin2hex(random_bytes(4));
@@ -281,7 +282,7 @@ it('refuses an island supply when the register does not carry the island', funct
     new StaticEuTerritories(new RegisterDataset($layout, new StorePointer($layout)))->for(new CountryCode('PT'), '9500-001');
 })->throws(UnresolvedTaxRule::class, 'Refusing rather than charging the mainland rate');
 
-function spanishSale(?string $subdivision, ?string $postalCode)
+function spanishSale(?string $subdivision, ?string $postalCode): TaxAssessment
 {
     $geo = app(JurisdictionRepository::class);
     $place = $subdivision === null ? $geo->find(new CountryCode('ES')) : $geo->find(new CountryCode('ES'), new SubdivisionCode($subdivision));
@@ -296,13 +297,13 @@ function spanishSale(?string $subdivision, ?string $postalCode)
     ));
 }
 
-it('reads the Canary Islands from a subdivision when there is no postcode', function () {
+it('reads the Canary Islands from a subdivision when there is no postcode', function (): void {
     // An address geocoded to Santa Cruz de Tenerife, postcode absent, was priced at
     // mainland Spanish VAT and marked reliable. It is an export.
     expect(spanishSale('ES-TF', null)->treatment)->toBe(TaxTreatment::ZeroRated);
 });
 
-it('flags a Spanish sale nothing placed on the mainland', function () {
+it('flags a Spanish sale nothing placed on the mainland', function (): void {
     // The national rate is still the best figure — most Spanish addresses are on the
     // mainland — but it is no longer called authoritative.
     expect(spanishSale(null, null)->rate?->limitedBy)->toBe(RateLimit::TerritoryUnplaced)

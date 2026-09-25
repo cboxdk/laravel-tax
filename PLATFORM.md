@@ -103,13 +103,17 @@ Every repo, before every commit. Never a partial run.
 
 ```bash
 vendor/bin/pint --test
-vendor/bin/phpstan analyse --no-progress --memory-limit=1G   # level max, larastan
+vendor/bin/rector process --dry-run                          # rector.php says what it skips and why
+vendor/bin/phpstan analyse --no-progress --memory-limit=1G   # level 10, larastan; bin, config, src
 vendor/bin/pest  # includes the live e2e group
 composer audit --no-dev
 composer license-check
+composer sbom && git diff --exit-code sbom.json
 ```
 
-No `@phpstan-ignore`, no baseline, no `assert()` to override inference. Fix the cause.
+`composer qa` runs all but the last; CI runs the SBOM check against the committed
+lock. No `@phpstan-ignore`, no baseline, no `assert()` to override inference, no cast
+to quiet a type. Fix the cause.
 
 ## Where to read next
 

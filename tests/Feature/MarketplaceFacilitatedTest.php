@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->rates = app(TaxRateSource::class);
@@ -61,7 +61,7 @@ function facilitatedQuery(
 // The charge
 // ---------------------------------------------------------------------------
 
-it('charges nothing on a facilitated sale, because the marketplace already did', function () {
+it('charges nothing on a facilitated sale, because the marketplace already did', function (): void {
     $assessment = $this->regime->assess(facilitatedQuery('US-WA', viaMarketplace: true), $this->rates);
 
     expect($assessment->treatment)->toBe(TaxTreatment::MarketplaceFacilitated)
@@ -69,14 +69,14 @@ it('charges nothing on a facilitated sale, because the marketplace already did',
         ->and($assessment->gross->getAmount()->toFloat())->toBe(100.0);
 });
 
-it('charges the seller normally on a direct sale', function () {
+it('charges the seller normally on a direct sale', function (): void {
     $assessment = $this->regime->assess(facilitatedQuery('US-WA', viaMarketplace: false), $this->rates);
 
     expect($assessment->treatment)->toBe(TaxTreatment::Standard)
         ->and($assessment->tax->getAmount()->toFloat())->toBeGreaterThan(0.0);
 });
 
-it('does not care whether the seller has nexus of their own', function () {
+it('does not care whether the seller has nexus of their own', function (): void {
     // The marketplace's liability is not derived from the seller's presence. A
     // seller with no registration in the state still owes nothing on a facilitated
     // sale, and the reason must say WHY — `NotRegistered` would say something else
@@ -93,7 +93,7 @@ it('does not care whether the seller has nexus of their own', function () {
 // The date, which is the whole reason this is data and not a flag
 // ---------------------------------------------------------------------------
 
-it('leaves the tax with the seller before the state\'s rule took effect', function () {
+it('leaves the tax with the seller before the state\'s rule took effect', function (): void {
     // Missouri was the last state in, on 2023-01-01. A 2022 sale there was the
     // seller's to collect, and answering from today's map would zero a real charge.
     $assessment = $this->regime->assess(
@@ -105,7 +105,7 @@ it('leaves the tax with the seller before the state\'s rule took effect', functi
         ->and($assessment->tax->getAmount()->toFloat())->toBeGreaterThan(0.0);
 });
 
-it('applies it from the day the rule came in', function () {
+it('applies it from the day the rule came in', function (): void {
     $assessment = $this->regime->assess(
         facilitatedQuery('US-MO', viaMarketplace: true, on: '2023-01-01'),
         $this->rates,
@@ -114,7 +114,7 @@ it('applies it from the day the rule came in', function () {
     expect($assessment->treatment)->toBe(TaxTreatment::MarketplaceFacilitated);
 });
 
-it('leaves the tax with the seller where no date is carried', function () {
+it('leaves the tax with the seller where no date is carried', function (): void {
     // Arizona's published date is not trusted and Alaska has no state tax to hang
     // one on, so neither carries one. Deny-by-default sends the tax back to the
     // seller: charging twice is visible to the customer and refundable, charging
@@ -128,7 +128,7 @@ it('leaves the tax with the seller where no date is carried', function () {
 // It is not "exempt", and the difference lands on a return
 // ---------------------------------------------------------------------------
 
-it('reports an exempt supply as exempt, not as facilitated', function () {
+it('reports an exempt supply as exempt, not as facilitated', function (): void {
     // A marketplace collects nothing on an exempt supply. Calling it facilitated
     // would assert a tax that was never due — a wrong return under a right charge.
     $assessment = $this->regime->assess(
@@ -139,7 +139,7 @@ it('reports an exempt supply as exempt, not as facilitated', function () {
     expect($assessment->treatment)->toBe(TaxTreatment::Exempt);
 });
 
-it('says tax was due, unlike the other zero-charge outcomes', function () {
+it('says tax was due, unlike the other zero-charge outcomes', function (): void {
     // All four charge nothing and they mean opposite things on a return. This is
     // what stops a filing from treating them alike.
     expect(TaxTreatment::MarketplaceFacilitated->taxWasDue())->toBeTrue()
@@ -150,7 +150,7 @@ it('says tax was due, unlike the other zero-charge outcomes', function () {
         ->and(TaxTreatment::ReverseCharge->taxWasDue())->toBeTrue();
 });
 
-it('explains itself well enough to defend the return', function () {
+it('explains itself well enough to defend the return', function (): void {
     $assessment = $this->regime->assess(facilitatedQuery('US-WA', viaMarketplace: true), $this->rates);
 
     expect($assessment->reason)->toContain('marketplace')

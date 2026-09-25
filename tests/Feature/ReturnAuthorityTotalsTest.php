@@ -32,7 +32,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // rebuilt by hand from the individual assessments. That is the one piece of
 // arithmetic on a signed return that should never be done twice.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->returns = new DefaultReturnAggregator;
@@ -62,7 +62,7 @@ function ksReturnSupply(string $amount, string $reportedOn, string $authority = 
     );
 }
 
-it('rolls a period up per authority, not just per jurisdiction', function () {
+it('rolls a period up per authority, not just per jurisdiction', function (): void {
     $return = $this->returns->aggregate([
         $this->calculator->assess(ksReturnSupply('1000.00', '2026-08-03')),
         $this->calculator->assess(ksReturnSupply('1000.00', '2026-08-20')),
@@ -91,7 +91,7 @@ it('rolls a period up per authority, not just per jurisdiction', function () {
         ->and((string) $line->tax->getAmount())->toBe('182.50');
 });
 
-it('keeps two different local authorities apart', function () {
+it('keeps two different local authorities apart', function (): void {
     // County 209 (1%) and city 36000 (1.625%) are separate authorities and separate
     // cheques. Merging them by level alone would report one authority owed both.
     $return = $this->returns->aggregate([
@@ -108,7 +108,7 @@ it('keeps two different local authorities apart', function () {
     expect($codes)->toContain('us:KS:CITY-36000')->toContain('us:KS:COUNTY-209');
 });
 
-it('refuses the split when a taxed supply arrived without a breakdown', function () {
+it('refuses the split when a taxed supply arrived without a breakdown', function (): void {
     // A partial roll-up is worse than none: what remains still adds up to a
     // plausible return, so the omission is invisible. Someone signs this.
     $hand = new TaxAssessment(
@@ -135,7 +135,7 @@ it('refuses the split when a taxed supply arrived without a breakdown', function
         ->and((string) $line?->tax->getAmount())->toBe('100.38');
 });
 
-it('ignores an untaxed supply rather than refusing over it', function () {
+it('ignores an untaxed supply rather than refusing over it', function (): void {
     // A zero-tax supply has nothing to attribute and no missing breakdown to
     // complain about. Treating it as a gap would make exempt sales poison the
     // split for the whole period.
@@ -158,7 +158,7 @@ it('ignores an untaxed supply rather than refusing over it', function () {
     expect($return->lineFor(new CountryCode('US'), 'USD', new SubdivisionCode('US-KS'))?->authorities)->not->toBeNull();
 });
 
-it('reports no split for a jurisdiction that never had one', function () {
+it('reports no split for a jurisdiction that never had one', function (): void {
     // A national VAT supply has one authority and no stack. There is nothing to
     // decompose, and inventing a single-entry "split" would suggest the engine
     // knew something it does not.
@@ -179,7 +179,7 @@ it('reports no split for a jurisdiction that never had one', function () {
     expect($return->lineFor(new CountryCode('DK'), 'DKK')?->authorities)->toBeNull();
 });
 
-it('does not merge authorities across different states', function () {
+it('does not merge authorities across different states', function (): void {
     // Each state files its own return, so the lines are already separate — but the
     // authority codes are only unique WITHIN a state, and a roll-up spanning lines
     // would collide them.

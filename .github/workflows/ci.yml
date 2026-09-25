@@ -27,11 +27,16 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      # Against the COMMITTED lock, before the update below re-resolves it: the SBOM
+      # describes what the repository pins, and must change only when that does.
+      - name: SBOM matches composer.lock
+        run: php bin/generate-sbom.php && git diff --exit-code sbom.json
+
       - name: Constrain Testbench (Laravel major)
         run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update --no-interaction
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
-      - name: QA gate (pint · phpstan · pest · license-check · audit)
+      - name: QA gate (pint · rector · phpstan level 10 · pest · license-check · audit)
         run: composer qa

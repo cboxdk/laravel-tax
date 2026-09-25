@@ -22,6 +22,7 @@ use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\ProductTaxMapping;
+use Cbox\Tax\ValueObjects\RegisterFact;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
@@ -109,7 +110,7 @@ beforeEach(function (): void {
 
 function gbRate(string $key, ?string $code = null, array $facts = []): ?TaxRate
 {
-    return (new RegisterRateSource(app(RegisterDataset::class)))
+    return new RegisterRateSource(app(RegisterDataset::class))
         ->withFacts(new DecisionFacts($facts))
         ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('GB')), $key, $code);
 }
@@ -306,7 +307,7 @@ it('audits a catalogue against a market, and says what each product is missing',
         ->and($by['SKU-FEED']->factsNeeded())->toBe([])
         ->and($by['SKU-LAMB']->factsNeeded())->toBe(['product.isLiveAnimalOfAKindYieldingHumanFood'])
         // The register's own question, and only because it is about the product.
-        ->and(array_map(fn ($q) => $q->question, $by['SKU-LAMB']->productQuestions()))
+        ->and(array_map(fn (RegisterFact $q): string => $q->question, $by['SKU-LAMB']->productQuestions()))
         ->toBe(['Is this a live animal of a kind generally used as, or yielding or producing, food for human consumption?'])
         ->and($by['SKU-NOBODY-MAPPED']->isUnmapped())->toBeTrue();
 });
@@ -398,7 +399,7 @@ it('prices Hawaii\'s financial exemption against its general rate, made disjoint
         ? ['seller.financialInstitutionAuthorised' => false]
         : ['seller.financialInstitutionAuthorised' => true, 'service.financialServiceKind' => $kind];
 
-    $rate = (new RegisterRateSource(app(RegisterDataset::class)))
+    $rate = new RegisterRateSource(app(RegisterDataset::class))
         ->withFacts(new DecisionFacts($facts))
         ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-HI')), 'services.financial');
 

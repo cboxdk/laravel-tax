@@ -23,13 +23,7 @@ readonly class DispatchingVatIdValidator implements VatIdValidator
 
     public function supports(CountryCode $country): bool
     {
-        foreach ($this->validators as $validator) {
-            if ($validator->supports($country)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->validators, fn (VatIdValidator $validator): bool => $validator->supports($country));
     }
 
     public function validate(CountryCode $country, string $taxId): VatIdValidation

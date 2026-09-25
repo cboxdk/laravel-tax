@@ -167,8 +167,8 @@ it('reads a top-level scalar without decoding the document', function (): void {
         file_put_contents($path, '{"formatVersion": 3, "state":"WI", "sets":[], "note":"formatVersion"}');
         expect(JsonArrayStream::scalarOfFile($path, 'formatVersion'))->toBe(3)
             ->and(JsonArrayStream::scalarOfFile($path, 'state'))->toBe('WI')
-            ->and(fn () => JsonArrayStream::scalarOfFile($path, 'sets'))->toThrow(DatasetUnreadable::class)
-            ->and(fn () => JsonArrayStream::scalarOfFile($path, 'missing'))->toThrow(DatasetUnreadable::class);
+            ->and(fn (): string|int|float|bool|null => JsonArrayStream::scalarOfFile($path, 'sets'))->toThrow(DatasetUnreadable::class)
+            ->and(fn (): string|int|float|bool|null => JsonArrayStream::scalarOfFile($path, 'missing'))->toThrow(DatasetUnreadable::class);
     } finally {
         @unlink($path);
     }

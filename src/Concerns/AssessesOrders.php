@@ -205,7 +205,7 @@ trait AssessesOrders
         $groups = [];
 
         foreach ($delivered as [$line, $assessed]) {
-            $key = $assessed->treatment->value.'|'.((string) $assessed->rate?->percentage);
+            $key = $assessed->treatment->value.'|'.($assessed->rate?->percentage);
 
             // SIGNED. A discount line takes weight away from its rate group; with the
             // absolute value it ADDED weight, so a −50 food discount pulled freight

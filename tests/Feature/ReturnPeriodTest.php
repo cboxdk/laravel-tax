@@ -21,7 +21,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // supplied on 30 December and invoiced on 3 January are rated at December's rate
 // while national rules may put them in either period.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
     $this->returns = $this->app->make(ReturnAggregator::class);
@@ -40,7 +40,7 @@ function periodSupply(string $amount, ?string $suppliedAt = null, ?string $repor
     );
 }
 
-it('files only the supplies whose reporting date falls in the period', function () {
+it('files only the supplies whose reporting date falls in the period', function (): void {
     $assessments = [
         $this->tax->assess(periodSupply('100.00', '2026-09-30')),  // Q3
         $this->tax->assess(periodSupply('200.00', '2026-10-01')),  // Q4
@@ -57,7 +57,7 @@ it('files only the supplies whose reporting date falls in the period', function 
         ->and($q4->period?->describe())->toBe('Q4 2026');
 });
 
-it('follows the reporting date, not the tax point, when they differ', function () {
+it('follows the reporting date, not the tax point, when they differ', function (): void {
     // Supplied 30 December, reported in January. It is rated at December's rate and
     // filed in Q1 — one date cannot do both jobs.
     $straddling = $this->tax->assess(periodSupply('100.00', '2026-12-30', '2027-01-03'));
@@ -72,13 +72,13 @@ it('follows the reporting date, not the tax point, when they differ', function (
         ->and($straddling->reportedOn?->format('Y-m-d'))->toBe('2027-01-03');
 });
 
-it('reports on the tax point when no separate date is given', function () {
+it('reports on the tax point when no separate date is given', function (): void {
     $assessment = $this->tax->assess(periodSupply('100.00', '2026-11-15'));
 
     expect($assessment->reportedOn?->format('Y-m-d'))->toBe('2026-11-15');
 });
 
-it('aggregates everything when no period is asked for', function () {
+it('aggregates everything when no period is asked for', function (): void {
     // The previous behaviour, preserved: a caller that wants a running total still
     // gets one.
     $all = $this->returns->aggregate([
@@ -90,7 +90,7 @@ it('aggregates everything when no period is asked for', function () {
         ->and($all->period)->toBeNull();
 });
 
-it('excludes an assessment that cannot say which period it belongs to', function () {
+it('excludes an assessment that cannot say which period it belongs to', function (): void {
     // A hand-built assessment with no reporting date. Assuming it into the period
     // being filed would put an unknown supply on a return someone signs.
     $undated = new TaxAssessment(
@@ -108,7 +108,7 @@ it('excludes an assessment that cannot say which period it belongs to', function
 
 // ---- The period value object ---------------------------------------------
 
-it('builds the windows an authority actually files on', function () {
+it('builds the windows an authority actually files on', function (): void {
     expect(ReturnPeriod::quarter(2026, 4)->from->format('Y-m-d'))->toBe('2026-10-01')
         ->and(ReturnPeriod::quarter(2026, 4)->to->format('Y-m-d'))->toBe('2026-12-31')
         ->and(ReturnPeriod::month(2026, 2)->to->format('Y-m-d'))->toBe('2026-02-28')
@@ -116,7 +116,7 @@ it('builds the windows an authority actually files on', function () {
         ->and(ReturnPeriod::year(2026)->describe())->toBe('2026');
 });
 
-it('includes both bounds', function () {
+it('includes both bounds', function (): void {
     $q1 = ReturnPeriod::quarter(2026, 1);
 
     expect($q1->covers(new DateTimeImmutable('2026-01-01')))->toBeTrue()

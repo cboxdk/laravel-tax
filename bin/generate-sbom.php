@@ -12,27 +12,23 @@ declare(strict_types=1);
  *   php bin/generate-sbom.php --dev --output=sbom-dev.json
  */
 $root = dirname(__DIR__);
-$lock = json_decode((string) file_get_contents($root.'/composer.lock'), true, 512, JSON_THROW_ON_ERROR);
-$self = json_decode((string) file_get_contents($root.'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
-
-$includeDev = in_array('--dev', $argv, true);
+$arguments = arguments();
+$includeDev = in_array('--dev', $arguments, true);
 $output = $root.'/sbom.json';
-foreach ($argv as $arg) {
+
+foreach ($arguments as $arg) {
     if (str_starts_with($arg, '--output=')) {
         $output = substr($arg, strlen('--output='));
     }
 }
 
-$packages = $lock['packages'] ?? [];
-if ($includeDev) {
-    $packages = array_merge($packages, $lock['packages-dev'] ?? []);
-}
+$packages = lockedPackages($root.'/composer.lock', $includeDev);
+usort($packages, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
 
-usort($packages, static fn (array $a, array $b): int => strcmp((string) $a['name'], (string) $b['name']));
+$components = array_map(componentFor(...), $packages);
+$self = packageName($root.'/composer.json');
 
-$components = array_map('componentFor', $packages);
-
-$serial = 'urn:uuid:'.deterministicUuid(implode('|', array_column($components, 'purl')));
+$serial = 'urn:uuid:'.deterministicUuid(implode('|', array_map(static fn (array $component): string => $component['purl'], $components)));
 
 $bom = [
     'bomFormat' => 'CycloneDX',
@@ -47,9 +43,9 @@ $bom = [
         ]],
         'component' => [
             'type' => 'library',
-            'bom-ref' => (string) $self['name'],
-            'name' => (string) $self['name'],
-            'purl' => 'pkg:composer/'.$self['name'],
+            'bom-ref' => $self,
+            'name' => $self,
+            'purl' => 'pkg:composer/'.$self,
         ],
     ],
     'components' => $components,
@@ -63,13 +59,87 @@ file_put_contents(
 printf("Wrote %s: %d components (%s).\n", $output, count($components), $includeDev ? 'production + dev' : 'production');
 
 /**
- * @param  array<string, mixed>  $package
- * @return array<string, mixed>
+ * The command-line arguments, as strings.
+ *
+ * @return list<string>
+ */
+function arguments(): array
+{
+    $argv = $_SERVER['argv'] ?? [];
+
+    return is_array($argv) ? array_values(array_filter($argv, is_string(...))) : [];
+}
+
+/**
+ * A JSON file decoded to an object, or the script stops: a lock file that is not one
+ * cannot describe a bill of materials.
+ *
+ * @return array<array-key, mixed>
+ */
+function jsonObject(string $path): array
+{
+    $raw = is_file($path) ? file_get_contents($path) : false;
+    $decoded = $raw === false ? null : json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+    if (! is_array($decoded)) {
+        fwrite(STDERR, "{$path} is missing or not a JSON object.\n");
+        exit(2);
+    }
+
+    return $decoded;
+}
+
+function packageName(string $composerJson): string
+{
+    $name = jsonObject($composerJson)['name'] ?? null;
+
+    return is_string($name) ? $name : 'cboxdk/laravel-tax';
+}
+
+/**
+ * Every locked package, narrowed at the JSON boundary to what the bill of materials
+ * reads, so nothing below it handles an untyped value.
+ *
+ * @return list<array{name: string, version: string, description: ?string, license: list<string>, shasum: ?string}>
+ */
+function lockedPackages(string $lockPath, bool $includeDev): array
+{
+    $lock = jsonObject($lockPath);
+    $packages = [];
+
+    foreach ($includeDev ? ['packages', 'packages-dev'] : ['packages'] as $section) {
+        $list = $lock[$section] ?? [];
+
+        foreach (is_array($list) ? $list : [] as $package) {
+            if (! is_array($package) || ! is_string($package['name'] ?? null)) {
+                continue;
+            }
+
+            $license = $package['license'] ?? [];
+            $dist = $package['dist'] ?? null;
+            $shasum = is_array($dist) ? ($dist['shasum'] ?? null) : null;
+
+            $packages[] = [
+                'name' => $package['name'],
+                'version' => is_string($package['version'] ?? null) ? $package['version'] : '0.0.0',
+                'description' => is_string($package['description'] ?? null) ? $package['description'] : null,
+                'license' => array_values(array_filter(is_array($license) ? $license : [$license], is_string(...))),
+                'shasum' => is_string($shasum) && $shasum !== '' ? $shasum : null,
+            ];
+        }
+    }
+
+    return $packages;
+}
+
+/**
+ * @param  array{name: string, version: string, description: ?string, license: list<string>, shasum: ?string}  $package
+ * @return array{type: string, bom-ref: string, group: string, name: string, version: string, purl: string, description?: string, licenses?: list<array<string, mixed>>, hashes?: list<array{alg: string, content: string}>}
  */
 function componentFor(array $package): array
 {
-    $name = (string) $package['name'];
-    $version = (string) ($package['version'] ?? '0.0.0');
+    $name = $package['name'];
+    $version = $package['version'];
     $purl = 'pkg:composer/'.$name.'@'.$version;
     [$group, $short] = array_pad(explode('/', $name, 2), 2, $name);
 
@@ -82,31 +152,28 @@ function componentFor(array $package): array
         'purl' => $purl,
     ];
 
-    if (isset($package['description']) && is_string($package['description'])) {
+    if ($package['description'] !== null) {
         $component['description'] = $package['description'];
     }
 
-    $licenses = licenseEntries($package['license'] ?? []);
+    $licenses = licenseEntries($package['license']);
     if ($licenses !== []) {
         $component['licenses'] = $licenses;
     }
 
-    $shasum = $package['dist']['shasum'] ?? '';
-    if (is_string($shasum) && $shasum !== '') {
-        $component['hashes'] = [['alg' => 'SHA-1', 'content' => $shasum]];
+    if ($package['shasum'] !== null) {
+        $component['hashes'] = [['alg' => 'SHA-1', 'content' => $package['shasum']]];
     }
 
     return $component;
 }
 
 /**
- * @param  list<string>|string  $license
+ * @param  list<string>  $items
  * @return list<array<string, mixed>>
  */
-function licenseEntries(array|string $license): array
+function licenseEntries(array $items): array
 {
-    $items = array_values(array_filter(is_array($license) ? $license : [$license], 'is_string'));
-
     if ($items === []) {
         return [];
     }

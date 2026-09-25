@@ -7,6 +7,20 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Development
+
+- **Rector** runs in `composer qa` as a dry run (`composer refactor` applies it): the
+  PHP 8.4, dead-code, code-quality and type-declaration sets, with the rules that would
+  trade the code's reading order or remove a deliberate guard skipped and the reason
+  written beside each.
+- **PHPStan level 10**, written as a number, now also covers `bin/` and `config/`. The
+  licence and SBOM scripts read `composer.lock` typed at the JSON boundary; the SBOM
+  they write is byte-identical.
+- **CI checks the SBOM** against the committed lock, before dependencies are updated.
+- **The reference corpus names its cases when one fails.** Each assertion was given a
+  label as a second argument to `expect()`, which takes one — so a failure never said
+  which case, release or source it was. The label is on the matcher now.
+
 ## [0.15.0] - 2026-09-25
 
 The register is the only data source. An application on 0.14 or earlier cannot

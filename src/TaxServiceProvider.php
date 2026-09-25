@@ -69,6 +69,7 @@ use Illuminate\Support\ServiceProvider;
  */
 class TaxServiceProvider extends ServiceProvider
 {
+    #[\Override]
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/tax.php', 'tax');
@@ -174,17 +175,15 @@ class TaxServiceProvider extends ServiceProvider
         $this->app->singleton(FlatChargeSource::class, static fn (): FlatChargeSource => new NoFlatCharges);
         $this->app->singleton(OrderFlatChargeSource::class, static fn (): OrderFlatChargeSource => new NoOrderFlatCharges);
 
-        $this->app->singleton(TaxCalculator::class, static function (Application $app): DefaultTaxCalculator {
-            return new DefaultTaxCalculator(
-                $app->make(RegimeRegistry::class),
-                $app->make(TaxRateSource::class),
-                $app->make(FlatChargeSource::class),
-                $app->make(OrderFlatChargeSource::class),
-                $app->make(ProductCatalogue::class),
-                $app->make(MarketplaceRules::class),
-                $app->make(JurisdictionRepository::class),
-            );
-        });
+        $this->app->singleton(TaxCalculator::class, static fn (Application $app): DefaultTaxCalculator => new DefaultTaxCalculator(
+            $app->make(RegimeRegistry::class),
+            $app->make(TaxRateSource::class),
+            $app->make(FlatChargeSource::class),
+            $app->make(OrderFlatChargeSource::class),
+            $app->make(ProductCatalogue::class),
+            $app->make(MarketplaceRules::class),
+            $app->make(JurisdictionRepository::class),
+        ));
 
         $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterDataset::class)));
 

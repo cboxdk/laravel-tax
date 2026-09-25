@@ -10,45 +10,45 @@ use Cbox\Tax\Validators\ViesValidator;
 use Cbox\Tax\ValueObjects\VatIdValidation;
 use Illuminate\Http\Client\Factory;
 
-it('validates a valid EU VAT number via VIES and records the consultation reference', function () {
+it('validates a valid EU VAT number via VIES and records the consultation reference', function (): void {
     $http = new Factory;
     $http->fake(['ec.europa.eu/*' => $http->response([
         'valid' => true, 'name' => 'ACME GmbH', 'address' => 'Berlin', 'requestIdentifier' => 'WAPIAAAA',
     ])]);
 
-    $r = (new ViesValidator($http))->validate(new CountryCode('DE'), 'DE123456789');
+    $r = new ViesValidator($http)->validate(new CountryCode('DE'), 'DE123456789');
 
     expect($r->permitsReverseCharge())->toBeTrue()
         ->and($r->name)->toBe('ACME GmbH')
         ->and($r->consultationReference)->toBe('WAPIAAAA');
 });
 
-it('conclusively rejects an invalid EU VAT number', function () {
+it('conclusively rejects an invalid EU VAT number', function (): void {
     $http = new Factory;
     $http->fake(['ec.europa.eu/*' => $http->response(['valid' => false])]);
 
-    $r = (new ViesValidator($http))->validate(new CountryCode('DE'), '000');
+    $r = new ViesValidator($http)->validate(new CountryCode('DE'), '000');
 
     expect($r->valid)->toBeFalse()
         ->and($r->conclusive)->toBeTrue()
         ->and($r->permitsReverseCharge())->toBeFalse();
 });
 
-it('is fail-safe (inconclusive, no reverse charge) when VIES is unavailable', function () {
+it('is fail-safe (inconclusive, no reverse charge) when VIES is unavailable', function (): void {
     $http = new Factory;
     $http->fake(['ec.europa.eu/*' => $http->response('', 503)]);
 
-    $r = (new ViesValidator($http))->validate(new CountryCode('FR'), 'FR123');
+    $r = new ViesValidator($http)->validate(new CountryCode('FR'), 'FR123');
 
     expect($r->conclusive)->toBeFalse()
         ->and($r->permitsReverseCharge())->toBeFalse();
 });
 
-it('supports Greece under VIES', function () {
-    expect((new ViesValidator(new Factory))->supports(new CountryCode('GR')))->toBeTrue();
+it('supports Greece under VIES', function (): void {
+    expect(new ViesValidator(new Factory)->supports(new CountryCode('GR')))->toBeTrue();
 });
 
-it('validates a UK VAT number via HMRC', function () {
+it('validates a UK VAT number via HMRC', function (): void {
     $http = new Factory;
     // The shape HMRC actually returns: the looked-up number echoed back beside
     // the registered name and address.
@@ -61,7 +61,7 @@ it('validates a UK VAT number via HMRC', function () {
         'consultationNumber' => 'ABC123',
     ])]);
 
-    $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
+    $r = new HmrcVatValidator($http)->validate(new CountryCode('GB'), 'GB123456789');
 
     expect($r->permitsReverseCharge())->toBeTrue()
         ->and($r->name)->toBe('ACME Ltd')
@@ -69,7 +69,7 @@ it('validates a UK VAT number via HMRC', function () {
         ->and($r->consultationReference)->toBe('ABC123');
 });
 
-it('does not treat a bare 2xx from HMRC as proof of registration', function () {
+it('does not treat a bare 2xx from HMRC as proof of registration', function (): void {
     // An empty body, an error envelope, or a captive portal serving JSON all
     // arrive as a successful response. None of them says the number is
     // registered, and reading them as "conclusively valid" zero-rates a UK B2B
@@ -85,35 +85,35 @@ it('does not treat a bare 2xx from HMRC as proof of registration', function () {
         $http = new Factory;
         $http->fake(['api.service.hmrc.gov.uk/*' => $http->response($body)]);
 
-        $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
+        $r = new HmrcVatValidator($http)->validate(new CountryCode('GB'), 'GB123456789');
 
         expect($r->permitsReverseCharge())->toBeFalse("$label must not permit reverse charge")
             ->and($r->conclusive)->toBeFalse("$label must be inconclusive");
     }
 });
 
-it('refuses an HMRC response about a different registration', function () {
+it('refuses an HMRC response about a different registration', function (): void {
     $http = new Factory;
     $http->fake(['api.service.hmrc.gov.uk/*' => $http->response([
         'target' => ['name' => 'Someone Else Ltd', 'vatNumber' => '999999999'],
     ])]);
 
-    $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB123456789');
+    $r = new HmrcVatValidator($http)->validate(new CountryCode('GB'), 'GB123456789');
 
     expect($r->permitsReverseCharge())->toBeFalse()
         ->and($r->conclusive)->toBeFalse();
 });
 
-it('treats an HMRC 404 as conclusively not registered', function () {
+it('treats an HMRC 404 as conclusively not registered', function (): void {
     $http = new Factory;
     $http->fake(['api.service.hmrc.gov.uk/*' => $http->response('', 404)]);
 
-    $r = (new HmrcVatValidator($http))->validate(new CountryCode('GB'), 'GB000');
+    $r = new HmrcVatValidator($http)->validate(new CountryCode('GB'), 'GB000');
 
     expect($r->valid)->toBeFalse()->and($r->conclusive)->toBeTrue();
 });
 
-it('dispatches to the right validator by country and is inconclusive for unsupported ones', function () {
+it('dispatches to the right validator by country and is inconclusive for unsupported ones', function (): void {
     $http = new Factory;
     $http->fake([
         'ec.europa.eu/*' => $http->response(['valid' => true]),
@@ -127,7 +127,7 @@ it('dispatches to the right validator by country and is inconclusive for unsuppo
         ->and($d->validate(new CountryCode('US'), '1')->conclusive)->toBeFalse();
 });
 
-it('provides a configurable fake for tests', function () {
+it('provides a configurable fake for tests', function (): void {
     $fake = (new FakeVatIdValidator)->willReturn(new CountryCode('DE'), 'DE1', VatIdValidation::valid('fake'));
 
     expect($fake->validate(new CountryCode('DE'), 'DE1')->permitsReverseCharge())->toBeTrue()

@@ -61,10 +61,10 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistric
     private array $postalHeads = [];
 
     public function __construct(
-        private StoreLayout $layout,
-        private string $version,
-        private ?RegisterDataset $dataset = null,
-        private Resolver $resolver = new Resolver,
+        private readonly StoreLayout $layout,
+        private readonly string $version,
+        private readonly ?RegisterDataset $dataset = null,
+        private readonly Resolver $resolver = new Resolver,
     ) {}
 
     /**

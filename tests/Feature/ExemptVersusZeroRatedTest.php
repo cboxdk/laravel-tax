@@ -15,6 +15,7 @@ use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Testing\FakeRegister;
+use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
@@ -83,7 +84,7 @@ it('tells an exempt supply from a zero-rated one in the EU', function (): void {
         // no article per row, and the Directive accepts "any other reference
         // indicating that the supply is exempt" — so the words, and no invented
         // citation.
-        ->and(array_map(fn ($m) => $m->code, $finance->mentions))->toBe(['exempt'])
+        ->and(array_map(fn (InvoiceMention $m): string => $m->code, $finance->mentions))->toBe(['exempt'])
         ->and($finance->mentions[0]->reference)->toBeNull();
 });
 

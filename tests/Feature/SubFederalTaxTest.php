@@ -21,7 +21,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -52,7 +52,7 @@ function usBuyer(string $sellerState, string $buyerState, TaxClass $category = T
     );
 }
 
-it('charges US sales tax when the seller has nexus in the state', function () {
+it('charges US sales tax when the seller has nexus in the state', function (): void {
     $a = $this->tax->assess(usBuyer('US-CA', 'US-CA'));
 
     expect($a->treatment)->toBe(TaxTreatment::Standard)
@@ -60,14 +60,14 @@ it('charges US sales tax when the seller has nexus in the state', function () {
         ->and((string) $a->gross->getAmount())->toBe('107.25');
 });
 
-it('does not collect where the seller has no nexus', function () {
+it('does not collect where the seller has no nexus', function (): void {
     $a = $this->tax->assess(usBuyer('US-NY', 'US-CA')); // registered in NY, selling to CA
 
     expect($a->treatment)->toBe(TaxTreatment::NotRegistered)
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
 
-it('exempts a product that is not taxable in the state', function () {
+it('exempts a product that is not taxable in the state', function (): void {
     $registry = DefaultRegimeRegistry::withDefaults(
         new AlwaysTaxable(['US-CA:digital_service' => false]),
     );
@@ -79,7 +79,7 @@ it('exempts a product that is not taxable in the state', function () {
         ->and((string) $a->tax->getAmount())->toBe('0.00');
 });
 
-it('charges taxable US SaaS at the dataset state rate', function () {
+it('charges taxable US SaaS at the dataset state rate', function (): void {
     // NY taxes SaaS (digital_service) and the dataset carries NY's 4% state rate,
     // so a taxable digital service now resolves to the state rate instead of
     // refusing for want of one.
@@ -90,7 +90,7 @@ it('charges taxable US SaaS at the dataset state rate', function () {
         ->and($a->rate->confidence)->toBe(Confidence::Derived); // state-level, not rooftop all-in
 });
 
-it('charges taxable US SaaS when an explicit SaaS category rate is bound', function () {
+it('charges taxable US SaaS when an explicit SaaS category rate is bound', function (): void {
     $registry = DefaultRegimeRegistry::withDefaults(
         new AlwaysTaxable(['US-NY:digital_service' => true]),
     );
@@ -104,7 +104,7 @@ it('charges taxable US SaaS when an explicit SaaS category rate is bound', funct
         ->and((string) $a->tax->getAmount())->toBe('8.88');
 });
 
-it('refuses US sales tax without a resolved state', function () {
+it('refuses US sales tax without a resolved state', function (): void {
     $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'USD'),
         pricing: Pricing::Exclusive,
@@ -114,7 +114,7 @@ it('refuses US sales tax without a resolved state', function () {
     ));
 })->throws(JurisdictionNotResolved::class);
 
-it('charges the Canadian province combined rate', function () {
+it('charges the Canadian province combined rate', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
         pricing: Pricing::Exclusive,
@@ -127,7 +127,7 @@ it('charges the Canadian province combined rate', function () {
         ->and((string) $a->tax->getAmount())->toBe('13.00'); // ON HST 13%
 });
 
-it('adds the provincial share to the federal rate, or replaces it with a harmonised one', function (string $province, ?string $category, string $tax) {
+it('adds the provincial share to the federal rate, or replaces it with a harmonised one', function (string $province, ?string $category, string $tax): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
         pricing: Pricing::Exclusive,
@@ -150,7 +150,7 @@ it('adds the provincial share to the federal rate, or replaces it with a harmoni
     'HST applies otherwise' => ['CA-ON', 'goods.publications.book', '13.00'],
 ]);
 
-it('breaks a PST province into its federal and provincial shares', function () {
+it('breaks a PST province into its federal and provincial shares', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
         pricing: Pricing::Exclusive,
@@ -159,11 +159,11 @@ it('breaks a PST province into its federal and provincial shares', function () {
         seller: caSeller('CA-BC'),
     ));
 
-    expect(array_map(fn ($c) => [$c->code, (string) $c->percentage], $a->rate?->components ?? []))
+    expect(array_map(fn ($c): array => [$c->code, (string) $c->percentage], $a->rate?->components ?? []))
         ->toBe([['ca:CA', '5'], ['ca:BC', '7']]);
 });
 
-it('charges only the federal share when the seller is not registered for the province\'s PST', function (string $province, string $tax) {
+it('charges only the federal share when the seller is not registered for the province\'s PST', function (string $province, string $tax): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
         pricing: Pricing::Exclusive,
@@ -178,7 +178,7 @@ it('charges only the federal share when the seller is not registered for the pro
     'HST is the federal one' => ['CA-ON', '13.00'],
 ]);
 
-it('reverse-charges a cross-border B2B supply into Canada', function () {
+it('reverse-charges a cross-border B2B supply into Canada', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
         pricing: Pricing::Exclusive,

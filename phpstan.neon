@@ -2,7 +2,15 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
-    level: max
+    # 10 is the strictest level PHPStan has. Written as a number, not `max`, so a
+    # stricter level in a later PHPStan is a decision, not a side effect of an update.
+    level: 10
     paths:
+        - bin
+        - config
         - src
         - tests/Fixtures
+    # The package's own config: env() belongs here, and larastan otherwise looks
+    # for the application's config directory.
+    configDirectories:
+        - config

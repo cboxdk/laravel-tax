@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\TaxRate;
 // JP 10% (JPY, ZERO decimals) and BH 5%/10% (BHD, THREE), which is where the
 // rounding in TaxRate and the Hamilton allocation is most likely to be a unit out.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -39,7 +39,7 @@ function supplyIn(string $country, string $amount, string $currency, Pricing $pr
 
 // ---- Zero-decimal money (JPY) --------------------------------------------
 
-it('assesses zero-decimal money without inventing a fraction', function () {
+it('assesses zero-decimal money without inventing a fraction', function (): void {
     // 1,000 JPY at 10% = 100 JPY exactly.
     $exact = $this->tax->assess(supplyIn('JP', '1000', 'JPY'));
 
@@ -47,7 +47,7 @@ it('assesses zero-decimal money without inventing a fraction', function () {
         ->and((string) $exact->gross->getAmount())->toBe('1100');
 });
 
-it('rounds zero-decimal tax to a whole unit', function () {
+it('rounds zero-decimal tax to a whole unit', function (): void {
     // 1,005 JPY at 10% = 100.5, which does not exist in yen. Half-up gives 101,
     // and the gross must agree with it rather than with the unrounded figure.
     $rounded = $this->tax->assess(supplyIn('JP', '1005', 'JPY'));
@@ -57,7 +57,7 @@ it('rounds zero-decimal tax to a whole unit', function () {
         ->and($rounded->gross->minus($rounded->net)->isEqualTo($rounded->tax))->toBeTrue();
 });
 
-it('extracts zero-decimal tax from a gross amount and still reconciles', function () {
+it('extracts zero-decimal tax from a gross amount and still reconciles', function (): void {
     // The inclusive path divides rather than multiplies, which is where an
     // off-by-one hides: net + tax must equal the gross the caller quoted.
     foreach (['1100', '1000', '999', '1', '7'] as $gross) {
@@ -71,7 +71,7 @@ it('extracts zero-decimal tax from a gross amount and still reconciles', functio
 
 // ---- Three-decimal money (BHD) -------------------------------------------
 
-it('assesses three-decimal money at full precision', function () {
+it('assesses three-decimal money at full precision', function (): void {
     // 100.000 BHD at 10% = 10.000. The minor unit is a thousandth, so a rate that
     // rounds cleanly at two decimals may not here.
     $assessment = $this->tax->assess(supplyIn('BH', '100.000', 'BHD'));
@@ -80,7 +80,7 @@ it('assesses three-decimal money at full precision', function () {
         ->and((string) $assessment->gross->getAmount())->toBe('110.000');
 });
 
-it('reconciles three-decimal money on the inclusive path', function () {
+it('reconciles three-decimal money on the inclusive path', function (): void {
     foreach (['110.000', '100.001', '0.007', '55.555'] as $gross) {
         $assessment = $this->tax->assess(supplyIn('BH', $gross, 'BHD', Pricing::Inclusive));
 
@@ -92,7 +92,7 @@ it('reconciles three-decimal money on the inclusive path', function () {
 
 // ---- The allocation must survive both ------------------------------------
 
-it('allocates a stacked rate exactly in zero-decimal money', function () {
+it('allocates a stacked rate exactly in zero-decimal money', function (): void {
     // The Hamilton allocation distributes minor units. In yen a minor unit is a
     // whole yen, so a three-way split of a small tax is where it either holds or
     // visibly does not.
@@ -120,7 +120,7 @@ it('allocates a stacked rate exactly in zero-decimal money', function () {
     }
 });
 
-it('produces a reconciling breakdown in zero-decimal money end to end', function () {
+it('produces a reconciling breakdown in zero-decimal money end to end', function (): void {
     // Through the calculator, not the allocator: AppliesTaxRate::breakdown() bails
     // out on a money context with no fixed scale, and that bail-out has never been
     // exercised against a currency whose scale is zero.

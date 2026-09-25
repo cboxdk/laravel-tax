@@ -61,6 +61,7 @@ class EuVatRegime extends DestinationTaxRegime
      * a postcode, so the reason names the local tax rather than pretending the
      * answer covers both.
      */
+    #[\Override]
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
         $territory = $this->territory($query);
@@ -169,6 +170,7 @@ class EuVatRegime extends DestinationTaxRegime
     /**
      * @return list<InvoiceMention>
      */
+    #[\Override]
     protected function exemptMentions(TaxQuery $query): array
     {
         // Art. 226(11) requires an exempt supply's invoice to reference "the
@@ -200,6 +202,7 @@ class EuVatRegime extends DestinationTaxRegime
      *
      * @return list<InvoiceMention>
      */
+    #[\Override]
     protected function reverseChargeMentions(TaxQuery $query): array
     {
         // GOODS ARE NOT REVERSE-CHARGED; THEY ARE AN EXEMPT INTRA-COMMUNITY SUPPLY.
@@ -259,6 +262,7 @@ class EuVatRegime extends DestinationTaxRegime
      * self-account German VAT on a room in Munich. Reverse-charged only when the
      * performance place is the customer's own country.
      */
+    #[\Override]
     protected function reverseChargeApplies(TaxQuery $query): bool
     {
         if ($query->placeOfSupplyRule() !== PlaceOfSupplyRule::WherePerformed) {
@@ -270,6 +274,7 @@ class EuVatRegime extends DestinationTaxRegime
         return $performed === null || $performed->country->equals($query->place->country);
     }
 
+    #[\Override]
     protected function qualify(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxRate
     {
         if ($query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed
@@ -300,6 +305,7 @@ class EuVatRegime extends DestinationTaxRegime
         return $query->isBusiness() && $query->customerTaxIdValidated;
     }
 
+    #[\Override]
     protected function reverseChargeTreatment(TaxQuery $query): TaxTreatment
     {
         return $this->intraCommunityGoods($query)
@@ -307,6 +313,7 @@ class EuVatRegime extends DestinationTaxRegime
             : TaxTreatment::ReverseCharge;
     }
 
+    #[\Override]
     protected function reverseChargeReason(TaxQuery $query): string
     {
         return $this->intraCommunityGoods($query)
@@ -329,6 +336,7 @@ class EuVatRegime extends DestinationTaxRegime
             && $query->place->taxProfile->isEuMember;
     }
 
+    #[\Override]
     protected function sourcingPlace(TaxQuery $query): Jurisdiction
     {
         // WHERE IT HAPPENS, for everyone: a hotel, a venue, a meal, a journey.

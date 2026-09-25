@@ -32,7 +32,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // Rates here are the state rates only, so the arithmetic in each case is the
 // threshold's, not the rate stack's.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 
     $this->calculator = new DefaultTaxCalculator(
@@ -60,7 +60,7 @@ function garment(string $state, string $price, Pricing $pricing = Pricing::Exclu
 
 // ---- Massachusetts: only the amount over $175 --------------------------------
 
-it('taxes a Massachusetts garment on the amount over $175, not on the price', function () {
+it('taxes a Massachusetts garment on the amount over $175, not on the price', function (): void {
     // The state's own worked example: a $200 sweater is taxed on $25. At 6.25%
     // that is $1.56 — not the $12.50 a naive reading of "taxable" produces.
     $assessment = $this->calculator->assess(garment('US-MA', '200.00'));
@@ -72,7 +72,7 @@ it('taxes a Massachusetts garment on the amount over $175, not on the price', fu
         ->and($assessment->reason)->toContain('above the exemption threshold');
 });
 
-it('exempts a Massachusetts garment below the threshold outright', function () {
+it('exempts a Massachusetts garment below the threshold outright', function (): void {
     $assessment = $this->calculator->assess(garment('US-MA', '174.99'));
 
     expect($assessment->treatment)->toBe(TaxTreatment::Exempt)
@@ -84,7 +84,7 @@ it('exempts a Massachusetts garment below the threshold outright', function () {
 
 // ---- New York: the whole item, once it reaches $110 --------------------------
 
-it('taxes a New York garment on its ENTIRE price once it reaches $110', function () {
+it('taxes a New York garment on its ENTIRE price once it reaches $110', function (): void {
     // The opposite mechanic. Reading New York as Massachusetts would tax $90 of a
     // $200 dress instead of $200 — an under-collection on every garment over the
     // line in the state.
@@ -94,7 +94,7 @@ it('taxes a New York garment on its ENTIRE price once it reaches $110', function
         ->and($assessment->reason)->not->toContain('above the exemption threshold');
 });
 
-it('puts the New York cliff between $109.99 and $110.00', function () {
+it('puts the New York cliff between $109.99 and $110.00', function (): void {
     // New York is explicit that a cent decides this. An inclusive comparison here
     // moves a whole band of ordinary retail prices to the wrong side.
     expect($this->calculator->assess(garment('US-NY', '109.99'))->treatment)->toBe(TaxTreatment::Exempt)
@@ -104,18 +104,18 @@ it('puts the New York cliff between $109.99 and $110.00', function () {
 
 // ---- Rhode Island: excess-only, like Massachusetts ---------------------------
 
-it('taxes a Rhode Island garment on the amount over $250', function () {
+it('taxes a Rhode Island garment on the amount over $250', function (): void {
     // A $300 coat is taxed on $50, at 7% — $3.50.
     expect((string) $this->calculator->assess(garment('US-RI', '300.00'))->tax->getAmount())->toBe('3.50');
 });
 
-it('exempts a Rhode Island garment at exactly the threshold minus a cent', function () {
+it('exempts a Rhode Island garment at exactly the threshold minus a cent', function (): void {
     expect($this->calculator->assess(garment('US-RI', '249.99'))->treatment)->toBe(TaxTreatment::Exempt);
 });
 
 // ---- The invariants hold either way ------------------------------------------
 
-it('keeps gross as net plus tax when only part of the line is taxed', function () {
+it('keeps gross as net plus tax when only part of the line is taxed', function (): void {
     // The partial base changes what tax is computed ON, not what the customer is
     // billed. Several things in the engine depend on this invariant.
     $assessment = $this->calculator->assess(garment('US-MA', '200.00'));
@@ -123,7 +123,7 @@ it('keeps gross as net plus tax when only part of the line is taxed', function (
     expect($assessment->net->plus($assessment->tax)->isEqualTo($assessment->gross))->toBeTrue();
 });
 
-it('handles a tax-inclusive price with a partial base', function () {
+it('handles a tax-inclusive price with a partial base', function (): void {
     // The exempt slice passes through untouched, so removing tax from the whole
     // gross would strip tax that was never added to it. Round-tripped: charging
     // 6.25% on the excess of $200 gives $201.56, so a tax-inclusive $201.56 must
@@ -135,7 +135,7 @@ it('handles a tax-inclusive price with a partial base', function () {
         ->and((string) $assessment->gross->getAmount())->toBe('201.56');
 });
 
-it('does not disturb a state that taxes clothing outright', function () {
+it('does not disturb a state that taxes clothing outright', function (): void {
     // California has no threshold: the whole price is taxed, as it always was.
     $calculator = new DefaultTaxCalculator(
         DefaultRegimeRegistry::withDefaults(
@@ -150,7 +150,7 @@ it('does not disturb a state that taxes clothing outright', function () {
 
 // ---- A credit note is a negative supply of the same garment -------------------
 
-it('refunds exactly the tax the sale charged, on a threshold garment', function () {
+it('refunds exactly the tax the sale charged, on a threshold garment', function (): void {
     // The threshold compared the SIGNED amount, and -$200 is arithmetically "less
     // than $175" while being nothing of the sort. Read that way a refund returned
     // the price and kept the tax: the seller held money the customer was owed and
@@ -166,7 +166,7 @@ it('refunds exactly the tax the sale charged, on a threshold garment', function 
     expect($charged->tax->plus($refunded->tax)->isZero())->toBeTrue();
 });
 
-it('refunds the whole tax on a New York cliff garment', function () {
+it('refunds the whole tax on a New York cliff garment', function (): void {
     $charged = $this->calculator->assess(garment('US-NY', '200.00'));
     $refunded = $this->calculator->assess(garment('US-NY', '-200.00'));
 
@@ -174,7 +174,7 @@ it('refunds the whole tax on a New York cliff garment', function () {
         ->and($charged->tax->plus($refunded->tax)->isZero())->toBeTrue();
 });
 
-it('still refunds nothing for a garment that was never taxed', function () {
+it('still refunds nothing for a garment that was never taxed', function (): void {
     // Below the threshold in both directions: no tax was charged, so none is due
     // back. The magnitude comparison must not turn an exempt sale into a taxable
     // refund either.
@@ -182,14 +182,14 @@ it('still refunds nothing for a garment that was never taxed', function () {
         ->and((string) $this->calculator->assess(garment('US-MA', '-100.00'))->tax->getAmount())->toBe('0.00');
 });
 
-it('charges nothing on a zero-amount line', function () {
+it('charges nothing on a zero-amount line', function (): void {
     // A free item is below every threshold and taxed nowhere.
     expect($this->calculator->assess(garment('US-MA', '0.00'))->treatment)->toBe(TaxTreatment::Exempt);
 });
 
 // ---- The threshold is a number AND a currency ---------------------------------
 
-it('refuses a threshold garment priced in a currency the statute does not name', function () {
+it('refuses a threshold garment priced in a currency the statute does not name', function (): void {
     // New York's exemption is $110. The threshold travelled as minor units alone,
     // so `11000` meant whatever the invoice happened to count in: ¥11,000 against
     // a yen line — about seventy dollars, so garments New York taxes came out
@@ -214,7 +214,7 @@ it('refuses a threshold garment priced in a currency the statute does not name',
     expect($yen)->toThrow(ThresholdCurrencyMismatch::class, 'stated in USD but the amount is in JPY');
 });
 
-it('leaves a category with no price threshold free to be billed in any currency', function () {
+it('leaves a category with no price threshold free to be billed in any currency', function (): void {
     // The refusal is scoped to the thing that actually depends on the currency. A
     // category whose taxability does not turn on price has no threshold to compare
     // against, and blocking those would make a US assessment USD-only for no

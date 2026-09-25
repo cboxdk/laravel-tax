@@ -30,7 +30,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // publication. Everything below goes through TaxCalculator, not the rate source —
 // the point is that the date now SURVIVES the journey.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -48,7 +48,7 @@ function supplyOn(?string $date, ?TaxExemption $exemption = null, string $countr
     );
 }
 
-it('reprices a historical supply through the calculator, not just the source', function () {
+it('reprices a historical supply through the calculator, not just the source', function (): void {
     // Before this, every dated window in the package was unreachable from
     // TaxCalculator: the sources all accepted a date and nothing ever passed one,
     // so a credit note against a 2023 invoice quietly repriced at today's rate.
@@ -61,13 +61,13 @@ it('reprices a historical supply through the calculator, not just the source', f
         ->and((string) $after->tax->getAmount())->toBe('20.00');
 });
 
-it('treats an absent supply date as today, which is right for a fresh invoice', function () {
+it('treats an absent supply date as today, which is right for a fresh invoice', function (): void {
     $undated = $this->tax->assess(supplyOn(null));
 
     expect((string) $undated->rate?->percentage)->toBe('20');
 });
 
-it('carries the date across the other primary-source-verified changes', function () {
+it('carries the date across the other primary-source-verified changes', function (): void {
     expect((string) $this->tax->assess(supplyOn('2020-06-30', country: 'SA'))->rate?->percentage)->toBe('5')
         ->and((string) $this->tax->assess(supplyOn('2020-07-01', country: 'SA'))->rate?->percentage)->toBe('15')
         ->and((string) $this->tax->assess(supplyOn('2021-12-31', country: 'BH'))->rate?->percentage)->toBe('5')
@@ -76,7 +76,7 @@ it('carries the date across the other primary-source-verified changes', function
 
 // ---- The exemption is tested at the tax point, not at calculation time ----
 
-it('honours a certificate that was valid when the supply was made', function () {
+it('honours a certificate that was valid when the supply was made', function (): void {
     // The certificate expired last year. The supply happened while it was live, so
     // a credit note raised today must not retroactively un-exempt it — the seller
     // would owe tax it correctly never charged.
@@ -91,7 +91,7 @@ it('honours a certificate that was valid when the supply was made', function () 
     $this->assertExempt($assessment);
 });
 
-it('does not let an expired certificate exempt a supply made after it lapsed', function () {
+it('does not let an expired certificate exempt a supply made after it lapsed', function (): void {
     $exemption = $this->taxExemption(
         countries: ['TR'],
         validFrom: new DateTimeImmutable('2023-01-01'),
@@ -104,7 +104,7 @@ it('does not let an expired certificate exempt a supply made after it lapsed', f
         ->and($assessment->exemption)->toBeNull();
 });
 
-it('does not let a not-yet-valid certificate exempt an earlier supply', function () {
+it('does not let a not-yet-valid certificate exempt an earlier supply', function (): void {
     $exemption = $this->taxExemption(
         countries: ['TR'],
         validFrom: new DateTimeImmutable('2024-01-01'),
@@ -116,7 +116,7 @@ it('does not let a not-yet-valid certificate exempt an earlier supply', function
 
 // ---- The registration that gates the whole US regime has a lifetime -------
 
-it('does not apply a registration to supplies made before it existed', function () {
+it('does not apply a registration to supplies made before it existed', function (): void {
     // The day-one failure of every migration: a customer backfills last year's
     // invoices to build their first return, and every one of them gets taxed
     // against a registration that did not exist yet.
@@ -137,7 +137,7 @@ it('does not apply a registration to supplies made before it existed', function 
         ->and((string) $after->tax->getAmount())->toBe('7.25');
 });
 
-it('stops applying a registration after it is surrendered', function () {
+it('stops applying a registration after it is surrendered', function (): void {
     $seller = new SellerRegistrations(new CountryCode('US'), [
         new SellerRegistration(
             new CountryCode('US'),
@@ -150,7 +150,7 @@ it('stops applying a registration after it is surrendered', function () {
         ->and(usSupply($seller, '2026-07-01')->treatment)->toBe(TaxTreatment::NotRegistered);
 });
 
-it('treats an undated registration as always in force', function () {
+it('treats an undated registration as always in force', function (): void {
     // The old behaviour, preserved: leaving both bounds null changes nothing.
     $seller = new SellerRegistrations(new CountryCode('US'), [
         new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-CA')),
@@ -161,7 +161,7 @@ it('treats an undated registration as always in force', function () {
 
 // ---- The date used is recorded, so the answer can be audited --------------
 
-it('stamps the tax point it resolved against onto the assessment', function () {
+it('stamps the tax point it resolved against onto the assessment', function (): void {
     // Without this the date fix is invisible in the output: a rate, a registration
     // and a certificate were all judged as of some date, and nobody could tell which.
     $dated = $this->tax->assess(supplyOn('2023-07-09'));
@@ -171,7 +171,7 @@ it('stamps the tax point it resolved against onto the assessment', function () {
         ->and($undated->taxPoint?->format('Y-m-d'))->toBe(new DateTimeImmutable()->format('Y-m-d'));
 });
 
-it('keeps the tax point when a buyer exemption rewrites the assessment', function () {
+it('keeps the tax point when a buyer exemption rewrites the assessment', function (): void {
     $exemption = $this->taxExemption(countries: ['TR'], validFrom: new DateTimeImmutable('2023-01-01'));
 
     $assessment = $this->tax->assess(supplyOn('2023-06-01', $exemption));
@@ -194,7 +194,7 @@ function usSupply(SellerRegistrations $seller, string $date): TaxAssessment
 
 // ---- The window check actually runs now -----------------------------------
 
-it('matches a sentinel-closed record on an UNDATED lookup', function () {
+it('matches a sentinel-closed record on an UNDATED lookup', function (): void {
     // Kansas' records carry effectiveTo "2099-12-31" rather than null. covers()
     // used to accept only open-ended records, so on a null date NOTHING matched and
     // every lookup fell through to whatever was first in the file — right by luck
@@ -213,7 +213,7 @@ it('matches a sentinel-closed record on an UNDATED lookup', function () {
         ->and($rate?->confidence->value)->toBe('authoritative');
 });
 
-it('refuses a rooftop stack whose records do not cover the supply date', function () {
+it('refuses a rooftop stack whose records do not cover the supply date', function (): void {
     // A 2004 supply predates Wyandotte County's 2005 record. Rather than quietly
     // summing a record that did not yet exist — which the deleted file-order
     // fallback did — the stack refuses and the caller drops to the state rate.

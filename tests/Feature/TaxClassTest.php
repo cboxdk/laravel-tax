@@ -18,7 +18,7 @@ use Cbox\Tax\Taxability\AlwaysTaxable;
 // which asks a different one ("which band", 87 headings in practice). It reached
 // 23% of the EU's published bands. These reach 98%.
 
-it('gives every class a name a merchant can answer', function () {
+it('gives every class a name a merchant can answer', function (): void {
     // The list came out of tax schedules, and half of it would otherwise be in tax
     // vocabulary. Somebody selling running shoes has to find "Footwear", not
     // "Annex III point 6".
@@ -32,7 +32,7 @@ it('gives every class a name a merchant can answer', function () {
     }
 });
 
-it('gives every class concrete examples, because a name is not always enough', function () {
+it('gives every class concrete examples, because a name is not always enough', function (): void {
     // "General goods" and "Digital downloads" are both correct and both vague. The
     // examples are what let a merchant recognise their own product.
     foreach (TaxClass::cases() as $class) {
@@ -40,7 +40,7 @@ it('gives every class concrete examples, because a name is not always enough', f
     }
 });
 
-it('files every class under exactly one group', function () {
+it('files every class under exactly one group', function (): void {
     // Fifty-six choices in a flat list is a list nobody reads.
     $counted = 0;
 
@@ -55,7 +55,7 @@ it('files every class under exactly one group', function () {
     expect($counted)->toBe(count(TaxClass::cases()));
 });
 
-it('anchors every EU-reducible class to an Annex III point', function () {
+it('anchors every EU-reducible class to an Annex III point', function (): void {
     // The anchor is what makes the class checkable by someone who was not there
     // when it was written. Without it the list is one person's opinion about how
     // commerce divides up.
@@ -69,7 +69,7 @@ it('anchors every EU-reducible class to an Annex III point', function () {
     }
 });
 
-it('says plainly which classes EU law does NOT permit a reduced rate for', function () {
+it('says plainly which classes EU law does NOT permit a reduced rate for', function (): void {
     // Null is a determination, not a gap. Consumer electronics, off-the-shelf
     // software and professional services are standard-rated everywhere in the EU
     // because no Annex III point covers them — so a class with no point should
@@ -80,7 +80,7 @@ it('says plainly which classes EU law does NOT permit a reduced rate for', funct
     }
 });
 
-it('carries CN headings for goods and none for services', function () {
+it('carries CN headings for goods and none for services', function (): void {
     // TEDB scopes its own rates by CN, so this is the source's language rather
     // than ours. Services are not described by CN at all, and claiming a heading
     // for one would be an anchor pointing at nothing.
@@ -90,7 +90,7 @@ it('carries CN headings for goods and none for services', function () {
         ->and(TaxClass::Accommodation->info()->isGoods())->toBeFalse();
 });
 
-it('separates the pairs a single jurisdiction lumps together', function () {
+it('separates the pairs a single jurisdiction lumps together', function (): void {
     // Ireland reports books AND periodicals under one heading, at 0% and 9% at
     // once, and no single answer fits both. Two classes make it decidable. The
     // same holds for prescription and over-the-counter medicine, which the EU
@@ -100,7 +100,7 @@ it('separates the pairs a single jurisdiction lumps together', function () {
         ->and(TaxClass::Clothing)->not->toBe(TaxClass::Footwear);
 });
 
-it('has exactly one class that is safe as a default', function () {
+it('has exactly one class that is safe as a default', function (): void {
     // General tangible goods are standard-rated in every sales-tax state and every
     // Member State, so a merchant who picks nothing is over-charged rather than
     // under-charged. Every other class must be chosen deliberately.
@@ -108,7 +108,7 @@ it('has exactly one class that is safe as a default', function () {
         ->and(TaxClass::GeneralGoods->info()->mayBeReducedInEu())->toBeFalse();
 });
 
-it('does not carry a class for the things that are not products', function () {
+it('does not carry a class for the things that are not products', function (): void {
     // Five EU "headings" are territorial or rate-mechanism artefacts sharing a
     // field with real categories — REGION is the Azores and Corsica, not a thing
     // anyone sells. Mapping them blindly would have produced a product class for
@@ -122,7 +122,7 @@ it('does not carry a class for the things that are not products', function () {
 
 // ---- Migration --------------------------------------------------------------
 
-it('translates every superseded category to exactly one class', function () {
+it('translates every superseded category to exactly one class', function (): void {
     // Nothing may be dropped: a stored value on a merchant's product has to
     // convert, or the migration silently reclassifies their catalogue.
     foreach (TaxCategory::cases() as $category) {
@@ -137,7 +137,7 @@ it('translates every superseded category to exactly one class', function () {
         ->and(TaxCategory::Clothing->toClass())->toBe(TaxClass::Clothing);
 });
 
-it('keeps an override written against the old names working', function () {
+it('keeps an override written against the old names working', function (): void {
     // Seventeen of the twenty-five values changed name. An override is the kind of
     // thing an operator wrote once, put in a config file and forgot — and left to
     // break, the failure is the worst shape available: the key stops matching, the

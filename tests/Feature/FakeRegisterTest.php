@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateLimit;
@@ -37,7 +38,7 @@ function fakeSource(): RegisterRateSource
     return new RegisterRateSource(new RegisterDataset($layout, new StorePointer($layout)));
 }
 
-function fakePlace(string $country)
+function fakePlace(string $country): ?Jurisdiction
 {
     return app(JurisdictionRepository::class)->find(new CountryCode($country));
 }
@@ -162,7 +163,7 @@ it('reads a price exemption the way the statute writes it', function (): void {
         ->and((string) $ny->taxableBase($coat)->getAmount())->toBe('200.00');
 });
 
-function fakeUsPlace(string $state)
+function fakeUsPlace(string $state): ?Jurisdiction
 {
     return app(JurisdictionRepository::class)->find(
         new CountryCode('US'),

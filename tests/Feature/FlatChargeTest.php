@@ -34,14 +34,14 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // 2026, Minnesota's is $0.50, and neither is a percentage of anything. A caller
 // could only fake one as a rate derived from that order's total.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
 /** A source levying a fixed fee on any supply that was actually taxed. */
 function deliveryFeeSource(string $amount = '0.31', bool $passedToBuyer = true): FlatChargeSource
 {
-    return new class($amount, $passedToBuyer) implements FlatChargeSource
+    return new readonly class($amount, $passedToBuyer) implements FlatChargeSource
     {
         public function __construct(private string $amount, private bool $passedToBuyer) {}
 
@@ -86,7 +86,7 @@ function coloradoSupply(): TaxQuery
     );
 }
 
-it('carries a fixed charge alongside the rate-based tax', function () {
+it('carries a fixed charge alongside the rate-based tax', function (): void {
     $assessment = chargedCalculator(deliveryFeeSource())->assess(coloradoSupply());
 
     expect($assessment->charges)->toHaveCount(1)
@@ -94,7 +94,7 @@ it('carries a fixed charge alongside the rate-based tax', function () {
         ->and((string) $assessment->charges[0]->amount->getAmount())->toBe('0.31');
 });
 
-it('keeps gross as net plus tax, and adds the charge in payable', function () {
+it('keeps gross as net plus tax, and adds the charge in payable', function (): void {
     // The net + tax = gross invariant holds throughout the engine and several
     // things depend on it, so a fixed charge sits beside it rather than inside it.
     $assessment = chargedCalculator(deliveryFeeSource())->assess(coloradoSupply());
@@ -105,7 +105,7 @@ it('keeps gross as net plus tax, and adds the charge in payable', function () {
         ->and((string) $assessment->payable()->getAmount())->toBe('103.21');
 });
 
-it('excludes a charge the seller must absorb from what the buyer pays', function () {
+it('excludes a charge the seller must absorb from what the buyer pays', function (): void {
     // Some levies are the seller's own cost by statute. Reporting one without
     // saying so would put it on a customer's invoice.
     $assessment = chargedCalculator(deliveryFeeSource(passedToBuyer: false))->assess(coloradoSupply());
@@ -115,7 +115,7 @@ it('excludes a charge the seller must absorb from what the buyer pays', function
         ->and((string) $assessment->payable()->getAmount())->toBe('102.90');
 });
 
-it('lets the source decide from the outcome, not just the query', function () {
+it('lets the source decide from the outcome, not just the query', function (): void {
     // An exempt supply attracts no delivery fee, and the source can only know that
     // because it sees the assessment.
     $exempt = new TaxQuery(
@@ -135,7 +135,7 @@ it('lets the source decide from the outcome, not just the query', function () {
     expect($assessment->charges)->toBe([]);
 });
 
-it('ships no document-level charges either, and binds that seam too', function () {
+it('ships no document-level charges either, and binds that seam too', function (): void {
     expect($this->app->make(OrderFlatChargeSource::class))->toBeInstanceOf(NoOrderFlatCharges::class);
 
     $assessment = $this->app->make(OrderTaxCalculator::class)->assessOrder(coloradoOrder(lines: 2));
@@ -144,7 +144,7 @@ it('ships no document-level charges either, and binds that seam too', function (
         ->and($assessment->payable()->isEqualTo($assessment->gross()))->toBeTrue();
 });
 
-it('ships no charges at all, and says so', function () {
+it('ships no charges at all, and says so', function (): void {
     // These levies are per-jurisdiction and move on their own schedule, and no
     // authoritative compilation of them sits behind this package. The default
     // states that plainly rather than fabricating one.
@@ -186,7 +186,7 @@ function coloradoOrder(int $lines = 2): TaxOrder
 /** A document-level source levying the delivery fee once, when anything was taxed. */
 function deliveryFeeOnOrder(string $amount = '0.31'): OrderFlatChargeSource
 {
-    return new class($amount) implements OrderFlatChargeSource
+    return new readonly class($amount) implements OrderFlatChargeSource
     {
         public function __construct(private string $amount) {}
 
@@ -218,7 +218,7 @@ function orderCalculator(?FlatChargeSource $perSupply, ?OrderFlatChargeSource $p
     );
 }
 
-it('levies a per-delivery fee ONCE on a multi-line order', function () {
+it('levies a per-delivery fee ONCE on a multi-line order', function (): void {
     $assessment = orderCalculator(null, deliveryFeeOnOrder())->assessOrder(coloradoOrder(lines: 4));
 
     expect($assessment->charges)->toHaveCount(1)
@@ -229,7 +229,7 @@ it('levies a per-delivery fee ONCE on a multi-line order', function () {
         ->and((string) $assessment->payable()->getAmount())->toBe('206.11');
 });
 
-it('does not run the per-supply charge source over a document at all', function () {
+it('does not run the per-supply charge source over a document at all', function (): void {
     // The per-supply source is bound and would have charged every line. Within a
     // document it is not consulted — the document's own seam decides.
     $assessment = orderCalculator(deliveryFeeSource(), null)->assessOrder(coloradoOrder(lines: 2));
@@ -245,7 +245,7 @@ it('does not run the per-supply charge source over a document at all', function 
         ->and($assessment->payable()->isEqualTo($assessment->gross()))->toBeTrue();
 });
 
-it('still levies the per-supply charge on a standalone supply', function () {
+it('still levies the per-supply charge on a standalone supply', function (): void {
     // A single supply IS the transaction, so the per-supply seam remains right
     // there — and this is the path that existed before documents did.
     $assessment = orderCalculator(deliveryFeeSource(), null)->assess(coloradoSupply());
@@ -254,7 +254,7 @@ it('still levies the per-supply charge on a standalone supply', function () {
         ->and((string) $assessment->payable()->getAmount())->toBe('103.21');
 });
 
-it('levies nothing on a document whose lines were all exempt', function () {
+it('levies nothing on a document whose lines were all exempt', function (): void {
     // The source is handed the finished assessment for exactly this reason: no
     // taxable goods were delivered, so no delivery fee is due.
     $order = new TaxOrder(

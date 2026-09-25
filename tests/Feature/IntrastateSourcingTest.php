@@ -27,7 +27,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // a whole dataset section, and read by nothing — because TaxQuery had no field for
 // where the seller was.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
 });
@@ -66,7 +66,7 @@ function intrastate(string $state, string $buyerCode, ?string $sellerCode): TaxQ
     );
 }
 
-it('taxes an in-state Texas sale at the SELLER location', function () {
+it('taxes an in-state Texas sale at the SELLER location', function (): void {
     // Texas city 2109064 levies 1.5%; county 4109000 levies 0.5%. Both on 6.25%
     // state. Sourced at the buyer this is 6.75%; Texas wants the seller's 7.75%.
     $assessment = sourcingCalculator($this->dataset)
@@ -77,7 +77,7 @@ it('taxes an in-state Texas sale at the SELLER location', function () {
         ->and($assessment->reason)->toContain("seller's location");
 });
 
-it('falls back to the buyer when the seller location is not supplied', function () {
+it('falls back to the buyer when the seller location is not supplied', function (): void {
     // Previous behaviour, preserved exactly: a caller that supplies no route is
     // destination-sourced, which is what every caller got before this existed.
     $assessment = sourcingCalculator($this->dataset)
@@ -87,7 +87,7 @@ it('falls back to the buyer when the seller location is not supplied', function 
         ->and($assessment->reason)->not->toContain("seller's location");
 });
 
-it('ignores the seller location in a destination-sourced state', function () {
+it('ignores the seller location in a destination-sourced state', function (): void {
     // Kansas sources at the buyer. Supplying an origin must change nothing.
     $withOrigin = sourcingCalculator($this->dataset)
         ->assess(intrastate('US-KS', buyerCode: '209', sellerCode: '36000'));
@@ -99,7 +99,7 @@ it('ignores the seller location in a destination-sourced state', function () {
         ->toBe((string) $withoutOrigin->rate?->percentage);
 });
 
-it('does not origin-source an INTERSTATE supply', function () {
+it('does not origin-source an INTERSTATE supply', function (): void {
     // Interstate is destination-sourced everywhere, without exception. A Kansas
     // seller shipping into Texas is taxed where the buyer is, whatever Texas says
     // about its own in-state sales.
@@ -117,7 +117,7 @@ it('does not origin-source an INTERSTATE supply', function () {
     expect((string) sourcingCalculator($this->dataset)->assess($query)->rate?->percentage)->toBe('6.75');
 });
 
-it('preserves the published mixed sourcing value for the regime to handle', function () {
+it('preserves the published mixed sourcing value for the regime to handle', function (): void {
     // California is hybrid: state, county and city origin-sourced, districts
     // destination-sourced. One place cannot express that; the adapter preserves
     // the value and the regime refuses an identified mixed intrastate route.
@@ -127,7 +127,7 @@ it('preserves the published mixed sourcing value for the regime to handle', func
         ->and($sourcing->for(new SubdivisionCode('US-TX'))?->mode->value)->toBe('origin');
 });
 
-it('falls back to destination when no sourcing source is bound at all', function () {
+it('falls back to destination when no sourcing source is bound at all', function (): void {
     // The dataset can be disabled, and then there are no intrastate rules to read.
     // That must degrade to the previous behaviour, not refuse.
     $calculator = new DefaultTaxCalculator(

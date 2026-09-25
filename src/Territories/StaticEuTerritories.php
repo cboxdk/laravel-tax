@@ -96,7 +96,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
                 '22061' => EuTerritory::outsideVatArea('IT-CAM', "Campione d'Italia", 'Swiss VAT applies'),
                 default => null,
             },
-            'GR' => substr($digits, 0, 5) === '63086'
+            'GR' => str_starts_with($digits, '63086')
                 ? EuTerritory::outsideVatArea('GR-ATH', 'Mount Athos', 'the Autonomous Monastic State is outside the VAT area')
                 : null,
             default => null,

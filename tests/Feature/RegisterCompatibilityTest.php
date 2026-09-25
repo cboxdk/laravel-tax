@@ -22,7 +22,7 @@ it('rejects an unreviewed schema before downloading sections or replacing the ac
         'version' => $version, 'schemaVersion' => $schema,
     ])]);
 
-    expect(fn () => app(Compiler::class)->compile($version, null, null, false, [], static fn () => null))
+    expect(fn () => app(Compiler::class)->compile($version, null, null, false, [], static fn (): null => null))
         ->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
     expect(app(StorePointer::class)->current())->toBe($active)
         ->and(is_dir(app(StoreLayout::class)->version($version)))->toBeFalse();
@@ -38,8 +38,8 @@ it('also rejects an incompatible store installed by another worker before offlin
     // Explicit pins must not bypass compatibility checks either.
     $dataset = new RegisterDataset($layout, app(StorePointer::class), $version);
 
-    expect(fn () => $dataset->ratesFor('eu:DK'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion')
-        ->and(fn () => $dataset->rulesFor('us:NY'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
+    expect(fn (): array => $dataset->ratesFor('eu:DK'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion')
+        ->and(fn (): array => $dataset->rulesFor('us:NY'))->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
     Http::assertNothingSent();
 })->with(['3.0.0', '2.7.0', '1.35.0', '1.34.invalid', null]);
 
@@ -58,7 +58,7 @@ it('rejects additional rule conditions during compilation even if labelled with 
         $base.'/sections/*' => Http::response([]),
     ]);
 
-    expect(fn () => app(Compiler::class)->compile($version, null, null, false, [], static fn () => null))
+    expect(fn () => app(Compiler::class)->compile($version, null, null, false, [], static fn (): null => null))
         ->toThrow(UnresolvedTaxRule::class, 'payload.conditions');
     expect(app(StorePointer::class)->current())->toBe($active)
         ->and(is_file(app(StoreLayout::class)->manifest($version)))->toBeFalse();
@@ -132,6 +132,6 @@ it('still refuses a release asked for by name on a schema it cannot read', funct
         'version' => '2026.12.01-900', 'schemaVersion' => '3.0.0',
     ])]);
 
-    expect(fn () => app(Compiler::class)->compile('2026.12.01-900', null, null, false, [], static fn () => null))
+    expect(fn () => app(Compiler::class)->compile('2026.12.01-900', null, null, false, [], static fn (): null => null))
         ->toThrow(DatasetUnreadable::class, 'unsupported schemaVersion');
 });

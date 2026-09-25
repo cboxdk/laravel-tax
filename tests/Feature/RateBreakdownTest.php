@@ -36,7 +36,7 @@ use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
 });
@@ -87,7 +87,7 @@ function datasetCalculator(RegisterDataset $dataset): DefaultTaxCalculator
 
 // ---- The reconcile invariant --------------------------------------------
 
-it('accepts components that sum to the rate', function () {
+it('accepts components that sum to the rate', function (): void {
     $rate = new TaxRate('9.125', RateKind::Standard, 'test', components: [
         new RateComponent(JurisdictionLevel::State, '6.5'),
         new RateComponent(JurisdictionLevel::County, '1'),
@@ -98,7 +98,7 @@ it('accepts components that sum to the rate', function () {
         ->and($rate->components)->toHaveCount(3);
 });
 
-it('refuses components that do not sum to the rate', function () {
+it('refuses components that do not sum to the rate', function (): void {
     // The city share left out: the split would under-remit by 1.625 points while
     // looking exactly as authoritative as a correct one.
     new TaxRate('9.125', components: [
@@ -107,13 +107,13 @@ it('refuses components that do not sum to the rate', function () {
     ]);
 })->throws(RateComponentsDoNotReconcile::class, 'sum to 7.5%');
 
-it('reconciles numerically, so scale is presentation only', function () {
+it('reconciles numerically, so scale is presentation only', function (): void {
     $rate = new TaxRate('7.25', components: [new RateComponent(JurisdictionLevel::State, '7.2500')]);
 
     expect($rate->hasComponents())->toBeTrue();
 });
 
-it('treats no components as "not decomposable", not as a single authority', function () {
+it('treats no components as "not decomposable", not as a single authority', function (): void {
     $rate = new TaxRate('7.25');
 
     expect($rate->hasComponents())->toBeFalse()
@@ -122,7 +122,7 @@ it('treats no components as "not decomposable", not as a single authority', func
 
 // ---- What the dataset source emits ---------------------------------------
 
-it('keeps every stacked authority as a component', function () {
+it('keeps every stacked authority as a component', function (): void {
     // 66101-6200 is a Kansas City address: state 6.5% + county 1% + city 1.625%.
     $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-KS', zip9('US-KS', '66101-6200')), TaxClass::GeneralGoods);
@@ -139,7 +139,7 @@ it('keeps every stacked authority as a component', function () {
         ]);
 });
 
-it('splits a combined-basis rate into the state share and the aggregate local share', function () {
+it('splits a combined-basis rate into the state share and the aggregate local share', function (): void {
     // California publishes one all-in figure per place; the state share is known
     // exactly, so the remainder is the aggregate of every district taxing there —
     // levelled `local`, never attributed to the named city. Both lines carry the
@@ -159,7 +159,7 @@ it('splits a combined-basis rate into the state share and the aggregate local sh
         ]);
 });
 
-it('carries no components on a bare state rate', function () {
+it('carries no components on a bare state rate', function (): void {
     // The state share is not a breakdown of an all-in rate — it is the absence of
     // one. Emitting a single "state" component would claim the locals are zero.
     $rate = app(TaxRateSource::class)
@@ -168,7 +168,7 @@ it('carries no components on a bare state rate', function () {
     expect($rate?->hasComponents())->toBeFalse();
 });
 
-it('carries no components on a reduced-rate category rule', function () {
+it('carries no components on a reduced-rate category rule', function (): void {
     // Missouri's 1.225% grocery rate is a product rule, not a stack of authorities.
     $rate = app(TaxRateSource::class)
         ->rateFor(breakdownPlace('US-MO'), TaxClass::Groceries);
@@ -177,7 +177,7 @@ it('carries no components on a reduced-rate category rule', function () {
         ->and($rate?->hasComponents())->toBeFalse();
 });
 
-it('refuses a combined-basis rooftop with no local record rather than reporting the bare state share', function () {
+it('refuses a combined-basis rooftop with no local record rather than reporting the bare state share', function (): void {
     // A combined record IS the all-in rate, so "no record applies here" leaves no
     // all-in rate to report — unlike a component-basis state, where the state
     // share genuinely is the whole rate. Falling back to Derived says so.
@@ -195,7 +195,7 @@ it('refuses a combined-basis rooftop with no local record rather than reporting 
 
 // ---- Allocation: the parts sum to the whole ------------------------------
 
-it('splits the assessed tax across the authorities that levy it', function () {
+it('splits the assessed tax across the authorities that levy it', function (): void {
     $assessment = datasetCalculator($this->dataset)
         ->assess(breakdownQuery(breakdownPlace('US-KS', zip9('US-KS', '66101-6200'))));
 
@@ -210,7 +210,7 @@ it('splits the assessed tax across the authorities that levy it', function () {
     ))->toBe(['6.50', '1.00', '1.63']);
 });
 
-it('allocates the real total instead of rounding each share on its own', function () {
+it('allocates the real total instead of rounding each share on its own', function (): void {
     // 9.125% of $1.00 is $0.09. Rounding each authority independently gives
     // 0.07 + 0.01 + 0.02 = 0.10 — a cent that was never charged, and a filing
     // that does not balance. Allocation distributes the 9 cents actually taken.
@@ -229,7 +229,7 @@ it('allocates the real total instead of rounding each share on its own', functio
     ))->toBe(['0.06', '0.01', '0.02']);
 });
 
-it('reconciles on tax-inclusive pricing too', function () {
+it('reconciles on tax-inclusive pricing too', function (): void {
     // The tax is extracted from the gross rather than added to the net, so the
     // total it allocates is a different number — the invariant must still hold.
     $assessment = datasetCalculator($this->dataset)->assess(breakdownQuery(
@@ -243,7 +243,7 @@ it('reconciles on tax-inclusive pricing too', function () {
     $this->assertBreakdownReconciles($assessment, ['state', 'county', 'city']);
 });
 
-it('reports every taxable base as the supply net', function () {
+it('reports every taxable base as the supply net', function (): void {
     $assessment = datasetCalculator($this->dataset)
         ->assess(breakdownQuery(breakdownPlace('US-KS', zip9('US-KS', '66101-6200'))));
 
@@ -254,7 +254,7 @@ it('reports every taxable base as the supply net', function () {
 
 // ---- When there is deliberately no breakdown ------------------------------
 
-it('leaves the breakdown null when the source cannot decompose the rate', function () {
+it('leaves the breakdown null when the source cannot decompose the rate', function (): void {
     // The static source ships flat percentages with no authority split. Null says
     // "unknown", which a caller must not read as "the state takes all of it".
     $calculator = new DefaultTaxCalculator(
@@ -268,7 +268,7 @@ it('leaves the breakdown null when the source cannot decompose the rate', functi
         ->and($assessment->breakdown)->toBeNull();
 });
 
-it('leaves the breakdown null on a zero-rated supply', function () {
+it('leaves the breakdown null on a zero-rated supply', function (): void {
     $calculator = $this->taxCalculator(null, ['DK:digital_service' => new RateBand('0', RateKind::Zero)]);
 
     $assessment = $calculator->assess(new TaxQuery(
@@ -284,7 +284,7 @@ it('leaves the breakdown null on a zero-rated supply', function () {
         ->and($assessment->breakdown)->toBeNull();
 });
 
-it('leaves the breakdown null when a buyer exemption overrides the tax', function () {
+it('leaves the breakdown null when a buyer exemption overrides the tax', function (): void {
     // The exemption rewrites a would-be taxed supply to zero tax; there is then
     // nothing to split, and a stale breakdown would say otherwise.
     $place = breakdownPlace('US-KS', zip9('US-KS', '66101-6200'));
@@ -306,7 +306,7 @@ it('leaves the breakdown null when a buyer exemption overrides the tax', functio
     expect($assessment->breakdown)->toBeNull();
 });
 
-it('leaves the breakdown null where no tax is charged at all', function () {
+it('leaves the breakdown null where no tax is charged at all', function (): void {
     // Seller registered in Kansas, selling into California: no nexus, no tax, and
     // so nothing to attribute to anyone.
     $query = new TaxQuery(
@@ -327,7 +327,7 @@ it('leaves the breakdown null where no tax is charged at all', function () {
 
 // ---- The breakdown value object -------------------------------------------
 
-it('reads back as an empty breakdown when built with no lines', function () {
+it('reads back as an empty breakdown when built with no lines', function (): void {
     // A zero-argument instance must be valid, so a consumer can stub the type.
     $breakdown = new TaxBreakdown;
 
@@ -336,7 +336,7 @@ it('reads back as an empty breakdown when built with no lines', function () {
         ->and($breakdown->atLevel(JurisdictionLevel::State))->toBe([]);
 });
 
-it('selects the lines levied at one layer of government', function () {
+it('selects the lines levied at one layer of government', function (): void {
     $assessment = datasetCalculator($this->dataset)
         ->assess(breakdownQuery(breakdownPlace('US-KS', zip9('US-KS', '66101-6200'))));
 
@@ -347,7 +347,7 @@ it('selects the lines levied at one layer of government', function () {
         ->and($assessment->breakdown?->atLevel(JurisdictionLevel::SpecialDistrict))->toBe([]);
 });
 
-it('labels a line by name, then code, then level', function () {
+it('labels a line by name, then code, then level', function (): void {
     $named = new RateComponent(JurisdictionLevel::Local, '3.5', '06:ALAMEDA', 'ALAMEDA');
     $coded = new RateComponent(JurisdictionLevel::County, '1', '209');
     $bare = new RateComponent(JurisdictionLevel::State, '6.5');
@@ -376,7 +376,7 @@ function registerWithEmptyBoundarySet(string $state): string
 
 // ---- A reduced category is a reduced STATE share, not an all-in rate ------
 
-it('stacks a reduced category on the locality food rate, not the general one', function () {
+it('stacks a reduced category on the locality food rate, not the general one', function (): void {
     // Missouri's 1.225% and Tennessee's 4% grocery rates are STATE shares — both
     // states' own guidance says local sales taxes still apply to food. Returning
     // the reduced figure as the whole rate under-charged by most of the true one.
@@ -401,7 +401,7 @@ it('stacks a reduced category on the locality food rate, not the general one', f
         ->and($grocery?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('decomposes a reduced rooftop rate into its authorities too', function () {
+it('decomposes a reduced rooftop rate into its authorities too', function (): void {
     $dataset = registerWithFoodRate();
     $source = new RegisterRateSource(
         $dataset,

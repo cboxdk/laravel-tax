@@ -164,13 +164,7 @@ final readonly class RegisterTaxability implements CategoryKeyedTaxability
             // charges something, the supply is taxable — an exemption sitting beside
             // a rate is a scope the register expresses through classification, and
             // reading it as a blanket exemption would zero-rate the whole category.
-            foreach ($atRung as $rate) {
-                if (! in_array($rate['kind'] ?? null, ['zero', 'exempt'], true)) {
-                    return false;
-                }
-            }
-
-            return true;
+            return array_all($atRung, fn ($rate): bool => in_array($rate['kind'] ?? null, ['zero', 'exempt'], true));
         }
 
         return null;

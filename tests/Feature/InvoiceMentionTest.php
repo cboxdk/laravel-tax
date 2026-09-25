@@ -20,7 +20,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // a caller printing our English `reason` string instead produces an invoice that
 // stays defective.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(TaxCalculator::class);
 });
@@ -43,7 +43,7 @@ function mentionQuery(
     );
 }
 
-it('carries the mandatory reverse-charge wording, with the provision', function () {
+it('carries the mandatory reverse-charge wording, with the provision', function (): void {
     $assessment = $this->tax->assess(mentionQuery('DE', 'FR'));
 
     expect($assessment->treatment)->toBe(TaxTreatment::ReverseCharge)
@@ -55,7 +55,7 @@ it('carries the mandatory reverse-charge wording, with the provision', function 
         ->and($assessment->mentionLines())->toBe(['Reverse charge — Article 196 of Council Directive 2006/112/EC']);
 });
 
-it('does not cite the EU Directive for a regime it does not govern', function () {
+it('does not cite the EU Directive for a regime it does not govern', function (): void {
     // A UK or Norwegian reverse charge is not Art. 196. Printing a Directive
     // citation on a non-EU invoice would be a defect a reader would trust, so the
     // shared branch emits nothing unless a regime supplies its own.
@@ -65,14 +65,14 @@ it('does not cite the EU Directive for a regime it does not govern', function ()
         ->and($assessment->mentions)->toBe([]);
 });
 
-it('says nothing on an ordinary taxed supply', function () {
+it('says nothing on an ordinary taxed supply', function (): void {
     $assessment = $this->tax->assess(mentionQuery('DE', 'DE', CustomerType::Consumer));
 
     expect($assessment->treatment)->toBe(TaxTreatment::Standard)
         ->and($assessment->mentions)->toBe([]);
 });
 
-it('names the certificate an exemption rests on', function () {
+it('names the certificate an exemption rests on', function (): void {
     // The zero on the invoice is only defensible next to the certificate that
     // produced it — which is the first thing an auditor asks for.
     $exemption = $this->taxExemption(reference: 'RESALE-4471', countries: ['DE']);
@@ -86,7 +86,7 @@ it('names the certificate an exemption rests on', function () {
         ->and($assessment->mentions[0]->text)->toContain('RESALE-4471');
 });
 
-it('keeps the mentions when the tax point is stamped on', function () {
+it('keeps the mentions when the tax point is stamped on', function (): void {
     // The calculator rebuilds the assessment to record the date it resolved
     // against. A rebuild that dropped the mandatory wording would be the worst
     // possible bug here: silent, and only visible on the printed invoice.

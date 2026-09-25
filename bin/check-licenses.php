@@ -15,10 +15,17 @@ const ALLOWED = [
     'Apache-2.0', 'Apache2', 'BSL-1.0', 'Zlib', 'PHP-3.01',
 ];
 
-/** Packages permitted despite a missing/odd license field, with justification. */
-const EXCEPTIONS = [
-    // e.g. 'vendor/pkg' => 'public domain, confirmed upstream',
-];
+/**
+ * Packages permitted despite a missing/odd license field, each with its justification.
+ *
+ * @return array<string, string>
+ */
+function exceptions(): array
+{
+    return [
+        // e.g. 'vendor/pkg' => 'public domain, confirmed upstream',
+    ];
+}
 
 $lockPath = dirname(__DIR__).'/composer.lock';
 
@@ -27,27 +34,19 @@ if (! is_file($lockPath)) {
     exit(2);
 }
 
-$lock = json_decode((string) file_get_contents($lockPath), true, 512, JSON_THROW_ON_ERROR);
-
-$includeDev = in_array('--dev', $argv, true);
-$packages = $lock['packages'] ?? [];
-
-if ($includeDev) {
-    $packages = array_merge($packages, $lock['packages-dev'] ?? []);
-}
-
+$includeDev = in_array('--dev', arguments(), true);
 $violations = [];
 $checked = 0;
 
-foreach ($packages as $package) {
-    $name = (string) ($package['name'] ?? '?');
+foreach (lockedPackages($lockPath, $includeDev) as $package) {
+    $name = $package['name'];
     $checked++;
 
-    if (isset(EXCEPTIONS[$name])) {
+    if (array_key_exists($name, exceptions())) {
         continue;
     }
 
-    $licenses = normalizeLicenses($package['license'] ?? []);
+    $licenses = normalizeLicenses($package['license']);
 
     if ($licenses === []) {
         $violations[$name] = '(no license declared)';
@@ -63,19 +62,69 @@ foreach ($packages as $package) {
 }
 
 /**
+ * The command-line arguments, as strings.
+ *
+ * @return list<string>
+ */
+function arguments(): array
+{
+    $argv = $_SERVER['argv'] ?? [];
+
+    return is_array($argv) ? array_values(array_filter($argv, is_string(...))) : [];
+}
+
+/**
+ * Every locked package's name and declared licenses, read from the lock file's JSON
+ * and narrowed here, at the boundary, so nothing below it handles an untyped value.
+ *
+ * @return list<array{name: string, license: list<string>}>
+ */
+function lockedPackages(string $lockPath, bool $includeDev): array
+{
+    $raw = file_get_contents($lockPath);
+    $lock = $raw === false ? null : json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+    if (! is_array($lock)) {
+        fwrite(STDERR, "composer.lock is not a JSON object.\n");
+        exit(2);
+    }
+
+    $packages = [];
+
+    foreach ($includeDev ? ['packages', 'packages-dev'] : ['packages'] as $section) {
+        $list = $lock[$section] ?? [];
+
+        foreach (is_array($list) ? $list : [] as $package) {
+            if (! is_array($package)) {
+                continue;
+            }
+
+            $name = $package['name'] ?? null;
+            $license = $package['license'] ?? [];
+
+            $packages[] = [
+                'name' => is_string($name) ? $name : '?',
+                'license' => array_values(array_filter(is_array($license) ? $license : [$license], is_string(...))),
+            ];
+        }
+    }
+
+    return $packages;
+}
+
+/**
  * Flatten a composer license field into individual SPDX identifiers, splitting
  * disjunctive/conjunctive expressions ("MIT OR GPL-2.0", "(MIT AND BSD)").
  *
- * @param  list<string>|string  $license
+ * @param  list<string>  $license
  * @return list<string>
  */
-function normalizeLicenses(array|string $license): array
+function normalizeLicenses(array $license): array
 {
-    $items = is_array($license) ? $license : [$license];
     $out = [];
 
-    foreach ($items as $item) {
-        foreach (preg_split('/\s+(?:OR|AND)\s+/i', trim((string) $item)) ?: [] as $part) {
+    foreach ($license as $item) {
+        foreach (preg_split('/\s+(?:OR|AND)\s+/i', trim($item)) ?: [] as $part) {
             $part = trim($part, " \t()");
             if ($part !== '') {
                 $out[] = $part;
@@ -94,7 +143,7 @@ if ($violations !== []) {
         fwrite(STDERR, sprintf("  %-45s %s\n", $name, $license));
     }
     fwrite(STDERR, "\nAllowed: ".implode(', ', ALLOWED)."\n");
-    fwrite(STDERR, "If a flagged package is genuinely fine, add it to EXCEPTIONS with a reason.\n");
+    fwrite(STDERR, "If a flagged package is genuinely fine, add it to exceptions() with a reason.\n");
     exit(1);
 }
 

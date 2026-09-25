@@ -54,7 +54,7 @@ function taxExceptions(): array
     return $out;
 }
 
-it('puts every exception in exactly one category', function (string $name, string $class) {
+it('puts every exception in exactly one category', function (string $name, string $class): void {
     $markers = array_values(array_filter(
         [Refusal::class, Transient::class, Malformed::class],
         static fn (string $marker): bool => is_a($class, $marker, true),
@@ -82,7 +82,7 @@ it('puts every exception in exactly one category', function (string $name, strin
 
 // The list is a decision record, not a filter. An entry for a class that no longer
 // exists means the decision outlived the thing it was about.
-it('lists no defect that has been deleted', function () {
+it('lists no defect that has been deleted', function (): void {
     $names = array_column(taxExceptions(), 0);
 
     expect(array_values(array_diff(DEFECTS, $names)))->toBe([]);

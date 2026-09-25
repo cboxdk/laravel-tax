@@ -137,10 +137,8 @@ trait RoundsInvoices
             $target = $policy->round($exact, $first->tax->getContext());
             $difference = $target->getAmount()->multipliedBy($factor)->minus($allocated)->toInt();
             $direction = $difference < 0 ? -1 : 1;
-            usort($indices, static function (int $a, int $b) use ($remainders, $direction, $lines): int {
-                return $direction * $remainders[$b]->compareTo($remainders[$a])
-                    ?: strcmp($lines[$a]->id, $lines[$b]->id);
-            });
+            usort($indices, static fn (int $a, int $b): int => $direction * $remainders[$b]->compareTo($remainders[$a])
+                ?: strcmp($lines[$a]->id, $lines[$b]->id));
 
             foreach ($indices as $position => $index) {
                 $a = $lines[$index]->assessment;

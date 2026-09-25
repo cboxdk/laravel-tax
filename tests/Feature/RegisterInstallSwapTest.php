@@ -20,7 +20,7 @@ function installViaCompiler(string $partial, string $final): void
 {
     $compiler = new ReflectionMethod(Compiler::class, 'install');
     $compiler->invoke(
-        (new ReflectionClass(Compiler::class))->newInstanceWithoutConstructor(),
+        new ReflectionClass(Compiler::class)->newInstanceWithoutConstructor(),
         $partial,
         $final,
     );

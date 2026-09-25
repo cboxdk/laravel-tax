@@ -17,6 +17,7 @@ use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Testing\FakeRegister;
+use Cbox\Tax\ValueObjects\TaxRate;
 
 /*
  * Three ways a local share went missing from a stacked rate, each found by reading
@@ -34,7 +35,7 @@ function ladderRegister(): FakeRegister
     return FakeRegister::at(ladderStore());
 }
 
-function ladderRateFor(string $state, string $zip9, TaxClass $class)
+function ladderRateFor(string $state, string $zip9, TaxClass $class): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -141,7 +142,7 @@ it('prefers a rate filed on the leaf over one filed on its parent', function ():
     expect((string) ladderRateFor('US-TN', '37201-0001', TaxClass::Groceries)?->percentage)->toBe('7.5');
 });
 
-function ladderRateByAuthority(string $state, string $authority)
+function ladderRateByAuthority(string $state, string $authority): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -198,7 +199,7 @@ it('defers rather than guess when one authority sits in two different stacks', f
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
 
-function ladderStateRate(string $state)
+function ladderStateRate(string $state): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -209,7 +210,7 @@ function ladderStateRate(string $state)
     );
 }
 
-function ladderCountryRate(string $country, TaxClass $class = TaxClass::GeneralGoods)
+function ladderCountryRate(string $country, TaxClass $class = TaxClass::GeneralGoods): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -431,7 +432,7 @@ function square(float $lng, float $lat, float $half): array
     return [[[$lng - $half, $lat - $half], [$lng + $half, $lat - $half], [$lng + $half, $lat + $half], [$lng - $half, $lat + $half], [$lng - $half, $lat - $half]]];
 }
 
-function pointRateFor(string $state, float $lat, float $lng, ?string $on = null)
+function pointRateFor(string $state, float $lat, float $lng, ?string $on = null): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -443,7 +444,7 @@ function pointRateFor(string $state, float $lat, float $lng, ?string $on = null)
         ->rateFor($place, TaxClass::GeneralGoods, $on === null ? null : new DateTimeImmutable($on));
 }
 
-function countyRateFor(string $state, string $county)
+function countyRateFor(string $state, string $county): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));
@@ -701,7 +702,7 @@ it('reads a sub-state code filed as standard as the state rate there, not on top
     $outside = ladderRateFor('US-NE', '68103', TaxClass::GeneralGoods);
 
     expect((string) $district?->percentage)->toBe('4.25')
-        ->and(collect($district?->components ?? [])->pluck('percentage')->map(fn ($p) => (string) $p)->all())->toBe(['2.75', '1.5'])
+        ->and(collect($district?->components ?? [])->pluck('percentage')->map(fn ($p): string => (string) $p)->all())->toBe(['2.75', '1.5'])
         ->and(collect($district?->components ?? [])->pluck('code')->all())->not->toContain('us:NE')
         ->and((string) $outside?->percentage)->toBe('7');
 });
@@ -751,7 +752,7 @@ it('answers a county the register lists as unpriced with a certain state share, 
         ->and($unknown?->limitedBy)->toBe(RateLimit::NoLocalResolution);
 });
 
-function districtRateFor(string $zip9, ?string $point, string $on = '2026-09-25')
+function districtRateFor(string $zip9, ?string $point, string $on = '2026-09-25'): ?TaxRate
 {
     $layout = new StoreLayout(ladderStore());
     $dataset = new RegisterDataset($layout, new StorePointer($layout));

@@ -29,7 +29,7 @@ use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->tax = $this->app->make(OrderTaxCalculator::class);
 });
@@ -45,7 +45,7 @@ function euOrder(array $lines, Pricing $pricing = Pricing::Exclusive): TaxOrder
     );
 }
 
-it('assesses every line of a document and ties each answer to its line', function () {
+it('assesses every line of a document and ties each answer to its line', function (): void {
     // The invoice a Laravel SaaS actually issues: a subscription, metered usage,
     // and one-off onboarding services.
     $order = euOrder([
@@ -61,7 +61,7 @@ it('assesses every line of a document and ties each answer to its line', functio
         ->and($assessment->forLine('nope'))->toBeNull();
 });
 
-it('sums the document from the rounded lines, never from the totals', function () {
+it('sums the document from the rounded lines, never from the totals', function (): void {
     // Three lines at 25% DKK. Per line: 3.33 + 3.33 + 3.33 = 9.99.
     // Rate applied to the summed net instead: 40.00 × 25% = 10.00.
     // The second number does not equal the invoice rows beneath it.
@@ -86,7 +86,7 @@ it('sums the document from the rounded lines, never from the totals', function (
     expect((string) $summed?->getAmount())->toBe((string) $assessment->tax()->getAmount());
 });
 
-it('lets a line override the document pricing', function () {
+it('lets a line override the document pricing', function (): void {
     // A subscription quoted VAT-inclusive beside usage quoted exclusive is an
     // ordinary invoice; one document-level setting cannot express it.
     $order = euOrder([
@@ -102,7 +102,7 @@ it('lets a line override the document pricing', function () {
         ->and((string) $assessment->forLine('exclusive')?->gross->getAmount())->toBe('125.00');
 });
 
-it('lets a line carry its own exemption', function () {
+it('lets a line carry its own exemption', function (): void {
     $order = new TaxOrder(
         place: $this->geo->find(new CountryCode('DK')),
         customer: CustomerType::Business,
@@ -123,15 +123,15 @@ it('lets a line carry its own exemption', function () {
 
 // ---- A document is one currency ------------------------------------------
 
-it('refuses a document with no lines', function () {
-    expect(fn () => euOrder([]))->toThrow(InvalidTaxOrder::class, 'at least one line');
+it('refuses a document with no lines', function (): void {
+    expect(fn (): TaxOrder => euOrder([]))->toThrow(InvalidTaxOrder::class, 'at least one line');
 });
 
-it('refuses a document that mixes currencies', function () {
+it('refuses a document that mixes currencies', function (): void {
     // Money would refuse this three layers down with a message about currency
     // codes; naming the invoice here is the difference between a bug report and
     // a fix.
-    expect(fn () => euOrder([
+    expect(fn (): TaxOrder => euOrder([
         new SupplyLine('dkk', Money::of('100.00', 'DKK')),
         new SupplyLine('eur', Money::of('100.00', 'EUR')),
     ]))->toThrow(InvalidTaxOrder::class, 'eur');
@@ -139,7 +139,7 @@ it('refuses a document that mixes currencies', function () {
 
 // ---- Per-authority roll-up for remittance ---------------------------------
 
-it('rolls the document tax up per taxing authority', function () {
+it('rolls the document tax up per taxing authority', function (): void {
     $seller = new SellerRegistrations(new CountryCode('US'), [
         new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-KS')),
     ]);
@@ -179,7 +179,7 @@ it('rolls the document tax up per taxing authority', function () {
         ->toBe(['state', 'county', 'city']);
 });
 
-it('refuses a partial roll-up rather than quietly omitting a line', function () {
+it('refuses a partial roll-up rather than quietly omitting a line', function (): void {
     // One rooftop line (decomposable) and one bare-state line (not). A roll-up of
     // just the first would look like the document's split while silently dropping
     // the second — and look entirely reasonable doing it.
@@ -208,7 +208,7 @@ it('refuses a partial roll-up rather than quietly omitting a line', function () 
         ->and($withoutRooftop->taxByAuthority())->toBeNull();
 });
 
-it('ignores untaxed lines when rolling up, rather than refusing over them', function () {
+it('ignores untaxed lines when rolling up, rather than refusing over them', function (): void {
     // A reverse-charged or exempt line has no breakdown and nothing to attribute.
     // It must not make the whole roll-up unavailable.
     $order = new TaxOrder(
@@ -224,7 +224,7 @@ it('ignores untaxed lines when rolling up, rather than refusing over them', func
 
 // ---- A document is a set of supplies, so the return already accepts it ----
 
-it('feeds the return aggregator without the aggregator changing', function () {
+it('feeds the return aggregator without the aggregator changing', function (): void {
     $order = euOrder([
         new SupplyLine('a', Money::of('100.00', 'DKK')),
         new SupplyLine('b', Money::of('300.00', 'DKK')),
@@ -240,12 +240,12 @@ it('feeds the return aggregator without the aggregator changing', function () {
         ->and($line?->count)->toBe(2);
 });
 
-it('resolves the shipped calculator directly for both contracts', function () {
+it('resolves the shipped calculator directly for both contracts', function (): void {
     expect($this->app->make(OrderTaxCalculator::class))
         ->toBe($this->app->make(TaxCalculator::class));
 });
 
-it('gives document support to a host that bound its own calculator', function () {
+it('gives document support to a host that bound its own calculator', function (): void {
     // Rebinding TaxCalculator is a supported thing to do. It must not silently
     // hand documents to the SHIPPED calculator, which would bypass the host's own
     // tax logic for every multi-line invoice while single supplies still used it.
@@ -279,19 +279,19 @@ it('gives document support to a host that bound its own calculator', function ()
 
 // ---- Line ids are how tax gets back onto the invoice ----------------------
 
-it('refuses duplicate line ids rather than losing one line', function () {
-    expect(fn () => euOrder([
+it('refuses duplicate line ids rather than losing one line', function (): void {
+    expect(fn (): TaxOrder => euOrder([
         new SupplyLine('shipping', Money::of('10.00', 'DKK')),
         new SupplyLine('shipping', Money::of('20.00', 'DKK')),
     ]))->toThrow(InvalidTaxOrder::class, 'share the id');
 });
 
-it('refuses an unidentified line', function () {
-    expect(fn () => euOrder([new SupplyLine('', Money::of('10.00', 'DKK'))]))
+it('refuses an unidentified line', function (): void {
+    expect(fn (): TaxOrder => euOrder([new SupplyLine('', Money::of('10.00', 'DKK'))]))
         ->toThrow(InvalidTaxOrder::class, 'non-empty id');
 });
 
-it('refuses a roll-up when a taxed line reports an empty breakdown', function () {
+it('refuses a roll-up when a taxed line reports an empty breakdown', function (): void {
     // An empty breakdown is the ABSENCE of a split, not a split into nothing.
     // Merging it as a zero contribution would drop that line's tax from the
     // roll-up while the remaining figures still looked plausible.
@@ -311,7 +311,7 @@ it('refuses a roll-up when a taxed line reports an empty breakdown', function ()
     expect($assessment->taxByAuthority())->toBeNull();
 });
 
-it('keeps two unidentified authorities apart instead of summing them', function () {
+it('keeps two unidentified authorities apart instead of summing them', function (): void {
     // Two special districts both reporting a null code are two districts. Keyed
     // on level alone they would merge, and the roll-up would report one district
     // owed both shares.
@@ -338,7 +338,7 @@ it('keeps two unidentified authorities apart instead of summing them', function 
         ->toBe(['1.00', '1.00']);
 });
 
-it('reaches an outcome no single supply could not', function () {
+it('reaches an outcome no single supply could not', function (): void {
     // The order plane adds no tax logic: a one-line document must equal the single
     // supply it wraps, gate for gate.
     $single = $this->app->make(TaxCalculator::class)->assess(

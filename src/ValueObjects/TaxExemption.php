@@ -62,22 +62,10 @@ readonly class TaxExemption
     public function covers(Jurisdiction $place): bool
     {
         if ($place->subdivision !== null) {
-            foreach ($this->subdivisions as $subdivision) {
-                if ($subdivision->equals($place->subdivision)) {
-                    return true;
-                }
-            }
-
-            return false;
+            return array_any($this->subdivisions, fn (SubdivisionCode $subdivision): bool => $subdivision->equals($place->subdivision));
         }
 
-        foreach ($this->countries as $country) {
-            if ($country->equals($place->country)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->countries, fn (CountryCode $country): bool => $country->equals($place->country));
     }
 
     /**

@@ -590,7 +590,7 @@ it('prices a resale order with freight, the certificate covering both', function
     $a = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($q->place, $q->customer, $q->seller, Pricing::Exclusive, [
         new SupplyLine('goods', Money::of('100.00', 'USD')),
         new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true),
-    ], suppliedAt: $q->suppliedAt, exemption: $certificate));
+    ], exemption: $certificate, suppliedAt: $q->suppliedAt));
 
     expect((string) $a->tax()->getAmount())->toBe('0.00')
         ->and($a->forLine('delivery')->treatment)->toBe(TaxTreatment::Exempt);

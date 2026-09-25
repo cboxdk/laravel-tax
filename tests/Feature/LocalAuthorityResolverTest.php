@@ -21,7 +21,7 @@ use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Testing\FakeLocalAuthorityResolver;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $this->dataset = app(RegisterDataset::class);
     $this->resolver = new FakeLocalAuthorityResolver;
@@ -33,7 +33,7 @@ function resolverPlace(string $state): Jurisdiction
     return test()->geo->find(new CountryCode('US'), new SubdivisionCode($state));
 }
 
-it('defers by default, so an app that binds nothing is unchanged', function () {
+it('defers by default, so an app that binds nothing is unchanged', function (): void {
     $shipped = app(TaxRateSource::class);
 
     // Kansas with no locality: the state share, exactly as before the seam existed.
@@ -41,7 +41,7 @@ it('defers by default, so an app that binds nothing is unchanged', function () {
     expect(new DefersLocalAuthorities()->authoritiesFor(resolverPlace('US-KS')))->toBeNull();
 });
 
-it('stacks every authority a host resolver returns', function () {
+it('stacks every authority a host resolver returns', function (): void {
     // The Colorado shape: several authorities on one address, and no locality on
     // the jurisdiction at all — nothing shipped resolves that state below the
     // state line, which is exactly why a host would bind a resolver.
@@ -57,7 +57,7 @@ it('stacks every authority a host resolver returns', function () {
         ->and($rate?->components[0]->level)->toBe(JurisdictionLevel::State);
 });
 
-it('is consulted even when the jurisdiction carries no locality', function () {
+it('is consulted even when the jurisdiction carries no locality', function (): void {
     $place = resolverPlace('US-KS');
     $this->resolver->resolve($place, []);
 
@@ -69,7 +69,7 @@ it('is consulted even when the jurisdiction carries no locality', function () {
     expect($this->resolver->wasConsultedFor($place))->toBeTrue();
 });
 
-it('treats an empty list as a positive "no local authority taxes here"', function () {
+it('treats an empty list as a positive "no local authority taxes here"', function (): void {
     $place = resolverPlace('US-KS');
     $this->resolver->resolve($place, []);
 
@@ -81,7 +81,7 @@ it('treats an empty list as a positive "no local authority taxes here"', functio
         ->and($rate?->confidence)->toBe(Confidence::Authoritative);
 });
 
-it('falls back to the honest state rate when the resolver defers on an address', function () {
+it('falls back to the honest state rate when the resolver defers on an address', function (): void {
     // WITH an address, because that is what makes the gap a gap. A caller who
     // supplied only a state got the answer they asked for and gets no caveat; one
     // who supplied an address asked to be taken below the state line and was not.
@@ -100,7 +100,7 @@ it('falls back to the honest state rate when the resolver defers on an address',
     expect($this->source->rateFor(resolverPlace('US-DE'), TaxClass::GeneralGoods)?->limitedBy)->toBeNull();
 });
 
-it('refuses the whole stack when one authority is not in the dataset', function () {
+it('refuses the whole stack when one authority is not in the dataset', function (): void {
     $place = resolverPlace('US-KS');
     $place = $place->withLocality(
         new LocalityCode(new SubdivisionCode('US-KS'), LocalityScheme::Zip9->value, '66101-3064'),
@@ -116,7 +116,7 @@ it('refuses the whole stack when one authority is not in the dataset', function 
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 });
 
-it('passes the supply date through, not today', function () {
+it('passes the supply date through, not today', function (): void {
     $place = resolverPlace('US-KS');
     $this->resolver->resolve($place, []);
 
@@ -128,7 +128,7 @@ it('passes the supply date through, not today', function () {
     expect($this->resolver->calls[0]['at'])->toBe('2024-03-15');
 });
 
-it('wins over the shipped resolution where both could answer', function () {
+it('wins over the shipped resolution where both could answer', function (): void {
     $place = resolverPlace('US-KS')->withLocality(
         new LocalityCode(
             new SubdivisionCode('US-KS'),
@@ -147,7 +147,7 @@ it('wins over the shipped resolution where both could answer', function () {
         ->and($rate?->components)->toHaveCount(2);
 });
 
-it('is bound to the register\'s own boundary resolver, which defers where it holds nothing', function () {
+it('is bound to the register\'s own boundary resolver, which defers where it holds nothing', function (): void {
     // The package DOES ship local resolution now — twenty-four Streamlined states by
     // ZIP+4, California by polygon, and four more by county name. What it will not do
     // is guess: a state the register carries no artifact for defers, which sends the
@@ -159,7 +159,7 @@ it('is bound to the register\'s own boundary resolver, which defers where it hol
         ->and(new DefersLocalAuthorities()->authoritiesFor(resolverPlace('US-KS')))->toBeNull();
 });
 
-it('lets a host rebind it and reach the rate source through the container', function () {
+it('lets a host rebind it and reach the rate source through the container', function (): void {
     $fake = new FakeLocalAuthorityResolver;
     $fake->resolve(resolverPlace('US-KS'), ['us:KS', 'us:KS:COUNTY-209']);
 

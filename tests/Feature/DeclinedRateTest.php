@@ -49,7 +49,7 @@ function burkina(): Jurisdiction
     return app(JurisdictionRepository::class)->find(new CountryCode('BF'));
 }
 
-it('flags the standard rate where a rate was declined for the category or one above it', function (string $key) {
+it('flags the standard rate where a rate was declined for the category or one above it', function (string $key): void {
     $rate = declinedSource()->rateForKey(burkina(), $key);
 
     expect((string) $rate?->percentage)->toBe('18')
@@ -57,7 +57,7 @@ it('flags the standard rate where a rate was declined for the category or one ab
         ->and($rate?->confidence)->toBe(Confidence::Derived);
 })->with(['services.accommodation', 'services.accommodation.hotel']);
 
-it('does not flag a broader question, nor a rate declined without a category', function (string $key) {
+it('does not flag a broader question, nor a rate declined without a category', function (string $key): void {
     $rate = declinedSource()->rateForKey(burkina(), $key);
 
     expect((string) $rate?->percentage)->toBe('18')

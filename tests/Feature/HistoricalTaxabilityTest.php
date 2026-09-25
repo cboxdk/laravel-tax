@@ -32,7 +32,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 // year would have the engine charge tax on a supply made before the law existed.
 // And the answer still looks like a number, which is what makes it dangerous.
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
@@ -81,7 +81,7 @@ function datedCalculator(): DefaultTaxCalculator
     );
 }
 
-it('reads the taxability rule in force on the SUPPLY date, not today', function () {
+it('reads the taxability rule in force on the SUPPLY date, not today', function (): void {
     $calculator = datedCalculator();
 
     $before = $calculator->assess(datedGrocerySupply('2025-06-15'));
@@ -94,7 +94,7 @@ it('reads the taxability rule in force on the SUPPLY date, not today', function 
         ->and((string) $after->tax->getAmount())->toBe('6.50');
 });
 
-it('reads the window boundaries inclusively, on both sides', function () {
+it('reads the window boundaries inclusively, on both sides', function (): void {
     $calculator = datedCalculator();
 
     // 31 December is the last day of the exempt window; 1 January the first of the
@@ -103,7 +103,7 @@ it('reads the window boundaries inclusively, on both sides', function () {
         ->and($calculator->assess(datedGrocerySupply('2026-01-01'))->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('uses the same date the rate was resolved against', function () {
+it('uses the same date the rate was resolved against', function (): void {
     // The point of the fix: one date drives both, so an assessment cannot be
     // internally inconsistent — priced with one year's rate and another's law.
     $assessment = datedCalculator()->assess(datedGrocerySupply('2025-06-15'));
@@ -111,7 +111,7 @@ it('uses the same date the rate was resolved against', function () {
     expect($assessment->taxPoint?->format('Y-m-d'))->toBe('2025-06-15');
 });
 
-it('answers as of today when the supply carries no date', function () {
+it('answers as of today when the supply carries no date', function (): void {
     // Previous behaviour preserved for the ordinary case: today's supply, today's
     // law. Today is after the change, so the category is taxed.
     expect(datedCalculator()->assess(new TaxQuery(
@@ -126,7 +126,7 @@ it('answers as of today when the supply carries no date', function () {
     ))->treatment)->toBe(TaxTreatment::Standard);
 });
 
-it('is honest that the static matrix has no dated windows to consult', function () {
+it('is honest that the static matrix has no dated windows to consult', function (): void {
     // It accepts the date and ignores it, because it is a hand-maintained snapshot
     // that only knows one answer. Stating that plainly beats pretending the
     // parameter does something.

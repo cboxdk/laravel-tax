@@ -172,13 +172,7 @@ final class Predicate
             return null;
         }
 
-        foreach ($prefixes as $prefix) {
-            if (is_string($prefix) && $prefix !== '' && str_starts_with($code, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($prefixes, fn ($prefix): bool => is_string($prefix) && $prefix !== '' && str_starts_with($code, $prefix));
     }
 
     private static function compare(string $op, mixed $actual, mixed $expected): ?bool

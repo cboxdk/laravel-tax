@@ -57,7 +57,7 @@ function stackingDataset(): RegisterDataset
     return new RegisterDataset($layout, new StorePointer($layout));
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
     $dataset = stackingDataset();
 
@@ -92,7 +92,7 @@ function stackedSupply(TaxClass $class, string $suppliedAt): TaxQuery
     );
 }
 
-it('keeps the local share when a state reduces the rate for a category', function () {
+it('keeps the local share when a state reduces the rate for a category', function (): void {
     // A state's reduced grocery rate is its OWN share; local food taxes still apply
     // on top. The rate source stacks them correctly — 2% state plus 1% city — and
     // then the regime substituted the bare state figure over the top, throwing the
@@ -106,7 +106,7 @@ it('keeps the local share when a state reduces the rate for a category', functio
         ->and($assessment->breakdown?->lines)->toHaveCount(2);
 });
 
-it('stacks the state share that was in force on the SUPPLY date', function () {
+it('stacks the state share that was in force on the SUPPLY date', function (): void {
     // The date reached the local records but not the state share, so a 2025 supply
     // was stacked with 2026's state rate: a percentage that was never in force
     // anywhere, on either date.
@@ -117,7 +117,7 @@ it('stacks the state share that was in force on the SUPPLY date', function () {
         ->and((string) $after->rate?->percentage)->toBe('7.5'); // 6.5% state + 1% city
 });
 
-it('keeps the parts summing to the whole on a stacked reduced rate', function () {
+it('keeps the parts summing to the whole on a stacked reduced rate', function (): void {
     $assessment = $this->calculator->assess(stackedSupply(TaxClass::Groceries, '2026-06-15'));
 
     $sum = null;
@@ -129,7 +129,7 @@ it('keeps the parts summing to the whole on a stacked reduced rate', function ()
     expect($sum?->isEqualTo($assessment->tax))->toBeTrue();
 });
 
-it('refuses a rooftop rate rather than returning the locals alone', function () {
+it('refuses a rooftop rate rather than returning the locals alone', function (): void {
     // On a component-basis state the local records are only the ADDEND, so skipping
     // the state share quietly returns 1% where 7.5% is due — four fifths of the tax
     // gone, on an answer stamped authoritative. With no state share to stack onto,

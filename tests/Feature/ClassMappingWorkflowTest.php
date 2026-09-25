@@ -42,7 +42,7 @@ function catalogueQuery(?string $itemCode, string $country = 'DK', ?TaxClass $cl
     );
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->geo = $this->app->make(JurisdictionRepository::class);
 });
 
@@ -50,7 +50,7 @@ beforeEach(function () {
 // Step one: find the class from the words a merchant actually uses
 // ---------------------------------------------------------------------------
 
-it('finds a class from the merchant\'s own word, not ours', function (string $typed, TaxClass $expected) {
+it('finds a class from the merchant\'s own word, not ours', function (string $typed, TaxClass $expected): void {
     expect(TaxClass::search($typed)[0] ?? null)->toBe($expected);
 })->with([
     'the example, not the class name' => ['trainers', TaxClass::Footwear],
@@ -60,7 +60,7 @@ it('finds a class from the merchant\'s own word, not ours', function (string $ty
     'shouting' => ['LAPTOPS', TaxClass::Electronics],
 ]);
 
-it('returns nothing for a product no class expresses', function () {
+it('returns nothing for a product no class expresses', function (): void {
     // The important answer. Nothing here covers school supplies, and a merchant
     // must learn that at MAPPING time, where it can be recorded — not by being
     // charged the standard rate through a holiday that exempted them.
@@ -68,15 +68,15 @@ it('returns nothing for a product no class expresses', function () {
         ->and(TaxClass::search('pencils'))->toBe([]);
 });
 
-it('ignores an empty search rather than returning everything', function () {
+it('ignores an empty search rather than returning everything', function (): void {
     expect(TaxClass::search('   '))->toBe([]);
 });
 
-it('orders stably, so a picker does not reshuffle between requests', function () {
+it('orders stably, so a picker does not reshuffle between requests', function (): void {
     expect(TaxClass::search('software'))->toBe(TaxClass::search('software'));
 });
 
-it('carries what a picker needs to render a row', function () {
+it('carries what a picker needs to render a row', function (): void {
     $info = TaxClass::Footwear->info();
 
     expect($info->name)->toBe('Footwear')
@@ -88,7 +88,7 @@ it('carries what a picker needs to render a row', function () {
 // Step two: the assessment says what limited it, and what would fix it
 // ---------------------------------------------------------------------------
 
-it('names the gap AND the remedy when a heading is ambiguous', function () {
+it('names the gap AND the remedy when a heading is ambiguous', function (): void {
     $source = app(TaxRateSource::class);
 
     $rate = $source->rateFor($this->geo->find(new CountryCode('HU')), TaxClass::Groceries);
@@ -100,7 +100,7 @@ it('names the gap AND the remedy when a heading is ambiguous', function () {
         ->and($rate?->limitedBy?->callerCanClose())->toBeTrue();
 });
 
-it('drops the limit once the code resolves it', function () {
+it('drops the limit once the code resolves it', function (): void {
     $source = app(TaxRateSource::class);
 
     $rate = $source->rateForCommodity(
@@ -114,7 +114,7 @@ it('drops the limit once the code resolves it', function () {
     expect($rate?->limitedBy)->toBeNull();
 });
 
-it('names the local gap where the address stopped at the state line', function () {
+it('names the local gap where the address stopped at the state line', function (): void {
     $source = app(TaxRateSource::class);
 
     $rate = $source->rateFor(
@@ -130,7 +130,7 @@ it('names the local gap where the address stopped at the state line', function (
         ->and($rate?->limitedBy?->callerCanClose())->toBeFalse();
 });
 
-it('reports no limit in a state with no local tax to miss', function () {
+it('reports no limit in a state with no local tax to miss', function (): void {
     $source = app(TaxRateSource::class);
 
     // The state rate IS the whole rate in a state whose locals levy nothing, so
@@ -143,7 +143,7 @@ it('reports no limit in a state with no local tax to miss', function () {
     expect($rate?->limitedBy)->toBeNull();
 });
 
-it('gives every limit a remedy, so none is a dead end', function () {
+it('gives every limit a remedy, so none is a dead end', function (): void {
     foreach (RateLimit::cases() as $limit) {
         expect($limit->remedy())->not->toBe('');
     }
@@ -153,7 +153,7 @@ it('gives every limit a remedy, so none is a dead end', function () {
 // Step three: the mapping lives on the product, not on the invoice line
 // ---------------------------------------------------------------------------
 
-it('resolves the class from the item code, so the line never decides', function () {
+it('resolves the class from the item code, so the line never decides', function (): void {
     // Register the tax mapping once against the SKU, then resolve it from the
     // item code supplied on each line.
     $calculator = calculatorWithCatalogue(new ArrayProductCatalogue([
@@ -165,7 +165,7 @@ it('resolves the class from the item code, so the line never decides', function 
     expect($assessment->rate?->limitedBy)->toBeNull();
 });
 
-it('carries the product\'s commodity code too, so the exact rate is reached', function () {
+it('carries the product\'s commodity code too, so the exact rate is reached', function (): void {
     // The code is a fact about the product, established once — not a decision
     // remade per order. Hungary's foodstuffs heading is 5% and 18% at once; the
     // mapping settles it without the invoice line knowing anything about CN.
@@ -179,7 +179,7 @@ it('carries the product\'s commodity code too, so the exact rate is reached', fu
         ->and($assessment->rate?->limitedBy)->toBeNull();
 });
 
-it('flags a SKU nothing has mapped instead of taxing it in silence', function () {
+it('flags a SKU nothing has mapped instead of taxing it in silence', function (): void {
     // Flag fallback classification so a review can identify unmapped products.
     $calculator = calculatorWithCatalogue(new ArrayProductCatalogue);
 
@@ -190,7 +190,7 @@ it('flags a SKU nothing has mapped instead of taxing it in silence', function ()
         ->and($assessment->rate?->limitedBy?->remedy())->toContain('ProductCatalogue');
 });
 
-it('lets an explicit class on the line override the catalogue', function () {
+it('lets an explicit class on the line override the catalogue', function (): void {
     // Most specific wins. A caller who states a class for the line in hand has
     // overridden the product's general mapping deliberately, and the catalogue is
     // not consulted at all.
@@ -203,7 +203,7 @@ it('lets an explicit class on the line override the catalogue', function () {
     expect($assessment->rate?->limitedBy)->toBeNull();
 });
 
-it('behaves exactly as before for a caller that sends no item code', function () {
+it('behaves exactly as before for a caller that sends no item code', function (): void {
     $calculator = calculatorWithCatalogue(new ArrayProductCatalogue);
 
     expect($calculator->assess(catalogueQuery(null))->rate?->limitedBy)->toBeNull();

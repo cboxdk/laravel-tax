@@ -14,6 +14,7 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
+use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxOrder;
 
 /*
@@ -52,7 +53,7 @@ it('splits a credit note\'s freight the same way, signs and all', function (): v
     expect((string) $a->forLine('freight')->tax->getAmount())->toBe('-1.51');
 });
 
-function massachusettsCoats(string $amount, int $quantity)
+function massachusettsCoats(string $amount, int $quantity): ?TaxAssessment
 {
     $ma = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-MA'));
     $seller = new SellerRegistrations(new CountryCode('US'), [new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-MA'))]);
