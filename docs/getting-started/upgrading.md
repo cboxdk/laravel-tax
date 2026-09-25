@@ -1,7 +1,7 @@
 ---
 title: Upgrading from 0.9
 weight: 4
-description: What changed between 0.9 and 0.14 for an application already in production — the data plane, the contracts, and the numbers that move on their own.
+description: What changed between 0.9 and 0.15 for an application already in production — the data plane, the contracts, and the numbers that move on their own.
 ---
 
 # Upgrading from 0.9

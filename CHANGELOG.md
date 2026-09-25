@@ -7,6 +7,13 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-25
+
+The register is the only data source. An application on 0.14 or earlier cannot
+sync any release published since 18 September; read
+[Upgrading from 0.9](docs/getting-started/upgrading.md) before deploying — several
+numbers move with no change on your side.
+
 ### Added — register schema 2 and category keys
 
 - **Schema 2.0–2.6 is read.** Every release since 18 September was refused, and the
@@ -667,6 +674,8 @@ pricing a Danish invoice touches 12 KB.
   current then.
 
 ## [0.14.1] - 2026-08-20
+
+Never tagged: these documentation changes ship in 0.15.0.
 
 ### Documentation
 
