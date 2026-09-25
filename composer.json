@@ -29,7 +29,7 @@
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
-        "rector/rector": "^2.0"
+        "rector/rector": "2.6.7"
     },
     "autoload": {
         "psr-4": {

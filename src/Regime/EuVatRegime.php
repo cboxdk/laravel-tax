@@ -238,7 +238,7 @@ class EuVatRegime extends DestinationTaxRegime
         $territory = $this->territories?->for($query->place->country, $query->postalCode, $query->on());
 
         if ($territory === null && $query->place->subdivision !== null && $this->territories instanceof EuTerritoriesBySubdivision) {
-            $territory = $this->territories->forSubdivision($query->place->subdivision, $query->on());
+            return $this->territories->forSubdivision($query->place->subdivision, $query->on());
         }
 
         return $territory;

@@ -76,7 +76,7 @@ readonly class ViesValidator implements VatIdValidator
         $id = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $taxId));
 
         if (str_starts_with($id, $viesCountry)) {
-            $id = substr($id, strlen($viesCountry));
+            return substr($id, strlen($viesCountry));
         }
 
         return $id;
