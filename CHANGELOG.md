@@ -27,7 +27,6 @@ minor bumps may carry additive features; patches are fixes and docs).
 - **PHPStan level 10**, written as a number, now also covers `bin/` and `config/`. The
   licence and SBOM scripts read `composer.lock` typed at the JSON boundary; the SBOM
   they write is byte-identical.
-- **CI checks the SBOM** against the committed lock, before dependencies are updated.
 - **The reference corpus names its cases when one fails.** Each assertion was given a
   label as a second argument to `expect()`, which takes one — so a failure never said
   which case, release or source it was. The label is on the matcher now.

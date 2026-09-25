@@ -111,8 +111,8 @@ composer license-check
 composer sbom && git diff --exit-code sbom.json
 ```
 
-`composer qa` runs all but the last; CI runs the SBOM check against the committed
-lock. No `@phpstan-ignore`, no baseline, no `assert()` to override inference, no cast
+`composer qa` runs all but the last. The SBOM check is local only: a library commits
+no `composer.lock`, so CI has none to hold the SBOM to. No `@phpstan-ignore`, no baseline, no `assert()` to override inference, no cast
 to quiet a type. Fix the cause.
 
 ## Where to read next
