@@ -27,7 +27,7 @@ use DateTimeImmutable;
  * {@see DefaultRegimeRegistry::withDefaults()} can be called with
  * nothing, which is how the regimes are unit-tested.
  */
-final readonly class AlwaysTaxable implements ProductTaxability
+readonly class AlwaysTaxable implements ProductTaxability
 {
     /** @var array<string, bool> */
     private array $overrides;

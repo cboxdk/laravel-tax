@@ -33,7 +33,7 @@ use DateTimeImmutable;
  * Only USD figures are exposed. Other currencies are not converted into an
  * advisory dollar figure: a conversion would need its own dated policy.
  */
-final readonly class RegisterNexus implements NexusThresholds
+readonly class RegisterNexus implements NexusThresholds
 {
     public function __construct(private RegisterDataset $dataset) {}
 

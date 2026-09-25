@@ -10,7 +10,7 @@ use Cbox\Tax\Register\Store\StoreLayout;
 use Illuminate\Console\Command;
 
 /** Checks the installed files against the manifest written during compilation. */
-final class VerifyCommand extends Command
+class VerifyCommand extends Command
 {
     protected $signature = 'tax:data:verify {release? : Installed release; defaults to the version used for pricing}';
 

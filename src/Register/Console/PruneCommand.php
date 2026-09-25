@@ -17,7 +17,7 @@ use Illuminate\Contracts\Config\Repository as Config;
  * pointer names would take the engine down to buy back 63 MB, which is not a trade
  * anybody would make deliberately.
  */
-final class PruneCommand extends Command
+class PruneCommand extends Command
 {
     protected $signature = 'tax:data:prune {--keep= : How many versions to retain, newest first; defaults to tax.register.keep}';
 

@@ -30,7 +30,7 @@ use DateTimeImmutable;
  * flagged; this is how the flag gets found before the first invoice rather than after
  * the hundredth.
  */
-final readonly class CatalogueAudit
+readonly class CatalogueAudit
 {
     public function __construct(
         private ProductCatalogue $catalogue,

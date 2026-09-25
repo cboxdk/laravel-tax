@@ -30,7 +30,7 @@ use Closure;
  * so an interrupted sync leaves a directory that is visibly unfinished rather than a
  * version quietly missing three shards.
  */
-final readonly class Compiler
+readonly class Compiler
 {
     public function __construct(
         private SectionFetcher $fetcher,

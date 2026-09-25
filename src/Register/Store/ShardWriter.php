@@ -22,7 +22,7 @@ use Cbox\Tax\Exceptions\DatasetUnreadable;
  * put the whole section back in memory — which is the thing the streaming reader
  * exists to avoid.
  */
-final class ShardWriter
+class ShardWriter
 {
     /** @var resource|null */
     private mixed $handle = null;

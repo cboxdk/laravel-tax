@@ -30,7 +30,7 @@ use Cbox\Tax\ValueObjects\DecisionFacts;
  * combinator — refuses. A reader that skipped a node it did not understand would
  * be answering a question the register did not ask.
  */
-final class Decision
+class Decision
 {
     private const int VERSION = 1;
 

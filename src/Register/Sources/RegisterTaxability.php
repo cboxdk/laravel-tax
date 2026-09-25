@@ -36,7 +36,7 @@ use DateTimeImmutable;
  * exemption removes it — is a fact about the supplier's return, not about what the
  * customer is charged, and it survives in the rate's own provenance.
  */
-final readonly class RegisterTaxability implements CategoryKeyedTaxability
+readonly class RegisterTaxability implements CategoryKeyedTaxability
 {
     public function __construct(private RegisterDataset $dataset) {}
 

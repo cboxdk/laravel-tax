@@ -17,7 +17,7 @@ use Illuminate\Contracts\Config\Repository as Config;
  * the register is unreachable — which is exactly when a bad release is discovered.
  * A version stays on disk until pruned, so the previous one is normally right there.
  */
-final class ActivateCommand extends Command
+class ActivateCommand extends Command
 {
     protected $signature = 'tax:data:activate {version : An installed version, or "previous"}';
 

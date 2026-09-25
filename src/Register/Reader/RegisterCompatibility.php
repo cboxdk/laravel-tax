@@ -22,7 +22,7 @@ use Cbox\Tax\Exceptions\UnresolvedTaxRule;
  * update — but a rule carrying one refuses when something actually reads it, because
  * reading it without them would be treating a qualified rule as unconditional.
  */
-final class RegisterCompatibility
+class RegisterCompatibility
 {
     /**
      * The newest minor reviewed, per major. Schema 2 is the consumer contract with

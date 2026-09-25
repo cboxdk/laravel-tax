@@ -13,7 +13,7 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
  * apart and writing that substitution at each call site is how half of them end up
  * uppercase.
  */
-final class UsCode
+class UsCode
 {
     public static function of(SubdivisionCode $state): string
     {

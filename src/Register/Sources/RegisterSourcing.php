@@ -24,7 +24,7 @@ use DateTimeImmutable;
  * Null where nothing applies. The regime refuses an intrastate route when a bound
  * source cannot supply the rule needed to choose between its two places.
  */
-final readonly class RegisterSourcing implements SourcingRules
+readonly class RegisterSourcing implements SourcingRules
 {
     public function __construct(private RegisterDataset $dataset) {}
 

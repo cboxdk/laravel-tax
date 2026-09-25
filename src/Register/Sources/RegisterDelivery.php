@@ -25,7 +25,7 @@ use DateTimeImmutable;
  * facts, dated so the 2023 change of statute is two rules and not one. A decision is
  * evaluated here; a bare flag is passed through for the regime to confirm.
  */
-final readonly class RegisterDelivery implements DeliveryRules
+readonly class RegisterDelivery implements DeliveryRules
 {
     public function __construct(private RegisterDataset $dataset) {}
 

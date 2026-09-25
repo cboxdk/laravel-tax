@@ -18,7 +18,7 @@ use Illuminate\Contracts\Config\Repository as Config;
  *
  * Downloads and compilation happen here. Pricing reads local files.
  */
-final class SyncCommand extends Command
+class SyncCommand extends Command
 {
     protected $signature = 'tax:data:sync
         {--release= : A release to compile, or "latest"; defaults to tax.register.version or latest}

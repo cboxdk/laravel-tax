@@ -15,7 +15,7 @@ namespace Cbox\Tax\ValueObjects;
  * code cannot express. Both empty means the register published only the statute's
  * sentence, and nothing a seller supplies can settle it.
  */
-final readonly class UnsettledCondition
+readonly class UnsettledCondition
 {
     /**
      * @param  list<string>  $facts

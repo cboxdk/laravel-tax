@@ -12,7 +12,7 @@ namespace Cbox\Tax\Register\Reader;
  * case exists and has not modelled it; `unknown` means a fact it needs was not
  * supplied. Neither is an answer, and neither may be treated as one.
  */
-final readonly class DecisionOutcome
+readonly class DecisionOutcome
 {
     /**
      * @param  'resolved'|'unsupported'|'unknown'  $status

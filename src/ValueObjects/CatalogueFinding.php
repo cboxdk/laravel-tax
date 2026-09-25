@@ -10,7 +10,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
  * One product whose answer in one market depends on something the catalogue has not
  * said about it — or a product the catalogue does not know at all.
  */
-final readonly class CatalogueFinding
+readonly class CatalogueFinding
 {
     /**
      * @param  list<UnsettledCondition>  $conditions

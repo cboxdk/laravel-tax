@@ -14,7 +14,7 @@ namespace Cbox\Tax\ValueObjects;
  * published as a decision has tested those same conditions against facts the host
  * supplied, so there is nothing left to confirm.
  */
-final readonly class DeliveryTreatment
+readonly class DeliveryTreatment
 {
     public function __construct(
         public bool $included,

@@ -28,7 +28,7 @@ use Illuminate\Filesystem\Filesystem;
  * about published data belong in the e2e group against the live register. That
  * group runs in the full QA gate and can be excluded explicitly when offline.
  */
-final class FakeRegister
+class FakeRegister
 {
     /** @var array<string, list<array<string, mixed>>> */
     private array $rates = [];

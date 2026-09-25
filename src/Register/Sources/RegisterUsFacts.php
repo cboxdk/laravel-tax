@@ -20,7 +20,7 @@ use DateTimeImmutable;
  * taking the newest — a holiday that ran last July must not price a sale this
  * September, and the register keeps both.
  */
-final readonly class RegisterUsFacts implements UsTaxFacts
+readonly class RegisterUsFacts implements UsTaxFacts
 {
     public function __construct(private RegisterDataset $dataset) {}
 

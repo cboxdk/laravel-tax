@@ -37,7 +37,7 @@ use DateTimeImmutable;
  * the band is refused and the standard rate applies. That is the direction a
  * customer can be refunded from; the other one is found at audit.
  */
-final readonly class RateResolver
+readonly class RateResolver
 {
     /**
      * The kinds that are not bands: a component added to the band, and an all-in

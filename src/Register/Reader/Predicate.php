@@ -37,7 +37,7 @@ use Cbox\Tax\ValueObjects\DecisionFacts;
  * published figure, and one unreadable clause should mark that answer as unsettled,
  * not stop every sale into the country.
  */
-final class Predicate
+class Predicate
 {
     /** @var list<string> */
     private const array NUMERIC_OPS = ['exceeds', 'at_least', 'below', 'at_most'];

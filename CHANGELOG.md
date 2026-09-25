@@ -7,6 +7,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Changed
+
+- **No class is sealed.** Forty-eight classes were `final` by habit, with nothing to
+  say which were meant to be — the register adapters among them, so a host could
+  neither subclass one to change a method nor mock it. Unsealing breaks no caller, and
+  an architecture test now fails the build if a class is sealed again.
+  `RegisterRateSource::withFacts()` declares `self`, as its contract does: it builds a
+  `RegisterRateSource`, which a subclass would not be.
+
 ### Development
 
 - **Rector** runs in `composer qa` as a dry run (`composer refactor` applies it): the

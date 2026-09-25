@@ -14,7 +14,7 @@ use Cbox\Tax\Exceptions\DatasetUnreadable;
  * jurisdiction usually asks again — a line, then its delivery charge, then the next
  * line. The records are not held at all.
  */
-final class ShardReader
+class ShardReader
 {
     /** @var array<string, list<array{int, int}>>|null */
     private ?array $index = null;

@@ -15,7 +15,7 @@ namespace Cbox\Tax\Register\Store;
  * the US is split further than its regime, because it is 38.3 MB of rates against
  * 4 MB for the other ten regimes put together.
  */
-final class ShardKey
+class ShardKey
 {
     public static function of(string $jurisdiction): string
     {

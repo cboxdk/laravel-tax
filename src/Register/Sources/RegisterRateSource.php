@@ -45,7 +45,7 @@ use DateTimeImmutable;
  * DOES carry and has no rate for returns null, which is the honest "this source
  * cannot answer" the chain is built on.
  */
-final readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityRateSource, FactAwareRateSource
+readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityRateSource, FactAwareRateSource
 {
     private const string SOURCE = 'cbox-tax';
 
@@ -56,7 +56,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         private DecisionFacts $facts = new DecisionFacts,
     ) {}
 
-    public function withFacts(DecisionFacts $facts): static
+    public function withFacts(DecisionFacts $facts): self
     {
         return new self($this->dataset, $this->resolver, $this->authorities, $facts);
     }

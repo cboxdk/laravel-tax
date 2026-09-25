@@ -14,7 +14,7 @@ namespace Cbox\Tax\ValueObjects;
  * answered per sale; a `seller` fact once per seller. Only product facts belong on a
  * product.
  */
-final readonly class RegisterFact
+readonly class RegisterFact
 {
     /**
      * @param  list<string>  $values  the allowed answers, for an enum fact

@@ -7,7 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Cbox\Tax\Enums\DeliveryComponent;
 
 /** Transaction facts for a delivery charge; legal conditions remain sourced data. */
-final readonly class DeliveryCharge
+readonly class DeliveryCharge
 {
     public function __construct(
         public DeliveryComponent $component = DeliveryComponent::Transport,

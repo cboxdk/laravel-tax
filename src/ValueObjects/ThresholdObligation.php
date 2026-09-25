@@ -16,7 +16,7 @@ namespace Cbox\Tax\ValueObjects;
  * computing it needs the crossing date, which this package is never told: the host
  * knows when its own turnover crossed.
  */
-final readonly class ThresholdObligation
+readonly class ThresholdObligation
 {
     public function __construct(
         /** `register`, `collect`, `remit`, `registration_effective`. */

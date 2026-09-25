@@ -15,7 +15,7 @@ use InvalidArgumentException;
  * alternative is climbing from a key that is not there to whatever its prefix
  * happens to match.
  */
-final class UnknownCategory extends InvalidArgumentException implements Malformed
+class UnknownCategory extends InvalidArgumentException implements Malformed
 {
     /**
      * @param  list<string>  $nearby

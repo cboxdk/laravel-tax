@@ -18,7 +18,7 @@ namespace Cbox\Tax\Register\Reader;
  * whoever is fixing the register and not at all to an invoice, and a reader that
  * distinguished them would have to decide which one to bill on.
  */
-final class Shape
+class Shape
 {
     /**
      * The rows of an array of objects, skipping anything that is not one.

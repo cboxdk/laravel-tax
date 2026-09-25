@@ -17,7 +17,7 @@ use Cbox\Tax\Enums\TaxTreatment;
  * goods and services in different columns. Summing them into one net and one tax
  * produces a number that reconciles with the invoices and fits no box on the form.
  */
-final readonly class ReturnTotal
+readonly class ReturnTotal
 {
     public function __construct(
         public TaxTreatment $treatment,

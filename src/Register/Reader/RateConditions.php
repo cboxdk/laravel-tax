@@ -36,7 +36,7 @@ use Cbox\Tax\ValueObjects\UnsettledCondition;
  * at once — and it does not bless it either. The answer is the published rate, flagged
  * with exactly what would settle it.
  */
-final class RateConditions
+class RateConditions
 {
     public const string APPLIES = 'applies';
 

@@ -21,7 +21,7 @@ use InvalidArgumentException;
  * unknown, and a decision that reaches an unknown refuses instead of taking either
  * branch. That is the whole reason the map is sparse.
  */
-final readonly class DecisionFacts
+readonly class DecisionFacts
 {
     /** @var array<string, string|int|float|bool> */
     public array $values;

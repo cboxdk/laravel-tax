@@ -13,7 +13,7 @@ namespace Cbox\Tax\Register\Store;
  * does not exist. Rare, and rare is worse than never — it would happen during a
  * deploy, under load, and look like a corrupt store.
  */
-final readonly class StorePointer
+readonly class StorePointer
 {
     public function __construct(private StoreLayout $layout) {}
 

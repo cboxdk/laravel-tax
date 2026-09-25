@@ -25,7 +25,7 @@ use Throwable;
  * of JSON — and send `If-None-Match`, which the register answers from a manifest
  * without touching a file.
  */
-final readonly class SectionFetcher
+readonly class SectionFetcher
 {
     private const string SOURCE = 'cbox-tax';
 

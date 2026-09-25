@@ -43,7 +43,7 @@ use Throwable;
  * the state rate; an empty list is a row saying no local authority levies there, and
  * is priced as the whole rate. Nothing here collapses them.
  */
-final class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverlays, ReportsSplitPostcodes
+class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverlays, ReportsSplitPostcodes
 {
     /** The district overlay format this reads. */
     private const int OVERLAY_FORMAT = 1;

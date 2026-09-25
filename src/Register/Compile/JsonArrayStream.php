@@ -33,7 +33,7 @@ use Generator;
  * nor a backslash that is itself escaped. That is the whole of the state machine
  * below, and the tests hand it exactly those three cases.
  */
-final class JsonArrayStream
+class JsonArrayStream
 {
     private string $buffer = '';
 

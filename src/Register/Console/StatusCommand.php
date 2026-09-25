@@ -20,7 +20,7 @@ use Throwable;
  * local disk, so this still tells you what you are billing from when the network is
  * the thing that is broken.
  */
-final class StatusCommand extends Command
+class StatusCommand extends Command
 {
     protected $signature = 'tax:data:status {--offline : Do not ask the register what the latest release is}';
 

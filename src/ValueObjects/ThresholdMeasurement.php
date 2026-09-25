@@ -18,7 +18,7 @@ namespace Cbox\Tax\ValueObjects;
  * would turn a state's extra precision into no answer at all. `says` is the state's
  * own sentence, which is what a person reviewing this actually reads.
  */
-final readonly class ThresholdMeasurement
+readonly class ThresholdMeasurement
 {
     public function __construct(
         /** `marketplace_sales`, `affiliated_persons`, `exempt_sales`, `transaction_unit`… */

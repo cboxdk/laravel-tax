@@ -14,7 +14,7 @@ use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\TaxRounding;
 use DateTimeImmutable;
 
-final readonly class RegisterRounding implements RoundingRules
+readonly class RegisterRounding implements RoundingRules
 {
     public function __construct(private RegisterDataset $dataset) {}
 

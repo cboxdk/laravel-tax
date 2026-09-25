@@ -18,7 +18,7 @@ use Cbox\Tax\Contracts\UsTaxFacts;
  * question about Virginia. They outlive any particular data source, so they live
  * apart from all of them.
  */
-final class UsLocalStructure
+class UsLocalStructure
 {
     /**
      * The states where the COUNTY is the only local authority that can apply, so

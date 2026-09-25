@@ -14,7 +14,7 @@ use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 
 /** Published policy; the arithmetic and invoice allocation implement it. */
-final readonly class TaxRounding
+readonly class TaxRounding
 {
     /** @var int<0, 8> */
     public int $places;

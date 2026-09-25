@@ -26,7 +26,7 @@ use DateTimeImmutable;
  * not move the answer under a half-priced invoice: two lines of one order have to be
  * priced by the same register, or the totals do not reconcile with either.
  */
-final class RegisterDataset
+class RegisterDataset
 {
     private ?string $version = null;
 

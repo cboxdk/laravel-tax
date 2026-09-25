@@ -29,7 +29,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  * sibling that is nearly right. A parent is honestly coarse; a near-sibling is
  * confidently wrong, and the second one prices an invoice.
  */
-final class CategoryMap
+class CategoryMap
 {
     /** The class every unmapped item falls to, and the reason it is safe to. */
     public const string FALLBACK = 'goods';

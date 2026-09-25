@@ -16,7 +16,7 @@ use DateTimeImmutable;
  * United States (whose states are read by the US regime's own facts). Published
  * today for the UK, Switzerland, Australia, Japan, Korea, Mexico and a dozen more.
  */
-final readonly class RegisterMarketplaceRules implements MarketplaceRules
+readonly class RegisterMarketplaceRules implements MarketplaceRules
 {
     public function __construct(private RegisterDataset $dataset) {}
 

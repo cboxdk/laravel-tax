@@ -14,7 +14,7 @@ namespace Cbox\Tax\Register\Store;
  * switch to is still on disk, so going back is another rename rather than another
  * download.
  */
-final readonly class StoreLayout
+readonly class StoreLayout
 {
     public function __construct(private string $root) {}
 
