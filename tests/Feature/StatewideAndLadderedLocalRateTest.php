@@ -683,3 +683,25 @@ it('never adds the rate of a code a county feature only says it includes', funct
     expect((string) $vail?->percentage)->toBe('4.4')
         ->and(collect($vail?->components ?? [])->pluck('code')->all())->not->toContain('us:CO:DISTRICT-MTS-EAGLE');
 });
+
+it('reads a sub-state code filed as standard as the state rate there, not on top of it', function (): void {
+    // Nebraska's Good Life Districts carry a `standard` rate of their own: inside
+    // Avenue One in Omaha the state rate is 2.75% in place of 5.5%, and the city's
+    // 1.5% is still due. Summed with the state share the set came to 9.75%, marked
+    // authoritative.
+    ladderRegister()
+        ->rate('us:NE', '5.5')
+        ->rate('us:NE:DISTRICT-GL801', '2.75', 'standard')->named('us:NE:DISTRICT-GL801', 'GLD Avenue One')
+        ->rate('us:NE:CITY-OMAHA', '1.5', 'local_component')
+        ->boundary('NE', '68102', ['state:NE', 'city:OMAHA', 'district:GL801'])
+        ->boundary('NE', '68103', ['state:NE', 'city:OMAHA'])
+        ->install();
+
+    $district = ladderRateFor('US-NE', '68102', TaxClass::GeneralGoods);
+    $outside = ladderRateFor('US-NE', '68103', TaxClass::GeneralGoods);
+
+    expect((string) $district?->percentage)->toBe('4.25')
+        ->and(collect($district?->components ?? [])->pluck('percentage')->map(fn ($p) => (string) $p)->all())->toBe(['2.75', '1.5'])
+        ->and(collect($district?->components ?? [])->pluck('code')->all())->not->toContain('us:NE')
+        ->and((string) $outside?->percentage)->toBe('7');
+});

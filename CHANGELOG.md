@@ -94,6 +94,16 @@ minor bumps may carry additive features; patches are fixes and docs).
   point row. It now says the path comes from the installed register, and shows
   what release 293 publishes.
 
+### Fixed — a district that sets the state's own rate
+
+- **A sub-state code filed as `standard` was added on top of the state share.**
+  Nebraska's Good Life Districts are the state's rate inside the district: 2.75% in
+  Avenue One in Omaha, in place of 5.5%, with the city's 1.5% still due. Summed, an
+  address there came to 9.75%, authoritative, where 4.25% is due. Such a code now
+  stands in the state's place in the breakdown; two in one set refuse to stack. No
+  release routes an address to one yet — Nebraska's postal files do not name them —
+  so this lands before the data that would have shown it.
+
 ### Fixed — exempt is not zero-rated
 
 - **Every exempt supply was reported as zero-rated.** The register files the two as

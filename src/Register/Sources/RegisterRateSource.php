@@ -422,6 +422,8 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
 
         $total = BigDecimal::zero();
         $components = [];
+        $inPlaceOfState = null;
+        $replacedState = null;
 
         foreach ($authorities as $authority) {
             $isState = $authority === $this->stateOf($authority);
@@ -442,6 +444,24 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
                     // A total short by one share is an under-charge stamped
                     // authoritative, and nobody audits a plausible number.
                     return $this->unstacked($state);
+                }
+
+                if (! $isState && $resolved->kind === RateKind::Standard) {
+                    // A SUB-STATE CODE FILED AS `standard` IS THE STATE'S OWN RATE
+                    // THERE. Nebraska's Good Life Districts are: inside Avenue One in
+                    // Omaha the state rate is 2.75%, not 5.5%, and the city's 1.5% is
+                    // still due on top. Summed with the state share it came to 9.75%,
+                    // authoritative, where 4.25% is due. Two such codes in one set
+                    // would be two state rates for one address, which is not a
+                    // number to pick between.
+                    if ($inPlaceOfState !== null) {
+                        return $this->unstacked($state);
+                    }
+
+                    $inPlaceOfState = new RateComponent(JurisdictionLevel::State, $resolved->percentage, $authority, $this->nameOf($authority));
+                    $replacedState = $this->stateOf($authority);
+
+                    continue;
                 }
 
                 $components[] = new RateComponent($this->levelOf($authority), $resolved->percentage, $authority, $this->nameOf($authority));
@@ -494,6 +514,26 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             $total = $total->plus(BigDecimal::of($percentage));
         }
 
+        if ($inPlaceOfState !== null) {
+            // The district's rate stands where the state's would; everything else in
+            // the set is still owed beside it.
+            $replaced = false;
+
+            foreach ($components as $i => $component) {
+                if ($component->code === $replacedState) {
+                    $total = $total->minus($component->percentage);
+                    $components[$i] = $inPlaceOfState;
+                    $replaced = true;
+                }
+            }
+
+            if (! $replaced) {
+                $components[] = $inPlaceOfState;
+            }
+
+            $total = $total->plus($inPlaceOfState->percentage);
+        }
+
         return new TaxRate(
             // 5.3 + 1.7 is seven per cent. Printing it as 7.0 makes a scale artefact
             // of the addition look like a statement about precision.
@@ -511,13 +551,6 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         );
     }
 
-    /**
-     * The level from the code itself: `us:KS:COUNTY-209` is a county.
-     *
-     * A bare `us:KS` is the state, which is IN the resolved set — the boundary file
-     * says whether the state's own rate applies there, and Nevada's says it does
-     * not on every row.
-     */
     /**
      * The per-dollar rate a bracket schedule works out to above one whole unit, as a
      * percentage.
@@ -734,6 +767,13 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
         return $parts[0].':'.($parts[1] ?? '');
     }
 
+    /**
+     * The level from the code itself: `us:KS:COUNTY-209` is a county.
+     *
+     * A bare `us:KS` is the state, which is IN the resolved set — the boundary file
+     * says whether the state's own rate applies there, and Nevada's says it does
+     * not on every row.
+     */
     private function levelOf(string $code): JurisdictionLevel
     {
         $parts = explode(':', $code);
