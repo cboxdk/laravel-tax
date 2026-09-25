@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-09-25
+
 ### Changed
 
 - **No class is sealed.** Forty-eight classes were `final` by habit, with nothing to
