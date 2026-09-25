@@ -48,6 +48,9 @@ final class FakeRegister
     /** @var array<string, array<string, mixed>> */
     private array $geometries = [];
 
+    /** @var array<string, array<string, mixed>> */
+    private array $overlays = [];
+
     /** @var array{absence?: array<string, mixed>, resolution?: array<string, mixed>, unpriced?: array<string, mixed>} */
     private array $usLocal = [];
 
@@ -203,6 +206,20 @@ final class FakeRegister
     }
 
     /**
+     * Publish a state's district overlay, the way `boundaries/{state}.overlay.json`
+     * ships: districts drawn over the postal layer, each naming its authority, what it
+     * `replaces`, its `from`/`until` and the `zips` it reaches.
+     *
+     * @param  list<array<string, mixed>>  $features
+     */
+    public function overlay(string $state, array $features, int $formatVersion = 1): self
+    {
+        $this->overlays[$state] = ['type' => 'FeatureCollection', 'formatVersion' => $formatVersion, 'state' => $state, 'features' => $features];
+
+        return $this;
+    }
+
+    /**
      * Publish one fact in the release's vocabulary, the way `/facts` does — so a
      * product form built on {@see CatalogueAudit} can be tested
      * without the network.
@@ -319,6 +336,10 @@ final class FakeRegister
 
         foreach ($this->geometries as $state => $collection) {
             $this->put($directory, 'boundaries/'.$state.'.geo.json', $collection);
+        }
+
+        foreach ($this->overlays as $state => $collection) {
+            $this->put($directory, 'boundaries/'.$state.'.overlay.json', $collection);
         }
 
         if ($this->facts !== []) {

@@ -210,6 +210,19 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             return null;
         }
 
+        // A STATE WITH DISTRICTS DRAWN OVER ITS POSTAL LAYER — Nebraska's Good Life
+        // Districts — needs the point as well: the ZIP+4 names the city and county,
+        // and only the point says whether the address is inside a district that sets
+        // the state's rate differently. Coordinates come back on every result, so it
+        // costs nothing to carry them.
+        if ($this->register?->publishesOverlayFor(substr($subdivision->value, 3)) === true) {
+            $point = $this->pointLocality($result, $subdivision);
+
+            if ($point !== null) {
+                return new LocalityCode($subdivision, LocalityScheme::Zip9AndPoint->value, $value.'@'.$point->value);
+            }
+        }
+
         return new LocalityCode($subdivision, LocalityScheme::Zip9->value, $value);
     }
 

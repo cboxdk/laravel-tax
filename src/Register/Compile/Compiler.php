@@ -261,6 +261,7 @@ final readonly class Compiler
 
         $zip = 0;
         $geo = 0;
+        $overlay = 0;
         $street = 0;
 
         foreach ($byState as $state => $artifacts) {
@@ -276,6 +277,13 @@ final readonly class Compiler
 
             if ($this->boundaryArtifact($artifacts, 'geometry', $partial, $base, $state, 'geo')) {
                 $geo++;
+            }
+
+            // Districts drawn OVER the postal layer — Nebraska's Good Life Districts.
+            // Its own file, never `geometry`: a state with geometry resolves by point,
+            // and five districts are not a map of Nebraska.
+            if ($this->boundaryArtifact($artifacts, 'overlay', $partial, $base, $state, 'overlay')) {
+                $overlay++;
             }
 
             // 228 MB across fifteen states, against 20 MB for every ZIP index in the
@@ -300,7 +308,7 @@ final readonly class Compiler
             $this->put($partial, 'us-local.json', ['absence' => $absence, 'resolution' => $resolution, 'unpriced' => $unpriced]);
         }
 
-        $say(sprintf('  boundaries — %d ZIP, %d geometry, %d street index', $zip, $geo, $street));
+        $say(sprintf('  boundaries — %d ZIP, %d geometry, %d district overlay, %d street index', $zip, $geo, $overlay, $street));
     }
 
     /**

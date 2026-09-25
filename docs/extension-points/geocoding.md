@@ -76,6 +76,7 @@ answer in a new release is picked up by the next `tax:data:sync`:
 | --- | --- | --- |
 | a state the register publishes polygons for — California, New Mexico, Texas | a **point**, scheme `latlng` (`34.052200,-118.243700`) | the register's polygon layer, read from each state's own GIS |
 | the 24 Streamlined states | a **ZIP+4**, scheme `zip9` (`66101-3064`) | the register's boundary index, via `RegisterBoundaries` |
+| a postal state with a district overlay — Nebraska | the **ZIP+4 and the point**, scheme `zip9+latlng` (`68022-1100@41.258962,-96.215563`) | the boundary index, then the districts drawn over it |
 | a state whose `resolution` says `county` — Florida, Hawaii, Pennsylvania, Virginia | county or independent-city name, scheme `county` | register jurisdiction names; works with rooftop disabled |
 | other states | none | state share, flagged where local tax may be missing |
 

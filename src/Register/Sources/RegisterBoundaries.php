@@ -6,6 +6,7 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\ReportsDistrictOverlays;
 use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
@@ -42,8 +43,14 @@ use Throwable;
  * the state rate; an empty list is a row saying no local authority levies there, and
  * is priced as the whole rate. Nothing here collapses them.
  */
-final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPostcodes
+final class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverlays, ReportsSplitPostcodes
 {
+    /** The district overlay format this reads. */
+    private const int OVERLAY_FORMAT = 1;
+
+    /** @var array<string, list<array{authority: string, replaces: list<string>, from: ?string, until: ?string, zips: list<string>, geometry: Geometry}>|null> */
+    private array $districts = [];
+
     /** @var array<string, ShardReader> */
     private array $streetShards = [];
 
@@ -128,11 +135,183 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
         // authoritative, where 8.75% is due. Where they are COMBINED totals —
         // California, New Mexico — the combined record replaces the state share, so
         // listing the state beside it changes nothing.
-        if ($address->point !== null && $codes !== [] && ! in_array('us:'.$state, $codes, true)) {
+        if ($address->point !== null && $address->zip5 === '' && $codes !== [] && ! in_array('us:'.$state, $codes, true)) {
             array_unshift($codes, 'us:'.$state);
         }
 
+        if ($address->point !== null && $address->zip5 !== '') {
+            return $this->withDistricts($state, $codes, $address->point, $at ?? new DateTimeImmutable('today'));
+        }
+
         return $codes;
+    }
+
+    /**
+     * The districts drawn over the postal layer that reach this locality's ZIP and
+     * were not tested against a point — a ZIP+4 or a bare ZIP in a ZIP one of them
+     * reaches. A ZIP+4 WITH its point was tested, so it reports none; one whose
+     * district file cannot be read reports a district of unknown authority, since
+     * nothing was tested at all.
+     *
+     * @return list<array{authority: ?string, replaces: list<string>}>
+     */
+    public function districtsUnchecked(Jurisdiction $jurisdiction, ?DateTimeImmutable $at = null): array
+    {
+        $subdivision = $jurisdiction->subdivision;
+        $locality = $jurisdiction->locality;
+
+        if ($subdivision === null || $locality === null || ! in_array($locality->scheme, [LocalityScheme::Zip9->value, LocalityScheme::Zip9AndPoint->value], true)) {
+            return [];
+        }
+
+        $state = substr($subdivision->value, 3);
+
+        if (! is_file($this->layout->file($this->version, 'boundaries/'.$state.'.overlay.json'))) {
+            return [];
+        }
+
+        $districts = $this->districts($state);
+
+        if ($districts === null) {
+            return [['authority' => null, 'replaces' => []]];
+        }
+
+        if ($locality->scheme === LocalityScheme::Zip9AndPoint->value) {
+            return [];
+        }
+
+        $zip5 = substr(preg_replace('/\D/', '', $locality->value) ?? '', 0, 5);
+        $day = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $unchecked = [];
+
+        foreach ($districts as $district) {
+            if ($this->inForce($district['from'], $district['until'], $day) && in_array($zip5, $district['zips'], true)) {
+                $unchecked[] = ['authority' => $district['authority'], 'replaces' => $district['replaces']];
+            }
+        }
+
+        return $unchecked;
+    }
+
+    /**
+     * A DISTRICT DRAWN OVER THE POSTAL LAYER stands in place of what it `replaces`
+     * where the point falls inside it. Nebraska's Good Life Districts set the state's
+     * own rate — 2.75% in Avenue One, where the state's is 5.5% — inside boundaries no
+     * ZIP follows, so the postal files never name them and only the point can say.
+     * Tested AFTER the postal answer, never instead of it: the ZIP+4 still decides the
+     * city and the county, the district only swaps what it names.
+     *
+     * A district file that cannot be read changes nothing here; the rate source flags
+     * the answer through {@see districtsUnchecked()} instead.
+     *
+     * @param  list<string>  $codes
+     * @return list<string>
+     */
+    private function withDistricts(string $state, array $codes, Point $point, DateTimeImmutable $at): array
+    {
+        $day = $at->format('Y-m-d');
+
+        foreach ($this->districts($state) ?? [] as $district) {
+            if (! $this->inForce($district['from'], $district['until'], $day) || $district['geometry']->authoritiesAt($point) === []) {
+                continue;
+            }
+
+            if (in_array($district['authority'], $codes, true)) {
+                continue;
+            }
+
+            // In the place of the first code it replaces, so a breakdown still reads
+            // state line first.
+            $at = null;
+            $kept = [];
+
+            foreach ($codes as $code) {
+                if (in_array($code, $district['replaces'], true)) {
+                    $at ??= count($kept);
+
+                    continue;
+                }
+
+                $kept[] = $code;
+            }
+
+            array_splice($kept, $at ?? count($kept), 0, [$district['authority']]);
+            $codes = $kept;
+        }
+
+        return $codes;
+    }
+
+    /**
+     * The state's district overlay, read once. An empty list where the state draws
+     * none; null where it draws some this reader cannot read — a format it does not
+     * implement, or a file that is not one.
+     *
+     * Several features under one authority are parts of one district: the state's own
+     * layer draws some districts in pieces, and a point in any piece is inside it.
+     *
+     * @return list<array{authority: string, replaces: list<string>, from: ?string, until: ?string, zips: list<string>, geometry: Geometry}>|null
+     */
+    private function districts(string $state): ?array
+    {
+        if (array_key_exists($state, $this->districts)) {
+            return $this->districts[$state];
+        }
+
+        $json = $this->read($state.'.overlay.json');
+
+        if ($json === null) {
+            return $this->districts[$state] = is_file($this->layout->file($this->version, 'boundaries/'.$state.'.overlay.json')) ? null : [];
+        }
+
+        if (($json['formatVersion'] ?? null) !== self::OVERLAY_FORMAT || ! is_array($json['features'] ?? null)) {
+            return $this->districts[$state] = null;
+        }
+
+        $districts = [];
+
+        foreach ($json['features'] as $feature) {
+            $properties = Shape::map(Shape::map($feature)['properties'] ?? null);
+            $authority = Shape::text($properties['authority'] ?? null);
+
+            if ($authority === null) {
+                return $this->districts[$state] = null;
+            }
+
+            $zips = [];
+
+            // Published as numbers by release 303; a number loses a ZIP's leading zero,
+            // so each is padded back to five digits.
+            foreach (is_array($properties['zips'] ?? null) ? $properties['zips'] : [] as $zip) {
+                if (is_int($zip) || (is_string($zip) && ctype_digit($zip))) {
+                    $zips[] = str_pad((string) $zip, 5, '0', STR_PAD_LEFT);
+                }
+            }
+
+            try {
+                $geometry = Geometry::fromFeatureCollection(['formatVersion' => 3, 'features' => [
+                    ['type' => 'Feature', 'properties' => ['authority' => $authority, 'level' => Shape::text($properties['level'] ?? null) ?? 'district'], 'geometry' => Shape::map($feature)['geometry'] ?? null],
+                ]]);
+            } catch (UnsupportedFormatVersion|InvalidArgumentException) {
+                return $this->districts[$state] = null;
+            }
+
+            $districts[] = [
+                'authority' => $authority,
+                'replaces' => array_values(array_filter(is_array($properties['replaces'] ?? null) ? $properties['replaces'] : [], is_string(...))),
+                'from' => Shape::text($properties['from'] ?? null),
+                'until' => Shape::text($properties['until'] ?? null),
+                'zips' => $zips,
+                'geometry' => $geometry,
+            ];
+        }
+
+        return $this->districts[$state] = $districts;
+    }
+
+    private function inForce(?string $from, ?string $until, string $day): bool
+    {
+        return ($from === null || $from <= $day) && ($until === null || $until >= $day);
     }
 
     /**
@@ -584,6 +763,23 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
             }
 
             return new ParsedAddress(zip5: '', point: new Point((float) $lng, (float) $lat));
+        }
+
+        if ($scheme === LocalityScheme::Zip9AndPoint->value) {
+            [$zip, $at] = array_pad(explode('@', $value, 2), 2, '');
+            $postal = $this->address(LocalityScheme::Zip9->value, $zip);
+            $point = $this->address(LocalityScheme::LatLng->value, $at);
+
+            if ($postal === null) {
+                return null;
+            }
+
+            return new ParsedAddress(
+                zip5: $postal->zip5,
+                plus4: $postal->plus4,
+                point: $point?->point,
+                accuracy: $postal->accuracy,
+            );
         }
 
         return null;

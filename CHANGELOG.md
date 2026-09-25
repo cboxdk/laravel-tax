@@ -94,6 +94,23 @@ minor bumps may carry additive features; patches are fixes and docs).
   point row. It now says the path comes from the installed register, and shows
   what release 293 publishes.
 
+### Added — districts drawn over the postal layer
+
+- **Nebraska's Good Life Districts are priced.** They set the state's own rate inside
+  boundaries no ZIP follows — 2.75% in Avenue One in Omaha, where the state's is
+  5.5% — and the postal files never name them, so an address there priced at 7%
+  where 4.25% is due. From release 302 the register draws them in a separate
+  overlay (`<state>.overlay.json`, never the state's polygon layer), each naming what
+  it `replaces`, its dates and the ZIPs it reaches. `tax:data:sync` installs it.
+- **A new locality scheme, `zip9+latlng`** (`LocalityScheme::Zip9AndPoint`), carries
+  the ZIP+4 and the point together: the ZIP+4 answers the city and county, the point
+  says whether the address is inside a district. The Geocodio geocoder sends it for any
+  state whose store holds an overlay.
+- **`RateLimit::DistrictNeedsPoint`** flags an answer from a postal key alone in a ZIP
+  a district reaches — only where the district would change the figure, so the four
+  districts at the state's own rate raise nothing. `ReportsDistrictOverlays` is the
+  optional resolver capability behind it, next to `ReportsSplitPostcodes`.
+
 ### Fixed — a county name that is also a city's
 
 - **"Richmond County" was priced as Richmond City.** Virginia has four names that

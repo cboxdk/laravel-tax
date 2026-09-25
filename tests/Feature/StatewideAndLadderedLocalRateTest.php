@@ -750,3 +750,82 @@ it('answers a county the register lists as unpriced with a certain state share, 
         // A name in neither list is not knowledge.
         ->and($unknown?->limitedBy)->toBe(RateLimit::NoLocalResolution);
 });
+
+function districtRateFor(string $zip9, ?string $point, string $on = '2026-09-25')
+{
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $place = app(JurisdictionRepository::class)
+        ->find(new CountryCode('US'), new SubdivisionCode('US-NE'))
+        ->withLocality(new LocalityCode(
+            new SubdivisionCode('US-NE'),
+            $point === null ? LocalityScheme::Zip9->value : LocalityScheme::Zip9AndPoint->value,
+            $point === null ? $zip9 : $zip9.'@'.$point,
+        ));
+
+    return new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
+        ->rateFor($place, TaxClass::GeneralGoods, new DateTimeImmutable($on));
+}
+
+it('places an address inside a district drawn over the postal layer by its point', function (): void {
+    // Nebraska's Good Life Districts set the state's own rate inside boundaries no ZIP
+    // follows. Avenue One in Elkhorn is 2.75% where the state's is 5.5%, and the city's
+    // share is still due. The postal files never name the district; only the point says.
+    ladderRegister()
+        ->rate('us:NE', '5.5', from: '1990-01-01')
+        ->rate('us:NE:CITY-OMAHA', '1.5', 'local_component', from: '1990-01-01')
+        ->rate('us:NE:DISTRICT-GL801', '2.75', 'standard', from: '2024-04-01')->named('us:NE:DISTRICT-GL801', 'GLD Avenue One')
+        ->rate('us:NE:DISTRICT-GL803', '5.5', 'standard', from: '2024-10-01')
+        ->boundary('NE', '68022', ['state:NE', 'city:OMAHA'])
+        ->boundary('NE', '68801', ['state:NE'])
+        ->boundary('NE', '68131', ['state:NE', 'city:OMAHA'])
+        ->overlay('NE', [
+            // Drawn in two parts, as the state's own layer draws some districts.
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:NE:DISTRICT-GL801', 'level' => 'district', 'replaces' => ['us:NE'], 'from' => '2024-04-01', 'until' => null, 'zips' => [68022]], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-96.24, 41.26, 0.01)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:NE:DISTRICT-GL801', 'level' => 'district', 'replaces' => ['us:NE'], 'from' => '2024-04-01', 'until' => null, 'zips' => [68022]], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-96.20, 41.26, 0.01)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:NE:DISTRICT-GL803', 'level' => 'district', 'replaces' => ['us:NE'], 'from' => '2024-10-01', 'until' => null, 'zips' => ['68801']], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-98.34, 40.92, 0.01)]],
+        ])
+        ->install();
+
+    $inside = districtRateFor('68022-1234', '41.260000,-96.240000');
+    $secondPart = districtRateFor('68022-1234', '41.260000,-96.200000');
+    $outside = districtRateFor('68022-5678', '41.300000,-96.300000');
+    $noPoint = districtRateFor('68022-1234', null);
+    $bare = districtRateFor('68022', null);
+    $beforeIt = districtRateFor('68022-1234', '41.260000,-96.240000', '2024-03-31');
+    $sameRate = districtRateFor('68801-1000', null);
+    $elsewhere = districtRateFor('68131-1000', null);
+
+    // 2.75 in the state's place, plus Omaha's 1.5.
+    expect((string) $inside?->percentage)->toBe('4.25')
+        ->and($inside?->confidence)->toBe(Confidence::Authoritative)
+        ->and(collect($inside?->components ?? [])->pluck('code')->all())->toBe(['us:NE:DISTRICT-GL801', 'us:NE:CITY-OMAHA'])
+        ->and((string) $secondPart?->percentage)->toBe('4.25')
+        // The same ZIP+4, outside the boundary: the state's own rate, certain.
+        ->and((string) $outside?->percentage)->toBe('7')
+        ->and($outside?->limitedBy)->toBeNull()
+        // Without the point nothing can say which: the outside answer, flagged.
+        ->and((string) $noPoint?->percentage)->toBe('7')
+        ->and($noPoint?->limitedBy)->toBe(RateLimit::DistrictNeedsPoint)
+        ->and($bare?->limitedBy)->toBe(RateLimit::DistrictNeedsPoint)
+        // Not before the district existed.
+        ->and((string) $beforeIt?->percentage)->toBe('7')
+        // A district at the state's own rate changes nothing, so it raises nothing.
+        ->and($sameRate?->limitedBy)->toBeNull()
+        // A ZIP no district reaches is not flagged.
+        ->and($elsewhere?->limitedBy)->toBeNull();
+});
+
+it('flags every answer in the ZIP when the district layer cannot be read', function (): void {
+    ladderRegister()
+        ->rate('us:NE', '5.5')
+        ->rate('us:NE:DISTRICT-GL801', '2.75', 'standard')
+        ->boundary('NE', '68022', ['state:NE'])
+        ->overlay('NE', [['type' => 'Feature', 'properties' => ['authority' => 'us:NE:DISTRICT-GL801', 'zips' => [68022]], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-96.24, 41.26, 0.01)]]], formatVersion: 2)
+        ->install();
+
+    $rate = districtRateFor('68022-1234', '41.260000,-96.240000');
+
+    expect((string) $rate?->percentage)->toBe('5.5')
+        ->and($rate?->limitedBy)->toBe(RateLimit::DistrictNeedsPoint);
+});

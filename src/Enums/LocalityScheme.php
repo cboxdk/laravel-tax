@@ -43,6 +43,17 @@ enum LocalityScheme: string
     case LatLng = 'latlng';
 
     /**
+     * A ZIP+4 and the point it was geocoded to, together:
+     * `68022-1234@41.259200,-96.240100`.
+     *
+     * For a state that resolves by postal key but draws a few districts over it —
+     * Nebraska's Good Life Districts set the state's own rate inside a boundary no
+     * ZIP follows. The ZIP+4 answers the authorities; the point says whether the
+     * address is inside a district that stands in place of one of them.
+     */
+    case Zip9AndPoint = 'zip9+latlng';
+
+    /**
      * A taxing authority's own code, as the source files it — the Streamlined FIPS
      * that a member state publishes its rates under.
      *

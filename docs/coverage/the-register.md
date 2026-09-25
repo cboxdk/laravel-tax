@@ -54,6 +54,7 @@ Two details that decide real invoices:
 | ZIP+4 | 24 Streamlined states, plus states with an address file of their own (Illinois from release 297) | Add-on |
 | Polygon | California, New Mexico, Texas | The point |
 | County name | Florida, Hawaii, Pennsylvania, Virginia — where `resolution` says `county` | The county |
+| District overlay | Nebraska's Good Life Districts, over the ZIP+4 | The point |
 | State rate | everywhere else | The state share, flagged |
 
 Every authority that applies is summed, or none of them: inside Kansas City a county
@@ -74,6 +75,18 @@ state share, with the same flag. A ZIP whose addresses all share one
 set is decided by its five digits and is not flagged. A host can ask before it
 geocodes: `RegisterBoundaries::zipIsUniform('WA', '98001')` is `false`, `true` for a
 uniform ZIP, and `null` where the store holds no postal data for it.
+
+**A district drawn over the postal layer needs the point.** Nebraska's Good Life
+Districts set the state's own rate inside boundaries no ZIP follows — 2.75% in Avenue
+One in Omaha, where the state's is 5.5% — so the postal files never name them. The
+register draws them in a separate overlay, never as the state's polygon layer, and
+each district says what it `replaces`. Asked with a ZIP+4 and the point it was geocoded
+to (scheme `zip9+latlng`), the ZIP+4 answers the city and county and the point says
+whether the address is inside a district: Avenue One is 2.75 + Omaha's 1.5 = 4.25%.
+Asked with the ZIP+4 alone in a ZIP a district reaches, the answer is the one outside
+it, flagged `RateLimit::DistrictNeedsPoint` — and only where the district would change
+the figure: the four districts at the state's own 5.5% raise nothing. The shipped
+geocoder sends both keys for any state whose store holds an overlay.
 
 **Outside every polygon is not automatically "no local tax".** The register says per
 state whether its artifacts leave any levying ground out, as a dated list of the codes

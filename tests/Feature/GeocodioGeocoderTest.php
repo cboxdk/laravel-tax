@@ -293,3 +293,35 @@ it('asks the installed register which states need only the county, not a list in
         // so without rooftop enabled nothing finer is attached.
         ->and($locate('FL', 'Miami-Dade County')?->locality)->toBeNull();
 });
+
+it('carries the point with the ZIP+4 in a state that draws districts over its postal layer', function () {
+    // Nebraska's Good Life Districts set the state's rate inside boundaries no ZIP
+    // follows. The ZIP+4 names the city and the county; only the point says whether
+    // the address is inside a district.
+    config()->set('tax.register.store', config('tax.register.store').'/geocoder-overlay');
+    FakeRegister::at(config('tax.register.store'))
+        ->rate('us:NE', '5.5')
+        ->rate('us:KS', '6.5')
+        ->overlay('NE', [])
+        ->install();
+
+    $locate = function (string $state, string $zip9) {
+        $http = new Factory;
+        $http->fake(['*' => $http->response(['results' => [[
+            'address_components' => ['state' => $state, 'country' => 'US'],
+            'location' => ['lat' => 41.2592, 'lng' => -96.2401],
+            'fields' => ['zip4' => ['zip9' => [$zip9]]],
+        ]]])]);
+
+        return new GeocodioGeocoder($http, $this->geo, 'test-key', rooftop: true, register: app(RegisterDataset::class))
+            ->locate(['line1' => 'x', 'country' => 'US'])->locality;
+    };
+
+    $nebraska = $locate('NE', '68022-1234');
+    $kansas = $locate('KS', '66101-3064');
+
+    expect($nebraska?->scheme)->toBe('zip9+latlng')
+        ->and($nebraska?->value)->toBe('68022-1234@41.259200,-96.240100')
+        ->and($kansas?->scheme)->toBe('zip9')
+        ->and($kansas?->value)->toBe('66101-3064');
+});

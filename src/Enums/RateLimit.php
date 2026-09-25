@@ -166,6 +166,17 @@ enum RateLimit: string
      */
     case PostcodeSpansLocalities = 'postcode_spans_localities';
 
+    /**
+     * Priced from a postal key in a ZIP that a district drawn over the postal layer
+     * reaches, where the district sets a different rate — so the answer is right
+     * outside the district and wrong inside it.
+     *
+     * Nebraska's Good Life Districts set the state's rate at 2.75% inside a boundary
+     * no ZIP follows; a ZIP+4 in Elkhorn cannot say whether the address is in Avenue
+     * One. Only a point can.
+     */
+    case DistrictNeedsPoint = 'district_needs_point';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -205,6 +216,9 @@ enum RateLimit: string
                 .'settles it yet — the conditions are read but not evaluated.',
             self::PostcodeSpansLocalities => 'Pass the ZIP+4, or geocode the street address: this ZIP is split '
                 .'between local tax areas and the five digits cannot say which one the address is in.',
+            self::DistrictNeedsPoint => 'Pass the geocoded point with the ZIP+4 (scheme `zip9+latlng`): a district '
+                .'drawn over this ZIP sets a different rate inside its boundary, and a postal key cannot say '
+                .'whether the address is inside it.',
             self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
                 .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
                 .'return means applying the published table, which the assessment carries the citation for.',
@@ -230,6 +244,7 @@ enum RateLimit: string
             || $this === self::PerformanceLocationAssumed
             || $this === self::TerritoryUnplaced
             || $this === self::ConditionsUnevaluated
-            || $this === self::PostcodeSpansLocalities;
+            || $this === self::PostcodeSpansLocalities
+            || $this === self::DistrictNeedsPoint;
     }
 }

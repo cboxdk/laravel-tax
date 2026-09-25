@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\ReportsDistrictOverlays;
 use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\JurisdictionLevel;
@@ -174,10 +175,61 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
                 $stacked = $stacked->qualifiedBy(RateLimit::PostcodeSpansLocalities);
             }
 
+            // A DISTRICT DRAWN OVER THIS ZIP, NOT TESTED. Answered from the postal key
+            // alone, the address was priced as though it were outside every district —
+            // right outside, wrong inside. Flagged only where a district would change the
+            // figure: Nebraska's Good Life Districts at 5.5% stand in place of a 5.5% state
+            // rate, and a caveat there would send somebody looking for nothing.
+            if ($this->authorities instanceof ReportsDistrictOverlays) {
+                foreach ($this->authorities->districtsUnchecked($jurisdiction, $at) as $district) {
+                    if ($this->districtChangesRate($district, $key, $commodityCode, $at, $version)) {
+                        $stacked = $stacked->qualifiedBy(RateLimit::DistrictNeedsPoint);
+
+                        break;
+                    }
+                }
+            }
+
             return $this->withDeclined($this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
         }
 
         return null;
+    }
+
+    /**
+     * Whether a district would price differently from what it stands in place of.
+     *
+     * True where anything is unknown — an unreadable district layer, a rate this
+     * store cannot resolve — because "it would not have mattered" is a claim, and one
+     * nothing here can make.
+     *
+     * @param  array{authority: ?string, replaces: list<string>}  $district
+     */
+    private function districtChangesRate(array $district, string $key, ?string $commodityCode, ?DateTimeImmutable $at, string $version): bool
+    {
+        if ($district['authority'] === null) {
+            return true;
+        }
+
+        $inside = $this->resolve($district['authority'], $key, $commodityCode, $at, $version);
+
+        if ($inside === null) {
+            return true;
+        }
+
+        $outside = BigDecimal::zero();
+
+        foreach ($district['replaces'] as $code) {
+            $replaced = $this->resolve($code, $key, $commodityCode, $at, $version);
+
+            if ($replaced === null) {
+                return true;
+            }
+
+            $outside = $outside->plus($replaced->percentage);
+        }
+
+        return ! $inside->percentage->isEqualTo($outside);
     }
 
     /**
@@ -528,7 +580,8 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             }
 
             if (! $replaced) {
-                $components[] = $inPlaceOfState;
+                // The state line reads first in a breakdown, whoever levies it.
+                array_unshift($components, $inPlaceOfState);
             }
 
             $total = $total->plus($inPlaceOfState->percentage);

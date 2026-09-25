@@ -80,6 +80,22 @@ final class RegisterDataset
         return is_file($this->layout->file($version, 'boundaries/'.strtoupper($state).'.geo.json'));
     }
 
+    /**
+     * Whether the installed store holds a district overlay for a US state — districts
+     * drawn over its postal layer, which only a point can place an address inside.
+     * Null when no store is installed.
+     */
+    public function publishesOverlayFor(string $state): ?bool
+    {
+        $version = $this->version();
+
+        if ($version === null) {
+            return null;
+        }
+
+        return is_file($this->layout->file($version, 'boundaries/'.strtoupper($state).'.overlay.json'));
+    }
+
     public function isInstalled(): bool
     {
         return $this->version() !== null;
