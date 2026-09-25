@@ -274,6 +274,7 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
         );
         $wanted = $this->fold($county);
         $bare = $this->bareName($county);
+        $unit = $this->unitsOf($county);
         $exact = null;
         $loose = [];
 
@@ -286,13 +287,34 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
                 break;
             }
 
-            if ($folded === $bare || $this->bareName($name) === $bare) {
+            // A NAMED UNIT MATCHES ONLY THE SAME UNIT. Virginia has four names that
+            // are a county and an independent city at once; with the unit stripped
+            // from both sides, "Richmond County" — in no regional area — matched
+            // "Richmond City" and took its 6% where 5.3% is due.
+            if (($folded === $bare || $this->bareName($name) === $bare) && $this->sameUnit($unit, $this->unitsOf($name))) {
                 $loose[] = $code;
             }
         }
 
         if ($exact !== null) {
             return ['us:'.$state, $exact];
+        }
+
+        // A PLACE THE REGISTER DRAWS AND PRICES AT NOTHING LOCAL. Listed by its legal
+        // name (`Roanoke city`, `Roanoke County`), which is unique in the state and is
+        // how a geocoder writes it. Found here, the name is a real place with no local
+        // levy — the state share, and certain. Only a name found nowhere stays unknown.
+        $unpriced = $this->dataset->usLocalUnpriced($state) ?? [];
+        $looseUnpriced = 0;
+
+        foreach ($unpriced as $place) {
+            if ($this->fold($place['legalName']) === $wanted) {
+                return [];
+            }
+
+            if ($this->bareName($place['legalName']) === $bare && $this->sameUnit($unit, $this->unitsOf($place['legalName']))) {
+                $looseUnpriced++;
+            }
         }
 
         // THE UNIT WORD IS PART OF THE NAME, and Virginia is why. A Virginia city is
@@ -314,13 +336,48 @@ final class RegisterBoundaries implements LocalAuthorityResolver, ReportsSplitPo
             }
         }
 
-        // Two localities answer to the same bare name and nothing said which. Refusing
-        // sends the caller to the state rate; guessing bills the wrong authority.
-        if (count($loose) !== 1) {
+        // Two localities answer to the same bare name and nothing said which — priced
+        // or not. Refusing sends the caller to the state rate, flagged; guessing bills
+        // the wrong authority, or none where one levies.
+        if (count($loose) + $looseUnpriced !== 1) {
             return null;
         }
 
-        return ['us:'.$state, $loose[0]];
+        return $loose === [] ? [] : ['us:'.$state, $loose[0]];
+    }
+
+    /**
+     * The unit words a place name carries, before or after the name: `Honolulu
+     * County` is a county, `City and County of Honolulu` both, and `Miami-Dade` says
+     * nothing.
+     *
+     * @return list<string>
+     */
+    private function unitsOf(string $name): array
+    {
+        $name = strtolower(trim($name));
+        $units = [];
+
+        if (preg_match('/^((?:city and county|county|city|town|borough|parish|municipality)) of\s+/', $name, $leading) === 1) {
+            $units = explode(' and ', $leading[1]);
+        }
+
+        if (preg_match('/\s+(county|city|parish|borough)$/', $name, $trailing) === 1) {
+            $units[] = $trailing[1];
+        }
+
+        return array_values(array_unique($units));
+    }
+
+    /**
+     * Whether two names can be the same place: either says no unit, or they share one.
+     *
+     * @param  list<string>  $a
+     * @param  list<string>  $b
+     */
+    private function sameUnit(array $a, array $b): bool
+    {
+        return $a === [] || $b === [] || array_intersect($a, $b) !== [];
     }
 
     /**

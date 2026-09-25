@@ -705,3 +705,48 @@ it('reads a sub-state code filed as standard as the state rate there, not on top
         ->and(collect($district?->components ?? [])->pluck('code')->all())->not->toContain('us:NE')
         ->and((string) $outside?->percentage)->toBe('7');
 });
+
+it('answers a county the register lists as unpriced with a certain state share, and never lends it a city\'s rate', function (): void {
+    // Virginia has four names that are both a county and an independent city. The
+    // unit word was stripped from both sides before a loose match, so "Richmond
+    // County" — on the Northern Neck, in no regional area — matched "Richmond City"
+    // and took Richmond's 6%, authoritative, where 5.3% is due. A named unit only
+    // matches a place of the same unit.
+    $install = function (?array $unpriced): void {
+        ladderRegister()
+            ->rate('us:VA', '5.3')
+            ->rate('us:VA:CITY-RICHMOND', '6', 'combined')->named('us:VA:CITY-RICHMOND', 'Richmond City')
+            ->rate('us:VA:COUNTY-FAIRFAX', '6', 'combined')->named('us:VA:COUNTY-FAIRFAX', 'Fairfax County')
+            ->usLocal('VA', needs: 'county', unpriced: $unpriced)
+            ->install();
+    };
+
+    // Before the register lists the places without a levy: never Richmond's rate.
+    $install(null);
+    $richmondCounty = countyRateFor('US-VA', 'Richmond County');
+    expect((string) $richmondCounty?->percentage)->toBe('5.3')
+        ->and($richmondCounty?->limitedBy)->toBe(RateLimit::NoLocalResolution)
+        ->and((string) countyRateFor('US-VA', 'Richmond city')?->percentage)->toBe('6')
+        ->and((string) countyRateFor('US-VA', 'Fairfax County')?->percentage)->toBe('6');
+
+    // Release 303 lists them: a known place with no levy is the state share, certain.
+    $install([
+        ['name' => 'Richmond', 'legalName' => 'Richmond County', 'level' => 'county', 'geoid' => '51159'],
+        ['name' => 'Roanoke', 'legalName' => 'Roanoke city', 'level' => 'county', 'geoid' => '51770'],
+        ['name' => 'Roanoke', 'legalName' => 'Roanoke County', 'level' => 'county', 'geoid' => '51161'],
+    ]);
+    $roanoke = countyRateFor('US-VA', 'Roanoke city');
+    $richmondCounty = countyRateFor('US-VA', 'Richmond County');
+    $bare = countyRateFor('US-VA', 'Roanoke');
+    $unknown = countyRateFor('US-VA', 'Atlantis County');
+
+    expect((string) $roanoke?->percentage)->toBe('5.3')
+        ->and($roanoke?->limitedBy)->toBeNull()
+        ->and($roanoke?->confidence)->toBe(Confidence::Authoritative)
+        ->and((string) $richmondCounty?->percentage)->toBe('5.3')
+        ->and($richmondCounty?->confidence)->toBe(Confidence::Authoritative)
+        // Two places answer to "Roanoke"; nothing said which.
+        ->and($bare?->limitedBy)->toBe(RateLimit::NoLocalResolution)
+        // A name in neither list is not knowledge.
+        ->and($unknown?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});

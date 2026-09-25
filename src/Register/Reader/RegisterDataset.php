@@ -417,6 +417,38 @@ final class RegisterDataset
     }
 
     /**
+     * The county-equivalents in a US state that the register draws and prices at
+     * nothing local — a real place, with no local levy in this release.
+     *
+     * Null where the release makes no claim for the state, which is not the same as
+     * an empty list: `[]` says every drawn county-equivalent carries a rate.
+     *
+     * @return list<array{name: string, legalName: string}>|null
+     */
+    public function usLocalUnpriced(string $state): ?array
+    {
+        $claim = Shape::map($this->document('us-local')['unpriced'] ?? null)[$state] ?? null;
+
+        if (! is_array($claim)) {
+            return null;
+        }
+
+        $places = [];
+
+        foreach ($claim as $entry) {
+            $entry = Shape::map($entry);
+            $name = Shape::text($entry['name'] ?? null);
+            $legalName = Shape::text($entry['legalName'] ?? null);
+
+            if ($name !== null && $legalName !== null) {
+                $places[] = ['name' => $name, 'legalName' => $legalName];
+            }
+        }
+
+        return $places;
+    }
+
+    /**
      * Whether ground no artifact places is ground without local tax in a US state, on
      * a date.
      *

@@ -48,7 +48,7 @@ final class FakeRegister
     /** @var array<string, array<string, mixed>> */
     private array $geometries = [];
 
-    /** @var array{absence?: array<string, mixed>, resolution?: array<string, mixed>} */
+    /** @var array{absence?: array<string, mixed>, resolution?: array<string, mixed>, unpriced?: array<string, mixed>} */
     private array $usLocal = [];
 
     /** @var array<string, array{sets: list<list<array<string, string>>>, zip: array<string, list<array{0: string, 1: string, 2: int}>>}> */
@@ -164,12 +164,18 @@ final class FakeRegister
     /**
      * Publish what the register says about local resolution in a US state, the way the
      * `/boundaries` listing carries it: the level a local answer needs, and the codes
-     * whose ground no artifact places — or "unknown".
+     * whose ground no artifact places — or "unknown" — and the county-equivalents
+     * that carry no rate (`unpriced`).
      *
      * @param  list<array{code: string, from?: ?string, until?: ?string}>|'unknown'|null  $absence
+     * @param  list<array{name: string, legalName: string, level?: string, geoid?: string}>|null  $unpriced
      */
-    public function usLocal(string $state, ?string $needs = null, array|string|null $absence = null): self
+    public function usLocal(string $state, ?string $needs = null, array|string|null $absence = null, ?array $unpriced = null): self
     {
+        if ($unpriced !== null) {
+            $this->usLocal['unpriced'][$state] = $unpriced;
+        }
+
         if ($needs !== null) {
             $this->usLocal['resolution'][$state] = ['needs' => $needs, 'localLevels' => []];
         }
@@ -308,7 +314,7 @@ final class FakeRegister
         $this->put($directory, 'rules.json', ['rules' => $this->rules]);
 
         if ($this->usLocal !== []) {
-            $this->put($directory, 'us-local.json', ['absence' => $this->usLocal['absence'] ?? null, 'resolution' => $this->usLocal['resolution'] ?? null]);
+            $this->put($directory, 'us-local.json', ['absence' => $this->usLocal['absence'] ?? null, 'resolution' => $this->usLocal['resolution'] ?? null, 'unpriced' => $this->usLocal['unpriced'] ?? null]);
         }
 
         foreach ($this->geometries as $state => $collection) {

@@ -94,6 +94,23 @@ minor bumps may carry additive features; patches are fixes and docs).
   point row. It now says the path comes from the installed register, and shows
   what release 293 publishes.
 
+### Fixed — a county name that is also a city's
+
+- **"Richmond County" was priced as Richmond City.** Virginia has four names that
+  are both a county and an independent city — Fairfax, Franklin, Richmond, Roanoke —
+  and the county-name match stripped the unit word from both sides before comparing.
+  On release 301, Richmond County and Franklin County, in no regional area, came to
+  6%, authoritative, where 5.3% is due. A named unit now matches only the same unit.
+
+### Added — county names with no local levy
+
+- **`unpriced` is read.** From release 303 the `/boundaries` listing names, per
+  county-resolved state, the county-equivalents drawn and priced at nothing local.
+  A county name found there is a real place with no levy: the state share,
+  authoritative. Matched on the legal name ("Roanoke city"); a bare name that fits two
+  places stays unresolved. `RegisterDataset::usLocalUnpriced()` reads it, and
+  `FakeRegister::usLocal()` publishes it.
+
 ### Fixed — a district that sets the state's own rate
 
 - **A sub-state code filed as `standard` was added on top of the state share.**

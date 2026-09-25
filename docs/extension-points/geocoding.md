@@ -81,7 +81,14 @@ answer in a new release is picked up by the next `tax:data:sync`:
 
 A county name matches however the register writes it: "Honolulu County" finds "City
 and County of Honolulu", and "Hawaii County" finds "County of Hawaii", never the state
-of Hawaii. A name that matches two jurisdictions is refused, not guessed.
+of Hawaii. A named unit matches only the same unit, because Virginia has four names
+that are both a county and an independent city: "Richmond County" is not "Richmond
+City". A name that matches two jurisdictions is refused, not guessed.
+
+Where the register lists the county-equivalents it prices at nothing local
+(`unpriced`, from release 303), a listed name — "Roanoke city" — is the state share,
+certain. A name found neither among the priced places nor in that list stays the
+state share, flagged: an unmatched name is not knowledge.
 
 Coordinates come back on every Geocodio result; the ZIP+4 needs the `zip4` append,
 which the adapter requests when rooftop is on:
