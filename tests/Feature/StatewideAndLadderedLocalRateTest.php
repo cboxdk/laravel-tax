@@ -664,3 +664,22 @@ it('names the ZIP+4 as the remedy when a split ZIP has no answer of its own', fu
         ->and((string) $address?->percentage)->toBe('11.25')
         ->and($address?->limitedBy)->toBeNull();
 });
+
+it('never adds the rate of a code a county feature only says it includes', function (): void {
+    // Eagle, Pitkin and Summit collect their mass-transit tax inside the county rate,
+    // so the county feature carries `includes: [DISTRICT-MTS-…]` for information. The
+    // MTS code still carries its own rate in the register; adding it charged it twice.
+    ladderRegister()
+        ->rate('us:CO', '2.9')
+        ->rate('us:CO:COUNTY-EAGLE', '1.5', 'local_component')
+        ->rate('us:CO:DISTRICT-MTS-EAGLE', '0.5', 'local_component')
+        ->geometry('CO', [
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:CO:COUNTY-EAGLE', 'level' => 'county', 'includes' => ['us:CO:DISTRICT-MTS-EAGLE']], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-106.37, 39.64, 0.3)]],
+        ])
+        ->install();
+
+    $vail = pointRateFor('US-CO', 39.64, -106.37);
+
+    expect((string) $vail?->percentage)->toBe('4.4')
+        ->and(collect($vail?->components ?? [])->pluck('code')->all())->not->toContain('us:CO:DISTRICT-MTS-EAGLE');
+});
