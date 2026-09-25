@@ -388,7 +388,16 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
 
             // Nobody resolved the address below the state line. The state share is
             // the honest answer, and saying so is what lets an operator see the gap.
-            return $this->unstacked($state);
+            // A SPLIT ZIP ASKED BARE is a gap of a different kind: the index is
+            // installed and knows the ZIP, but files no answer for the five digits
+            // alone — Illinois lists single add-ons — so the remedy is the ZIP+4, not
+            // a sync.
+            return $this->unstacked(
+                $state,
+                $this->authorities instanceof ReportsSplitPostcodes && $this->authorities->spansSeveralSets($jurisdiction, $at)
+                    ? RateLimit::PostcodeSpansLocalities
+                    : RateLimit::NoLocalResolution,
+            );
         }
 
         if ($authorities === []) {
@@ -464,11 +473,15 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
                     self::SOURCE,
                     Confidence::Authoritative,
                     $local->isZero() ? [] : [
-                        new RateComponent(JurisdictionLevel::State, $state->percentage, $this->stateOf($authority)),
+                        new RateComponent(JurisdictionLevel::State, $state->percentage, $this->stateOf($authority), $this->nameOf($this->stateOf($authority))),
                         // Trailing zeros stripped: 10.75 − 7.25 is three and a half
                         // per cent, and 3.50 makes a scale artefact of the
                         // subtraction look like a statement about precision.
-                        new RateComponent(JurisdictionLevel::Local, $local->strippedOfTrailingZeros(), $authority, $this->shortNameOf($authority)),
+                        // Named as the register names it. The code's own segment is a
+                        // place only in California (`CITY-ALAMEDA`); in Illinois it is
+                        // IDOR's location number, and a return line reading
+                        // "016-0001-1" is not one anybody can file from.
+                        new RateComponent(JurisdictionLevel::Local, $local->strippedOfTrailingZeros(), $authority, $this->nameOf($authority) ?? $this->shortNameOf($authority)),
                     ],
                     null,
                     $state->provenance,
@@ -641,7 +654,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
      * store cannot price. Either way the figure is short, and the one thing that
      * must not happen is it being returned as though it were the whole rate.
      */
-    private function unstacked(TaxRate $state): TaxRate
+    private function unstacked(TaxRate $state, RateLimit $gap = RateLimit::NoLocalResolution): TaxRate
     {
         return new TaxRate(
             $state->percentage,
@@ -654,7 +667,7 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
             // schedule — keeps it: "resolve the address" settles none of those, and
             // overwriting them sent a seller to fix its geocoding when what was open
             // was the product. The confidence is Derived either way.
-            $state->limitedBy ?? RateLimit::NoLocalResolution,
+            $state->limitedBy ?? $gap,
             $state->provenance,
         );
     }
@@ -673,8 +686,8 @@ final readonly class RegisterRateSource implements CategoryKeyedRateSource, Comm
     }
 
     /**
-     * The authority's own segment, for a component that names a place rather than a
-     * key — `us:CA:CITY-ALAMEDA` reads as `ALAMEDA` on a return.
+     * The authority's own segment — `us:CA:CITY-ALAMEDA` reads as `ALAMEDA` — for a
+     * release that publishes no name for it.
      */
     private function shortNameOf(string $code): ?string
     {

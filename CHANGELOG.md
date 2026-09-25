@@ -94,6 +94,19 @@ minor bumps may carry additive features; patches are fixes and docs).
   point row. It now says the path comes from the installed register, and shows
   what release 293 publishes.
 
+### Fixed — release 297, Illinois by address
+
+- **A split ZIP with no answer of its own sent the seller to sync.** Illinois files
+  single ZIP+4 add-ons, not ranges, so a bare ZIP split between tax areas (Riverside
+  60546, Altamont 62411) resolves to nothing. The state share went out flagged
+  `NoLocalResolution`, whose remedy is to sync the boundary index — already installed.
+  It is now flagged `PostcodeSpansLocalities`: pass the ZIP+4.
+- **A combined rate's breakdown named its lines from the code.** The local line took
+  the code's own segment — a place in California (`ALAMEDA`), an IDOR location number
+  in Illinois (`016-0001-1`) — and the state line had no name. Both now carry the
+  register's name ("Chicago", "Illinois"), falling back to the segment only where the
+  release publishes none.
+
 ### Fixed — Texas by point, and the state share a polygon leaves out
 
 - **`cboxdk/tax-resolver ^1.1`.** Texas ships as a polygon layer in geometry format 3,

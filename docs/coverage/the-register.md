@@ -51,7 +51,7 @@ Two details that decide real invoices:
 | How | Where | Precision |
 | --- | --- | --- |
 | Street range | 15 states, with `--streets` | House number |
-| ZIP+4 | 24 Streamlined states | Add-on |
+| ZIP+4 | 24 Streamlined states, plus states with an address file of their own (Illinois from release 297) | Add-on |
 | Polygon | California, New Mexico, Texas | The point |
 | County name | Florida, Hawaii, Pennsylvania, Virginia — where `resolution` says `county` | The county |
 | State rate | everywhere else | The state share, flagged |
@@ -68,7 +68,9 @@ authoritative.
 and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five
 digits, the store can only return one of the ZIP's answers, so a ZIP split between
 authority sets comes back flagged `RateLimit::PostcodeSpansLocalities` with the ZIP+4
-or the street as the remedy; the ZIP+4 settles it. A ZIP whose addresses all share one
+or the street as the remedy; the ZIP+4 settles it. Illinois lists single add-ons
+rather than ranges, so a split ZIP there has no answer for the five digits at all: the
+state share, with the same flag. A ZIP whose addresses all share one
 set is decided by its five digits and is not flagged. A host can ask before it
 geocodes: `RegisterBoundaries::zipIsUniform('WA', '98001')` is `false`, `true` for a
 uniform ZIP, and `null` where the store holds no postal data for it.

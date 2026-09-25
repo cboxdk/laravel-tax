@@ -142,7 +142,9 @@ it('keeps every stacked authority as a component', function () {
 it('splits a combined-basis rate into the state share and the aggregate local share', function () {
     // California publishes one all-in figure per place; the state share is known
     // exactly, so the remainder is the aggregate of every district taxing there —
-    // levelled `local`, never attributed to the named city.
+    // levelled `local`, never attributed to the named city. Both lines carry the
+    // register's own names: the code's segment is a place only in California, and
+    // Illinois codes are IDOR location numbers nobody can file a return line from.
     $locality = new LocalityCode(new SubdivisionCode('US-CA'), 'ca-place', '06:ALAMEDA');
 
     $rate = app(TaxRateSource::class)
@@ -152,8 +154,8 @@ it('splits a combined-basis rate into the state share and the aggregate local sh
         ->and(array_map(fn (RateComponent $c): array => [
             $c->level->value, (string) $c->percentage, $c->name,
         ], $rate?->components ?? []))->toBe([
-            ['state', '7.25', null],
-            ['local', '3.5', 'ALAMEDA'],
+            ['state', '7.25', 'us:CA'],
+            ['local', '3.5', 'Alameda'],
         ]);
 });
 

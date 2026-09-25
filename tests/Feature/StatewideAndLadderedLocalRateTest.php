@@ -640,3 +640,27 @@ it('does not read a polygon that carries no rate as no local tax', function (): 
         ->and($anchorage?->limitedBy)->toBeNull()
         ->and($anchorage?->confidence)->toBe(Confidence::Authoritative);
 });
+
+it('names the ZIP+4 as the remedy when a split ZIP has no answer of its own', function (): void {
+    // Illinois files an address list, not ranges: its ZIP+4 spans are single add-ons
+    // and a split ZIP has no row for the five digits alone. Asked with the bare ZIP,
+    // nothing resolves — and the state share went out flagged NoLocalResolution,
+    // whose remedy is "sync the state's boundary index". The index is installed; what
+    // is missing is the add-on.
+    ladderRegister()
+        ->rate('us:IL', '6.25')
+        ->rate('us:IL:CITY-016-0111-3', '10.25', 'combined')
+        ->rate('us:IL:CITY-016-0060-5-R02', '11.25', 'combined')
+        ->boundary('IL', '60546', ['city:016-0111-3'], '0123', '0123')
+        ->boundary('IL', '60546', ['city:016-0060-5-R02'], '2064', '2064')
+        ->install();
+
+    $bare = ladderRateFor('US-IL', '60546', TaxClass::GeneralGoods);
+    $address = ladderRateFor('US-IL', '60546-2064', TaxClass::GeneralGoods);
+
+    expect((string) $bare?->percentage)->toBe('6.25')
+        ->and($bare?->confidence)->toBe(Confidence::Derived)
+        ->and($bare?->limitedBy)->toBe(RateLimit::PostcodeSpansLocalities)
+        ->and((string) $address?->percentage)->toBe('11.25')
+        ->and($address?->limitedBy)->toBeNull();
+});
