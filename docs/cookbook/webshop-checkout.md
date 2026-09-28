@@ -43,6 +43,16 @@ amount — unit price × quantity, less any discount — and the quantity exists
 per-item caps work. Massachusetts exempts clothing up to $175 *per article*, so two
 $150 coats on one line are two exempt coats, not one $300 taxable supply.
 
+**Most products need no category.** A shop's own catalogue has thousands of product
+types and the tax law has a few hundred categories, and most products fall in none of
+them: they are general goods, taxed at the standard rate. That is the default —
+`TaxClass::GeneralGoods` — and it is not a guess and carries no flag. A category is
+needed only for a product the law rates differently: food, books, medicine,
+children's clothing, a service such as education. Leaving one of those out prices it
+at the standard rate, which over-charges rather than under-charges — and nothing in the
+engine notices: which of your products are among them is the one thing only the shop
+can say.
+
 **`categoryKey` asks the register in its own words.** `TaxClass` covers the common
 cases; the register publishes 182 categories, and a key reaches the ones the enum
 cannot name — `goods.publications.book`, `services.education`,
