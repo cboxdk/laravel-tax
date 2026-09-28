@@ -63,17 +63,15 @@ enum RateLimit: string
     case ClassificationInferred = 'classification_inferred';
 
     /**
-     * The jurisdiction levies by a BRACKET SCHEDULE and the rate returned is the
-     * per-dollar figure that schedule works out to above one unit.
+     * The jurisdiction levies by a BRACKET SCHEDULE and this answer could not be read
+     * off it, so it is the per-dollar figure the schedule works out to above one unit.
      *
      * Alabama, Idaho, Maryland and Pennsylvania each publish a table in cents rather
      * than a percentage: 11 to 17 cents is one cent of tax, 18 to 34 is two, and so
-     * on, with a per-dollar rate above a dollar. The percentage is exact on whole
-     * units and disagrees with the table by up to a cent on the remainder, so it is
-     * the right answer for a price and the wrong one for a cent-level reconciliation.
-     *
-     * It is flagged rather than refused because refusing priced NOTHING in four
-     * states, and a rate within a cent — that says so — beats an exception.
+     * on, with a per-dollar rate above a dollar. The engine prices a sale by the table
+     * where it can; this flag marks where it cannot — a tax-inclusive price, a local
+     * share stacked on the state's table, an amount the published table has no row
+     * for — and the figure is then within a cent of the table, not on it.
      */
     case BracketSchedule = 'bracket_schedule';
 
@@ -219,9 +217,9 @@ enum RateLimit: string
             self::DistrictNeedsPoint => 'Pass the geocoded point with the ZIP+4 (scheme `zip9+latlng`): a district '
                 .'drawn over this ZIP sets a different rate inside its boundary, and a postal key cannot say '
                 .'whether the address is inside it.',
-            self::BracketSchedule => 'Nothing in your application, and nothing is wrong with the figure for a '
-                .'price: it is the schedule\'s own per-dollar rate. Reconciling to the cent against a state '
-                .'return means applying the published table, which the assessment carries the citation for.',
+            self::BracketSchedule => 'Price tax-exclusive where you can: the published table is then applied to '
+                .'the sale exactly. A tax-inclusive price, or a local share stacked on the state\'s table, is '
+                .'priced at the table\'s per-dollar rate — right for a price, within a cent for a return.',
         };
     }
 

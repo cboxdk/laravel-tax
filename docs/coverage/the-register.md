@@ -62,8 +62,18 @@ and a city both levy (6.5 + 1.0 + 1.625), and a rate short by one authority's sh
 would be an under-charge stamped authoritative. A local record the store cannot price
 abandons the whole stack and returns the state share **flagged** instead. A stack is
 also no surer than the state share it stands on: Pennsylvania's 6% is a bracket
-table's per-dollar figure, so Allegheny's 7% is `Derived` with `BracketSchedule`, not
-authoritative.
+table, and the table plus Allegheny's 1% is not the 7% table the state publishes for
+that total, so Allegheny's 7% is `Derived` with `BracketSchedule`, not authoritative.
+
+**A state that writes its tax as a table is priced by the table.** Alabama, Idaho,
+Maryland and Pennsylvania publish tables in cents, and Maryland's statute states the
+tax as its table: on $1.34 it is 9 cents, where 6% rounded is 8. The rate carries the
+table (`TaxRate::$schedule`) and a tax-exclusive sale is priced by it — on the sale's
+total, not line by line, so two $0.40 lines are one $0.80 sale at 5 cents. Where the
+table cannot be read — a tax-inclusive price, a local share on top, an amount it has no
+row for — the table's per-dollar figure is used and flagged `BracketSchedule`. The
+Streamlined states round a percentage instead: their agreement bars requiring a
+bracket system.
 
 **A ZIP is a mail route, not a tax boundary.** Washington's 98001 holds Federal Way
 and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five

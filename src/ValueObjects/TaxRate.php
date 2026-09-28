@@ -68,6 +68,14 @@ readonly class TaxRate
          * unaffected.
          */
         public ?RateProvenance $provenance = null,
+        /**
+         * The table the tax is, where a state writes it as one rather than as a
+         * percentage. The percentage is then the table's per-unit figure, kept for
+         * display and for the amounts the table cannot price.
+         *
+         * Null for every rate that is a percentage, which is nearly all of them.
+         */
+        public ?BracketSchedule $schedule = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
 
@@ -138,6 +146,7 @@ readonly class TaxRate
             $this->components,
             $this->limitedBy ?? $limit,
             $this->provenance,
+            $this->schedule,
         );
     }
 
@@ -151,6 +160,7 @@ readonly class TaxRate
             $this->components,
             $this->limitedBy,
             $this->provenance,
+            $this->schedule,
         );
     }
 
@@ -171,6 +181,14 @@ readonly class TaxRate
      */
     public function taxOnNet(Money $net, ?TaxRounding $rounding = null): Money
     {
+        // A state that writes its tax as a table is priced by the table; the
+        // percentage is only its per-unit figure.
+        $scheduled = $this->schedule?->taxOn($net);
+
+        if ($scheduled !== null) {
+            return $scheduled;
+        }
+
         $tax = $net->toRational()
             ->multipliedBy($this->percentage)
             ->dividedBy(100);

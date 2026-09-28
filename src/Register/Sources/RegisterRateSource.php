@@ -23,6 +23,8 @@ use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
+use Cbox\Tax\ValueObjects\BracketRow;
+use Cbox\Tax\ValueObjects\BracketSchedule;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\RateProvenance;
@@ -463,12 +465,13 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 $state->percentage,
                 $state->kind,
                 self::SOURCE,
-                // The state share is the whole rate, and exactly as sure as it is: a
-                // bracket table's per-dollar figure is still that, with no local share.
+                // The state share is the whole rate, and exactly as sure as it is — a
+                // state that writes its tax as a table is priced by the table.
                 $state->confidence,
                 [],
                 $state->limitedBy,
                 $state->provenance,
+                $state->schedule,
             );
         }
 
@@ -587,6 +590,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $total = $total->plus($inPlaceOfState->percentage);
         }
 
+        // A TABLE PLUS A PERCENTAGE IS NEITHER. Pennsylvania's 6% is a table; Allegheny
+        // adds 1% and Philadelphia 2%, and the state publishes its own tables for those
+        // totals, which the register does not carry. The total is the table's per-dollar
+        // figure plus the local share — right to within a cent, and flagged as that.
+        $approximated = $state->schedule !== null && $inPlaceOfState === null;
+
         return new TaxRate(
             // 5.3 + 1.7 is seven per cent. Printing it as 7.0 makes a scale artefact
             // of the addition look like a statement about precision.
@@ -594,12 +603,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $state->kind,
             self::SOURCE,
             // NO SURER THAN WHAT IT STANDS ON. Every local share resolved, so the stack
-            // is complete — but a state share that is a bracket table's per-dollar
-            // figure, or an assumed taxability, makes the total exactly that sure. It
-            // used to call itself authoritative while carrying the state's flag.
-            $state->confidence,
+            // is complete — but an approximated table, or an assumed taxability, makes
+            // the total exactly that sure. It used to call itself authoritative while
+            // carrying the state's flag.
+            $approximated && $state->confidence === Confidence::Authoritative ? Confidence::Derived : $state->confidence,
             $components,
-            $state->limitedBy,
+            $state->limitedBy ?? ($approximated ? RateLimit::BracketSchedule : null),
             $state->provenance,
         );
     }
@@ -723,13 +732,16 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $components[] = new RateComponent(JurisdictionLevel::Local, $share, $code, $this->nameOf($code));
         }
 
+        // A table with a share added is no longer the table: priced by the sum, flagged.
+        $approximated = $rate->schedule !== null;
+
         return new TaxRate(
             $rate->percentage->plus($share)->strippedOfTrailingZeros(),
             $rate->kind,
             self::SOURCE,
-            $rate->confidence,
+            $approximated && $rate->confidence === Confidence::Authoritative ? Confidence::Derived : $rate->confidence,
             $components,
-            $rate->limitedBy,
+            $rate->limitedBy ?? ($approximated ? RateLimit::BracketSchedule : null),
             $rate->provenance,
         );
     }
@@ -757,6 +769,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             // was the product. The confidence is Derived either way.
             $state->limitedBy ?? $gap,
             $state->provenance,
+            $state->schedule,
         );
     }
 
@@ -909,10 +922,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             // one cent of tax, 18 to 34 is two — with `above.perWholeUnit` giving
             // what applies past one unit: $0.06 per dollar, which is six per cent.
             //
-            // Rounding the table to that figure disagrees by up to a cent on the
-            // remainder, which is why it is FLAGGED. It used to be refused instead,
-            // and refusing priced nothing at all in those four states — a rate within
-            // a cent that says so is worth more to a shop than an exception.
+            // The TABLE is carried with it and prices the sale; the per-dollar figure
+            // is what the rate shows, and what prices an amount the table cannot — a
+            // tax-inclusive price, a local share stacked on top. Only there is the
+            // answer flagged, because only there is it within a cent rather than exact.
+            // It used to be flagged everywhere, and before that refused, which priced
+            // nothing at all in those four states.
             $percentage = $this->perWholeUnit($rate);
 
             if ($percentage === null) {
@@ -928,21 +943,73 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $provenance = $rate['provenance'] ?? null;
 
         $by = $resolved['by'] ?? null;
+        $schedule = $bracketed ? $this->schedule($rate) : null;
+        // A table that cannot be read is still a figure within a cent, and says so.
+        $approximated = $bracketed && $schedule === null;
 
         return new TaxRate(
             $percentage,
             $this->kind($rate),
             is_string($by) ? self::SOURCE.':'.$by : self::SOURCE,
-            $resolved['inferred'] || $resolved['ambiguous'] || $bracketed || $resolved['narrowed'] ? Confidence::Derived : Confidence::Authoritative,
+            $resolved['inferred'] || $resolved['ambiguous'] || $approximated || $resolved['narrowed'] ? Confidence::Derived : Confidence::Authoritative,
             [],
-            $this->limit($resolved) ?? ($bracketed ? RateLimit::BracketSchedule : null),
+            $this->limit($resolved) ?? ($approximated ? RateLimit::BracketSchedule : null),
             new RateProvenance(
                 self::SOURCE,
                 $version,
                 Shape::text(Shape::map($effective)['from'] ?? null),
                 Shape::text(Shape::map($provenance)['snapshot'] ?? null),
             ),
+            $schedule,
         );
+    }
+
+    /**
+     * The published table, read into rows — null where any part of it cannot be read,
+     * because a table missing a row prices some amounts wrong and says nothing.
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    private function schedule(array $rate): ?BracketSchedule
+    {
+        $brackets = Shape::map($rate['brackets'] ?? null);
+        $above = Shape::map($brackets['above'] ?? null);
+        $unit = Shape::map($above['perWholeUnit'] ?? null);
+        $currency = Shape::text($unit['currency'] ?? null) ?? 'USD';
+        $rows = $this->bracketRows($brackets['rows'] ?? null);
+        $aboveRows = $this->bracketRows($above['rows'] ?? null);
+        $perUnit = Shape::text($unit['amount'] ?? null);
+
+        if ($rows === null || $rows === [] || $aboveRows === null || ($unit !== [] && Shape::text($unit['per'] ?? null) !== 'dollar')) {
+            return null;
+        }
+
+        return new BracketSchedule(
+            $currency,
+            $rows,
+            $perUnit === null || ! is_numeric($perUnit) ? null : BigDecimal::of($perUnit),
+            $aboveRows,
+        );
+    }
+
+    /** @return list<BracketRow>|null */
+    private function bracketRows(mixed $published): ?array
+    {
+        $rows = [];
+
+        foreach (Shape::records($published) as $row) {
+            $from = Shape::text($row['from'] ?? null);
+            $upTo = Shape::text($row['upTo'] ?? null);
+            $tax = Shape::text($row['tax'] ?? null);
+
+            if (! is_numeric($from) || ! is_numeric($upTo) || ! is_numeric($tax)) {
+                return null;
+            }
+
+            $rows[] = new BracketRow(BigDecimal::of($from), BigDecimal::of($upTo), BigDecimal::of($tax));
+        }
+
+        return $rows;
     }
 
     /**

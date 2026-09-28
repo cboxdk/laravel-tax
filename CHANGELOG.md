@@ -7,6 +7,22 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed — a state that writes its tax as a table is priced by the table
+
+- **Alabama, Idaho, Maryland and Pennsylvania were priced by percentage.** Each
+  publishes its tax as a table in cents, and Maryland's statute states the tax as the
+  table: on $1.34 it is 9 cents, where 6% rounded is 8. The engine priced all four at
+  the table's per-dollar figure and flagged it everywhere. The rate now carries the
+  table (`TaxRate::$schedule`, a `BracketSchedule`), and a tax-exclusive sale is priced
+  by it — exact, authoritative, no flag.
+- **The table is read on the sale, not the line.** An order's lines priced by one table
+  are summed, the table read once, and the tax shared back by amount: two $0.40 lines
+  are one $0.80 sale at 5 cents, not 3 and 3.
+- **Where it cannot be read, it still says so.** A tax-inclusive price, a local share
+  stacked on the state's table (Allegheny, Philadelphia), or an amount the published
+  table has no row for is priced at the per-dollar figure and flagged
+  `BracketSchedule`, as before.
+
 ### Added — the register's public face
 
 - **`TaxRegister`** is what an application may ask the installed register directly:

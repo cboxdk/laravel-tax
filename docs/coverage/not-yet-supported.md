@@ -45,8 +45,10 @@ class. A commodity code refines the mapped category; `TaxQuery` and
   accompanying exempt goods and taxable allocation for partially exempt goods are not yet
   classified by the default regime; both refuse.
 - Published rounding policies support half-up/up, line/invoice/seller-election
-  scopes and combined local shares. Separate per-authority rounding and collection
-  bracket alternatives are not implemented by this policy path.
+  scopes and combined local shares. Separate per-authority rounding is not
+  implemented by this policy path. A bracket table is applied exactly to a
+  tax-exclusive sale; a tax-inclusive price, or a local share stacked on a state's
+  table, falls back to the table's per-dollar rate, flagged.
 - Local boundary artifacts are snapshots. Dated rate coverage does not establish
   historical boundary coverage.
 

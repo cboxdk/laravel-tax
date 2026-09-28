@@ -396,7 +396,17 @@ readonly class UsSalesTaxRegime implements TaxRegime
         }
 
         $base = $determination->taxableBase($query->amount, $query->quantity);
-        $rounding = $this->roundingPolicy($subdivision, $query, $rate);
+
+        // A STATE THAT WRITES ITS TAX AS A TABLE is priced by the table, and exactly —
+        // on a tax-exclusive price the table covers. A tax-inclusive price cannot be
+        // read back through a table without choosing between the prices that land on
+        // the same total, and an amount past the table has nothing to read, so both
+        // fall to the table's per-dollar figure: within a cent, and flagged as that.
+        if ($rate->schedule !== null && ($query->pricing === Pricing::Inclusive || $rate->schedule->taxOn($base) === null)) {
+            $rate = $rate->qualifiedBy(RateLimit::BracketSchedule);
+        }
+
+        $rounding = $rate->schedule === null ? $this->roundingPolicy($subdivision, $query, $rate) : null;
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
 
         return new TaxAssessment(

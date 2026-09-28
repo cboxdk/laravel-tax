@@ -277,15 +277,15 @@ it('takes the headline band, not a category-scoped rate that happens to come fir
     expect((string) ladderRateFor('US-AZ', '85001-0001', TaxClass::GeneralGoods)?->percentage)->toBe('5.6');
 });
 
-it('prices a bracket schedule at its own per-dollar rate, flagged', function (): void {
+it('carries a bracket table with its per-dollar rate, and is exact where the table is the whole rate', function (): void {
     // Alabama, Idaho, Maryland and Pennsylvania publish a table in cents instead of a
     // percentage — 11 to 17 cents is one cent of tax, 18 to 34 is two — with a
     // per-dollar figure for anything above a dollar. $0.06 per dollar is six per
     // cent, and it sits in the data rather than being inferred.
     //
-    // It used to be refused, which priced NOTHING in four states. A rate within a
-    // cent of the table, flagged as being within a cent, is worth more to a shop than
-    // an exception.
+    // It was refused once, which priced nothing in four states, and then priced at
+    // the per-dollar figure and flagged everywhere. The table itself now travels with
+    // the rate and prices the sale, so a state share that is the whole rate is exact.
     ladderRegister()
         ->rate('us:PA', '0', extra: [
             'basis' => 'bracket',
@@ -297,15 +297,12 @@ it('prices a bracket schedule at its own per-dollar rate, flagged', function ():
         ])
         ->install();
 
-    // Asked at state level, so the flag the assessment carries is the bracket one.
-    // With an address it would be `NoLocalResolution` instead — Pennsylvania has
-    // locals and publishes no boundary file — and a rate carries one limit, the
-    // nearest thing to act on.
     $rate = ladderStateRate('US-PA');
 
     expect((string) $rate?->percentage)->toBe('6')
-        ->and($rate?->confidence)->toBe(Confidence::Derived)
-        ->and($rate?->limitedBy)->toBe(RateLimit::BracketSchedule);
+        ->and($rate?->schedule)->not->toBeNull()
+        ->and($rate?->confidence)->toBe(Confidence::Authoritative)
+        ->and($rate?->limitedBy)->toBeNull();
 });
 
 it('still refuses a per-unit amount that has no percentage to give', function (): void {

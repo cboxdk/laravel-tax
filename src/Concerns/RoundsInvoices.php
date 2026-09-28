@@ -6,8 +6,10 @@ namespace Cbox\Tax\Concerns;
 
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Brick\Money\AllocationMode;
 use Brick\Money\Money;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\ValueObjects\LineAssessment;
@@ -46,7 +48,7 @@ trait RoundsInvoices
             }
         }
 
-        $flat = $this->roundTaxGroups($flat, $flatPricing);
+        $flat = $this->roundTaxGroups($this->applySchedules($flat, $flatPricing), $flatPricing);
 
         foreach ($lines as $index => $line) {
             $parts = array_map(static fn (int $position) => $flat[$position]->assessment, $positions[$index]);
@@ -81,6 +83,76 @@ trait RoundsInvoices
     }
 
     /**
+     * A TABLE TAXES THE SALE, NOT THE LINE. Maryland's and Pennsylvania's tables are
+     * read on the sale's taxable price: two lines at $0.40 are one $0.80 sale, taxed 5
+     * cents, where the table read line by line gives 3 and 3. So the lines a table
+     * prices in one place are summed, the table is read once on the sum, and that tax
+     * is shared back across them by their taxable amounts.
+     *
+     * Only tax-exclusive lines, which is the only way a table is read at all; and only
+     * where every line's amount has the same sign, since a table on a sale netted
+     * against a return is not a figure either state publishes.
+     *
+     * @param  list<LineAssessment>  $lines
+     * @param  array<string, Pricing>  $pricing
+     * @return list<LineAssessment>
+     */
+    private function applySchedules(array $lines, array $pricing): array
+    {
+        $groups = [];
+
+        foreach ($lines as $index => $line) {
+            $a = $line->assessment;
+
+            if (! $a->isTaxable() || $a->rate?->schedule === null || $a->rate->limitedBy === RateLimit::BracketSchedule || $pricing[$line->id] !== Pricing::Exclusive) {
+                continue;
+            }
+
+            $key = $a->placeOfSupply->country->value.':'.$a->placeOfSupply->subdivision?->value.':'.$a->rate->percentage->strippedOfTrailingZeros();
+            $groups[$key][] = $index;
+        }
+
+        foreach ($groups as $indices) {
+            if (count($indices) < 2) {
+                continue;
+            }
+
+            $first = $lines[$indices[0]]->assessment;
+            $schedule = $first->rate?->schedule;
+            $sale = Money::zero($first->net->getCurrency(), $first->net->getContext());
+            $weights = [];
+            $signs = [];
+
+            foreach ($indices as $index) {
+                $base = $lines[$index]->assessment->taxableBase ?? $lines[$index]->assessment->net;
+                $sale = $sale->plus($base);
+                $weights[] = $base->getMinorAmount()->abs();
+                $signs[$base->isNegative() ? 'negative' : 'positive'] = true;
+            }
+
+            $tax = count($signs) > 1 || $sale->isZero() || ! $sale->getContext()->isFixedScale() ? null : $schedule?->taxOn($sale);
+
+            if ($tax === null) {
+                continue;
+            }
+
+            foreach ($tax->allocate($weights, AllocationMode::FloorToLargestRemainder) as $position => $share) {
+                $index = $indices[$position];
+                $a = $lines[$index]->assessment;
+                $base = $a->taxableBase ?? $a->net;
+
+                $lines[$index] = new LineAssessment($lines[$index]->id, $a->with(
+                    tax: $share,
+                    gross: $a->net->plus($share),
+                    breakdown: $a->rate === null ? null : $this->breakdown($a->rate, $base, $share),
+                ));
+            }
+        }
+
+        return array_values($lines);
+    }
+
+    /**
      * @param  list<LineAssessment>  $lines
      * @param  array<string, Pricing>  $pricing
      * @return list<LineAssessment>
@@ -92,7 +164,7 @@ trait RoundsInvoices
         foreach ($lines as $index => $line) {
             $a = $line->assessment;
 
-            if (! $a->isTaxable() || $a->rounding?->scope !== RoundingScope::Invoice || $a->unroundedTax === null) {
+            if (! $a->isTaxable() || $a->rounding?->scope !== RoundingScope::Invoice || $a->unroundedTax === null || $a->rate?->schedule !== null) {
                 continue;
             }
 
