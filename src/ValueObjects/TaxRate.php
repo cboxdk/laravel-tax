@@ -7,6 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
+use Cbox\Tax\Contracts\TaxTable;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
@@ -75,7 +76,7 @@ readonly class TaxRate
          *
          * Null for every rate that is a percentage, which is nearly all of them.
          */
-        public ?BracketSchedule $schedule = null,
+        public ?TaxTable $schedule = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
 

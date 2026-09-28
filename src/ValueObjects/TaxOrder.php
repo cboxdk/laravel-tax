@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\ValueObjects;
 
+use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
@@ -117,6 +118,21 @@ readonly class TaxOrder
     }
 
     /**
+     * The sale's amount: every line summed, delivery included — the price a state
+     * that taxes the sale reads.
+     */
+    public function saleAmount(): Money
+    {
+        $total = null;
+
+        foreach ($this->lines as $line) {
+            $total = $total === null ? $line->amount : $total->plus($line->amount);
+        }
+
+        return $total ?? throw InvalidTaxOrder::withoutLines();
+    }
+
+    /**
      * The single-supply query for one line — the ONLY place order context becomes
      * a query, so the two planes cannot drift apart.
      */
@@ -150,6 +166,7 @@ readonly class TaxOrder
             performedAt: $line->performedAt,
             quantity: $line->quantity,
             facts: $line->facts,
+            saleAmount: $this->saleAmount(),
         );
     }
 

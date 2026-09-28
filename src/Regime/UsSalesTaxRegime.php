@@ -315,6 +315,24 @@ readonly class UsSalesTaxRegime implements TaxRegime
             );
         }
 
+        // A SALE TOO SMALL TO TAX. Colorado taxes no sale of 17 cents or less, Idaho
+        // none of 11, Maryland none of 19. It is the SALE's amount — two 10-cent items
+        // in one sale are a 20-cent sale — so a line of an order reads the order's.
+        $minimum = $this->dataset?->minimumTaxableSale($subdivision->value, $query->on()->format('Y-m-d'));
+        $sale = $query->saleAmount ?? $query->amount;
+
+        if ($minimum !== null && $minimum->getCurrency()->isEqualTo($sale->getCurrency()) && $sale->abs()->isLessThanOrEqualTo($minimum)) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::Exempt,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf('US sales tax: %s taxes no sale of %s or less.', $subdivision->value, $minimum->getAmount()),
+            );
+        }
+
         // A holiday is the last gate before a rate, because it does not change the
         // rate — it removes the supply from tax for a few days. Asked after
         // taxability so a supply that is already exempt is reported as exempt for

@@ -7,6 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
+use Cbox\Tax\Contracts\TaxTable;
 
 /**
  * A state's sales tax written as a table rather than a percentage — Maryland,
@@ -19,7 +20,7 @@ use Brick\Money\Money;
  * different figure from the one the state computes, so the table is applied as
  * published — to the whole sale, which is what the statute taxes.
  */
-readonly class BracketSchedule
+readonly class BracketSchedule implements TaxTable
 {
     /**
      * @param  list<BracketRow>  $rows  The table up to one whole unit.
@@ -33,6 +34,12 @@ readonly class BracketSchedule
         /** The tax on each exact whole unit past the first table: 0.06 per dollar. */
         public ?BigDecimal $perWholeUnit = null,
         public array $aboveRows = [],
+        /**
+         * How much one whole unit is. A dollar for a state table; Pennsylvania's 1% local
+         * tax is written as ten cents on each exact $10, and the rows then cover the
+         * part of $10 past an exact multiple.
+         */
+        public ?BigDecimal $unit = null,
     ) {}
 
     /**
@@ -56,14 +63,16 @@ readonly class BracketSchedule
                 return null;
             }
 
-            $whole = $magnitude->toScale(0, RoundingMode::Down);
+            $unit = $this->unit ?? BigDecimal::one();
+            $units = $magnitude->dividedBy($unit, 0, RoundingMode::Down);
+            $whole = $units->multipliedBy($unit);
             $excess = $magnitude->minus($whole);
             // "Six cents on each exact dollar, plus" a table figure for the excess: an
             // exact number of dollars has no excess and adds nothing. Maryland's and
             // Alabama's excess tables start at one cent, so looking up nothing in them
             // found no row.
             $part = $excess->isZero() ? BigDecimal::zero() : $this->lookup($this->aboveRows === [] ? $this->rows : $this->aboveRows, $excess);
-            $tax = $part === null ? null : $whole->multipliedBy($this->perWholeUnit)->plus($part);
+            $tax = $part === null ? null : $units->multipliedBy($this->perWholeUnit)->plus($part);
         }
 
         if ($tax === null) {

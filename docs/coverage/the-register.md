@@ -62,8 +62,10 @@ and a city both levy (6.5 + 1.0 + 1.625), and a rate short by one authority's sh
 would be an under-charge stamped authoritative. A local record the store cannot price
 abandons the whole stack and returns the state share **flagged** instead. A stack is
 also no surer than the state share it stands on: Pennsylvania's 6% is a bracket
-table, and the table plus Allegheny's 1% is not the 7% table the state publishes for
-that total, so Allegheny's 7% is `Derived` with `BracketSchedule`, not authoritative.
+table, and a local share added to it as a percentage is within a cent of the answer,
+not on it: `Derived`, flagged `BracketSchedule`. Where the local share publishes its
+own table — Pennsylvania's 1% is ten cents on each exact $10 (61 Pa. Code § 60.16) —
+each table is read on its own and the two are added, which is exact.
 
 **A state that writes its tax as a table is priced by the table.** Alabama, Idaho,
 Maryland and Pennsylvania publish tables in cents, and Maryland's statute states the
@@ -74,6 +76,20 @@ table cannot be read — a tax-inclusive price, a local share on top, an amount 
 row for — the table's per-dollar figure is used and flagged `BracketSchedule`. The
 Streamlined states round a percentage instead: their agreement bars requiring a
 bracket system.
+
+**A sale too small to tax is not taxed.** Colorado taxes no sale of 17 cents or less,
+Idaho none of 11, Maryland none of 19. The register publishes it as a
+`minimum_taxable_sale` rule, and it is read on the sale: a line of an order reads the
+order's total (`TaxQuery::$saleAmount`), so two 10-cent items are one taxable 20-cent
+sale.
+
+**Every kind of rule the register publishes is accounted for.** The engine applies it,
+or has set it aside with the reason written down; `tax:data:sync` names any kind in
+neither list, and the check against the live register fails on one. Set aside today:
+the margin scheme for second-hand goods (it needs the purchase price and the seller's
+election), who collects a local tax (a filing question, not a price), and the domestic
+reverse charge of Art. 194 (every published rule says "the recipient" without saying
+which supplies it covers, and the member states differ).
 
 **A ZIP is a mail route, not a tax boundary.** Washington's 98001 holds Federal Way
 and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five

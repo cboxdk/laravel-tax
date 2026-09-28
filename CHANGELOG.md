@@ -7,6 +7,27 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed — rule kinds nobody read
+
+- **Every kind of rule the register publishes is now accounted for.** The engine read
+  nine of the thirteen kinds it publishes and ignored four without saying so. It now
+  keeps the list: a kind is applied, or set aside with the reason written down, and
+  `tax:data:sync` names any kind in neither list. A check against the live register
+  fails on one.
+- **A sale too small to tax is not taxed.** Colorado (17¢), Idaho (11¢) and Maryland
+  (19¢) publish a `minimum_taxable_sale`, and it was charged anyway. It is read on the
+  sale: `TaxOrder` gives each line's query the order's total as
+  `TaxQuery::$saleAmount`, so two 10-cent items are one taxable 20-cent sale.
+  `UsTaxFacts` gains `minimumTaxableSale()` — an implementation of your own needs it.
+- **A local tax written as its own table is read on its own.** Pennsylvania's 1% local
+  tax is ten cents on each exact $10 (61 Pa. Code § 60.16), computed apart from the
+  state's table and added. A table's whole unit can now be more than a dollar
+  (`every`), and where every share of a stack has a table the total is the tables
+  added (`CombinedTaxTable`) — exact, not flagged. `TaxRate::$schedule` is a `TaxTable`.
+- **Set aside, with reasons:** the EU margin scheme (it needs the purchase price and
+  the seller's election), who collects a local tax (filing, not price), and Art. 194
+  (the published rules do not say which supplies they cover).
+
 ### Added — tax in the place's own currency
 
 - **An invoice in another currency states its tax in the place's own.** A Danish sale

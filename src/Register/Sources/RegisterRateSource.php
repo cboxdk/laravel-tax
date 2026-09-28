@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Sources;
 
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
@@ -25,6 +26,7 @@ use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\BracketRow;
 use Cbox\Tax\ValueObjects\BracketSchedule;
+use Cbox\Tax\ValueObjects\CombinedTaxTable;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\RateComponent;
 use Cbox\Tax\ValueObjects\RateProvenance;
@@ -479,6 +481,10 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $components = [];
         $inPlaceOfState = null;
         $replacedState = null;
+        // The tables of the local shares that publish one, and how many local shares
+        // there are: only when every local share has its own table is the total one.
+        $localTables = [];
+        $localShares = 0;
 
         foreach ($authorities as $authority) {
             $isState = $authority === $this->stateOf($authority);
@@ -526,9 +532,20 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             }
 
             $percentage = $record['percentage'] ?? null;
+            $localShares++;
 
+            // A LOCAL SHARE WRITTEN AS ITS OWN TABLE. Pennsylvania's 1% local tax is
+            // computed on its own table — ten cents on each exact $10 — and added to the
+            // state's, which is not the same as one 7% figure.
             if (! is_string($percentage)) {
-                return $this->unstacked($state);
+                $percentage = $this->perWholeUnit($record);
+                $table = $this->schedule($record);
+
+                if ($percentage === null || $table === null) {
+                    return $this->unstacked($state);
+                }
+
+                $localTables[] = $table;
             }
 
             if (($record['kind'] ?? null) === 'combined') {
@@ -594,7 +611,8 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         // adds 1% and Philadelphia 2%, and the state publishes its own tables for those
         // totals, which the register does not carry. The total is the table's per-dollar
         // figure plus the local share — right to within a cent, and flagged as that.
-        $approximated = $state->schedule !== null && $inPlaceOfState === null;
+        $tabled = $state->schedule !== null && $inPlaceOfState === null && $localShares > 0 && count($localTables) === $localShares;
+        $approximated = $state->schedule !== null && $inPlaceOfState === null && ! $tabled;
 
         return new TaxRate(
             // 5.3 + 1.7 is seven per cent. Printing it as 7.0 makes a scale artefact
@@ -610,6 +628,8 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $components,
             $state->limitedBy ?? ($approximated ? RateLimit::BracketSchedule : null),
             $state->provenance,
+            // Every share a table: the total is the tables read one by one and added.
+            $tabled ? new CombinedTaxTable([$state->schedule, ...$localTables]) : null,
         );
     }
 
@@ -628,11 +648,28 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $unit = Shape::map(Shape::map(Shape::map($rate['brackets'] ?? null)['above'] ?? null)['perWholeUnit'] ?? null);
         $amount = Shape::text($unit['amount'] ?? null);
 
-        if ($amount === null || Shape::text($unit['per'] ?? null) !== 'dollar') {
+        if ($amount === null || ! is_numeric($amount) || Shape::text($unit['per'] ?? null) !== 'dollar') {
             return null;
         }
 
-        return BigDecimal::of($amount)->multipliedBy(100)->strippedOfTrailingZeros()->__toString();
+        // `every` is how many dollars one whole unit is: Pennsylvania's local tax is ten
+        // cents on each exact $10, which is one per cent.
+        $every = $this->every($unit);
+
+        return $every === null ? null : BigDecimal::of($amount)->multipliedBy(100)->dividedBy($every, 10, RoundingMode::HalfUp)->strippedOfTrailingZeros()->__toString();
+    }
+
+    /**
+     * How many dollars one whole unit of a table is: one, unless the table says
+     * otherwise. Null for a size that is not a positive number.
+     *
+     * @param  array<array-key, mixed>  $unit
+     */
+    private function every(array $unit): ?BigDecimal
+    {
+        $every = Shape::text($unit['every'] ?? null) ?? '1';
+
+        return is_numeric($every) && BigDecimal::of($every)->isPositive() ? BigDecimal::of($every) : null;
     }
 
     /**
@@ -980,7 +1017,9 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $aboveRows = $this->bracketRows($above['rows'] ?? null);
         $perUnit = Shape::text($unit['amount'] ?? null);
 
-        if ($rows === null || $rows === [] || $aboveRows === null || ($unit !== [] && Shape::text($unit['per'] ?? null) !== 'dollar')) {
+        $every = $this->every($unit);
+
+        if ($rows === null || $rows === [] || $aboveRows === null || $every === null || ($unit !== [] && Shape::text($unit['per'] ?? null) !== 'dollar')) {
             return null;
         }
 
@@ -989,6 +1028,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $rows,
             $perUnit === null || ! is_numeric($perUnit) ? null : BigDecimal::of($perUnit),
             $aboveRows,
+            $every,
         );
     }
 

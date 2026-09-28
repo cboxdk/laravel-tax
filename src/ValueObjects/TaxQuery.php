@@ -188,6 +188,13 @@ readonly class TaxQuery
          * rate it would have settled comes back flagged rather than guessed.
          */
         public DecisionFacts $facts = new DecisionFacts,
+        /**
+         * The whole sale's amount, where this query is one line of it. A state that
+         * taxes the SALE — Colorado's, Idaho's and Maryland's minimum taxable sale, a
+         * bracket table — reads this, not the line: two 10-cent items are one 20-cent
+         * sale. Null for a query that is the whole sale; `TaxOrder` fills it.
+         */
+        public ?Money $saleAmount = null,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
@@ -250,6 +257,7 @@ readonly class TaxQuery
             $this->performedAt,
             $this->quantity,
             $merged,
+            $this->saleAmount,
         );
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Contracts;
 
+use Brick\Money\Money;
 use DateTimeImmutable;
 
 /**
@@ -62,4 +63,11 @@ interface UsTaxFacts
      * where nothing published says one did.
      */
     public function marketplaceFacilitatorFrom(string $state): ?string;
+
+    /**
+     * The largest sale a state does not tax at all, in force on the date (`Y-m-d`) —
+     * Colorado's 17 cents, Idaho's 11, Maryland's 19 — or null where it publishes none.
+     * A sale at or under it bears no tax; one a cent over bears the whole tax.
+     */
+    public function minimumTaxableSale(string $state, string $on): ?Money;
 }

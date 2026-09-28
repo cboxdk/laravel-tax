@@ -163,3 +163,24 @@ it('adds nothing for the excess over an exact number of dollars', function (): v
 it('reads a credit on the same table, signed back', function (): void {
     expect((string) sale('US-MD', '-1.34')->tax->getAmount())->toBe('-0.09');
 });
+
+it('adds a local tax read on its own table to the state\'s, exactly', function (): void {
+    // Pennsylvania's 1% local tax has its own table — ten cents on each exact $10 —
+    // computed on its own and added to the state's (61 Pa. Code § 60.16). $25 is
+    // $1.50 of state tax and 20 cents of local, not 7% of $25.
+    FakeRegister::at(config('tax.register.store'))
+        ->rate('us:PA', '0', from: '1990-01-01', extra: pennsylvaniaTable())
+        ->rate('us:PA:COUNTY-ALLEGHENY', '0', 'local_component', from: '1990-01-01', extra: ['basis' => 'bracket', 'percentage' => null, 'brackets' => [
+            'rows' => [['from' => '0.00', 'upTo' => '9.99', 'tax' => '0.00']],
+            'above' => ['perWholeUnit' => ['amount' => '0.10', 'currency' => 'USD', 'per' => 'dollar', 'every' => '10'], 'rows' => [['from' => '0.01', 'upTo' => '9.99', 'tax' => '0.00']]],
+        ]])->named('us:PA:COUNTY-ALLEGHENY', 'Allegheny County')
+        ->usLocal('PA', needs: 'county')
+        ->install();
+
+    $allegheny = sale('US-PA', '25.00', county: 'Allegheny County');
+
+    expect((string) $allegheny->rate?->percentage)->toBe('7')
+        ->and((string) $allegheny->tax->getAmount())->toBe('1.70')
+        ->and($allegheny->rate?->limitedBy)->toBeNull()
+        ->and($allegheny->rate?->confidence)->toBe(Confidence::Authoritative);
+});

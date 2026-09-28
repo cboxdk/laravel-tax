@@ -49,6 +49,15 @@ class. A commodity code refines the mapped category; `TaxQuery` and
   implemented by this policy path. A bracket table is applied exactly to a
   tax-exclusive sale; a tax-inclusive price, or a local share stacked on a state's
   table, falls back to the table's per-dollar rate, flagged.
+- The EU margin scheme for second-hand goods, art and antiques is not modelled: it
+  needs the purchase price and the seller's election. A host that uses it computes it
+  before the engine.
+- The domestic reverse charge of Art. 194 — a supplier not established in a member
+  state selling to a taxable person there — is not read from the register's rules
+  until they say which supplies they cover. Until then a non-established supplier's
+  domestic B2B supply is reverse-charged as before, citing Art. 196, which is right
+  for services and not for every member state's goods: Germany reverses work
+  deliveries and services but not plain deliveries of goods.
 - Local boundary artifacts are snapshots. Dated rate coverage does not establish
   historical boundary coverage.
 

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Sources;
 
+use Brick\Money\Money;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use DateTimeImmutable;
+use Throwable;
 
 /**
  * The four facts the US sales-tax regime asks for, out of the register's rules.
@@ -35,6 +37,32 @@ readonly class RegisterUsFacts implements UsTaxFacts
 
             if ($this->covers($rate, $on)) {
                 return Shape::text($rate['percentage'] ?? null);
+            }
+        }
+
+        return null;
+    }
+
+    /** The largest sale a state does not tax, from its `minimum_taxable_sale` rule. */
+    public function minimumTaxableSale(string $state, string $on): ?Money
+    {
+        foreach ($this->dataset->rulesFor($this->code($state), 'minimum_taxable_sale') as $rule) {
+            if (! $this->covers($rule, $on)) {
+                continue;
+            }
+
+            $payload = Shape::map($rule['payload'] ?? null);
+            $amount = Shape::text($payload['exemptUpTo'] ?? null);
+            $currency = Shape::text($payload['currency'] ?? null);
+
+            if ($amount === null || $currency === null || ! is_numeric($amount)) {
+                continue;
+            }
+
+            try {
+                return Money::of($amount, $currency);
+            } catch (Throwable) {
+                continue;
             }
         }
 

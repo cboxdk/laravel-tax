@@ -8,6 +8,7 @@ use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
+use Cbox\Tax\Register\Reader\RuleKinds;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\ShardWriter;
 use Cbox\Tax\Register\Store\StoreLayout;
@@ -82,10 +83,20 @@ readonly class Compiler
         $say('  meta — regimes, categories, mappings, sources');
 
         $rules = $this->fetcher->json("{$base}/sections/rules");
+        $kinds = [];
         foreach (Shape::records($rules['rules'] ?? null) as $rule) {
             RegisterCompatibility::rule($rule);
+            $kinds[] = $rule['kind'] ?? null;
         }
         $this->put($partial, 'rules.json', $rules);
+
+        // Said, not refused: a rule this engine does not read changes no answer it
+        // gives, and refusing the sync over it would leave the store on an older
+        // release. But it is a rule the answers may be missing, and that is said here.
+        $unread = RuleKinds::unknown($kinds);
+        if ($unread !== []) {
+            $say('  rules of kinds this engine does not read: '.implode(', ', $unread).' — answers they bear on do not apply them');
+        }
         $this->put($partial, 'coverage.json', $this->fetcher->json("{$base}/coverage"));
         $this->put($partial, 'standard-rates.json', $this->fetcher->json("{$base}/sections/standard-rates"));
         $say('  rules, coverage, standard rates');
