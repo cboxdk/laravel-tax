@@ -21,11 +21,23 @@ than guessing, and the refusal names the command. Put it alongside
 `php artisan migrate`. See [The register](the-register.md) for what it pulls, how to
 take less than all of it, and what the licence permits.
 
+If you invoice in a currency other than the country's own — euros for a Danish
+sale, dollars anywhere in the EU — also fetch the European Central Bank's reference
+rates, and schedule it daily, since the bank publishes once a day:
+
+```bash
+php artisan tax:fx:sync
+```
+
+See [Invoice currency](../core-concepts/invoice-currency.md).
+
 `TaxServiceProvider` is auto-discovered and binds:
 
 - `Contracts\TaxCalculator` → `DefaultTaxCalculator`
 - `Contracts\RegimeRegistry` → the shipped regimes (`DefaultRegimeRegistry::withDefaults()`)
 - `Contracts\TaxRateSource` → `RegisterRateSource` (the compiled register — run `php artisan tax:data:sync` first)
+- `Contracts\TaxRegister` → `InstalledRegister` (what the installed register says, typed)
+- `Contracts\ExchangeRates` → `EcbExchangeRates` (the ECB's rates — run `php artisan tax:fx:sync`)
 
 To put your own source in front of the register, bind `TaxRateSource` in a service
 provider — see [Rate sources](../extension-points/rate-sources.md). Publish the config

@@ -71,6 +71,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Exchange rates
+    |--------------------------------------------------------------------------
+    |
+    | An invoice in another currency than the country's must still state its tax in
+    | the country's own (Art. 91 of the VAT Directive). `php artisan tax:fx:sync`
+    | fetches the European Central Bank's reference rates to local disk, and each
+    | assessment then carries the rate for its tax point; nothing is fetched while
+    | pricing. Bind Cbox\Tax\Contracts\ExchangeRates to use your own source.
+    |
+    */
+
+    'exchange_rates' => [
+        'store' => env('TAX_FX_STORE'),
+        'url' => env('TAX_FX_URL', 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Address geocoder (Geocodio)
     |--------------------------------------------------------------------------
     |

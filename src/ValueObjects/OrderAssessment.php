@@ -47,6 +47,32 @@ readonly class OrderAssessment
         return $this->sum(static fn (TaxAssessment $a): Money => $a->tax);
     }
 
+    /**
+     * The document's tax in the currency of its place of supply, converted once from
+     * the total — so the lines' own conversions, each rounded, cannot drift from it.
+     * Null unless every line carries the same rate.
+     */
+    public function taxInLocalCurrency(): ?Money
+    {
+        $rate = null;
+
+        foreach ($this->assessments() as $assessment) {
+            $its = $assessment->exchangeRate;
+
+            if ($its === null) {
+                return null;
+            }
+
+            if ($rate !== null && ($its->to !== $rate->to || ! $its->rate->isEqualTo($rate->rate))) {
+                return null;
+            }
+
+            $rate = $its;
+        }
+
+        return $rate?->convert($this->tax());
+    }
+
     public function gross(): Money
     {
         return $this->sum(static fn (TaxAssessment $a): Money => $a->gross);

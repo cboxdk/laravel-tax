@@ -12,6 +12,7 @@ use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
+use Cbox\Tax\Contracts\ExchangeRates;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
 use Cbox\Tax\Contracts\MarketplaceRules;
@@ -29,6 +30,8 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Contracts\VatIdValidator;
+use Cbox\Tax\ExchangeRates\EcbExchangeRates;
+use Cbox\Tax\ExchangeRates\SyncExchangeRatesCommand;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Compile\SectionFetcher;
@@ -185,6 +188,7 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(ProductCatalogue::class),
             $app->make(MarketplaceRules::class),
             $app->make(JurisdictionRepository::class),
+            $app->make(ExchangeRates::class),
         ));
 
         $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterDataset::class)));
@@ -247,6 +251,10 @@ class TaxServiceProvider extends ServiceProvider
 
         // The register's public face. It reads through the same dataset the engine
         // prices with, so what it reports is what a calculation in this request uses.
+        $this->app->singleton(ExchangeRates::class, static fn (Application $app): ExchangeRates => new EcbExchangeRates(
+            SyncExchangeRatesCommand::directory($app->make(Config::class), $app->storagePath('app/cbox-tax/fx/ecb')),
+        ));
+
         $this->app->singleton(TaxRegister::class, static fn (Application $app): TaxRegister => new InstalledRegister(
             $app->make(RegisterDataset::class),
             $app->make(StoreLayout::class),
@@ -320,6 +328,7 @@ class TaxServiceProvider extends ServiceProvider
                 ActivateCommand::class,
                 VerifyCommand::class,
                 PruneCommand::class,
+                SyncExchangeRatesCommand::class,
             ]);
         }
     }

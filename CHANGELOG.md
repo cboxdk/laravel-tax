@@ -7,6 +7,19 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added — tax in the place's own currency
+
+- **An invoice in another currency states its tax in the place's own.** A Danish sale
+  invoiced in euros owes kroner, converted at the rate in force at the tax point
+  (Art. 91). The assessment carries that rate (`TaxAssessment::$exchangeRate`, an
+  `ExchangeRate` naming its source and date) and converts on demand
+  (`taxInLocalCurrency()`); an order converts its total once
+  (`OrderAssessment::taxInLocalCurrency()`), so rounded lines cannot drift from it.
+- **`ExchangeRates`** is the contract behind it. The shipped `EcbExchangeRates` reads
+  the European Central Bank's reference rates from local disk, fetched by
+  `php artisan tax:fx:sync`; nothing is fetched while pricing. Where no rate is known
+  for the date, nothing is converted and nothing refused.
+
 ### Fixed — a state that writes its tax as a table is priced by the table
 
 - **Alabama, Idaho, Maryland and Pennsylvania were priced by percentage.** Each

@@ -9,6 +9,7 @@ use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Concerns\AssessesOrders;
+use Cbox\Tax\Contracts\ExchangeRates;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
@@ -60,6 +61,8 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         private ?MarketplaceRules $marketplace = null,
         /** Resolves the seller's establishment, to recognise an EU-established seller. */
         private ?JurisdictionRepository $jurisdictions = null,
+        /** States an invoice's tax in the place's own currency; null states nothing. */
+        private ?ExchangeRates $exchangeRates = null,
     ) {}
 
     public function assess(TaxQuery $query): TaxAssessment
@@ -184,7 +187,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->applyExemption($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates))));
+        return $this->withExchangeRate($query, $this->applyExemption($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates)))));
     }
 
     /**
@@ -215,6 +218,27 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      * so a host binding its own regime gets it for free. A regime that already set
      * one keeps it — it knows something the calculator does not.
      */
+    /**
+     * AN INVOICE IN ANOTHER CURRENCY STILL STATES ITS TAX IN THE PLACE'S OWN. A Danish
+     * sale invoiced in dollars owes Danish kroner, converted at the rate in force when
+     * the tax became chargeable (Art. 91) — so the rate is looked up on the tax point,
+     * for the currency of the place the tax is due in. The assessment carries the rate
+     * and converts on demand; nothing is refused where no rate is known.
+     */
+    private function withExchangeRate(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        $local = $assessment->placeOfSupply->currency;
+        $invoiced = $assessment->tax->getCurrency()->getCurrencyCode();
+
+        if ($this->exchangeRates === null || $local === '' || $local === $invoiced) {
+            return $assessment;
+        }
+
+        $rate = $this->exchangeRates->rate($invoiced, $local, $assessment->taxPoint ?? $query->on());
+
+        return $rate === null ? $assessment : $assessment->with(exchangeRate: $rate);
+    }
+
     private function stampTaxPoint(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
     {
         if ($assessment->taxPoint !== null && $assessment->reportedOn !== null) {

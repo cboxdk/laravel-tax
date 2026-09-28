@@ -85,7 +85,24 @@ readonly class TaxAssessment
         public array $portions = [],
         /** The taxable net base, retained even when rounded line tax is zero. */
         public ?Money $taxableBase = null,
+        /**
+         * The rate to state the tax in the currency of the place of supply, where the
+         * amounts are in another and a rate is known for the tax point. Null where
+         * they share a currency, or no rate is known.
+         */
+        public ?ExchangeRate $exchangeRate = null,
     ) {}
+
+    /**
+     * The tax in the currency of the place of supply — what an EU invoice in another
+     * currency must also state (Art. 91). Converted from the tax as it stands now, so a
+     * document's rounding or a bracket table applied across its lines is reflected.
+     * Null where no conversion applies or none is known.
+     */
+    public function taxInLocalCurrency(): ?Money
+    {
+        return $this->exchangeRate?->convert($this->tax);
+    }
 
     /**
      * A copy with some fields replaced and every other one carried across.
@@ -124,6 +141,7 @@ readonly class TaxAssessment
         TaxBreakdown|false|null $breakdown = false,
         ?array $portions = null,
         ?Money $taxableBase = null,
+        ?ExchangeRate $exchangeRate = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -143,6 +161,7 @@ readonly class TaxAssessment
             unroundedTax: $this->unroundedTax,
             portions: $portions ?? $this->portions,
             taxableBase: $taxableBase ?? $this->taxableBase,
+            exchangeRate: $exchangeRate ?? $this->exchangeRate,
         );
     }
 

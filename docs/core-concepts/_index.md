@@ -29,6 +29,8 @@ description: The engine's architecture and the regimes it ships.
 - [EU special territories](eu-territories.md) — ten places inside a Member State
   where its VAT rules do not simply apply, and why a country code is not enough.
 
+- [Invoice currency](invoice-currency.md) — stating the tax in the place's own
+  currency when the invoice is in another, at the rate for the tax point.
 - [Public API](public-api.md) — what the version number promises, what is internal,
   and asking the register through `TaxRegister`.
 

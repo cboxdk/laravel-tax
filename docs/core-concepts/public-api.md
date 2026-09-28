@@ -54,3 +54,6 @@ $register->localResolution('TX');            // LocalResolution::Address
 $register->distanceSalesThreshold()?->amount; // EUR 10000.00
 $register->rateRecords($place, '2026.09.01-1'); // what an older installed release filed
 ```
+
+`ExchangeRates` is public in the same way: bind your own source of rates, or read the
+ECB's through the shipped one. See [Invoice currency](invoice-currency.md).
