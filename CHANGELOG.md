@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-28
+
 ### Fixed — rule kinds nobody read
 
 - **Every kind of rule the register publishes is now accounted for.** The engine read
