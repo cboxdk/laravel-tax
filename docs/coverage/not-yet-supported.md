@@ -52,12 +52,12 @@ class. A commodity code refines the mapped category; `TaxQuery` and
 - The EU margin scheme for second-hand goods, art and antiques is not modelled: it
   needs the purchase price and the seller's election. A host that uses it computes it
   before the engine.
-- The domestic reverse charge of Art. 194 — a supplier not established in a member
-  state selling to a taxable person there — is not read from the register's rules
-  until they say which supplies they cover. Until then a non-established supplier's
-  domestic B2B supply is reverse-charged as before, citing Art. 196, which is right
-  for services and not for every member state's goods: Germany reverses work
-  deliveries and services but not plain deliveries of goods.
+- Who accounts for a domestic supply by a supplier not established in the member
+  state (Art. 194) is only as settled as the facts the supply states. A rule that
+  turns on whether the customer is registered there, or whether goods are a work
+  delivery, is unsettled until told — reverse-charged as before and flagged
+  `AttributionUnsettled`. Belgium's rule does not say which supplies it covers and
+  is always flagged.
 - Local boundary artifacts are snapshots. Dated rate coverage does not establish
   historical boundary coverage.
 

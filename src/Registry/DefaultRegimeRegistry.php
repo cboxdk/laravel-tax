@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Registry;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Tax\Contracts\AttributionRules;
 use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\NexusThresholds;
@@ -66,11 +67,13 @@ readonly class DefaultRegimeRegistry implements RegimeRegistry
         ?EuTerritories $territories = null,
         ?RoundingRules $rounding = null,
         ?DeliveryRules $delivery = null,
+        /** Each member state's rule on who accounts for the tax (Art. 194). */
+        ?AttributionRules $attribution = null,
     ): self {
         $national = new NationalTaxRegime;
 
         return new self([
-            'eu-vat' => new EuVatRegime($jurisdictions, $territories ?? new StaticEuTerritories),
+            'eu-vat' => new EuVatRegime($jurisdictions, $territories ?? new StaticEuTerritories, $attribution),
             'uk-vat' => $national,
             'ch-vat' => $national,
             'no-vat' => $national,

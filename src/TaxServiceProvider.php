@@ -10,6 +10,7 @@ use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Charges\NoFlatCharges;
 use Cbox\Tax\Charges\NoOrderFlatCharges;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\AttributionRules;
 use Cbox\Tax\Contracts\DeliveryRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\ExchangeRates;
@@ -44,6 +45,7 @@ use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Sources\InstalledRegister;
+use Cbox\Tax\Register\Sources\RegisterAttribution;
 use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterDelivery;
 use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
@@ -153,6 +155,10 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(RegisterDataset::class),
         ));
 
+        $this->app->singleton(AttributionRules::class, static fn (Application $app): AttributionRules => new RegisterAttribution(
+            $app->make(RegisterDataset::class),
+        ));
+
         $this->app->singleton(DeliveryRules::class, static fn (Application $app): DeliveryRules => new RegisterDelivery(
             $app->make(RegisterDataset::class),
         ));
@@ -166,6 +172,7 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(EuTerritories::class),
             $app->make(RoundingRules::class),
             $app->make(DeliveryRules::class),
+            $app->make(AttributionRules::class),
         ));
 
         // No fixed charges are shipped: these levies are per-jurisdiction, move on

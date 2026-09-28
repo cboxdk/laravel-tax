@@ -87,9 +87,7 @@ sale.
 or has set it aside with the reason written down; `tax:data:sync` names any kind in
 neither list, and the check against the live register fails on one. Set aside today:
 the margin scheme for second-hand goods (it needs the purchase price and the seller's
-election), who collects a local tax (a filing question, not a price), and the domestic
-reverse charge of Art. 194 (every published rule says "the recipient" without saying
-which supplies it covers, and the member states differ).
+election), and who collects a local tax (a filing question, not a price).
 
 **A ZIP is a mail route, not a tax boundary.** Washington's 98001 holds Federal Way
 and Auburn at 10.4% and unincorporated King County at 10.3%. Asked with the bare five

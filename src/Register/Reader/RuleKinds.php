@@ -23,6 +23,7 @@ class RuleKinds
 {
     /** Kinds the engine applies to an answer. */
     public const array APPLIED = [
+        'attribution',
         'declined_rate',
         'holiday',
         'marketplace_facilitator',
@@ -37,11 +38,6 @@ class RuleKinds
 
     /** Kinds reviewed and deliberately not applied, and why. */
     public const array REVIEWED = [
-        'attribution' => 'Who accounts for the tax on a domestic supply by a supplier not established there '
-            .'(Art. 194). Every published rule says "the recipient" without saying which supplies it covers, '
-            .'and the member states differ: Germany reverses work deliveries and services but not plain '
-            .'deliveries of goods. Applied as published it would reverse-charge sales that are the '
-            .'supplier\'s to charge.',
         'margin_scheme' => 'VAT on the margin for second-hand goods, art and antiques. It needs the purchase '
             .'price and the seller\'s election, which a supply does not carry; a host that uses the scheme '
             .'computes it before the engine.',

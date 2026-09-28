@@ -175,6 +175,15 @@ enum RateLimit: string
      */
     case DistrictNeedsPoint = 'district_needs_point';
 
+    /**
+     * Who accounts for the tax is not settled: a supplier not established in the member
+     * state sells to a business there, and the state's rule (Art. 194) turns on facts
+     * the supply does not state — whether the customer is registered for VAT in that
+     * state, whether a service concerns immovable property, and the like. The answer is
+     * the one given before the state's scope was read, and says so.
+     */
+    case AttributionUnsettled = 'attribution_unsettled';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -214,6 +223,10 @@ enum RateLimit: string
                 .'settles it yet — the conditions are read but not evaluated.',
             self::PostcodeSpansLocalities => 'Pass the ZIP+4, or geocode the street address: this ZIP is split '
                 .'between local tax areas and the five digits cannot say which one the address is in.',
+            self::AttributionUnsettled => 'State the facts the reason names — on the query\'s `facts`, or once, in '
+                .'the catalogue — and pass the customer\'s VAT number as `customerTaxId`: its prefix says which '
+                .'member state issued it. The state\'s rule then decides whether the customer or the supplier '
+                .'accounts for the tax.',
             self::DistrictNeedsPoint => 'Pass the geocoded point with the ZIP+4 (scheme `zip9+latlng`): a district '
                 .'drawn over this ZIP sets a different rate inside its boundary, and a postal key cannot say '
                 .'whether the address is inside it.',
@@ -236,6 +249,6 @@ enum RateLimit: string
         // ConditionsUnevaluated is closable now that conditions are read: a commodity
         // code or a fact settles every typed one. The few published only as prose are
         // not, and CatalogueAudit says which per product — an enum cannot.
-        return in_array($this, [self::HeadingAmbiguous, self::ItemUnmapped, self::ClassificationInferred, self::PerformanceLocationAssumed, self::TerritoryUnplaced, self::ConditionsUnevaluated, self::PostcodeSpansLocalities, self::DistrictNeedsPoint], true);
+        return in_array($this, [self::HeadingAmbiguous, self::ItemUnmapped, self::ClassificationInferred, self::PerformanceLocationAssumed, self::TerritoryUnplaced, self::ConditionsUnevaluated, self::PostcodeSpansLocalities, self::DistrictNeedsPoint, self::AttributionUnsettled], true);
     }
 }

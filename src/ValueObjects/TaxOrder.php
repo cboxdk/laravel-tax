@@ -74,6 +74,8 @@ readonly class TaxOrder
         public ApportionmentBasis $apportionment = ApportionmentBasis::NetValue,
         /** Used only when the published policy permits a seller election. */
         public RoundingScope $roundingScope = RoundingScope::Line,
+        /** The customer's VAT number, as validated; see `TaxQuery::$customerTaxId`. */
+        public ?string $customerTaxId = null,
     ) {
         if ($lines === []) {
             throw InvalidTaxOrder::withoutLines();
@@ -167,6 +169,7 @@ readonly class TaxOrder
             quantity: $line->quantity,
             facts: $line->facts,
             saleAmount: $this->saleAmount(),
+            customerTaxId: $this->customerTaxId,
         );
     }
 

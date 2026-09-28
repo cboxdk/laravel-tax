@@ -65,8 +65,12 @@ abstract class DestinationTaxRegime implements TaxRegime
             return $this->reverseCharge($query);
         }
 
-        $place = $this->sourcingPlace($query);
+        return $this->chargeAt($query, $rates, $this->sourcingPlace($query));
+    }
 
+    /** The supply taxed at a place's rate by the supplier, with no reverse charge asked. */
+    protected function chargeAt(TaxQuery $query, TaxRateSource $rates, Jurisdiction $place): TaxAssessment
+    {
         $rate = $this->resolveRate($rates, $query, $place);
 
         if ($rate === null) {

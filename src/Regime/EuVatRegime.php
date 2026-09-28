@@ -6,14 +6,18 @@ namespace Cbox\Tax\Regime;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\AttributionRules;
 use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\EuTerritoriesBySubdivision;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Enums\AttributionStatus;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\ValueObjects\Attribution;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\TaxAssessment;
@@ -37,6 +41,8 @@ class EuVatRegime extends DestinationTaxRegime
     public function __construct(
         private readonly ?JurisdictionRepository $jurisdictions = null,
         private readonly ?EuTerritories $territories = null,
+        /** Each member state's rule on who accounts for the tax (Art. 194); null reads none. */
+        private readonly ?AttributionRules $attribution = null,
     ) {}
 
     protected function label(): string
@@ -82,11 +88,147 @@ class EuVatRegime extends DestinationTaxRegime
             );
         }
 
-        if ($territory?->standardRate !== null) {
-            return $this->assessInRegion($query, $rates, $territory);
+        // WHO ACCOUNTS FOR THE TAX, where the member state's rule decides it: a
+        // supplier not established there, selling to a business there, a supply that is
+        // neither a cross-border movement of goods (Art. 138) nor a service under the
+        // general rule (Art. 196, reverse-charged everywhere).
+        $attributed = $this->attributed($query);
+
+        if ($attributed !== null) {
+            [$state, $attribution] = $attributed;
+
+            if ($attribution->status === AttributionStatus::RecipientAccounts) {
+                return $this->domesticReverseCharge($query, $state, $attribution);
+            }
+
+            if ($attribution->status === AttributionStatus::SupplierAccounts) {
+                return $this->chargeAt($query, $rates, $state);
+            }
         }
 
-        return parent::assess($query, $rates);
+        $assessment = $territory?->standardRate !== null
+            ? $this->assessInRegion($query, $rates, $territory)
+            : parent::assess($query, $rates);
+
+        // Not settled: the answer given before the state's scope was read, and says so.
+        if ($attributed === null) {
+            return $assessment;
+        }
+
+        [$state, $attribution] = $attributed;
+        $open = [];
+
+        foreach ($attribution->unsettled as $condition) {
+            array_push($open, ...$condition->facts);
+        }
+
+        return $assessment->with(
+            reason: $assessment->reason.sprintf(
+                ' Who accounts for %s VAT on this supply by a supplier not established there is not settled%s.',
+                $state->country->value,
+                $open === [] ? ' — the published rule does not say which supplies it covers' : ': state '.implode(', ', array_values(array_unique($open))),
+            ),
+            limitedBy: RateLimit::AttributionUnsettled,
+        );
+    }
+
+    /**
+     * The member state whose Art. 194 rule decides this supply, and what it decides —
+     * or null where no such rule is the question.
+     *
+     * @return array{Jurisdiction, Attribution}|null
+     */
+    private function attributed(TaxQuery $query): ?array
+    {
+        if ($this->attribution === null || ! $this->taxableCustomer($query)) {
+            return null;
+        }
+
+        $key = $query->categoryKey ?? CategoryMap::keyFor($query->category);
+        $goods = $this->isGoods($key);
+
+        if ($goods) {
+            // Only goods that stay in the state: shipped from it to a customer in it. A
+            // movement between member states is Art. 138, and an unknown origin keeps
+            // that reading.
+            $from = $query->route->shipFrom;
+            $state = $from !== null && $from->country->equals($query->place->country) ? $query->place : null;
+        } else {
+            // A service under the general rule (Art. 44) is reverse-charged by Art. 196
+            // everywhere; only one taxed where it is performed turns on the state's rule.
+            $state = $query->placeOfSupplyRule() === PlaceOfSupplyRule::WherePerformed ? $query->performedAt : null;
+        }
+
+        if ($state === null || ! $state->taxProfile->isEuMember || $query->seller->isEstablishedIn($state->country)) {
+            return null;
+        }
+
+        return [$state, $this->attribution->verdict($state->country, $this->attributionFacts($query, $state, $goods), $query->on())];
+    }
+
+    /**
+     * The facts the engine knows about this supply, beside the caller's — the caller's
+     * win. Only what the query establishes: a customer's number from another state says
+     * nothing about whether it holds one here, so it leaves that fact unknown.
+     */
+    private function attributionFacts(TaxQuery $query, Jurisdiction $state, bool $goods): DecisionFacts
+    {
+        $facts = $query->facts
+            ->withDefault('supply.isGoods', $goods)
+            ->withDefault('supply.isService', ! $goods)
+            ->withDefault('seller.registeredForVatInTheState', $query->seller->isRegisteredIn($state->country, $query->on()));
+
+        if (! $goods) {
+            // Art. 44 is the rule for a business customer, whatever a consumer's would be.
+            $facts = $facts->withDefault('service.placeOfSupplyByGeneralRule', $query->placeOfSupplyRule() !== PlaceOfSupplyRule::WherePerformed);
+        }
+
+        $issuer = $this->issuingState($query->customerTaxId);
+
+        return $query->customerTaxIdValidated && $issuer !== null && $issuer === $state->country->value
+            ? $facts->withDefault('recipient.registeredForVatInTheState', true)
+            : $facts;
+    }
+
+    /** The member state a VAT number's prefix names: `EL` is Greece. */
+    private function issuingState(?string $number): ?string
+    {
+        $prefix = strtoupper(substr(trim($number ?? ''), 0, 2));
+
+        return match (true) {
+            preg_match('/^[A-Z]{2}$/', $prefix) !== 1 => null,
+            $prefix === 'EL' => 'GR',
+            default => $prefix,
+        };
+    }
+
+    private function domesticReverseCharge(TaxQuery $query, Jurisdiction $state, Attribution $attribution): TaxAssessment
+    {
+        return new TaxAssessment(
+            treatment: TaxTreatment::ReverseCharge,
+            net: $query->amount,
+            tax: $this->zero($query),
+            gross: $query->amount,
+            placeOfSupply: $state,
+            rate: null,
+            reason: sprintf(
+                'EU VAT: the customer accounts for %s VAT on a supply by a supplier not established there (%s).',
+                $state->country->value,
+                $attribution->citation ?? 'Art. 194',
+            ),
+            mentions: [new InvoiceMention(
+                code: 'reverse_charge',
+                text: 'Reverse charge',
+                reference: $attribution->citation ?? 'Article 194 of Council Directive 2006/112/EC',
+            )],
+        );
+    }
+
+    private function isGoods(string $key): bool
+    {
+        return str_starts_with($key.'.', 'goods.')
+            && ! str_starts_with($key, 'goods.digital_products')
+            && ! str_starts_with($key, 'goods.software');
     }
 
     /**
@@ -220,6 +362,18 @@ class EuVatRegime extends DestinationTaxRegime
             ];
         }
 
+        // A domestic supply of goods reverse-charged can only rest on the state's own
+        // Art. 194 rule — Art. 196 is for services.
+        if ($this->domesticGoods($query)) {
+            return [
+                new InvoiceMention(
+                    code: 'reverse_charge',
+                    text: 'Reverse charge',
+                    reference: 'Article 194 of Council Directive 2006/112/EC',
+                ),
+            ];
+        }
+
         return [
             new InvoiceMention(
                 code: 'reverse_charge',
@@ -330,10 +484,24 @@ class EuVatRegime extends DestinationTaxRegime
     {
         $key = $query->categoryKey ?? CategoryMap::keyFor($query->category);
 
-        return str_starts_with($key.'.', 'goods.')
-            && ! str_starts_with($key, 'goods.digital_products')
-            && ! str_starts_with($key, 'goods.software')
-            && $query->place->taxProfile->isEuMember;
+        // GOODS THAT NEVER LEAVE THE STATE ARE NOT AN INTRA-COMMUNITY SUPPLY. Shipped
+        // from a German warehouse to a German customer, they are a domestic supply, and
+        // whether the customer accounts for its tax is Germany's rule (Art. 194), not
+        // Art. 138. An unknown origin keeps the cross-border reading.
+        $from = $query->route->shipFrom;
+
+        return $this->isGoods($key)
+            && $query->place->taxProfile->isEuMember
+            && ($from === null || ! $from->country->equals($query->place->country));
+    }
+
+    /** Goods shipped from inside the state to a customer in it. */
+    private function domesticGoods(TaxQuery $query): bool
+    {
+        $from = $query->route->shipFrom;
+
+        return $this->isGoods($query->categoryKey ?? CategoryMap::keyFor($query->category))
+            && $from !== null && $from->country->equals($query->place->country);
     }
 
     #[\Override]

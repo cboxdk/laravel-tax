@@ -7,6 +7,7 @@ namespace Cbox\Tax\ValueObjects;
 use Brick\Money\Money;
 use Brick\Money\RationalMoney;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
 use DateTimeImmutable;
@@ -91,6 +92,12 @@ readonly class TaxAssessment
          * they share a currency, or no rate is known.
          */
         public ?ExchangeRate $exchangeRate = null,
+        /**
+         * What keeps the assessment itself — not its rate — from being certain, where
+         * there is no rate to carry it: a reverse charge whose basis the facts did not
+         * settle. `OrderAssessment::needsReview()` reads it beside every rate's.
+         */
+        public ?RateLimit $limitedBy = null,
     ) {}
 
     /**
@@ -142,6 +149,7 @@ readonly class TaxAssessment
         ?array $portions = null,
         ?Money $taxableBase = null,
         ?ExchangeRate $exchangeRate = null,
+        ?RateLimit $limitedBy = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -162,6 +170,7 @@ readonly class TaxAssessment
             portions: $portions ?? $this->portions,
             taxableBase: $taxableBase ?? $this->taxableBase,
             exchangeRate: $exchangeRate ?? $this->exchangeRate,
+            limitedBy: $limitedBy ?? $this->limitedBy,
         );
     }
 

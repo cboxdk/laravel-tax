@@ -230,13 +230,20 @@ readonly class OrderAssessment
             }
         }
 
+        foreach ($this->assessments() as $assessment) {
+            if ($assessment->limitedBy !== null) {
+                $limits[$assessment->limitedBy->value] = $assessment->limitedBy;
+            }
+        }
+
         return array_values($limits);
     }
 
     /** Whether any rate on the document is less than authoritative. */
     public function needsReview(): bool
     {
-        return array_any($this->rated(), fn (TaxRate $rate): bool => $rate->confidence !== Confidence::Authoritative || $rate->limitedBy !== null);
+        return array_any($this->rated(), fn (TaxRate $rate): bool => $rate->confidence !== Confidence::Authoritative || $rate->limitedBy !== null)
+            || array_any($this->assessments(), fn (TaxAssessment $assessment): bool => $assessment->limitedBy !== null);
     }
 
     /** @return list<TaxRate> */

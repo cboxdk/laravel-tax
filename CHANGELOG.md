@@ -7,6 +7,32 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added — who accounts for the tax, by the member state's own rule
+
+- **A supplier not established in a member state, selling to a business there, is
+  answered by that state's rule (Art. 194).** The engine reverse-charged every such
+  supply, citing Art. 196. The register now publishes each state's rule with
+  conditions, and they differ: Germany reverses work deliveries and services by
+  foreign businesses but not plain deliveries of goods, so those are the supplier's to
+  charge — or `NotRegistered` without a German number. A reverse charge cites the
+  state's provision (`§ 13b UStG`). `AttributionRules` is the contract.
+- **What the query establishes, the engine states:** goods or service, whether a
+  service falls under the general rule for a business (Art. 44), whether the supplier
+  is registered in the state, and — new, `customerTaxId` on `TaxQuery` and
+  `TaxOrder` — whether the customer's validated VAT number was issued there. A number
+  from another state leaves that unknown, never "no".
+- **An unsettled answer says so.** Where the facts do not settle the rule, the answer
+  is the reverse charge as before, flagged on the assessment itself:
+  `TaxAssessment::$limitedBy` is `AttributionUnsettled`, which
+  `OrderAssessment::needsReview()` and `limits()` now read beside every rate's.
+
+### Fixed
+
+- **Goods that never leave the state were called an intra-Community supply.**
+  Shipped from a German warehouse to a German business, they are a domestic supply,
+  and the invoice no longer says "Exempt intra-Community supply (Art. 138)". An
+  unknown origin keeps the cross-border reading.
+
 ## [0.16.0] - 2026-09-28
 
 ### Fixed — rule kinds nobody read

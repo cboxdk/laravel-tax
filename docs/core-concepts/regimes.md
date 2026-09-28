@@ -68,8 +68,25 @@ reports it as `TaxTreatment::IntraCommunitySupply`, and
 | --- | --- | --- |
 | Goods, DE → validated FR business | `IntraCommunitySupply` | Exempt intra-Community supply (Art. 138) |
 | Service, DE → validated FR business | `ReverseCharge` | Reverse charge (Art. 196) |
+| Work delivery in DE by a US supplier → validated DE business | `ReverseCharge` | Reverse charge (§ 13b UStG, the state's Art. 194 rule) |
+| Plain goods in DE by a US supplier → validated DE business | `Standard` at 19% | none — the supplier charges; `NotRegistered` without a German number |
 | Financial service, IE → IE consumer | `Exempt` | Exempt from VAT (Art. 226(11)) |
 | Printed book, IE → IE consumer | `ZeroRated` | none |
+
+**A supplier not established in the state.** Selling to a business there, who accounts
+for the tax is the member state's own rule (Art. 194), and the states differ: Germany
+reverses work deliveries and services by foreign businesses but not plain deliveries
+of goods; France reverses goods where the customer is registered in France. The
+register publishes each state's rule with its conditions, read like a rate's. The
+engine states what the query establishes — goods or service, whether a service falls
+under the general rule for a business (Art. 44), whether the supplier is registered
+there, and whether the customer is: a validated `customerTaxId` whose prefix is the
+state's says yes; one from another state says nothing, since a business can hold
+several. The rest — a work delivery, a service connected with property — come from the
+caller's facts. Until they do, the answer is the one given before the rule was read
+(a reverse charge) and says so: `TaxAssessment::$limitedBy` is `AttributionUnsettled`,
+which `needsReview()` reads. Goods that stay in the state are a domestic supply, never
+an intra-Community one.
 
 **Exempt is not zero-rated.** Both charge 0%, and they are opposite facts to a
 return: a zero-rated supply is taxable at nothing, so the seller keeps the right to

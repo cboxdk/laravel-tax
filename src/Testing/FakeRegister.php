@@ -112,8 +112,10 @@ class FakeRegister
 
     /**
      * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $extra  Fields beside the payload, as a rule carries
+     *                                       them: `conditions`, `citation`.
      */
-    public function rule(string $jurisdiction, string $kind, array $payload, ?string $from = null, ?string $until = null): self
+    public function rule(string $jurisdiction, string $kind, array $payload, ?string $from = null, ?string $until = null, array $extra = []): self
     {
         $this->rules[] = [
             'jurisdiction' => $jurisdiction,
@@ -121,6 +123,7 @@ class FakeRegister
             'effective' => ['from' => $from, 'until' => $until, 'startIsFloor' => false],
             'payload' => $payload,
             'provenance' => ['source' => 'fake', 'snapshot' => str_repeat('0', 64), 'capturedAt' => '2026-01-01T00:00:00+00:00', 'note' => null],
+            ...$extra,
         ];
 
         return $this;

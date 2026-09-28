@@ -195,6 +195,14 @@ readonly class TaxQuery
          * sale. Null for a query that is the whole sale; `TaxOrder` fills it.
          */
         public ?Money $saleAmount = null,
+        /**
+         * The customer's VAT number, as validated. Its two-letter prefix names the
+         * member state that issued it — `EL` for Greece — which is what a state's rule
+         * on who accounts for the tax asks: is the customer registered HERE? A number
+         * from another state answers "unknown" for this one, never "no": a business can
+         * hold several.
+         */
+        public ?string $customerTaxId = null,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
@@ -258,6 +266,7 @@ readonly class TaxQuery
             $this->quantity,
             $merged,
             $this->saleAmount,
+            $this->customerTaxId,
         );
     }
 
