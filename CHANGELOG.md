@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-28
+
 ### Added — who accounts for the tax, by the member state's own rule
 
 - **A supplier not established in a member state, selling to a business there, is
