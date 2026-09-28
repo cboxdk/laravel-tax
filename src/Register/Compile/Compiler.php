@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Compile;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
@@ -29,6 +30,9 @@ use Closure;
  * It compiles into `<version>.partial` and renames only when the manifest is written,
  * so an interrupted sync leaves a directory that is visibly unfinished rather than a
  * version quietly missing three shards.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class Compiler
 {

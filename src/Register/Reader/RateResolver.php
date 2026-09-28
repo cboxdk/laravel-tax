@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\UnsettledCondition;
 use DateTimeImmutable;
@@ -36,6 +37,9 @@ use DateTimeImmutable;
  * **Never the lowest of several.** Where a rung genuinely has more than one answer,
  * the band is refused and the standard rate applies. That is the direction a
  * customer can be refunded from; the other one is found at audit.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class RateResolver
 {

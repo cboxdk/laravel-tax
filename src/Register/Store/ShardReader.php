@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Store;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 
 /**
@@ -13,6 +14,9 @@ use Cbox\Tax\Exceptions\DatasetUnreadable;
  * The index is held for the life of the object because a request that asks about one
  * jurisdiction usually asks again — a line, then its delivery charge, then the next
  * line. The records are not held at all.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class ShardReader
 {

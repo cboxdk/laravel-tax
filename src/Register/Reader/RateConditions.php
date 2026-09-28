@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\UnsettledCondition;
 
@@ -35,6 +36,9 @@ use Cbox\Tax\ValueObjects\UnsettledCondition;
  * move the price of every supply whose seller has not yet described its products, all
  * at once — and it does not bless it either. The answer is the published rate, flagged
  * with exactly what would settle it.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class RateConditions
 {

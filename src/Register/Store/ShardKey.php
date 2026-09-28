@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Store;
 
+use Cbox\Tax\Contracts\TaxRegister;
+
 /**
  * Which shard a jurisdiction code's records live in.
  *
@@ -14,6 +16,9 @@ namespace Cbox\Tax\Register\Store;
  * Codes are regime-prefixed and may go deeper: `eu`, `eu:DK`, `us:WA:53033`. Only
  * the US is split further than its regime, because it is 38.3 MB of rates against
  * 4 MB for the other ten regimes put together.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class ShardKey
 {

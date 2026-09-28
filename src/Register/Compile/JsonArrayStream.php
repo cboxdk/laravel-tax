@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Compile;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Generator;
 
@@ -32,6 +33,9 @@ use Generator;
  * languages — must not be counted as structure, nor must a quote that is escaped,
  * nor a backslash that is itself escaped. That is the whole of the state machine
  * below, and the tests hand it exactly those three cases.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class JsonArrayStream
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Store;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 
 /**
@@ -21,6 +22,9 @@ use Cbox\Tax\Exceptions\DatasetUnreadable;
  * The register does not promise an order, and buffering by key to impose one would
  * put the whole section back in memory — which is the thing the streaming reader
  * exists to avoid.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class ShardWriter
 {

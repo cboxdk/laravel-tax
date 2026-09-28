@@ -6,6 +6,7 @@ namespace Cbox\Tax\Register\Reader;
 
 use Brick\Math\BigDecimal;
 use Brick\Math\Exception\MathException;
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 
 /**
@@ -36,6 +37,9 @@ use Cbox\Tax\ValueObjects\DecisionFacts;
  * price without it. A condition on a rate is different: the rate itself is still a
  * published figure, and one unreadable clause should mark that answer as unsettled,
  * not stop every sale into the country.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class Predicate
 {

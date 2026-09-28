@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Store;
 
+use Cbox\Tax\Contracts\TaxRegister;
+
 /**
  * Where everything sits under the store root, and nothing else.
  *
@@ -13,6 +15,9 @@ namespace Cbox\Tax\Register\Store;
  * version or the new one, never a half-written mixture — and the version it did not
  * switch to is still on disk, so going back is another rename rather than another
  * download.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class StoreLayout
 {

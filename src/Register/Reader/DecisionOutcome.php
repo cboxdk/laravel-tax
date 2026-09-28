@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
+
 /**
  * Where a published decision tree ended up for one transaction.
  *
@@ -11,6 +13,9 @@ namespace Cbox\Tax\Register\Reader;
  * rule, `layers` for a sourcing rule. `unsupported` means the register knows the
  * case exists and has not modelled it; `unknown` means a fact it needs was not
  * supplied. Neither is an answer, and neither may be treated as one.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class DecisionOutcome
 {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Store;
 
+use Cbox\Tax\Contracts\TaxRegister;
+
 /**
  * Which installed version is live, read and written atomically.
  *
@@ -12,6 +14,9 @@ namespace Cbox\Tax\Register\Store;
  * being written gets a truncated version string, which resolves to a directory that
  * does not exist. Rare, and rare is worse than never — it would happen during a
  * deploy, under load, and look like a corrupt store.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class StorePointer
 {

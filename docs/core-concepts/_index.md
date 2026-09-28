@@ -29,5 +29,8 @@ description: The engine's architecture and the regimes it ships.
 - [EU special territories](eu-territories.md) — ten places inside a Member State
   where its VAT rules do not simply apply, and why a country code is not enough.
 
+- [Public API](public-api.md) — what the version number promises, what is internal,
+  and asking the register through `TaxRegister`.
+
 For task-shaped examples that use these together, see the
 [cookbook](../cookbook/_index.md).

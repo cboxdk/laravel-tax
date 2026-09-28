@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Compile;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
@@ -24,6 +25,9 @@ use Throwable;
  * leak. Requests accept gzip — the whole register is 1.8 MB compressed against 54 MB
  * of JSON — and send `If-None-Match`, which the register answers from a manifest
  * without touching a file.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 readonly class SectionFetcher
 {

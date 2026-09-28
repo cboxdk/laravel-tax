@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
+
 /**
  * Narrow `mixed` from a decoded document into the shapes this package reads.
  *
@@ -17,6 +19,9 @@ namespace Cbox\Tax\Register\Reader;
  * Absent and malformed are deliberately the same answer. The difference matters to
  * whoever is fixing the register and not at all to an invoice, and a reader that
  * distinguished them would have to decide which one to bill on.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class Shape
 {

@@ -26,6 +26,7 @@ use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\Geocoder\GeocodioGeocoder;
@@ -39,6 +40,7 @@ use Cbox\Tax\Register\Console\VerifyCommand;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
+use Cbox\Tax\Register\Sources\InstalledRegister;
 use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterDelivery;
 use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
@@ -241,6 +243,14 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(StoreLayout::class),
             $app->make(StorePointer::class),
             Shape::text($app->make(Config::class)->get('tax.register.version')),
+        ));
+
+        // The register's public face. It reads through the same dataset the engine
+        // prices with, so what it reports is what a calculation in this request uses.
+        $this->app->singleton(TaxRegister::class, static fn (Application $app): TaxRegister => new InstalledRegister(
+            $app->make(RegisterDataset::class),
+            $app->make(StoreLayout::class),
+            $app->make(StorePointer::class),
         ));
     }
 

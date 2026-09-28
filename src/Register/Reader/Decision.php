@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 
@@ -29,6 +30,9 @@ use Cbox\Tax\ValueObjects\DecisionFacts;
  * Anything outside the grammar — another version, another operator, another
  * combinator — refuses. A reader that skipped a node it did not understand would
  * be answering a question the register did not ask.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class Decision
 {

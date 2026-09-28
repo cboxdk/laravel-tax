@@ -7,6 +7,26 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added — the register's public face
+
+- **`TaxRegister`** is what an application may ask the installed register directly:
+  the release the engine prices with (`RegisterRelease`), its category vocabulary
+  (`RegisterCategory`) and `assertCategoryPublished()`, what a US state needs to be
+  resolved (`LocalResolution`), the EU's distance-sales threshold
+  (`DistanceSalesThreshold`, both periods, as published), and the rate records a
+  release files for a place (`RateRecord`) — for the installed release or an older one
+  still on disk, so a host can show what changed between two.
+- **What the version number promises** is written down in
+  [Public API](docs/core-concepts/public-api.md). The register's reader, store and
+  compiler are marked `@internal`: an application that read `RegisterDataset` directly
+  moves to `TaxRegister`, which does not change with the store's format.
+
+### Documentation
+
+- Most products need no category: general goods at the standard rate is the default
+  and carries no flag. A product the law rates differently needs its category, and
+  nothing in the engine notices when it is missing.
+
 ## [0.15.1] - 2026-09-25
 
 ### Changed

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 
@@ -21,6 +22,9 @@ use Cbox\Tax\Exceptions\UnresolvedTaxRule;
  * compile — an Egyptian registration obligation should not block a Danish shop's rate
  * update — but a rule carrying one refuses when something actually reads it, because
  * reading it without them would be treating a qualified rule as unconditional.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class RegisterCompatibility
 {

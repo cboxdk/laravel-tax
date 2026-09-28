@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
 use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Register\Store\ShardKey;
@@ -25,6 +26,9 @@ use DateTimeImmutable;
  * The live version is resolved ONCE per instance. A sync that lands mid-request must
  * not move the answer under a half-priced invoice: two lines of one order have to be
  * priced by the same register, or the totals do not reconcile with either.
+ *
+ * @internal Changes with the store it reads. An application asks the register through
+ *           {@see TaxRegister}, which does not.
  */
 class RegisterDataset
 {

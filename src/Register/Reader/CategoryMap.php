@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -28,6 +29,9 @@ use Cbox\Tax\ValueObjects\TaxQuery;
  * Where a class has no counterpart it maps to the nearest PARENT rather than to a
  * sibling that is nearly right. A parent is honestly coarse; a near-sibling is
  * confidently wrong, and the second one prices an invoice.
+ *
+ * @internal Changes with the register's format. Applications ask the register through
+ *           {@see TaxRegister}.
  */
 class CategoryMap
 {
