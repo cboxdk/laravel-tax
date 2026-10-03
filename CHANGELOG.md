@@ -7,6 +7,13 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A threshold obligation's fixed date was dropped.** `next_calendar_date` names a
+  month and a day — North Macedonia's "by 15 January" — and only a count was read, so
+  a host got the kind with no date. `ThresholdObligation` now carries `month` and
+  `day`.
+
 ## [0.17.0] - 2026-09-28
 
 ### Added — who accounts for the tax, by the member state's own rule

@@ -28,5 +28,13 @@ readonly class ThresholdObligation
         /** The figure `dateKind` counts, in days or months; null where it counts none. */
         public ?int $dateFigure,
         public string $says,
+        /**
+         * The calendar month a fixed date names (1–12) — `next_calendar_date`: North
+         * Macedonia's "by 15 January" is month 1, day 15. Null where the kind counts
+         * from the trigger instead.
+         */
+        public ?int $month = null,
+        /** The day of that month; null with `month`. */
+        public ?int $day = null,
     ) {}
 }

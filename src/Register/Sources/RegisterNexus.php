@@ -130,8 +130,21 @@ readonly class RegisterNexus implements NexusThresholds
             }
 
             $figure = $date['days'] ?? $date['months'] ?? null;
+            $month = $date['month'] ?? null;
+            $day = $date['day'] ?? null;
 
-            $obligations[] = new ThresholdObligation($action, $trigger, $kind, is_int($figure) ? $figure : null, $says);
+            // A FIXED DATE IS CARRIED WHOLE. `next_calendar_date` names a month and a
+            // day — North Macedonia's "by 15 January" — and reading only a count gave
+            // a host the kind with no date in it.
+            $obligations[] = new ThresholdObligation(
+                $action,
+                $trigger,
+                $kind,
+                is_int($figure) ? $figure : null,
+                $says,
+                is_int($month) && $month >= 1 && $month <= 12 ? $month : null,
+                is_int($day) && $day >= 1 && $day <= 31 ? $day : null,
+            );
         }
 
         return $obligations;

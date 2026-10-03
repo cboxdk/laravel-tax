@@ -129,3 +129,29 @@ it('still refuses a threshold qualified by something it does not model', functio
     expect(fn (): ?\Cbox\Tax\ValueObjects\NexusThreshold => $nexus->for(new SubdivisionCode('US-KS')))
         ->toThrow(UnresolvedTaxRule::class, 'unresolvedQualifications');
 });
+
+it('carries a fixed date whole, not only its kind', function (): void {
+    // `next_calendar_date` names a month and a day — North Macedonia's "by 15
+    // January" — and only a count was read, so a host got the kind with no date.
+    $root = config('tax.register.store').'/fixed-date-obligation';
+
+    FakeRegister::at($root)
+        ->rate('us:KS', '6.5', from: '1990-01-01')
+        ->rule('us:KS', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'obligations' => [[
+                'action' => 'register', 'trigger' => 'threshold_met', 'says' => 'by 15 January',
+                'date' => ['kind' => 'next_calendar_date', 'month' => 1, 'day' => 15],
+            ]],
+        ], from: '1990-01-01')
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $obligation = new RegisterNexus(new RegisterDataset($layout, new StorePointer($layout)))
+        ->for(new SubdivisionCode('US-KS'))?->obligations[0];
+
+    expect($obligation?->dateKind)->toBe('next_calendar_date')
+        ->and($obligation?->dateFigure)->toBeNull()
+        ->and($obligation?->month)->toBe(1)
+        ->and($obligation?->day)->toBe(15);
+});
