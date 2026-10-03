@@ -50,7 +50,8 @@ readonly class OrderAssessment
     /**
      * The document's tax in the currency of its place of supply, converted once from
      * the total — so the lines' own conversions, each rounded, cannot drift from it.
-     * Null unless every line carries the same rate.
+     * Null unless every line that states tax carries the same rate; a line with no tax
+     * carries none and has nothing to convert.
      */
     public function taxInLocalCurrency(): ?Money
     {
@@ -58,6 +59,10 @@ readonly class OrderAssessment
 
         foreach ($this->assessments() as $assessment) {
             $its = $assessment->exchangeRate;
+
+            if ($its === null && $assessment->tax->isZero()) {
+                continue;
+            }
 
             if ($its === null) {
                 return null;

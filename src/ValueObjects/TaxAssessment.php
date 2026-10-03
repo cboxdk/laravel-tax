@@ -89,7 +89,8 @@ readonly class TaxAssessment
         /**
          * The rate to state the tax in the currency of the place of supply, where the
          * amounts are in another and a rate is known for the tax point. Null where
-         * they share a currency, or no rate is known.
+         * they share a currency, no rate is known, the place is outside the Union, or
+         * there is no tax to state.
          */
         public ?ExchangeRate $exchangeRate = null,
         /**

@@ -5,12 +5,16 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\ExchangeRates;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ExchangeRates\EcbExchangeRates;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxOrder;
@@ -117,4 +121,58 @@ it('converts an order\'s tax once, from the total', function (): void {
     // Each line's 0.01 EUR converts to 0.07 DKK; the order's 0.03 EUR is 0.22 DKK, not 0.21.
     expect((string) $order->tax())->toBe('EUR 0.03')
         ->and((string) $order->taxInLocalCurrency())->toBe('DKK 0.22');
+});
+
+it('carries no Art. 91 rate outside the Union', function (): void {
+    // A Danish seller invoicing a Texan in kroner: no nexus, nothing collected — and
+    // the assessment carried the ECB's rate, so a host printed "state the tax in USD".
+    // Registered there and collecting, Texas still asks nothing of the ECB.
+    $texas = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-TX'));
+    $sale = fn (SellerRegistrations $seller) => app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'DKK'),
+        pricing: Pricing::Exclusive,
+        place: $texas,
+        customer: CustomerType::Consumer,
+        seller: $seller,
+        suppliedAt: new DateTimeImmutable('2026-09-25'),
+    ));
+
+    $abroad = $sale(new SellerRegistrations(new CountryCode('DK')));
+    $registered = $sale(new SellerRegistrations(new CountryCode('DK'), [new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-TX'))]));
+
+    expect($abroad->treatment)->toBe(TaxTreatment::NotRegistered)
+        ->and($abroad->exchangeRate)->toBeNull()
+        ->and($abroad->taxInLocalCurrency())->toBeNull()
+        ->and($registered->tax->isPositive())->toBeTrue()
+        ->and($registered->exchangeRate)->toBeNull();
+});
+
+it('carries no rate where the invoice states no tax, and converts an order around it', function (): void {
+    $denmark = app(JurisdictionRepository::class)->find(new CountryCode('DK'));
+
+    $ride = app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $denmark,
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('DK')),
+        category: TaxClass::PassengerTransport,
+        suppliedAt: new DateTimeImmutable('2026-09-25'),
+    ));
+
+    $order = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
+        $denmark,
+        CustomerType::Consumer,
+        new SellerRegistrations(new CountryCode('DK')),
+        Pricing::Exclusive,
+        [
+            new SupplyLine('ride', Money::of('100.00', 'EUR'), TaxClass::PassengerTransport),
+            new SupplyLine('goods', Money::of('100.00', 'EUR')),
+        ],
+        suppliedAt: new DateTimeImmutable('2026-09-25'),
+    ));
+
+    expect($ride->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and($ride->exchangeRate)->toBeNull()
+        ->and((string) $order->taxInLocalCurrency())->toBe('DKK 186.58');
 });

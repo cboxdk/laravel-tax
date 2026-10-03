@@ -224,6 +224,11 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      * the tax became chargeable (Art. 91) — so the rate is looked up on the tax point,
      * for the currency of the place the tax is due in. The assessment carries the rate
      * and converts on demand; nothing is refused where no rate is known.
+     *
+     * Only where Art. 91 reaches: a place in the Union, and a tax the invoice states.
+     * A US sale carried the ECB's rate as though Texas asked for one, and a reverse
+     * charge, an exempt sale or one this seller does not collect carried a rate to
+     * convert nothing with — which a host then printed as a figure to state.
      */
     private function withExchangeRate(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
     {
@@ -231,6 +236,10 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         $invoiced = $assessment->tax->getCurrency()->getCurrencyCode();
 
         if ($this->exchangeRates === null || $local === '' || $local === $invoiced) {
+            return $assessment;
+        }
+
+        if (! $assessment->placeOfSupply->taxProfile->isEuMember || $assessment->tax->isZero()) {
             return $assessment;
         }
 

@@ -19,6 +19,16 @@ minor bumps may carry additive features; patches are fixes and docs).
   bound each request, so a checkout no longer waits on the HTTP client's 30-second
   default — and a host no longer rebinds the geocoder to set them.
 
+### Fixed
+
+- **A US sale carried the ECB's rate as an Art. 91 conversion.** The exchange rate was
+  attached wherever the invoice and the place differed in currency, so a Danish
+  seller's kroner invoice to Texas — not registered there, no tax — answered
+  `taxInLocalCurrency()` with USD 0.00, and a host printed "state the tax in USD at the
+  ECB rate". The rate is now attached only inside the Union and only where the
+  invoice states tax; a reverse charge, an exempt or zero-rated sale, or one the
+  seller does not collect carries none, and an order converts around those lines.
+
 ## [0.17.3] - 2026-10-03
 
 ### Fixed

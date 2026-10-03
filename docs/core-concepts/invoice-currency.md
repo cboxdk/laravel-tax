@@ -11,6 +11,10 @@ place that levies it. A Danish sale invoiced in euros owes Danish kroner, and Ar
 of the VAT Directive says how to convert: at the rate in force when the tax became
 chargeable, which a member state may set as the European Central Bank's.
 
+This applies inside the Union. Outside it, the assessment carries no rate: where
+another country asks for its tax in its own currency, it names its own rate, and that
+conversion is yours.
+
 ## What an assessment carries
 
 When the amounts are in another currency than the place of supply's, the assessment
@@ -30,7 +34,10 @@ together, where the order's 0.03 EUR is 0.22 DKK. Print the document's figure on
 invoice.
 
 Where amounts and place share a currency, `exchangeRate` is null and nothing is
-converted. Where no rate is known for the date, it is null too: nothing is refused
+converted. It is null too outside the Union — Art. 91 is EU law, and the ECB's rate is
+no other country's rule — and where the invoice states no tax: a reverse charge, an
+exempt or zero-rated sale, or one this seller does not collect. An order converts the
+lines that state tax and passes over the ones that do not. Where no rate is known for the date, it is null too: nothing is refused
 and nothing is guessed, and the conversion is yours.
 
 ## Where the rate comes from
