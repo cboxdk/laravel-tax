@@ -17,6 +17,14 @@
         </include>
     </source>
     <php>
+        <!--
+            Pinned for the same reason. The suite runs some 750 tests in one process and
+            memory climbs past PHP's default 128 MB before it ends; a machine whose PHP
+            allowed more ran green and one that did not died partway through. A real sync
+            of every region with boundaries peaks near 81 MB on its own, under the
+            default, so this is the suite's ceiling, not the engine's.
+        -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <!--
             Pinned, because Laravel's own default for this is `database` and a package
