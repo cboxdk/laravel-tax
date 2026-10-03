@@ -482,23 +482,33 @@ it('keeps a relief whose open conditions only describe the product the category 
         ->and(gbRate('goods.plants')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
 });
 
-it('keeps an increased rate whose condition turns on the buyer, rather than collecting less', function (): void {
-    // Holding back is for reliefs. Connecticut's 15% on rooms is the place's own
-    // default for the category; dropping it to the general rate on an unknown would
-    // under-collect on every room.
+it('holds an increase back on the buyer\'s side, and keeps one on the seller\'s', function (): void {
+    // Tennessee taxes interstate telecommunications for a business at 7.5% against
+    // 7%: whether the buyer is a business is the buyer's to show, and an intrastate
+    // call is the common case, so 7% until it is. Connecticut's 15% on rooms turns on
+    // the stay, which the seller knows: it stays the category's rate, flagged.
     FakeRegister::at(config('tax.register.store'))
-        ->category('goods')->category('services')->category('services.accommodation', 'services')
+        ->category('goods')->category('services')->category('services.telecom', 'services')->category('services.accommodation', 'services')
+        ->rate('us:TN', '7', from: '1990-01-01')
+        ->rate('us:TN', '7.5', 'increased', 'services.telecom', from: '1990-01-01', extra: ['conditions' => [
+            ['kind' => 'place_is', 'says' => 'interstate or international', 'predicate' => ['fact' => 'route.telecomInterstate', 'op' => 'eq', 'value' => true]],
+            ['kind' => 'recipient_is', 'says' => 'to a business', 'predicate' => ['fact' => 'recipient.isBusiness', 'op' => 'eq', 'value' => true]],
+        ]])
         ->rate('us:CT', '6.35', from: '1990-01-01')
         ->rate('us:CT', '15', 'increased', 'services.accommodation', from: '1990-01-01', extra: ['conditions' => [[
-            'kind' => 'recipient_is', 'says' => 'occupancy by a transient guest',
-            'predicate' => ['fact' => 'recipient.isPermanentResident', 'op' => 'eq', 'value' => false],
+            'kind' => 'applies_only_to', 'says' => 'for the first thirty consecutive days',
+            'predicate' => ['fact' => 'stay.consecutiveDayOfOccupancy', 'op' => 'at_most', 'value' => '30'],
         ]]])
         ->install();
 
-    $room = new RegisterRateSource(app(RegisterDataset::class))
-        ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-CT')), 'services.accommodation');
+    $geo = app(JurisdictionRepository::class);
+    $source = new RegisterRateSource(app(RegisterDataset::class));
+    $telecom = $source->rateForKey($geo->find(new CountryCode('US'), new SubdivisionCode('US-TN')), 'services.telecom');
+    $room = $source->rateForKey($geo->find(new CountryCode('US'), new SubdivisionCode('US-CT')), 'services.accommodation');
 
-    expect((string) $room?->percentage)->toBe('15')
+    expect((string) $telecom?->percentage)->toBe('7')
+        ->and($telecom?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and((string) $room?->percentage)->toBe('15')
         // A band above the standard rate, reported as one — it used to read `reduced`.
         ->and($room?->kind)->toBe(RateKind::Increased)
         ->and($room?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);

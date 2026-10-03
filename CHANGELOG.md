@@ -7,13 +7,6 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
-### Changed
-
-- **Only a relief is held back on a buyer's unproved condition.** An increased rate
-  whose condition turns on the buyer keeps its rate, flagged: it is the place's own
-  default for the category, and the general rate would under-collect. No answer in
-  release 345 moves.
-
 ### Added
 
 - **`RateKind::Increased`**, for a band above the standard rate. The register files
