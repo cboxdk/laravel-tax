@@ -12,7 +12,7 @@ minor bumps may carry additive features; patches are fixes and docs).
 - **A threshold obligation's fixed date was dropped.** `next_calendar_date` names a
   month and a day — North Macedonia's "by 15 January" — and only a count was read, so
   a host got the kind with no date. `ThresholdObligation` now carries `month` and
-  `day`.
+  `day` — which Pennsylvania's "1 April of the year after" (schema 2.6.7) needs too.
 
 ## [0.17.0] - 2026-09-28
 

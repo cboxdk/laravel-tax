@@ -21,9 +21,20 @@ readonly class ThresholdObligation
     public function __construct(
         /** `register`, `collect`, `remit`, `registration_effective`. */
         public string $action,
-        /** `threshold_met` or `first_crossing_in_current_year`. */
+        /**
+         * What starts the clock: `threshold_met`, `first_crossing_in_current_year`,
+         * `quarter_end_test_met` (Illinois and Vermont test at each quarter's end), or
+         * `registration_filed` (New York counts collection from the registration).
+         */
         public string $trigger,
-        /** `at_trigger`, `calendar_days_after`, `first_month_start_on_or_after_days`… */
+        /**
+         * How the date is counted from it: `at_trigger`, `calendar_days_after`,
+         * `first_month_start_on_or_after_days`, `first_day_of_nth_following_month`,
+         * `last_month_start_on_or_before_days` (Minnesota), `next_calendar_date` and
+         * `date_in_year_after_trigger` (Pennsylvania's 1 April of the following year),
+         * and others the register names. Computing it is the host's: only it knows
+         * when its turnover crossed.
+         */
         public string $dateKind,
         /** The figure `dateKind` counts, in days or months; null where it counts none. */
         public ?int $dateFigure,
