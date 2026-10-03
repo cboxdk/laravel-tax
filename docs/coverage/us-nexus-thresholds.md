@@ -62,6 +62,14 @@ sales, its affiliates, or the day it crossed. Refusing them instead left Arizona
 California, Colorado, Iowa, Michigan, Minnesota, North Carolina, North Dakota,
 Oklahoma, Tennessee, Vermont and Wisconsin with no threshold at all, which was worse.
 
+## The threshold in the law's words
+
+Alongside the figures, `NexusThreshold` carries the register's description of what
+they mean, for display and review: `measuredOver` (the period the figure is measured
+over, such as `current_or_previous_calendar_year`), `counts` (which sales count
+towards it), `basis`, `says` (the law's own sentence) and `source` (the register's key
+for the document it was read from). Each is `null` where the state publishes none.
+
 ## Scope and dates
 
 `NexusThresholds::for()` accepts an optional date and selects the rule whose

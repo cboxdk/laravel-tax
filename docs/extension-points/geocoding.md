@@ -64,6 +64,13 @@ Two further v2 changes do not affect this adapter: `zip` became `postal_code`
 instead of returning the FSA alone. The `census` append is unchanged between
 versions.
 
+## Timeouts
+
+A checkout waits on the geocoder. Set `tax.geocodio.timeout` and
+`tax.geocodio.connect_timeout` (`GEOCODIO_TIMEOUT`, `GEOCODIO_CONNECT_TIMEOUT`, in
+seconds) to bound each request; unset, the HTTP client's 30-second default applies.
+A failed request is retried once, and each attempt gets the full timeout.
+
 ## Address-level resolution
 
 Enable `tax.geocodio.rooftop` (`GEOCODIO_ROOFTOP=true`) and sync the boundary

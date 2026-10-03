@@ -155,3 +155,30 @@ it('carries a fixed date whole, not only its kind', function (): void {
         ->and($obligation?->month)->toBe(1)
         ->and($obligation?->day)->toBe(15);
 });
+
+it('carries what the threshold measures, in the law\'s words and with its source', function (): void {
+    // A host showing a threshold needs the period it is measured over, what counts
+    // towards it, and the law's own sentence — and had to read the register
+    // directly to get them.
+    $root = config('tax.register.store').'/threshold-text';
+
+    FakeRegister::at($root)
+        ->rate('us:KS', '6.5', from: '1990-01-01')
+        ->rule('us:KS', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+            'measuredOver' => 'current_or_previous_calendar_year', 'counts' => 'gross_sales', 'basis' => 'destination_sales',
+        ], from: '1990-01-01', extra: ['provenance' => [
+            'source' => 'ks-dor-notice-21-04', 'snapshot' => str_repeat('0', 64),
+            'capturedAt' => '2026-01-01T00:00:00+00:00', 'note' => 'Gross receipts from sales into Kansas exceeding $100,000.',
+        ]])
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $threshold = new RegisterNexus(new RegisterDataset($layout, new StorePointer($layout)))->for(new SubdivisionCode('US-KS'));
+
+    expect($threshold?->measuredOver)->toBe('current_or_previous_calendar_year')
+        ->and($threshold?->counts)->toBe('gross_sales')
+        ->and($threshold?->basis)->toBe('destination_sales')
+        ->and($threshold?->says)->toBe('Gross receipts from sales into Kansas exceeding $100,000.')
+        ->and($threshold?->source)->toBe('ks-dor-notice-21-04');
+});

@@ -67,6 +67,12 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private bool $rooftop = false,
         /** The installed register, which says which states resolve by point. */
         private ?RegisterDataset $register = null,
+        /**
+         * Seconds a request may take, and may take to connect — a checkout waits on
+         * this. Null leaves the HTTP client's own default. Each retry gets its own.
+         */
+        private ?float $timeout = null,
+        private ?float $connectTimeout = null,
     ) {}
 
     public function locate(array $address): ?Jurisdiction
@@ -92,9 +98,17 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         }
 
         try {
-            $response = $this->http
-                ->retry(self::ATTEMPTS, self::RETRY_DELAY_MS, throw: false)
-                ->get($this->baseUrl.'/geocode', $params);
+            $request = $this->http->retry(self::ATTEMPTS, self::RETRY_DELAY_MS, throw: false);
+
+            if ($this->timeout !== null) {
+                $request = $request->timeout($this->timeout);
+            }
+
+            if ($this->connectTimeout !== null) {
+                $request = $request->connectTimeout($this->connectTimeout);
+            }
+
+            $response = $request->get($this->baseUrl.'/geocode', $params);
         } catch (Throwable) {
             return null;
         }

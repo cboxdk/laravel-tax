@@ -326,3 +326,26 @@ it('carries the point with the ZIP+4 in a state that draws districts over its po
         ->and($kansas?->scheme)->toBe('zip9')
         ->and($kansas?->value)->toBe('66101-3064');
 });
+
+it('applies the configured timeouts to every request', function (): void {
+    // A checkout waits on the geocoder; the HTTP client's 30-second default is
+    // longer than any checkout should hang.
+    config()->set('tax.geocodio.key', 'test-key');
+    config()->set('tax.geocodio.timeout', '2.5');
+    config()->set('tax.geocodio.connect_timeout', 1);
+    new TaxServiceProvider(app())->register();
+
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $options = [];
+    $http->fake(function ($request, array $sent) use ($http, &$options) {
+        $options = $sent;
+
+        return $http->response(['results' => []]);
+    });
+
+    app(AddressGeocoder::class)->locate(['line1' => '701 N 7th St', 'country' => 'US']);
+
+    expect($options['timeout'] ?? null)->toBe(2.5)
+        ->and($options['connect_timeout'] ?? null)->toBe(1.0);
+});

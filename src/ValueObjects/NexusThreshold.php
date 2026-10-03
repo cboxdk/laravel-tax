@@ -51,6 +51,21 @@ readonly class NexusThreshold
         public array $measuredBy = [],
         /** @var list<ThresholdObligation> */
         public array $obligations = [],
+        /**
+         * The period the figure is measured over, as the register names it:
+         * `previous_or_current_calendar_year`, `rolling_twelve_months`,
+         * `preceding_twelve_calendar_months`… Reported, not applied: measuring is the
+         * host's.
+         */
+        public ?string $measuredOver = null,
+        /** Which sales count toward the figure: `gross`, `retail`, `taxable`. */
+        public ?string $counts = null,
+        /** What the figure is a figure OF, where the state says more than `counts`. */
+        public ?string $basis = null,
+        /** The law's or the department's own words for the threshold. */
+        public ?string $says = null,
+        /** The register source those words were read from, e.g. `us-tx-remote-seller`. */
+        public ?string $source = null,
     ) {}
 
     /**

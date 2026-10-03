@@ -77,6 +77,11 @@ readonly class RegisterNexus implements NexusThresholds
                 $transactions === null ? null : $this->operator($payload, 'transactionsOperator', $state),
                 $this->measurements($payload),
                 $this->obligations($payload),
+                Shape::text($payload['measuredOver'] ?? null),
+                Shape::text($payload['counts'] ?? null),
+                Shape::text($payload['basis'] ?? null),
+                Shape::text(Shape::map($rule['provenance'] ?? null)['note'] ?? null),
+                Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null),
             );
         }
 

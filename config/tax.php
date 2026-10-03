@@ -110,6 +110,10 @@ return [
         'key' => env('GEOCODIO_API_KEY'),
         'base_url' => env('GEOCODIO_BASE_URL', 'https://api.geocod.io/v2'),
         'rooftop' => env('GEOCODIO_ROOFTOP', env('TAX_US_DATASET_ROOFTOP', false)),
+        // Seconds per request and to connect. A checkout waits on the geocoder, so set
+        // these; null keeps the HTTP client's default (30 s). Each retry gets its own.
+        'timeout' => env('GEOCODIO_TIMEOUT'),
+        'connect_timeout' => env('GEOCODIO_CONNECT_TIMEOUT'),
     ],
 
     /*

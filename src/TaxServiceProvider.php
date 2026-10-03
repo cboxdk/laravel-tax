@@ -311,6 +311,8 @@ class TaxServiceProvider extends ServiceProvider
         // it needs no append, and in those states the county is the whole local
         // share, so withholding it would just under-charge.
         $rooftop = $config->get('tax.geocodio.rooftop') === true;
+        $timeout = $config->get('tax.geocodio.timeout');
+        $connectTimeout = $config->get('tax.geocodio.connect_timeout');
 
         $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(
             $app->make(Factory::class),
@@ -319,6 +321,8 @@ class TaxServiceProvider extends ServiceProvider
             $baseUrl,
             $rooftop,
             $app->make(RegisterDataset::class),
+            is_numeric($timeout) ? (float) $timeout : null,
+            is_numeric($connectTimeout) ? (float) $connectTimeout : null,
         ));
     }
 

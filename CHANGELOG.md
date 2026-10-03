@@ -7,6 +7,18 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.4] - 2026-10-03
+
+### Added
+
+- **`NexusThreshold` carries what the threshold measures, in words.** `measuredOver`,
+  `counts`, `basis`, `says` (the law's sentence) and `source` (the register's source
+  key) — a host showing a threshold no longer reads the register directly for them.
+- **Geocodio timeouts are configurable.** `tax.geocodio.timeout` and
+  `tax.geocodio.connect_timeout` (`GEOCODIO_TIMEOUT`, `GEOCODIO_CONNECT_TIMEOUT`)
+  bound each request, so a checkout no longer waits on the HTTP client's 30-second
+  default — and a host no longer rebinds the geocoder to set them.
+
 ## [0.17.3] - 2026-10-03
 
 ### Fixed
