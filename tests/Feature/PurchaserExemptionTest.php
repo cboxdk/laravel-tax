@@ -65,6 +65,16 @@ beforeEach(function (): void {
         ->rate('us:AL', '4', from: '1990-01-01')
         ->rate('eu:DK', '25', from: '1990-01-01')
         ->rate('eu:SE', '25', from: '1990-01-01')
+        ->rate('eu:FR', '20', from: '1990-01-01')
+        ->rule('eu:FR', 'purchaser_exemption', [
+            'purchaser' => 'international_body', 'effect' => 'exempt_with_deduction',
+            'certificate' => ['form' => null, 'required' => false],
+            'conditions' => [[
+                'kind' => 'applies_only_to', 'says' => 'livraisons de biens',
+                'predicate' => ['fact' => 'supply.isGoods', 'op' => 'eq', 'value' => true],
+            ]],
+            'citation' => 'CGI 262-00 bis', 'says' => 'illustrative',
+        ], from: '2007-01-01')
         ->rule('us:TX', 'purchaser_exemption', $charity, from: '2020-01-01')
         ->rule('us:AR', 'purchaser_exemption', [
             'purchaser' => 'direct_pay_permit', 'effect' => 'taxable', 'accountedForBy' => 'customer',
@@ -268,4 +278,17 @@ it('states the purchaser and its facts once for a whole order', function (): voi
     expect($order->lines[0]->assessment->treatment)->toBe(TaxTreatment::Exempt)
         ->and($order->lines[1]->assessment->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $order->tax()->getAmount())->toBe('6.25');
+});
+
+it('knows a supply of goods from its category, without being told again', function (): void {
+    // France relieves an international body's purchases of goods. The line is filed
+    // under goods; asking the caller to state `supply.isGoods` as well left every
+    // such sale unsettled until it repeated what the category already said.
+    $goods = purchase('FR', null, PurchaserType::InternationalBody);
+    $statedOtherwise = purchase('FR', null, PurchaserType::InternationalBody, ['supply.isGoods' => false]);
+
+    expect($goods->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and($goods->limitedBy)->toBeNull()
+        // A stated fact wins over the one the category implies.
+        ->and($statedOtherwise->treatment)->toBe(TaxTreatment::Standard);
 });

@@ -7,6 +7,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A purchaser rule asked the caller whether a supply was goods or a service.** The
+  register's EU purchaser rules (Germany's UStG § 4 Nr. 7, France's CGI 262-00 bis)
+  ask `supply.isGoods` and `supply.isService`, which the line's category already
+  answers, and the engine left them unknown unless stated. They are now filled from
+  the category beneath the caller's facts, for purchaser rules and rate conditions
+  alike; a stated fact wins. No rate in release 345 moves.
+
 ## [0.17.6] - 2026-10-03
 
 ### Changed

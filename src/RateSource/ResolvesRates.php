@@ -37,7 +37,7 @@ trait ResolvesRates
         // not be left holding the last supply's facts, and an empty set is itself an
         // answer — nothing is known about this product beyond its code.
         if ($rates instanceof FactAwareRateSource) {
-            $rates = $rates->withFacts($query->facts);
+            $rates = $rates->withFacts($query->establishedFacts());
         }
 
         if ($query->categoryKey !== null) {

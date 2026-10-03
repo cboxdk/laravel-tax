@@ -226,9 +226,7 @@ class EuVatRegime extends DestinationTaxRegime
 
     private function isGoods(string $key): bool
     {
-        return str_starts_with($key.'.', 'goods.')
-            && ! str_starts_with($key, 'goods.digital_products')
-            && ! str_starts_with($key, 'goods.software');
+        return CategoryMap::isGoods($key);
     }
 
     /**

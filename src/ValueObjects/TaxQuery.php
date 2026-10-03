@@ -225,6 +225,21 @@ readonly class TaxQuery
     }
 
     /**
+     * The caller's facts, with what the query itself establishes filled in beneath
+     * them: whether the supply is of goods or a service, which its category already
+     * says. A purchaser rule in Germany asks `supply.isGoods`, and a caller who had
+     * filed the line under goods had to say it a second time. A stated fact wins.
+     */
+    public function establishedFacts(): DecisionFacts
+    {
+        $goods = CategoryMap::isGoods($this->categoryKey ?? CategoryMap::keyFor($this->category));
+
+        return $this->facts
+            ->withDefault('supply.isGoods', $goods)
+            ->withDefault('supply.isService', ! $goods);
+    }
+
+    /**
      * The place-of-supply rule this supply falls under: the class's where the caller
      * named one, the key's where only a key was named.
      */

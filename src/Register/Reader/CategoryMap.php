@@ -38,6 +38,18 @@ class CategoryMap
     /** The class every unmapped item falls to, and the reason it is safe to. */
     public const string FALLBACK = 'goods';
 
+    /**
+     * Whether a category is a supply of goods. Digital products and software are
+     * filed under goods and supplied as services — electronically, for VAT — so they
+     * are not.
+     */
+    public static function isGoods(string $key): bool
+    {
+        return str_starts_with($key.'.', 'goods.')
+            && ! str_starts_with($key, 'goods.digital_products')
+            && ! str_starts_with($key, 'goods.software');
+    }
+
     /** @var array<string, TaxClass>|null */
     private static ?array $reverse = null;
 

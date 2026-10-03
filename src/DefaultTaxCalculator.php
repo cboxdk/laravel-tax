@@ -453,7 +453,8 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             );
         }
 
-        $answer = $this->purchasers->for($place, $purchaser, $query->facts, $query->on());
+        $facts = $query->establishedFacts();
+        $answer = $this->purchasers->for($place, $purchaser, $facts, $query->on());
         $cited = $answer->citation === null ? '' : ' ('.$answer->citation.')';
 
         if ($answer->status === PurchaserExemptionStatus::NotPublished) {
@@ -475,7 +476,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             // for the chapter AND a limb the register could not read, and naming the
             // chapter again would send the seller after an answer it already gave.
             foreach ($answer->unsettled as $condition) {
-                $missing = array_values(array_filter($condition->facts, static fn (string $fact): bool => ! $query->facts->has($fact)));
+                $missing = array_values(array_filter($condition->facts, static fn (string $fact): bool => ! $facts->has($fact)));
 
                 if ($missing === []) {
                     $unread[] = $condition->names ?? $condition->says;
@@ -503,7 +504,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return $assessment->with(reason: $assessment->reason.sprintf(' %s grants a %s purchaser nothing%s; taxed.', $where, $who, $cited));
         }
 
-        if ($answer->certificateRequired !== false && $query->facts->get('evidence.holdsExemptionCertificate') !== true) {
+        if ($answer->certificateRequired !== false && $facts->get('evidence.holdsExemptionCertificate') !== true) {
             return $assessment->with(
                 reason: $assessment->reason.sprintf(
                     ' %s relieves a %s purchaser%s only against %s, which the seller has not said it holds; taxed until it does.',
