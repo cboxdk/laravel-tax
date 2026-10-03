@@ -548,8 +548,8 @@ it('names the facts a held-back relief waits on, on the assessment', function ()
         place: app(JurisdictionRepository::class)->find(new CountryCode('GB')),
         customer: CustomerType::Consumer,
         seller: new SellerRegistrations(new CountryCode('GB')),
-        categoryKey: 'goods.mobility',
         suppliedAt: new DateTimeImmutable('2026-10-03'),
+        categoryKey: 'goods.mobility',
         facts: new DecisionFacts(['recipient.isDisabledPerson' => true]),
     ));
 
