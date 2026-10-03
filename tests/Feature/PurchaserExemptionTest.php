@@ -212,7 +212,10 @@ it('leaves Alabama\'s abatement unsettled where the register could not read a li
 
     expect($sale->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $sale->tax->getAmount())->toBe('4.00')
-        ->and($sale->limitedBy)->toBe(RateLimit::PurchaserExemptionUnsettled);
+        ->and($sale->limitedBy)->toBe(RateLimit::PurchaserExemptionUnsettled)
+        // The chapter was stated; what is open is the limb nobody can answer.
+        ->and($sale->reason)->not->toContain('state evidence.alabamaAbatementChapter')
+        ->and($sale->reason)->toContain('has not read');
 });
 
 it('charges a reduced rate the seller accounts for, exclusive and inclusive', function (): void {
@@ -231,7 +234,8 @@ it('holds Art. 151 unsettled where the host member state has not published its l
 
     expect($sale->treatment)->toBe(TaxTreatment::Standard)
         ->and($sale->limitedBy)->toBe(RateLimit::PurchaserExemptionUnsettled)
-        ->and($sale->reason)->toContain('Art. 151(1)(a)');
+        ->and($sale->reason)->toContain('Art. 151(1)(a)')
+        ->and($sale->reason)->toContain('has not read');
 });
 
 it('applies a member\'s own Art. 151 rule, asking for Annex II only of a recipient established elsewhere', function (): void {

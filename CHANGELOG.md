@@ -11,6 +11,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Added
 
+- **`RateRecord::$atGeneralRate`**: true where the source said only that the category
+  is taxable and the register copied in the jurisdiction's general rate (schema 2.6.8).
 - **A testing seam for the geocoder.** `InteractsWithTax::fakeGeocodio($answer)` binds
   the real Geocodio adapter, built from `tax.geocodio.*`, against a faked API that
   answers with a response body or an HTTP status — for a test that sets the key after

@@ -116,3 +116,15 @@ it('lists the rate records a release files, and those of an older installed rele
         ->and(array_map(fn (RateRecord $r): string => $r->jurisdiction, $register->rateRecords($texas)))->toBe(['us:TX'])
         ->and(fn (): array => $register->rateRecords($denmark, '2020.01.01-9'))->toThrow(DatasetNotInstalled::class);
 });
+
+it('says which records carry the general rate because the source only called the category taxable', function (): void {
+    FakeRegister::at(config('tax.register.store'), '2026.10.03-3')
+        ->rate('us:KS', '6.5')
+        ->rate('us:KS', '6.5', category: 'services.repair', extra: ['atGeneralRate' => true])
+        ->install();
+
+    $records = taxRegister()->rateRecords(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-KS')));
+
+    expect(array_map(fn (RateRecord $r): string => ($r->category ?? '-').' '.($r->atGeneralRate ? 'general' : 'own'), $records))
+        ->toBe(['- own', 'services.repair general']);
+});

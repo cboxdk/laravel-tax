@@ -469,19 +469,30 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
 
         if ($answer->status === PurchaserExemptionStatus::Unsettled || $answer->route === PurchaserExemptionRoute::AtSourceOrRefund) {
             $open = [];
+            $unread = [];
 
+            // A fact already stated is not what is missing: Alabama's abatement asks
+            // for the chapter AND a limb the register could not read, and naming the
+            // chapter again would send the seller after an answer it already gave.
             foreach ($answer->unsettled as $condition) {
-                array_push($open, ...($condition->facts === [] ? [$condition->names ?? $condition->says] : $condition->facts));
+                $missing = array_values(array_filter($condition->facts, static fn (string $fact): bool => ! $query->facts->has($fact)));
+
+                if ($missing === []) {
+                    $unread[] = $condition->names ?? $condition->says;
+                } else {
+                    array_push($open, ...$missing);
+                }
             }
 
+            $why = match (true) {
+                $open !== [] => ': state '.implode(', ', array_values(array_unique($open))),
+                $unread !== [] => ' — it turns on what the register has not read: '.implode('; ', $unread),
+                $answer->route === PurchaserExemptionRoute::AtSourceOrRefund => ' — the place chooses relief at the till or by refund, and has not said which',
+                default => ' — its rule could not be read',
+            };
+
             return $assessment->with(
-                reason: $assessment->reason.sprintf(
-                    ' Whether %s relieves a %s purchaser on this supply is not settled%s%s; taxed as anyone would be.',
-                    $where,
-                    $who,
-                    $cited,
-                    $open !== [] ? ': state '.implode(', ', array_values(array_unique($open))) : ($answer->route === PurchaserExemptionRoute::AtSourceOrRefund ? ' — the place chooses relief at the till or by refund, and has not said which' : ''),
-                ),
+                reason: $assessment->reason.sprintf(' Whether %s relieves a %s purchaser on this supply is not settled%s%s; taxed as anyone would be.', $where, $who, $cited, $why),
                 limitedBy: RateLimit::PurchaserExemptionUnsettled,
             );
         }

@@ -31,6 +31,12 @@ readonly class RateRecord
         public ?string $classificationCode = null,
         public ?DateTimeImmutable $from = null,
         public ?DateTimeImmutable $until = null,
+        /**
+         * The source says only that the category is taxable; the figure is the
+         * jurisdiction's general rate, copied in by the register for each window so
+         * it cannot drift from it. A row the source rated itself is false.
+         */
+        public bool $atGeneralRate = false,
     ) {}
 
     /** Whether the record is in force on the date. */

@@ -153,6 +153,7 @@ readonly class InstalledRegister implements TaxRegister
                     classificationCode: Shape::text($classification['code'] ?? null),
                     from: $this->date($effective['from'] ?? null),
                     until: $this->date($effective['until'] ?? null),
+                    atGeneralRate: ($rate['atGeneralRate'] ?? false) === true,
                 );
             }
         }
