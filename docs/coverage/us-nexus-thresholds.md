@@ -67,8 +67,13 @@ Oklahoma, Tennessee, Vermont and Wisconsin with no threshold at all, which was w
 Alongside the figures, `NexusThreshold` carries the register's description of what
 they mean, for display and review: `measuredOver` (the period the figure is measured
 over, such as `current_or_previous_calendar_year`), `counts` (which sales count
-towards it), `basis`, `says` (the law's own sentence) and `source` (the register's key
-for the document it was read from). Each is `null` where the state publishes none.
+towards it), `basis`, `says` (the source's own words, verbatim) and `source` (the
+register's key for the document it was read from). Each is `null` where the register
+publishes none.
+
+`note` is the register maintainer's note: it quotes the source and then says how the
+register read it — what it could not store, which comparator it followed. It is for a
+reviewer, not a customer; show `says` as the law's words, never `note`.
 
 ## Scope and dates
 

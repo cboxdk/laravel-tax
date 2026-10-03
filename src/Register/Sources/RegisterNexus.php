@@ -80,8 +80,9 @@ readonly class RegisterNexus implements NexusThresholds
                 Shape::text($payload['measuredOver'] ?? null),
                 Shape::text($payload['counts'] ?? null),
                 Shape::text($payload['basis'] ?? null),
-                Shape::text(Shape::map($rule['provenance'] ?? null)['note'] ?? null),
+                Shape::text(Shape::map($rule['provenance'] ?? null)['quote'] ?? null),
                 Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null),
+                Shape::text(Shape::map($rule['provenance'] ?? null)['note'] ?? null),
             );
         }
 

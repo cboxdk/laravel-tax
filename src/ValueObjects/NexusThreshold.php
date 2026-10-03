@@ -62,10 +62,19 @@ readonly class NexusThreshold
         public ?string $counts = null,
         /** What the figure is a figure OF, where the state says more than `counts`. */
         public ?string $basis = null,
-        /** The law's or the department's own words for the threshold. */
+        /**
+         * The source's own words for the threshold, verbatim — and only those. Null
+         * until the register publishes a quotation apart from its note.
+         */
         public ?string $says = null,
-        /** The register source those words were read from, e.g. `us-tx-remote-seller`. */
+        /** The register source the threshold was read from, e.g. `us-tx-remote-seller`. */
         public ?string $source = null,
+        /**
+         * The register maintainer's note: the source quoted, and how the register
+         * read it — what it could not store, which comparator it followed. For a
+         * reviewer. Not the law's words, and not for a customer.
+         */
+        public ?string $note = null,
     ) {}
 
     /**

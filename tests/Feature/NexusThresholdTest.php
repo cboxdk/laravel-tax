@@ -159,7 +159,8 @@ it('carries a fixed date whole, not only its kind', function (): void {
 it('carries what the threshold measures, in the law\'s words and with its source', function (): void {
     // A host showing a threshold needs the period it is measured over, what counts
     // towards it, and the law's own sentence — and had to read the register
-    // directly to get them.
+    // directly to get them. The register's note is not that sentence: it quotes the
+    // source and then says how the register read it, which is for a reviewer.
     $root = config('tax.register.store').'/threshold-text';
 
     FakeRegister::at($root)
@@ -169,7 +170,9 @@ it('carries what the threshold measures, in the law\'s words and with its source
             'measuredOver' => 'current_or_previous_calendar_year', 'counts' => 'gross_sales', 'basis' => 'destination_sales',
         ], from: '1990-01-01', extra: ['provenance' => [
             'source' => 'ks-dor-notice-21-04', 'snapshot' => str_repeat('0', 64),
-            'capturedAt' => '2026-01-01T00:00:00+00:00', 'note' => 'Gross receipts from sales into Kansas exceeding $100,000.',
+            'capturedAt' => '2026-01-01T00:00:00+00:00',
+            'note' => "K.S.A. 79-3702: 'in excess of \$100,000'. The register has no field for that measure.",
+            'quote' => 'in excess of $100,000 of cumulative gross receipts from sales by the retailer to customers in this state',
         ]])
         ->install();
 
@@ -179,6 +182,7 @@ it('carries what the threshold measures, in the law\'s words and with its source
     expect($threshold?->measuredOver)->toBe('current_or_previous_calendar_year')
         ->and($threshold?->counts)->toBe('gross_sales')
         ->and($threshold?->basis)->toBe('destination_sales')
-        ->and($threshold?->says)->toBe('Gross receipts from sales into Kansas exceeding $100,000.')
+        ->and($threshold?->says)->toBe('in excess of $100,000 of cumulative gross receipts from sales by the retailer to customers in this state')
+        ->and($threshold?->note)->toContain('The register has no field')
         ->and($threshold?->source)->toBe('ks-dor-notice-21-04');
 });

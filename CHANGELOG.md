@@ -15,6 +15,16 @@ minor bumps may carry additive features; patches are fixes and docs).
   boot, when the provider has already declined to bind one.
   `GeocodioGeocoder::configured($app, $key)` builds the same adapter without
   reaching for the register's internals.
+- **`NexusThreshold::$note`**, the register maintainer's note on the threshold.
+
+### Fixed
+
+- **`NexusThreshold::$says` was the register's note, not the law's words.** v0.17.4
+  filled it from the provenance note, which quotes the source and then explains how
+  the register read it ("The register has no field for that measure …") — a host
+  showing it as the law showed internal commentary to its customers. `says` now
+  carries only a verbatim quotation the register publishes apart from its note, and
+  is null until it does; the note moves to `note`.
 
 ## [0.17.4] - 2026-10-03
 
