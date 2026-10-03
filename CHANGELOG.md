@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-10-03
+
 ### Fixed
 
 - **A threshold obligation's fixed date was dropped.** `next_calendar_date` names a
