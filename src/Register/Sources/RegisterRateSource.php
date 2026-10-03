@@ -1108,6 +1108,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             'standard', 'combined' => RateKind::Standard,
             'zero' => RateKind::Zero,
             'exempt' => RateKind::Exempt,
+            'increased' => RateKind::Increased,
             default => RateKind::Reduced,
         };
     }

@@ -20,6 +20,13 @@ enum RateKind: string
     case Zero = 'zero';
     case Exempt = 'exempt';
 
+    /**
+     * A band ABOVE the standard rate: Maine's 8% on prepared food and 9% on lodging
+     * against its 5.5%, Connecticut's 7.35% on meals, a luxury rate. Charged like
+     * any other band; reported as what it is, not as a reduction.
+     */
+    case Increased = 'increased';
+
     /** Whether the band charges nothing — zero-rated or exempt alike. */
     public function isNil(): bool
     {

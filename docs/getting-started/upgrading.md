@@ -110,9 +110,9 @@ applications only bind them.
 | `NexusThresholds`, `SourcingRules` | take an optional `?DateTimeImmutable $at = null`; a one-argument call still means today |
 | `ReturnAggregator` | `aggregate($assessments, ?ReturnPeriod $period = null)` |
 
-`RateKind` gained `Exempt`. A `match` over it with no default needs the case; code
-comparing `=== RateKind::Zero` to mean "charges nothing" should use
-`$kind->isNil()`.
+`RateKind` gained `Exempt`, and in 0.17.7 `Increased` for a band above the standard
+rate. A `match` over it with no default needs both; code comparing
+`=== RateKind::Zero` to mean "charges nothing" should use `$kind->isNil()`.
 
 A rate source that cannot answer must now **throw** `RateSourceUnavailable` rather
 than return `null`: null meant four different things, and one of them was silently

@@ -13,6 +13,7 @@ use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\RateSource\CachingTaxRateSource;
@@ -479,4 +480,26 @@ it('keeps a relief whose open conditions only describe the product the category 
     // rate until it was answered would have put German groceries at 19%.
     expect((string) gbRate('goods.plants')?->percentage)->toBe('0')
         ->and(gbRate('goods.plants')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
+});
+
+it('keeps an increased rate whose condition turns on the buyer, rather than collecting less', function (): void {
+    // Holding back is for reliefs. Connecticut's 15% on rooms is the place's own
+    // default for the category; dropping it to the general rate on an unknown would
+    // under-collect on every room.
+    FakeRegister::at(config('tax.register.store'))
+        ->category('goods')->category('services')->category('services.accommodation', 'services')
+        ->rate('us:CT', '6.35', from: '1990-01-01')
+        ->rate('us:CT', '15', 'increased', 'services.accommodation', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'recipient_is', 'says' => 'occupancy by a transient guest',
+            'predicate' => ['fact' => 'recipient.isPermanentResident', 'op' => 'eq', 'value' => false],
+        ]]])
+        ->install();
+
+    $room = new RegisterRateSource(app(RegisterDataset::class))
+        ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-CT')), 'services.accommodation');
+
+    expect((string) $room?->percentage)->toBe('15')
+        // A band above the standard rate, reported as one — it used to read `reduced`.
+        ->and($room?->kind)->toBe(RateKind::Increased)
+        ->and($room?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
 });

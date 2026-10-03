@@ -167,10 +167,11 @@ readonly class RateResolver
      * left alone — see {@see RateConditions::worthFlagging()}.
      *
      * A RELIEF THAT TURNS ON THE BUYER IS PROVED, NOT PRESUMED. Where an open
-     * condition asks who is buying, what for, or what evidence the seller holds, the
-     * general rate is the answer until the facts are stated, flagged with what would
-     * settle it — see {@see RateConditions::needsProof()}. A condition describing the
-     * product is the category's own scope and keeps the rate, flagged, as before.
+     * condition asks who is buying, what for, or what evidence the seller holds, a
+     * relief is held back and the general rate is the answer until the facts are
+     * stated, flagged with what would settle it — see
+     * {@see RateConditions::needsProof()}. A condition about what the seller sells
+     * keeps the rate, flagged, as before.
      *
      * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}  $answer
      * @param  list<array<string, mixed>>  $live
@@ -186,7 +187,7 @@ readonly class RateResolver
         if (array_any($unsettled, static fn (UnsettledCondition $condition): bool => RateConditions::needsProof($condition, $facts))) {
             $general = $this->standard($live);
 
-            if ($general !== null && ! $this->sameFigure($general, $answer['rate'])) {
+            if ($general !== null && $this->below($general, $answer['rate'])) {
                 return ['rate' => $general, 'inferred' => $answer['inferred'], 'ambiguous' => $answer['ambiguous'], 'narrowed' => true, 'unsettled' => $unsettled];
             }
         }
@@ -247,6 +248,29 @@ readonly class RateResolver
         }
 
         return null;
+    }
+
+    /**
+     * Whether a row RELIEVES: charges less than the general rate. Only a relief is
+     * held back on an unproved condition. An increased rate kept on one —
+     * Connecticut's 15% on rooms, whose long-stay exemption turns on the stay — is
+     * the place's own default for the category, and holding it back would collect
+     * the general 6.35% on every room. A row with no percentage to compare is left
+     * as it was.
+     *
+     * @param  array<string, mixed>  $general
+     * @param  array<string, mixed>  $rate
+     */
+    private function below(array $general, array $rate): bool
+    {
+        if ($this->sameFigure($general, $rate)) {
+            return false;
+        }
+
+        $a = $general['percentage'] ?? null;
+        $b = $rate['percentage'] ?? null;
+
+        return is_numeric($a) && is_numeric($b) && (float) $b < (float) $a;
     }
 
     /**
