@@ -96,6 +96,60 @@ it('adds a local share the state levies everywhere, with no boundary file in sig
         ->and((string) $general?->percentage)->toBe('5.3');
 });
 
+it('does not climb into a grocery share from a subcategory taxed at the general rate', function (): void {
+    // Virginia files prepared food at the general rate, beneath a `goods.food` it
+    // exempts and levies its 1% grocery share on. Climbing from prepared food to
+    // `goods.food` found that share and added it to a general rate that already
+    // carries the local one: 6.3% where 5.3% is due (release 345).
+    ladderRegister()
+        ->rate('us:VA', '5.3')
+        ->rate('us:VA', '0', 'exempt', 'goods.food')
+        ->rate('us:VA', '1', 'local_component', 'goods.food')
+        ->rate('us:VA', '5.3', category: 'goods.food.prepared', extra: ['atGeneralRate' => true])
+        ->install();
+
+    expect((string) ladderRateFor('US-VA', '23219-0001', TaxClass::PreparedFood)?->percentage)->toBe('5.3')
+        // Groceries are still exempt from the state and pay the locality's 1%.
+        ->and((string) ladderRateFor('US-VA', '23219-0001', TaxClass::Groceries)?->percentage)->toBe('1');
+});
+
+it('does not climb into a local food rate from a subcategory taxed at the general rate, in a resolved stack', function (): void {
+    ladderRegister()
+        ->rate('us:TN', '7')
+        ->rate('us:TN', '4', 'reduced', 'goods.food')
+        ->rate('us:TN', '7', category: 'goods.food.prepared', extra: ['atGeneralRate' => true])
+        ->rate('us:TN:CITY-1', '2.75', 'local_component')
+        ->rate('us:TN:CITY-1', '1.5', 'local_component', 'goods.food')
+        ->boundary('TN', '37201', ['state:47', 'city:1'])
+        ->install();
+
+    expect((string) ladderRateFor('US-TN', '37201-0001', TaxClass::PreparedFood)?->percentage)->toBe('9.75')
+        ->and((string) ladderRateFor('US-TN', '37201-0001', TaxClass::Groceries)?->percentage)->toBe('5.5');
+});
+
+it('lets a total the state files for a category replace its share and every local one', function (): void {
+    // North Carolina taxes telecommunications at a combined 7%, in place of its 4.75%
+    // general rate and every county's share. The row was read as a local share and
+    // skipped, and telecom priced at 4.75% (release 345).
+    ladderRegister()
+        ->category('services')->category('services.telecom', 'services')
+        ->rate('us:NC', '4.75')
+        ->rate('us:NC', '7', 'combined', 'services.telecom')
+        ->rate('us:NC:COUNTY-119', '2.5', 'local_component')
+        ->boundary('NC', '28202', ['state:37', 'county:119'])
+        ->install();
+
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $source = new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset));
+    $place = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-NC'))
+        ->withLocality(new LocalityCode(new SubdivisionCode('US-NC'), LocalityScheme::Zip9->value, '28202-0001'));
+
+    expect((string) $source->rateForKey($place, 'services.telecom')?->percentage)->toBe('7')
+        ->and($source->rateForKey($place, 'services.telecom')?->limitedBy)->toBeNull()
+        ->and((string) $source->rateFor($place, TaxClass::GeneralGoods)?->percentage)->toBe('7.25');
+});
+
 it('adds the statewide share on top of a resolved stack too', function (): void {
     ladderRegister()
         ->rate('us:VA', '5.3')

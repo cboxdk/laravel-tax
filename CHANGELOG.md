@@ -22,6 +22,14 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **North Carolina telecommunications priced at 4.75% instead of 7%.** A total a US
+  state files for a category (`combined`, at `services.telecom`) replaces its own
+  share and every local one; it was read as a local share and skipped.
+- **Virginia prepared food priced at 6.3% instead of 5.3%.** A local share filed for a
+  broader category — the 1% statewide grocery share at `goods.food` — was climbed
+  into from a subcategory the register taxes at the general rate, and added on top of
+  a general rate that already carries the local one. The same shape put a city's
+  reduced food rate on prepared food in a stacked address.
 - **A rate limit ended a sync part-way.** The register allows 120 requests a minute
   per address, shared by every sync from it — several servers deploying at once, a
   deploy and its scheduler. A 429 threw and left that sync unfinished. A 429 or 503 is

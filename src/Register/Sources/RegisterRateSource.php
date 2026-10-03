@@ -169,7 +169,10 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 continue;
             }
 
-            $stacked = $this->stacked($jurisdiction, $code, $rate, $key, $commodityCode, $at, $version) ?? $rate;
+            // A total the state files for the category replaces its share and every
+            // local one, so there is nothing to stack and no local to miss.
+            $replaced = $this->replacesTheStack($code, $key, $commodityCode, $at) !== null;
+            $stacked = $replaced ? $rate : ($this->stacked($jurisdiction, $code, $rate, $key, $commodityCode, $at, $version) ?? $rate);
 
             // A SPLIT ZIP IS ONE OF ITS ANSWERS, NOT THIS ADDRESS'S. The resolver
             // returns the set a bare five-digit ZIP falls in first; where the ZIP holds
@@ -194,7 +197,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 }
             }
 
-            return $this->withDeclined($this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
+            return $this->withDeclined($replaced ? $stacked : $this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
         }
 
         return null;
@@ -500,7 +503,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             // standard band rather than a local record.
             $record = $isState
                 ? null
-                : $this->resolver->local($this->dataset->ratesFor($authority), $key, $at);
+                : $this->resolver->local($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at));
 
             if ($record === null) {
                 $resolved = $isState
@@ -735,7 +738,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             return $rate;
         }
 
-        $record = $this->resolver->local($this->dataset->ratesFor($code), $key, $at);
+        $record = $this->resolver->local($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($code, $key, $at));
 
         if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
             return $rate;
@@ -864,6 +867,30 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     }
 
     /** The bare state code a local authority sits under. */
+    /**
+     * The state's categorised all-in total for the key, where it files one; see
+     * {@see RateResolver::combinedFor()}. Only a US state: elsewhere `combined` is a
+     * province's harmonised share, which {@see self::composed()} reads.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function replacesTheStack(string $code, string $key, ?string $commodityCode, ?DateTimeImmutable $at): ?array
+    {
+        if (! str_starts_with($code, 'us:') || $code !== $this->stateOf($code)) {
+            return null;
+        }
+
+        $combined = $this->resolver->combinedFor($this->dataset->ratesFor($code), $key, $commodityCode, $at, $this->facts);
+
+        return is_string($combined['percentage'] ?? null) ? $combined : null;
+    }
+
+    /** See {@see RateResolver::taxedAsGeneralAt()}; never for the general rate itself. */
+    private function taxedAsGeneralAt(string $state, string $key, ?DateTimeImmutable $at): ?string
+    {
+        return $key === CategoryMap::FALLBACK ? null : $this->resolver->taxedAsGeneralAt($this->dataset->ratesFor($state), $key, null, $at, $this->facts);
+    }
+
     private function stateOf(string $code): string
     {
         $parts = explode(':', $code);
@@ -934,6 +961,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         }
 
         $rate = $resolved['rate'];
+        $combined = $this->replacesTheStack($code, $key, $commodityCode, $at);
+
+        if ($combined !== null) {
+            $resolved = ['rate' => $combined, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false];
+            $rate = $combined;
+        }
 
         if (in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && $this->cappedByPrice($code, $key, $at)) {
             // A PRICE-CAPPED EXEMPTION IS NOT A RATE OF ZERO. Massachusetts files

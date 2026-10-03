@@ -195,6 +195,61 @@ readonly class RateResolver
     }
 
     /**
+     * The category the band answered at, where it answered with the GENERAL rate —
+     * the register saying that this subcategory, unlike its parent, is taxed as
+     * general goods. A local share filed for the parent does not reach it. Null where
+     * the band answered with a relief of its own, or with the general row itself.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     */
+    public function taxedAsGeneralAt(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null, ?DecisionFacts $facts = null): ?string
+    {
+        $row = $this->resolve($rates, $category, $commodityCode, $at, $facts)['rate'] ?? null;
+        $rung = $row === null ? null : Shape::text($row['category'] ?? null);
+
+        if ($row === null || $rung === null) {
+            return null;
+        }
+
+        $general = $this->standard($this->live($rates, ($at ?? new DateTimeImmutable('today'))->format('Y-m-d')));
+
+        return $general !== null && $this->sameFigure($general, $row) ? $rung : null;
+    }
+
+    /**
+     * An all-in total the state files for a category, replacing its own share and
+     * every local one — North Carolina's 7% on telecommunications, where its general
+     * rate is 4.75% and the localities' shares do not apply. Only one filed at a rung
+     * at least as narrow as the band's own answer: a narrower row of the state's
+     * still speaks for its subcategory.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return array<string, mixed>|null
+     */
+    public function combinedFor(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null, ?DecisionFacts $facts = null): ?array
+    {
+        $ladder = CategoryMap::ladder($category);
+        $band = Shape::text($this->resolve($rates, $category, $commodityCode, $at, $facts)['rate']['category'] ?? null);
+        $found = $band === null ? false : array_search($band, $ladder, true);
+        $limit = $found === false ? count($ladder) : $found;
+        $live = $this->live($rates, ($at ?? new DateTimeImmutable('today'))->format('Y-m-d'));
+
+        foreach ($ladder as $index => $rung) {
+            if ($index > $limit) {
+                break;
+            }
+
+            foreach ($live as $rate) {
+                if (($rate['kind'] ?? null) === 'combined' && ($rate['category'] ?? null) === $rung) {
+                    return $rate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Whether a row charges what the general rate does — a category the source only
      * called taxable, copied at the general rate. Keeping it on an unknown condition
      * moves nothing.
@@ -228,7 +283,7 @@ readonly class RateResolver
      * @param  list<array<string, mixed>>  $rates
      * @return array<string, mixed>|null
      */
-    public function local(array $rates, ?string $category = null, ?DateTimeImmutable $at = null): ?array
+    public function local(array $rates, ?string $category = null, ?DateTimeImmutable $at = null, ?string $generalFrom = null): ?array
     {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
         $live = $this->live($rates, $on);
@@ -243,6 +298,18 @@ readonly class RateResolver
         //
         // Nearest rung wins, so a record on the leaf still beats one on its parent.
         $ladder = $category === null ? [] : CategoryMap::ladder($category);
+
+        // NOT ABOVE A RUNG THE REGISTER TAXES AS GENERAL GOODS. Virginia levies 1% on
+        // groceries statewide, filed at `goods.food`, and files prepared food at the
+        // general rate. Climbing from prepared food to `goods.food` added the grocery
+        // share on top of a general rate that already carries the local one: 6.3%
+        // where 5.3% is due. See {@see self::taxedAsGeneralAt()}.
+        $cut = $generalFrom === null ? false : array_search($generalFrom, $ladder, true);
+
+        if ($cut !== false) {
+            $ladder = array_slice($ladder, 0, $cut + 1);
+        }
+
         $best = null;
         $bestRung = PHP_INT_MAX;
         $fallback = null;
