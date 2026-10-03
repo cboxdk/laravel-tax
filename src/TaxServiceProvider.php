@@ -303,27 +303,7 @@ class TaxServiceProvider extends ServiceProvider
             return;
         }
 
-        $baseUrl = $config->get('tax.geocodio.base_url');
-        $baseUrl = is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2';
-
-        // Gates only the paths that resolve BELOW the county line — the ZIP+4 append
-        // and the polygon services. County resolution (FL, PA, HI) runs regardless:
-        // it needs no append, and in those states the county is the whole local
-        // share, so withholding it would just under-charge.
-        $rooftop = $config->get('tax.geocodio.rooftop') === true;
-        $timeout = $config->get('tax.geocodio.timeout');
-        $connectTimeout = $config->get('tax.geocodio.connect_timeout');
-
-        $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => new GeocodioGeocoder(
-            $app->make(Factory::class),
-            $app->make(JurisdictionRepository::class),
-            $key,
-            $baseUrl,
-            $rooftop,
-            $app->make(RegisterDataset::class),
-            is_numeric($timeout) ? (float) $timeout : null,
-            is_numeric($connectTimeout) ? (float) $connectTimeout : null,
-        ));
+        $this->app->singleton(AddressGeocoder::class, static fn (Application $app): GeocodioGeocoder => GeocodioGeocoder::configured($app, $key));
     }
 
     public function boot(): void

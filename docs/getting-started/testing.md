@@ -109,3 +109,26 @@ FakeRegister::at(config('tax.register.store'))
     ]])
     ->install();
 ```
+
+## Testing the geocoder
+
+The provider binds `AddressGeocoder` only when `tax.geocodio.key` is set at boot, so a
+test that configures Geocodio later binds it with `fakeGeocodio()`. It is the real
+adapter, built from `tax.geocodio.*`, against a faked API that answers every request
+with a response body or an HTTP status:
+
+```php
+config()->set('tax.geocodio.rooftop', true);
+
+$this->fakeGeocodio(['results' => [[
+    'address_components' => ['country' => 'US', 'state_province' => 'KS'],
+    'fields' => ['zip4' => ['zip9' => ['66101-3064']]],
+]]]);
+
+app(AddressGeocoder::class)->locate($address);   // US-KS, locality 66101-3064
+
+$this->fakeGeocodio(500);                          // the next request fails: null
+```
+
+Requests stay assertable with `Http::assertSent()`. Outside a test,
+`GeocodioGeocoder::configured($app, $key)` builds the same adapter from the config.

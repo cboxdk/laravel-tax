@@ -349,3 +349,21 @@ it('applies the configured timeouts to every request', function (): void {
     expect($options['timeout'] ?? null)->toBe(2.5)
         ->and($options['connect_timeout'] ?? null)->toBe(1.0);
 });
+
+it('binds the real adapter against a faked API for a host\'s test', function (): void {
+    // The provider binds the geocoder only when a key is set at boot; a host's test
+    // sets it later, and had to build the adapter from internals to get one.
+    config()->set('tax.geocodio.rooftop', true);
+    expect(app()->bound(AddressGeocoder::class))->toBeFalse();
+
+    $this->fakeGeocodio(['results' => [[
+        'address_components' => ['country' => 'US', 'state_province' => 'KS'],
+        'fields' => ['zip4' => ['zip9' => ['66101-3064']]],
+    ]]]);
+
+    expect(app(AddressGeocoder::class)->locate(['line1' => '701 N 7th St', 'country' => 'US'])?->locality?->value)->toBe('66101-3064');
+
+    $this->fakeGeocodio(500);
+
+    expect(app(AddressGeocoder::class)->locate(['line1' => '701 N 7th St', 'country' => 'US']))->toBeNull();
+});

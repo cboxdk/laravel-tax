@@ -7,6 +7,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added
+
+- **A testing seam for the geocoder.** `InteractsWithTax::fakeGeocodio($answer)` binds
+  the real Geocodio adapter, built from `tax.geocodio.*`, against a faked API that
+  answers with a response body or an HTTP status — for a test that sets the key after
+  boot, when the provider has already declined to bind one.
+  `GeocodioGeocoder::configured($app, $key)` builds the same adapter without
+  reaching for the register's internals.
+
 ## [0.17.4] - 2026-10-03
 
 ### Added

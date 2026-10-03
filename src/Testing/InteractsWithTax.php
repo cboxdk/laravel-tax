@@ -7,11 +7,13 @@ namespace Cbox\Tax\Testing;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\DefaultTaxCalculator;
 use Cbox\Tax\Enums\ExemptionType;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Geocoder\GeocodioGeocoder;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
@@ -23,6 +25,7 @@ use Cbox\Tax\ValueObjects\RateBand;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxExemption;
 use DateTimeImmutable;
+use Illuminate\Http\Client\Factory;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -194,5 +197,48 @@ trait InteractsWithTax
         if ($reference !== null) {
             Assert::assertSame($reference, $assessment->exemption->reference, 'Exemption reference mismatch.');
         }
+    }
+
+    /**
+     * What the faked Geocodio API answers, once `fakeGeocodio()` has faked it.
+     *
+     * @var array{answer: array<array-key, mixed>|int}|null
+     */
+    private ?array $geocodioAnswer = null;
+
+    /**
+     * Bind the real Geocodio adapter, configured as `tax.geocodio.*` says, against a
+     * faked API that answers every request with `$answer`: a response body
+     * (`['results' => [...]]`), or a bare HTTP status to fail with. Call it again to
+     * change the answer. The provider binds the geocoder only when a key is set at
+     * boot, so a test that sets one later binds it here; with no key configured a
+     * placeholder is used. Requests stay assertable through `Http::assertSent()`.
+     *
+     * @param  array<array-key, mixed>|int  $answer
+     */
+    protected function fakeGeocodio(array|int $answer): GeocodioGeocoder
+    {
+        $http = app(Factory::class);
+
+        if ($this->geocodioAnswer === null) {
+            $baseUrl = config('tax.geocodio.base_url');
+            $host = parse_url(is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2', PHP_URL_HOST);
+
+            // One stub reading the current answer: a second fake() would be shadowed
+            // by the first, which still matches.
+            $http->fake([(is_string($host) ? $host : 'api.geocod.io').'/*' => function () use ($http) {
+                $answer = $this->geocodioAnswer['answer'] ?? 500;
+
+                return is_int($answer) ? $http->response(null, $answer) : $http->response($answer);
+            }]);
+        }
+
+        $this->geocodioAnswer = ['answer' => $answer];
+
+        $key = config('tax.geocodio.key');
+        $geocoder = GeocodioGeocoder::configured(app(), is_string($key) && $key !== '' ? $key : 'fake-key');
+        app()->instance(AddressGeocoder::class, $geocoder);
+
+        return $geocoder;
     }
 }

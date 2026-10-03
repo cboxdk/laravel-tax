@@ -38,7 +38,8 @@ it may change in a minor release.
   the service provider builds them; their methods are covered through the contracts
   they implement, their constructors are not. None of them is sealed, so extending one
   to change a method is supported — calling its constructor yourself ties you to its
-  dependencies.
+  dependencies. `GeocodioGeocoder::configured()` is the public way to build the
+  geocoder from `tax.geocodio.*`.
 - **Anything marked `@internal`.**
 
 ## Asking the register

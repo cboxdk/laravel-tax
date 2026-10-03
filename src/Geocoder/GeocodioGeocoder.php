@@ -13,6 +13,8 @@ use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Territories\UsLocalStructure;
+use Illuminate\Contracts\Config\Repository as Config;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
 use Throwable;
@@ -74,6 +76,34 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private ?float $timeout = null,
         private ?float $connectTimeout = null,
     ) {}
+
+    /**
+     * The adapter as `tax.geocodio.*` configures it, read now — what the service
+     * provider binds, and what a host's test binds after setting the config, since
+     * the provider decided at boot. The register it consults is the installed one.
+     */
+    public static function configured(Container $app, string $apiKey): self
+    {
+        $config = $app->make(Config::class);
+        $baseUrl = $config->get('tax.geocodio.base_url');
+        $timeout = $config->get('tax.geocodio.timeout');
+        $connectTimeout = $config->get('tax.geocodio.connect_timeout');
+
+        return new self(
+            $app->make(Factory::class),
+            $app->make(JurisdictionRepository::class),
+            $apiKey,
+            is_string($baseUrl) ? $baseUrl : 'https://api.geocod.io/v2',
+            // Gates only the paths that resolve BELOW the county line — the ZIP+4
+            // append and the polygon services. County resolution (FL, PA, HI) runs
+            // regardless: it needs no append, and in those states the county is the
+            // whole local share, so withholding it would just under-charge.
+            $config->get('tax.geocodio.rooftop') === true,
+            $app->make(RegisterDataset::class),
+            is_numeric($timeout) ? (float) $timeout : null,
+            is_numeric($connectTimeout) ? (float) $connectTimeout : null,
+        );
+    }
 
     public function locate(array $address): ?Jurisdiction
     {
