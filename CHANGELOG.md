@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-10-03
+
 ### Fixed
 
 - **A Texas lookup decoded the whole state's polygons, past a 128 MB memory limit.**
