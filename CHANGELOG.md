@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.6] - 2026-10-03
+
 ### Changed
 
 - **A relief that turns on the buyer applies only once it is shown.** A rate whose
