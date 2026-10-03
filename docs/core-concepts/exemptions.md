@@ -107,3 +107,48 @@ apart.
 
 See [testing](../getting-started/testing.md) for the dogfooded
 `InteractsWithTax::taxExemption()` builder and `assertExempt()` helper.
+
+## Exemptions by purchaser
+
+`TaxExemption` applies a certificate you have already decided covers the sale. When
+you know *who* is buying but not whether the place relieves them, state the purchaser
+and let the place's own rule decide. A charity is exempt in Texas and taxable in
+Alabama; a direct pay permit holder in Arkansas pays the tax itself; a diplomat in a
+member state is relieved under Art. 151 within that state's limits.
+
+```php
+use Cbox\Tax\Enums\PurchaserType;
+use Cbox\Tax\ValueObjects\DecisionFacts;
+
+new TaxQuery(
+    // …
+    purchaser: PurchaserType::CharitableOrganization,
+    facts: new DecisionFacts([
+        'recipient.federalIncomeTaxExemptUnderIrc501c' => '3',
+        'use.relatedToThePurposeOfTheOrganization' => true,
+        'evidence.holdsExemptionCertificate' => true,
+    ]),
+);
+```
+
+On a `TaxOrder`, pass `purchaser` and the document's `facts` once; every line gets
+them, and a line's own fact wins.
+
+The rule comes from the register's `purchaser_exemption` rules: the US state's own,
+or the member state's, then the regime's (`eu`) for what binds every member. Only a
+supply the seller would otherwise charge is asked about.
+
+| The place's rule | The answer |
+| --- | --- |
+| applies, certificate held or not required | `Exempt`, or `ZeroRated` where the input tax stays deductible (Art. 151), with the citation on the invoice |
+| applies, and the purchaser accounts for the tax (a direct pay permit) | `ReverseCharge`: the seller charges nothing, and the tax is still due |
+| applies at a reduced rate | taxed at that rate |
+| applies by refund | taxed at the till; the purchaser reclaims |
+| a condition is false, or the place grants this purchaser nothing | taxed, no flag |
+| a certificate is required and `evidence.holdsExemptionCertificate` is not true | taxed, flagged `ExemptionCertificateMissing` |
+| a condition's facts are missing, or the place has not said whether it relieves at the till or by refund | taxed, flagged `PurchaserExemptionUnsettled`, naming the facts |
+| the register states nothing for this purchaser here | taxed, flagged `PurchaserExemptionNotPublished` |
+
+The engine never assumes an exemption. Where a rule cannot be read, the sale is taxed
+and flagged. Bind your own `Cbox\Tax\Contracts\PurchaserExemptions` to answer for
+places the register does not cover yet.

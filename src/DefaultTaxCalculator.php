@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax;
 
+use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\Jurisdiction;
@@ -15,9 +16,14 @@ use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductCatalogue;
+use Cbox\Tax\Contracts\PurchaserExemptions;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\MarketplaceLiability;
+use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\PurchaserExemptionEffect;
+use Cbox\Tax\Enums\PurchaserExemptionRoute;
+use Cbox\Tax\Enums\PurchaserExemptionStatus;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
@@ -25,6 +31,7 @@ use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
 use Cbox\Tax\ValueObjects\FlatCharge;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\OrderAssessment;
+use Cbox\Tax\ValueObjects\PurchaserExemption;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxOrder;
@@ -63,6 +70,8 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         private ?JurisdictionRepository $jurisdictions = null,
         /** States an invoice's tax in the place's own currency; null states nothing. */
         private ?ExchangeRates $exchangeRates = null,
+        /** What a place's rule does for a stated purchaser; null answers every purchaser as anyone. */
+        private ?PurchaserExemptions $purchasers = null,
     ) {}
 
     public function assess(TaxQuery $query): TaxAssessment
@@ -187,7 +196,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->withExchangeRate($query, $this->applyExemption($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates)))));
+        return $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates))))));
     }
 
     /**
@@ -410,6 +419,178 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
                 code: 'exempt_certificate',
                 text: sprintf('Exempt — %s certificate %s', $exemption->type->label(), $exemption->reference),
             )],
+        );
+    }
+
+    /**
+     * WHO IS BUYING. A stated purchaser asks the place's own rule — a charity is
+     * exempt in Texas and taxable in Alabama — and only a supply the seller would
+     * otherwise charge is asked about: a reverse charge, a zero rate or a sale this
+     * seller does not collect has nothing to relieve.
+     *
+     * Never an assumed exemption. A place that states nothing, a rule whose facts the
+     * supply leaves open, or a certificate the seller has not said it holds leaves the
+     * ordinary answer, flagged with why. A rule that relieves by refund taxes at the
+     * till, as the place does. A purchaser who accounts for the tax itself — a direct
+     * pay permit — is charged nothing by the seller, and the tax is still due.
+     */
+    private function applyPurchaser(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        $purchaser = $query->purchaser;
+
+        if ($purchaser === null || $this->purchasers === null || $assessment->treatment !== TaxTreatment::Standard) {
+            return $assessment;
+        }
+
+        $place = $assessment->placeOfSupply;
+        $where = $place->subdivision !== null ? $place->subdivision->value : $place->country->value;
+        $who = str_replace('_', ' ', $purchaser->value);
+
+        if ($assessment->portions !== []) {
+            return $assessment->with(
+                reason: $assessment->reason.sprintf(' A %s purchaser was stated; a charge split across supplies is not relieved, and is taxed as anyone\'s.', $who),
+                limitedBy: RateLimit::PurchaserExemptionUnsettled,
+            );
+        }
+
+        $answer = $this->purchasers->for($place, $purchaser, $query->facts, $query->on());
+        $cited = $answer->citation === null ? '' : ' ('.$answer->citation.')';
+
+        if ($answer->status === PurchaserExemptionStatus::NotPublished) {
+            return $assessment->with(
+                reason: $assessment->reason.sprintf(' The register states nothing for a %s purchaser in %s; taxed as anyone would be.', $who, $where),
+                limitedBy: RateLimit::PurchaserExemptionNotPublished,
+            );
+        }
+
+        if ($answer->status === PurchaserExemptionStatus::DoesNotApply) {
+            return $assessment->with(reason: $assessment->reason.sprintf(' %s relieves a %s purchaser only on supplies this is not%s; taxed.', $where, $who, $cited));
+        }
+
+        if ($answer->status === PurchaserExemptionStatus::Unsettled || $answer->route === PurchaserExemptionRoute::AtSourceOrRefund) {
+            $open = [];
+
+            foreach ($answer->unsettled as $condition) {
+                array_push($open, ...($condition->facts === [] ? [$condition->names ?? $condition->says] : $condition->facts));
+            }
+
+            return $assessment->with(
+                reason: $assessment->reason.sprintf(
+                    ' Whether %s relieves a %s purchaser on this supply is not settled%s%s; taxed as anyone would be.',
+                    $where,
+                    $who,
+                    $cited,
+                    $open !== [] ? ': state '.implode(', ', array_values(array_unique($open))) : ($answer->route === PurchaserExemptionRoute::AtSourceOrRefund ? ' — the place chooses relief at the till or by refund, and has not said which' : ''),
+                ),
+                limitedBy: RateLimit::PurchaserExemptionUnsettled,
+            );
+        }
+
+        $relieves = $answer->purchaserAccounts || $answer->effect !== PurchaserExemptionEffect::Taxable;
+
+        if (! $relieves) {
+            return $assessment->with(reason: $assessment->reason.sprintf(' %s grants a %s purchaser nothing%s; taxed.', $where, $who, $cited));
+        }
+
+        if ($answer->certificateRequired !== false && $query->facts->get('evidence.holdsExemptionCertificate') !== true) {
+            return $assessment->with(
+                reason: $assessment->reason.sprintf(
+                    ' %s relieves a %s purchaser%s only against %s, which the seller has not said it holds; taxed until it does.',
+                    $where,
+                    $who,
+                    $cited,
+                    $answer->certificateForm === null ? 'an exemption certificate' : 'certificate '.$answer->certificateForm,
+                ),
+                limitedBy: RateLimit::ExemptionCertificateMissing,
+            );
+        }
+
+        if ($answer->route === PurchaserExemptionRoute::Refund) {
+            return $assessment->with(reason: $assessment->reason.sprintf(' %s relieves a %s purchaser by refund%s: taxed at the till, reclaimed by the purchaser.', $where, $who, $cited));
+        }
+
+        return $this->relievedFor($query, $assessment, $answer, $who, $where, $cited);
+    }
+
+    /** The supply as the purchaser's rule leaves it: unchanged in place and amount, relieved of some or all of the tax. */
+    private function relievedFor(TaxQuery $query, TaxAssessment $assessment, PurchaserExemption $answer, string $who, string $where, string $cited): TaxAssessment
+    {
+        $zero = Money::zero($assessment->net->getCurrency(), $assessment->net->getContext());
+        $mentions = $answer->certificateForm === null ? [] : [new InvoiceMention(
+            code: 'exempt_certificate',
+            text: sprintf('Purchaser exemption — %s', $answer->certificateForm),
+            reference: $answer->citation,
+        )];
+
+        // The purchaser accounts for what is due — a direct pay permit, Alabama's
+        // unabated remainder. The tax is real; the seller charges none of it.
+        if ($answer->purchaserAccounts) {
+            return $this->relieved(
+                $assessment,
+                $mentions,
+                TaxTreatment::ReverseCharge,
+                $assessment->net,
+                $zero,
+                sprintf('A %s purchaser accounts for the tax in %s itself%s; the seller charges none.', $who, $where, $cited),
+                [new InvoiceMention(code: 'purchaser_accounts', text: 'Tax to be accounted for by the purchaser', reference: $answer->citation)],
+            );
+        }
+
+        if ($answer->effect === PurchaserExemptionEffect::Reduced && $answer->rate !== null) {
+            $rate = $answer->rate;
+            $currency = $assessment->net->getCurrency();
+
+            if ($query->pricing === Pricing::Inclusive) {
+                $gross = $query->amount;
+                $net = Money::of($gross->getAmount()->multipliedBy(100)->dividedBy($rate->plus(100), 10, RoundingMode::HalfUp), $currency, $assessment->net->getContext(), RoundingMode::HalfUp);
+                $tax = $gross->minus($net);
+            } else {
+                $net = $assessment->net;
+                $tax = Money::of($net->getAmount()->multipliedBy($rate)->dividedBy(100, 10, RoundingMode::HalfUp), $currency, $net->getContext(), RoundingMode::HalfUp);
+            }
+
+            return $this->relieved(
+                $assessment,
+                $mentions,
+                TaxTreatment::Standard,
+                $net,
+                $tax,
+                sprintf('Taxed at %s%% for a %s purchaser in %s%s.', $rate->__toString(), $who, $where, $cited),
+            );
+        }
+
+        $deducts = $answer->effect === PurchaserExemptionEffect::ExemptWithDeduction;
+
+        return $this->relieved(
+            $assessment,
+            $mentions,
+            $deducts ? TaxTreatment::ZeroRated : TaxTreatment::Exempt,
+            $assessment->net,
+            $zero,
+            sprintf('%s for a %s purchaser in %s%s.', $deducts ? 'Zero-rated' : 'Exempt', $who, $where, $cited),
+            // Art. 151 is an exemption on the invoice either way (Art. 226(11)); that
+            // it keeps the deduction is the return's business, which the treatment says.
+            [new InvoiceMention(code: 'exempt', text: 'Exempt', reference: $answer->citation)],
+        );
+    }
+
+    /**
+     * @param  list<InvoiceMention>  $certificate
+     * @param  list<InvoiceMention>  $more
+     */
+    private function relieved(TaxAssessment $assessment, array $certificate, TaxTreatment $treatment, Money $net, Money $tax, string $reason, array $more = []): TaxAssessment
+    {
+        return new TaxAssessment(
+            treatment: $treatment,
+            net: $net,
+            tax: $tax,
+            gross: $net->plus($tax),
+            placeOfSupply: $assessment->placeOfSupply,
+            rate: null,
+            reason: $reason,
+            taxPoint: $assessment->taxPoint,
+            reportedOn: $assessment->reportedOn,
+            mentions: [...$more, ...$certificate],
         );
     }
 }

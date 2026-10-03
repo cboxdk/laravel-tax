@@ -29,6 +29,7 @@ class RuleKinds
         'marketplace_facilitator',
         'minimum_taxable_sale',
         'price_exemption',
+        'purchaser_exemption',
         'remote_seller_election',
         'rounding',
         'sourcing',

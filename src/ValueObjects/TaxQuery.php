@@ -12,6 +12,7 @@ use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\PurchaserType;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
@@ -203,6 +204,15 @@ readonly class TaxQuery
          * hold several.
          */
         public ?string $customerTaxId = null,
+        /**
+         * Who is buying, where that can change the answer — a charity in Texas, a
+         * direct-pay permit holder in Arkansas, an embassy under Art. 151. Stating it
+         * ASKS the place's own rule; it grants nothing. The rule's facts go on `facts`
+         * (`recipient.…`), and a certificate the seller holds as
+         * `evidence.holdsExemptionCertificate`. Null: nobody is claiming anything,
+         * and the answer is the ordinary one.
+         */
+        public ?PurchaserType $purchaser = null,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
@@ -267,6 +277,7 @@ readonly class TaxQuery
             $merged,
             $this->saleAmount,
             $this->customerTaxId,
+            $this->purchaser,
         );
     }
 

@@ -68,7 +68,7 @@ readonly class DecisionFacts
 
     private static function assertName(mixed $name): void
     {
-        if (! is_string($name) || preg_match('/^[a-z][A-Za-z]*(\.[a-z][A-Za-z]*)+$/D', $name) !== 1) {
+        if (! is_string($name) || preg_match('/^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)+$/D', $name) !== 1) {
             throw new InvalidArgumentException(sprintf(
                 'Decision fact names are the register\'s dotted names, such as "delivery.separatelyStated"; got %s.',
                 is_string($name) ? '"'.$name.'"' : get_debug_type($name),

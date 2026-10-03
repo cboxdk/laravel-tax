@@ -34,7 +34,7 @@ class RegisterCompatibility
      *
      * @var array<int, int>
      */
-    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 6];
+    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 7];
 
     /**
      * Payload fields this reader interprets, per rule kind it consumes.
@@ -51,6 +51,7 @@ class RegisterCompatibility
         'rounding' => ['method', 'places', 'appliesTo', 'aggregatesLocal'],
         'taxable_base' => ['component', 'included', 'category', 'proportion', 'decision'],
         'declined_rate' => ['reason', 'names', 'category', 'rate', 'says'],
+        'purchaser_exemption' => ['purchaser', 'effect', 'rate', 'accountedForBy', 'route', 'certificate', 'conditions', 'citation', 'says'],
     ];
 
     /**

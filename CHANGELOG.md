@@ -16,9 +16,24 @@ minor bumps may carry additive features; patches are fixes and docs).
   `GeocodioGeocoder::configured($app, $key)` builds the same adapter without
   reaching for the register's internals.
 - **`NexusThreshold::$note`**, the register maintainer's note on the threshold.
+- **Exemptions by purchaser.** `TaxQuery::$purchaser` and `TaxOrder::$purchaser` state
+  who is buying (`PurchaserType`: the Streamlined certificate's reasons and the four
+  Art. 151 purchasers), and the place's own `purchaser_exemption` rule decides: exempt,
+  zero-rated with deduction, taxed at a reduced rate, or charged nothing because the
+  purchaser accounts for the tax. A certificate the rule requires is read from
+  `evidence.holdsExemptionCertificate`. A place that states nothing, a rule whose facts
+  are missing or a certificate not held leaves the ordinary answer, flagged
+  `PurchaserExemptionNotPublished`, `PurchaserExemptionUnsettled` or
+  `ExemptionCertificateMissing`. Never an assumed exemption. Reads register schema
+  2.7.
+- **`TaxOrder::$facts`**: facts about the whole document, stated once and given to
+  every line; a line's own fact wins.
 
 ### Fixed
 
+- **A fact name with a digit was refused.** `DecisionFacts` rejected names such as
+  `recipient.federalIncomeTaxExemptUnderIrc501c`, so a host could not state a fact
+  the register asks for.
 - **`NexusThreshold::$says` was the register's note, not the law's words.** v0.17.4
   filled it from the provenance note, which quotes the source and then explains how
   the register read it ("The register has no field for that measure …") — a host

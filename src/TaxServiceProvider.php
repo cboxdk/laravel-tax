@@ -22,6 +22,7 @@ use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\ProductTaxability;
+use Cbox\Tax\Contracts\PurchaserExemptions;
 use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\RoundingRules;
@@ -50,6 +51,7 @@ use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterDelivery;
 use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
 use Cbox\Tax\Register\Sources\RegisterNexus;
+use Cbox\Tax\Register\Sources\RegisterPurchaserExemptions;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterRounding;
 use Cbox\Tax\Register\Sources\RegisterSourcing;
@@ -155,6 +157,7 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(RegisterDataset::class),
         ));
 
+        $this->app->singleton(PurchaserExemptions::class, static fn (Application $app): PurchaserExemptions => new RegisterPurchaserExemptions($app->make(RegisterDataset::class)));
         $this->app->singleton(AttributionRules::class, static fn (Application $app): AttributionRules => new RegisterAttribution(
             $app->make(RegisterDataset::class),
         ));
@@ -196,6 +199,7 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(MarketplaceRules::class),
             $app->make(JurisdictionRepository::class),
             $app->make(ExchangeRates::class),
+            $app->make(PurchaserExemptions::class),
         ));
 
         $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterDataset::class)));

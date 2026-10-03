@@ -184,6 +184,27 @@ enum RateLimit: string
      */
     case AttributionUnsettled = 'attribution_unsettled';
 
+    /**
+     * The caller stated who is buying, and the register states nothing for that
+     * purchaser in this place on the date. The answer is the ordinary one — never an
+     * assumed exemption — and says so.
+     */
+    case PurchaserExemptionNotPublished = 'purchaser_exemption_not_published';
+
+    /**
+     * The place's rule for this purchaser turns on facts the supply does not state —
+     * the organisation's status, what the purchase is for — or on a choice the place
+     * has not published, such as whether a member state relieves at the till or by
+     * refund. The ordinary answer, flagged with what would settle it.
+     */
+    case PurchaserExemptionUnsettled = 'purchaser_exemption_unsettled';
+
+    /**
+     * The place's rule relieves this purchaser only against a certificate, and the
+     * seller has not said it holds one. Taxed as anyone would be until it does.
+     */
+    case ExemptionCertificateMissing = 'exemption_certificate_missing';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -231,6 +252,14 @@ enum RateLimit: string
             self::DistrictNeedsPoint => 'Pass the geocoded point with the ZIP+4 (scheme `zip9+latlng`): a district '
                 .'drawn over this ZIP sets a different rate inside its boundary, and a postal key cannot say '
                 .'whether the address is inside it.',
+            self::PurchaserExemptionNotPublished => 'Nothing you can do in your application: the register holds no '
+                .'rule for this purchaser here. Where you know the place relieves it, record the exemption you '
+                .'verified as a TaxExemption on the query; the engine will not assume one.',
+            self::PurchaserExemptionUnsettled => 'State the facts the reason names on the query\'s `facts` — or once, '
+                .'on the order — so the place\'s rule for this purchaser can decide. A choice the place has not '
+                .'published, such as relief at the till or by refund, cannot be settled by input.',
+            self::ExemptionCertificateMissing => 'Collect the certificate the reason names from the purchaser and keep '
+                .'it, then state `evidence.holdsExemptionCertificate` as true. Until then the sale is taxed.',
             self::BracketSchedule => 'Price tax-exclusive where you can: the published table is then applied to '
                 .'the sale exactly. A tax-inclusive price, or a local share stacked on the state\'s table, is '
                 .'priced at the table\'s per-dollar rate — right for a price, within a cent for a return.',
@@ -250,6 +279,6 @@ enum RateLimit: string
         // ConditionsUnevaluated is closable now that conditions are read: a commodity
         // code or a fact settles every typed one. The few published only as prose are
         // not, and CatalogueAudit says which per product — an enum cannot.
-        return in_array($this, [self::HeadingAmbiguous, self::ItemUnmapped, self::ClassificationInferred, self::PerformanceLocationAssumed, self::TerritoryUnplaced, self::ConditionsUnevaluated, self::PostcodeSpansLocalities, self::DistrictNeedsPoint, self::AttributionUnsettled], true);
+        return in_array($this, [self::HeadingAmbiguous, self::ItemUnmapped, self::ClassificationInferred, self::PerformanceLocationAssumed, self::TerritoryUnplaced, self::ConditionsUnevaluated, self::PostcodeSpansLocalities, self::DistrictNeedsPoint, self::AttributionUnsettled, self::PurchaserExemptionUnsettled, self::ExemptionCertificateMissing], true);
     }
 }

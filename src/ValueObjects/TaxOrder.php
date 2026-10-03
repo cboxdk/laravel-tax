@@ -9,6 +9,7 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Enums\ApportionmentBasis;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\PurchaserType;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
 use DateTimeImmutable;
@@ -76,6 +77,14 @@ readonly class TaxOrder
         public RoundingScope $roundingScope = RoundingScope::Line,
         /** The customer's VAT number, as validated; see `TaxQuery::$customerTaxId`. */
         public ?string $customerTaxId = null,
+        /** Who is buying; see `TaxQuery::$purchaser`. */
+        public ?PurchaserType $purchaser = null,
+        /**
+         * Facts about the whole document — the purchaser's (`recipient.…`) and the
+         * certificate held (`evidence.holdsExemptionCertificate`) — stated once and
+         * given to every line. A line's own fact wins over the document's.
+         */
+        public DecisionFacts $facts = new DecisionFacts,
     ) {
         if ($lines === []) {
             throw InvalidTaxOrder::withoutLines();
@@ -167,10 +176,22 @@ readonly class TaxOrder
             categoryKey: $line->categoryKey,
             performedAt: $line->performedAt,
             quantity: $line->quantity,
-            facts: $line->facts,
+            facts: $this->factsFor($line),
             saleAmount: $this->saleAmount(),
             customerTaxId: $this->customerTaxId,
+            purchaser: $this->purchaser,
         );
+    }
+
+    private function factsFor(SupplyLine $line): DecisionFacts
+    {
+        $facts = $line->facts;
+
+        foreach ($this->facts->values as $name => $value) {
+            $facts = $facts->withDefault($name, $value);
+        }
+
+        return $facts;
     }
 
     public function currency(): string
