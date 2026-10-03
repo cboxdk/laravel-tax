@@ -65,6 +65,9 @@ readonly class InstalledRegister implements TaxRegister
                 $key,
                 Shape::text($category['name'] ?? null) ?? $key,
                 Shape::text($category['parent'] ?? null),
+                Shape::text($category['description'] ?? null),
+                array_values(array_filter(is_array($category['regions'] ?? null) ? $category['regions'] : [], is_string(...))),
+                Shape::text($category['cites'] ?? null),
             );
         }
 

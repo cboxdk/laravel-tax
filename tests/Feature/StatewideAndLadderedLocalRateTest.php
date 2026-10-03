@@ -827,3 +827,19 @@ it('flags every answer in the ZIP when the district layer cannot be read', funct
     expect((string) $rate?->percentage)->toBe('5.5')
         ->and($rate?->limitedBy)->toBe(RateLimit::DistrictNeedsPoint);
 });
+
+it('does not flag an address in a state with no local tax to resolve', function (): void {
+    // Oregon levies no sales tax, state or local. Asked with only the state it came
+    // back clean; asked with an address it went down the address path, found no
+    // boundary file to resolve, and flagged NoLocalResolution — a remedy nobody can act
+    // on, on every sale into Oregon, Delaware, Montana and New Hampshire.
+    ladderRegister()
+        ->rate('us:OR', '0', 'exempt', from: '1990-01-01')
+        ->install();
+
+    $portland = ladderRateFor('US-OR', '97201-1234', TaxClass::GeneralGoods);
+
+    expect((string) $portland?->percentage)->toBe('0')
+        ->and($portland?->limitedBy)->toBeNull()
+        ->and($portland?->confidence)->toBe(Confidence::Authoritative);
+});

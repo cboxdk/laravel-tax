@@ -7,6 +7,19 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **An address in a state with no sales tax was flagged.** Oregon asked with a ZIP —
+  and Delaware, Montana, New Hampshire — went down the address path, found no
+  boundary file to resolve and came back `NoLocalResolution`, a remedy nobody could
+  act on, on every sale there. A state with no local authorities has nothing below the
+  line to resolve, with an address or without. The remedy text no longer names Kansas
+  as if it were the state asked about.
+
+### Added
+
+- `RegisterCategory` carries the register's `description`, `regions` and `cites`.
+
 ## [0.17.1] - 2026-10-03
 
 ### Fixed

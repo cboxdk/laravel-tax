@@ -50,6 +50,8 @@ it('names the release the engine prices with, and its vocabulary', function (): 
     $register = taxRegister();
 
     expect($register->release()?->version)->toBe('2026.09.25-310')
+        ->and($register->categories()[2]->name)->toBe('goods.publications.book')
+        ->and($register->categories()[2]->regions)->toBe([])
         ->and(array_map(fn (RegisterCategory $c): array => [$c->key, $c->parent], $register->categories()))->toBe([
             ['goods', null],
             ['goods.publications', 'goods'],

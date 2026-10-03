@@ -444,6 +444,13 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                     : null;
             }
 
+            // AN ADDRESS IN A STATE WITH NO LOCALS has nothing below the line to resolve
+            // either. Oregon asked with a ZIP came back flagged NoLocalResolution — a
+            // remedy nobody can act on, on every sale into a state with no sales tax.
+            if (! $this->hasLocals($code)) {
+                return null;
+            }
+
             // Nobody resolved the address below the state line. The state share is
             // the honest answer, and saying so is what lets an operator see the gap.
             // A SPLIT ZIP ASKED BARE is a gap of a different kind: the index is

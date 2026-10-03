@@ -190,9 +190,10 @@ enum RateLimit: string
         return match ($this) {
             self::HeadingAmbiguous => 'Supply the line\'s CN code (goods) or CPA code (services) as commodityCode; '
                 .'the source scopes each competing rate to codes, and most codes resolve to exactly one.',
-            self::NoLocalResolution => 'Resolve the address below the state line: sync the state\'s boundary index '
-                .'(`tax:data:sync --state=KS`) so a ZIP+4 expands into its authorities, or bind a '
-                .'LocalAuthorityResolver for a state the register cannot resolve.',
+            self::NoLocalResolution => 'Resolve the address below the state line: sync the boundary index for the '
+                .'state this answer is for (`tax:data:sync`, with that state among `--state` if you limit them) so a '
+                .'ZIP+4 expands into its authorities, or bind a LocalAuthorityResolver for a state the register '
+                .'cannot resolve.',
             self::ItemUnmapped => 'Map the item code to a tax class in your ProductCatalogue. '
                 .'TaxClass::search() finds the class from the words you already use for the product; '
                 .'an empty result means nothing here expresses it, which is itself worth recording.',
