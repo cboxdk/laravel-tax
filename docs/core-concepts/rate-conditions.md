@@ -92,6 +92,20 @@ always counts.
 list of codes and no predicate, nothing says whether the codes name what is carved out
 or what is left in. Rather than pick a direction, the engine leaves it unsettled.
 
+## What an answer is waiting on
+
+Every flagged answer lists the facts that would settle it on
+`$assessment->openFacts`, by the register's names — only those still missing. Ask for
+them on the next form, then assess again with them on `facts`:
+
+```php
+$assessment->limitedBy;   // RateLimit::ConditionsUnevaluated
+$assessment->openFacts;   // ['use.isDomesticOrPersonal']
+```
+
+The same list is filled for a purchaser rule and for a certificate the seller has
+not said it holds (`evidence.holdsExemptionCertificate`).
+
 ## A code settles both ways only when the condition is written in codes
 
 A commodity code answers any condition published as a tariff list, in both

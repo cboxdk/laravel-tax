@@ -172,7 +172,8 @@ it('taxes the charity until the seller holds its certificate', function (): void
     expect($sale->treatment)->toBe(TaxTreatment::Standard)
         ->and((string) $sale->tax->getAmount())->toBe('6.25')
         ->and($sale->limitedBy)->toBe(RateLimit::ExemptionCertificateMissing)
-        ->and($sale->reason)->toContain('certificate 01-339');
+        ->and($sale->reason)->toContain('certificate 01-339')
+        ->and($sale->openFacts)->toBe(['evidence.holdsExemptionCertificate']);
 });
 
 it('says which facts would settle the rule, and taxes meanwhile', function (): void {
@@ -181,6 +182,9 @@ it('says which facts would settle the rule, and taxes meanwhile', function (): v
     expect($sale->treatment)->toBe(TaxTreatment::Standard)
         ->and($sale->limitedBy)->toBe(RateLimit::PurchaserExemptionUnsettled)
         ->and($sale->reason)->toContain('use.relatedToThePurposeOfTheOrganization')
+        // By name, for a form to ask — not only in the reason's words.
+        ->and($sale->openFacts)->toContain('use.relatedToThePurposeOfTheOrganization')
+        ->and($sale->openFacts)->not->toContain('evidence.holdsExemptionCertificate')
         ->and(RateLimit::PurchaserExemptionUnsettled->callerCanClose())->toBeTrue();
 });
 

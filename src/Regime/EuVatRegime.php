@@ -129,6 +129,7 @@ class EuVatRegime extends DestinationTaxRegime
                 $open === [] ? ' — the published rule does not say which supplies it covers' : ': state '.implode(', ', array_values(array_unique($open))),
             ),
             limitedBy: RateLimit::AttributionUnsettled,
+            openFacts: array_values(array_unique($open)),
         );
     }
 

@@ -9,6 +9,12 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Added
 
+- **`TaxAssessment::$openFacts`**: the facts an answer waits on, by the register's
+  names, so a form can ask for them instead of a host parsing the reason. Filled for
+  a rate whose conditions are open (`ConditionsUnevaluated`), a purchaser rule
+  (`PurchaserExemptionUnsettled`), a certificate not yet held
+  (`evidence.holdsExemptionCertificate`) and an unsettled reverse charge
+  (`AttributionUnsettled`). Only what is still missing; a stated fact is not listed.
 - **`RateKind::Increased`**, for a band above the standard rate. The register files
   29 of them — Maine's 8% on prepared food, Connecticut's 7.35% on meals, India's
   40% — and the engine called every one `Reduced`. A host matching on `RateKind`

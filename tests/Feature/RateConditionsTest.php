@@ -540,3 +540,20 @@ it('lets a relief stand when any of the rows that grant it can, whatever order t
     expect((string) $both?->percentage)->toBe('0')
         ->and($both?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
 });
+
+it('names the facts a held-back relief waits on, on the assessment', function (): void {
+    $sale = app(TaxCalculator::class)->assess(new TaxQuery(
+        amount: Money::of('100.00', 'GBP'),
+        pricing: Pricing::Exclusive,
+        place: app(JurisdictionRepository::class)->find(new CountryCode('GB')),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('GB')),
+        categoryKey: 'goods.mobility',
+        suppliedAt: new DateTimeImmutable('2026-10-03'),
+        facts: new DecisionFacts(['recipient.isDisabledPerson' => true]),
+    ));
+
+    expect((string) $sale->tax->getAmount())->toBe('20.00')
+        // Only what is still missing: the buyer's status was stated.
+        ->and($sale->openFacts)->toBe(['use.isDomesticOrPersonal']);
+});

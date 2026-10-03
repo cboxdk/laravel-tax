@@ -28,6 +28,8 @@ use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
+use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\FlatCharge;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\OrderAssessment;
@@ -196,7 +198,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates))))));
+        return $this->withOpenConditions($query, $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates)))))));
     }
 
     /**
@@ -495,6 +497,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return $assessment->with(
                 reason: $assessment->reason.sprintf(' Whether %s relieves a %s purchaser on this supply is not settled%s%s; taxed as anyone would be.', $where, $who, $cited, $why),
                 limitedBy: RateLimit::PurchaserExemptionUnsettled,
+                openFacts: array_values(array_unique([...$assessment->openFacts, ...$open])),
             );
         }
 
@@ -514,6 +517,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
                     $answer->certificateForm === null ? 'an exemption certificate' : 'certificate '.$answer->certificateForm,
                 ),
                 limitedBy: RateLimit::ExemptionCertificateMissing,
+                openFacts: array_values(array_unique([...$assessment->openFacts, 'evidence.holdsExemptionCertificate'])),
             );
         }
 
@@ -604,5 +608,31 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             reportedOn: $assessment->reportedOn,
             mentions: [...$more, ...$certificate],
         );
+    }
+
+    /**
+     * The facts a rate's open conditions wait on, onto the assessment, so a form can
+     * ask for them by name rather than a host parsing the reason. Asked of the
+     * register's own rate source, which is the one that reads conditions; a host's
+     * own source leaves the list as it was.
+     */
+    private function withOpenConditions(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        if (! $this->rates instanceof RegisterRateSource || $assessment->rate?->limitedBy !== RateLimit::ConditionsUnevaluated) {
+            return $assessment;
+        }
+
+        $facts = $query->establishedFacts();
+        $open = [];
+
+        foreach ($this->rates->withFacts($facts)->unsettledConditions($assessment->placeOfSupply, $query->categoryKey ?? CategoryMap::keyFor($query->category), $query->commodityCode, $query->on()) as $condition) {
+            foreach ($condition->facts as $fact) {
+                if (! $facts->has($fact)) {
+                    $open[] = $fact;
+                }
+            }
+        }
+
+        return $open === [] ? $assessment : $assessment->with(openFacts: array_values(array_unique([...$assessment->openFacts, ...$open])));
     }
 }

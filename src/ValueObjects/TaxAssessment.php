@@ -99,6 +99,17 @@ readonly class TaxAssessment
          * settle. `OrderAssessment::needsReview()` reads it beside every rate's.
          */
         public ?RateLimit $limitedBy = null,
+        /**
+         * The facts this answer waits on, by the register's names — what a form
+         * asks next to settle it: `recipient.establishedInTheState` for a purchaser
+         * rule, `evidence.holdsExemptionCertificate` for a certificate not yet held,
+         * `use.forPersonalUse` for a relief that turns on the buyer. Empty where
+         * nothing the caller could state would change the answer. The reason says
+         * the same in words.
+         *
+         * @var list<string>
+         */
+        public array $openFacts = [],
     ) {}
 
     /**
@@ -129,6 +140,7 @@ readonly class TaxAssessment
      * @param  list<InvoiceMention>|null  $mentions
      * @param  list<FlatCharge>|null  $charges
      * @param  list<TaxAssessment>|null  $portions
+     * @param  list<string>|null  $openFacts
      */
     public function with(
         ?TaxTreatment $treatment = null,
@@ -151,6 +163,7 @@ readonly class TaxAssessment
         ?Money $taxableBase = null,
         ?ExchangeRate $exchangeRate = null,
         ?RateLimit $limitedBy = null,
+        ?array $openFacts = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -172,6 +185,7 @@ readonly class TaxAssessment
             taxableBase: $taxableBase ?? $this->taxableBase,
             exchangeRate: $exchangeRate ?? $this->exchangeRate,
             limitedBy: $limitedBy ?? $this->limitedBy,
+            openFacts: $openFacts ?? $this->openFacts,
         );
     }
 
