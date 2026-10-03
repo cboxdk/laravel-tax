@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.5] - 2026-10-03
+
 ### Added
 
 - **A testing seam for the geocoder.** `InteractsWithTax::fakeGeocodio($answer)` binds
