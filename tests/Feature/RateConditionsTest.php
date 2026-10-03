@@ -99,6 +99,17 @@ beforeEach(function (): void {
         ]]])
         ->fact('product.isLiveAnimalOfAKindYieldingHumanFood', 'Is this a live animal of a kind generally used as, or yielding or producing, food for human consumption?')
         ->fact('recipient.isCharityServingDisabledPersons', 'Is the buyer a charity providing care for disabled people?', subject: 'recipient')
+        // A relief that turns on the BUYER: zero-rated only for a disabled person's
+        // own use, on a declaration the seller holds.
+        ->category('goods.mobility', 'goods')
+        ->rate('europe:GB', '0', 'zero', 'goods.mobility', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'recipient_is',
+            'says' => 'supplied to a handicapped person for domestic or personal use',
+            'predicate' => ['all' => [
+                ['fact' => 'recipient.isDisabledPerson', 'op' => 'eq', 'value' => true],
+                ['fact' => 'use.isDomesticOrPersonal', 'op' => 'eq', 'value' => true],
+            ]],
+        ]]])
         ->category('goods.medical_equipment', 'goods')
         ->rate('europe:GB', '5', 'reduced', 'goods.medical_equipment', from: '1990-01-01', extra: ['conditions' => [[
             'kind' => 'excludes',
@@ -438,4 +449,34 @@ it('keeps a rate\'s own gap when the address also stopped at the state line', fu
     expect($source->rateForKey($hi, 'services.financial')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
         // Nothing else open: the locality is the gap, and it is still named.
         ->and($source->rateFor($hi, TaxClass::GeneralGoods)?->limitedBy)->toBe(RateLimit::NoLocalResolution);
+});
+
+it('charges the general rate until a relief that turns on the buyer is shown to apply', function (): void {
+    // A category can say what the product is; it cannot say who is buying it or what
+    // for. Zero-rated mobility aids are for a disabled person's own use, and a seller
+    // who has not been told so charges the standard rate — flagged with the facts that
+    // would settle it — as Avalara and Stripe treat an exemption by entity or use.
+    $unknown = gbRate('goods.mobility');
+    $shown = gbRate('goods.mobility', facts: ['recipient.isDisabledPerson' => true, 'use.isDomesticOrPersonal' => true]);
+    $refuted = gbRate('goods.mobility', facts: ['recipient.isDisabledPerson' => false]);
+
+    expect((string) $unknown?->percentage)->toBe('20')
+        ->and($unknown?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and((string) $shown?->percentage)->toBe('0')
+        ->and($shown?->limitedBy)->toBeNull()
+        ->and((string) $refuted?->percentage)->toBe('20')
+        ->and($refuted?->limitedBy)->toBeNull();
+
+    $open = new RegisterRateSource(app(RegisterDataset::class))
+        ->unsettledConditions(app(JurisdictionRepository::class)->find(new CountryCode('GB')), 'goods.mobility');
+
+    expect($open[0]->facts)->toBe(['recipient.isDisabledPerson', 'use.isDomesticOrPersonal']);
+});
+
+it('keeps a relief whose open conditions only describe the product the category already claims', function (): void {
+    // Filed under the category, the product is claimed to be what the category says;
+    // a condition restating that scope does not move the rate. Charging the general
+    // rate until it was answered would have put German groceries at 19%.
+    expect((string) gbRate('goods.plants')?->percentage)->toBe('0')
+        ->and(gbRate('goods.plants')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
 });

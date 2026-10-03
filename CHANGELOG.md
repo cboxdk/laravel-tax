@@ -7,6 +7,26 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Changed
+
+- **A relief that turns on the buyer applies only once it is shown.** A rate whose
+  open condition asks who is buying, what for, or what evidence the seller holds
+  (`recipient.…`, `use.…`, `evidence.…`) no longer applies on an unknown: the general
+  rate does, flagged `ConditionsUnevaluated` with the facts that would settle it — the
+  way Avalara and Stripe treat an exemption by entity or use. The United Kingdom's
+  zero rate on mobility aids for a disabled person's own use now charges 20% until
+  that is stated. Conditions that describe the product keep the rate, flagged, as
+  before: the category is the seller's claim about what it sells. Against release
+  343 this moves 100 of 60 242 category answers and no grocery, book or exempt EU
+  service.
+
+### Fixed
+
+- **A rate limit ended a sync part-way.** The register allows 120 requests a minute
+  per address, shared by every sync from it — several servers deploying at once, a
+  deploy and its scheduler. A 429 threw and left that sync unfinished. A 429 or 503 is
+  now waited out as `Retry-After` asks, up to a minute a time and four tries a request.
+
 ## [0.17.5] - 2026-10-03
 
 ### Added

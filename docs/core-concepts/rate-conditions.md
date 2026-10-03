@@ -58,12 +58,25 @@ how the predicate is read.
 | --- | --- |
 | **all true** | applies |
 | **any false** | does **not** apply |
-| otherwise — something unknown | applies, **flagged** (an exclusion at the exact category is left unflagged, below) |
+| otherwise — something unknown about the **product** | applies, **flagged** (an exclusion at the exact category is left unflagged, below) |
+| otherwise — something unknown about the **buyer, its use or the evidence held** | the **general rate**, flagged, until it is stated |
 
 A rate that does not apply is not a candidate at all: the engine carries on to the
 answer that does, which is usually the standard rate. So fertiliser with its code
 comes back 20%, authoritative; fertiliser with no code comes back 0%, flagged
 `RateLimit::ConditionsUnevaluated`, and `OrderAssessment::needsReview()` catches it.
+
+**Why the buyer is proved and the product is not.** Filing a product under a category
+is the seller's claim about what it is: under basic food it is food, and a condition
+that restates the category's scope — not confectionery, for human consumption — is
+covered by that claim. What no category can claim is who is buying, what for, and
+what the seller can show: the United Kingdom zero-rates mobility aids only for a
+disabled person's own use, on a declaration the seller holds. A relief like that is
+the buyer's to show, as Avalara and Stripe treat an exemption by entity or use, so
+until `recipient.…`, `use.…` and `evidence.…` facts settle it the general rate applies,
+flagged with exactly those facts. An exclusion is never held back this way. Measured
+against release 343, this moves 100 of 60 242 category answers, and no grocery, book
+or exempt EU service.
 
 **Why an unknown exclusion at the exact category is not flagged.** Ireland zero-rates
 books "but excluding newspapers". Asked about a book, that exclusion is about

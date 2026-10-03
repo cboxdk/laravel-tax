@@ -111,6 +111,39 @@ class RateConditions
     }
 
     /**
+     * Whether an open condition is one the relief must PROVE before it applies.
+     *
+     * A product's category is the seller's claim about what it sells: filed under
+     * basic food, it is food, and the conditions that describe food — not
+     * confectionery, for human consumption — are the category's scope, which the
+     * claim already covers. Charging the general rate until each was answered put
+     * German groceries at 19% and every EU financial service at the standard rate.
+     *
+     * What no category can claim is who is buying, what they will use it for, and
+     * what evidence the seller holds — a farmer's purchase of feed, a charity's of
+     * equipment, an export the seller can document. A relief that turns on those is
+     * the buyer's to show, as Avalara and Stripe treat an exemption by entity or use,
+     * and until it is shown the general rate applies. An exclusion is never one: left
+     * open, it is usually not about this sale at all.
+     */
+    public static function needsProof(UnsettledCondition $condition, DecisionFacts $facts): bool
+    {
+        if ($condition->kind === 'excludes') {
+            return false;
+        }
+
+        if ($condition->facts === []) {
+            return in_array($condition->kind, ['recipient_is', 'use_is', 'supplier_must_prove'], true);
+        }
+
+        return array_any(
+            $condition->facts,
+            static fn (string $fact): bool => ! $facts->has($fact)
+                && in_array(strstr($fact, '.', true), ['recipient', 'use', 'evidence'], true),
+        );
+    }
+
+    /**
      * The facts a commodity code settles on its own: its CN code and the six-digit HS
      * heading every tariff in the world shares. A seller who classified a product for
      * customs has already answered every condition the register writes in codes.

@@ -88,7 +88,7 @@ readonly class RateResolver
 
             if ($byCode !== null) {
                 // A code is narrower than any category: the rung it answers is exact.
-                return $this->settled($byCode, $facts, exactRung: true);
+                return $this->settled($byCode, $facts, true, $live);
             }
         }
 
@@ -125,7 +125,7 @@ readonly class RateResolver
             ));
 
             if (count($bare) === 1) {
-                return $this->settled(['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category);
+                return $this->settled(['rate' => $bare[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
             }
 
             $distinct = $this->distinct($atRung);
@@ -139,7 +139,7 @@ readonly class RateResolver
                 // nobody reads. Only a SHORTENED COMMODITY CODE is an inference,
                 // because there the register demonstrably disagrees with itself
                 // between one length and the next.
-                return $this->settled(['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category);
+                return $this->settled(['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
             }
 
             // More than one live answer at the rung the item actually is. Climbing
@@ -147,12 +147,12 @@ readonly class RateResolver
             // rate, flagged — the caller closes this by supplying a commodity code.
             $standard = $this->standard($live);
 
-            return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false], $facts, false);
+            return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false], $facts, false, $live);
         }
 
         $standard = $this->standard($live);
 
-        return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, false);
+        return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, false, $live);
     }
 
     /**
@@ -166,17 +166,52 @@ readonly class RateResolver
      * fertiliser there got 0%, authoritative. An exclusion at the exact rung is still
      * left alone — see {@see RateConditions::worthFlagging()}.
      *
+     * A RELIEF THAT TURNS ON THE BUYER IS PROVED, NOT PRESUMED. Where an open
+     * condition asks who is buying, what for, or what evidence the seller holds, the
+     * general rate is the answer until the facts are stated, flagged with what would
+     * settle it — see {@see RateConditions::needsProof()}. A condition describing the
+     * product is the category's own scope and keeps the rate, flagged, as before.
+     *
      * @param  array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string}  $answer
+     * @param  list<array<string, mixed>>  $live
      * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled: list<UnsettledCondition>}
      */
-    private function settled(array $answer, DecisionFacts $facts, bool $exactRung): array
+    private function settled(array $answer, DecisionFacts $facts, bool $exactRung, array $live): array
     {
         $unsettled = array_values(array_filter(
             RateConditions::verdict($answer['rate'], $facts)['unsettled'],
             static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung, $facts),
         ));
 
+        if (array_any($unsettled, static fn (UnsettledCondition $condition): bool => RateConditions::needsProof($condition, $facts))) {
+            $general = $this->standard($live);
+
+            if ($general !== null && ! $this->sameFigure($general, $answer['rate'])) {
+                return ['rate' => $general, 'inferred' => $answer['inferred'], 'ambiguous' => $answer['ambiguous'], 'narrowed' => true, 'unsettled' => $unsettled];
+            }
+        }
+
         return [...$answer, 'narrowed' => $unsettled !== [], 'unsettled' => $unsettled];
+    }
+
+    /**
+     * Whether a row charges what the general rate does — a category the source only
+     * called taxable, copied at the general rate. Keeping it on an unknown condition
+     * moves nothing.
+     *
+     * @param  array<string, mixed>  $general
+     * @param  array<string, mixed>  $rate
+     */
+    private function sameFigure(array $general, array $rate): bool
+    {
+        if (($rate['atGeneralRate'] ?? false) === true) {
+            return true;
+        }
+
+        $a = $general['percentage'] ?? null;
+        $b = $rate['percentage'] ?? null;
+
+        return is_numeric($a) && is_numeric($b) && (float) $a === (float) $b && ($rate['basis'] ?? 'ad_valorem') === ($general['basis'] ?? 'ad_valorem');
     }
 
     /**
