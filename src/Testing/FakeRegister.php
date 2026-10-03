@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Testing;
 
 use Cbox\Tax\Catalogue\CatalogueAudit;
+use Cbox\Tax\Register\Compile\GeometryIndex;
 use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardWriter;
 use Cbox\Tax\Register\Store\StoreLayout;
@@ -339,6 +340,8 @@ class FakeRegister
 
         foreach ($this->geometries as $state => $collection) {
             $this->put($directory, 'boundaries/'.$state.'.geo.json', $collection);
+            // Indexed as a sync indexes it, so a test reads polygons the way production does.
+            GeometryIndex::write($directory.'/boundaries', $state);
         }
 
         foreach ($this->overlays as $state => $collection) {

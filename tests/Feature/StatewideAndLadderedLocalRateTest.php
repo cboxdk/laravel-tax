@@ -843,3 +843,28 @@ it('does not flag an address in a state with no local tax to resolve', function 
         ->and($portland?->limitedBy)->toBeNull()
         ->and($portland?->confidence)->toBe(Confidence::Authoritative);
 });
+
+it('reads polygons by feature for a point, and none for a ZIP', function (): void {
+    // Texas's layer is 8.4 MB of GeoJSON, some 236 MB decoded, and every lookup read
+    // it whole — a ZIP-only one included. With the whole file gone, a point still
+    // resolves from the per-feature shard; with the shard gone too, a ZIP lookup
+    // never notices.
+    $root = ladderRegister()
+        ->rate('us:TX', '6.25')
+        ->rate('us:TX:CITY-2227001', '1', 'local_component')
+        ->geometry('TX', [
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:CITY-2227001', 'level' => 'city'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-97.75, 30.27, 0.1)]],
+            ['type' => 'Feature', 'properties' => ['authority' => 'us:TX:CITY-9999999', 'level' => 'city'], 'geometry' => ['type' => 'Polygon', 'coordinates' => square(-95.36, 29.76, 0.1)]],
+        ])
+        ->install();
+
+    $boundaries = ladderStore().'/versions/'.$root.'/boundaries';
+    unlink($boundaries.'/TX.geo.json');
+
+    expect((string) pointRateFor('US-TX', 30.27, -97.75)?->percentage)->toBe('7.25');
+
+    unlink($boundaries.'/TX.geo');
+    unlink($boundaries.'/TX.geo.idx');
+
+    expect(ladderRateFor('US-TX', '78701', TaxClass::GeneralGoods))->not->toBeNull();
+});

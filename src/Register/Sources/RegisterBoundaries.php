@@ -55,6 +55,12 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
     private array $streetShards = [];
 
     /** @var array<string, ShardReader> */
+    private array $geometryShards = [];
+
+    /** @var array<string, array{formatVersion: mixed, boxes: list<array{float, float, float, float, string}>}|null> */
+    private array $geometryBoxes = [];
+
+    /** @var array<string, ShardReader> */
     private array $postalShards = [];
 
     /** @var array<string, array<string, mixed>|null> */
@@ -398,7 +404,10 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
     public function resolveParsed(string $state, ParsedAddress $address): ?array
     {
         try {
-            $assignment = $this->resolver->resolve($address, $this->postal($state, $address->zip5), $this->geometry($state));
+            // Polygons answer a POINT. A ZIP-only lookup never reads them, and Texas's
+            // layer is 8.4 MB of GeoJSON.
+            $geometry = $address->point === null ? null : $this->geometry($state, $address->point);
+            $assignment = $this->resolver->resolve($address, $this->postal($state, $address->zip5), $geometry);
         } catch (UnsupportedFormatVersion|InvalidArgumentException) {
             // The store holds an artifact this resolver cannot read — a format it does
             // not implement, or a geometry `replaces` that is not a list of codes.
@@ -896,11 +905,60 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
         ];
     }
 
-    private function geometry(string $state): ?Geometry
+    /**
+     * The features whose ground could hold the point, read from the per-feature shard
+     * through its index of bounding boxes — a point lookup decodes a handful of
+     * polygons, not a state's layer. A store compiled before the index falls back to
+     * the whole file.
+     */
+    private function geometry(string $state, Point $point): ?Geometry
     {
-        $json = $this->read($state.'.geo.json');
+        $boxes = $this->boxes($state);
 
-        return $json === null ? null : Geometry::fromFeatureCollection($json);
+        if ($boxes === null) {
+            $json = $this->read($state.'.geo.json');
+
+            return $json === null ? null : Geometry::fromFeatureCollection($json);
+        }
+
+        $shard = $this->geometryShards[$state] ??= new ShardReader($this->layout->file($this->version, 'boundaries/'.$state.'.geo'));
+        $features = [];
+
+        foreach ($boxes['boxes'] as [$minLng, $minLat, $maxLng, $maxLat, $key]) {
+            if ($point->lng >= $minLng && $point->lng <= $maxLng && $point->lat >= $minLat && $point->lat <= $maxLat) {
+                array_push($features, ...$shard->read($key));
+            }
+        }
+
+        return Geometry::fromFeatureCollection(['formatVersion' => $boxes['formatVersion'], 'features' => $features]);
+    }
+
+    /**
+     * A state's bounding-box index, read once.
+     *
+     * @return array{formatVersion: mixed, boxes: list<array{float, float, float, float, string}>}|null
+     */
+    private function boxes(string $state): ?array
+    {
+        if (array_key_exists($state, $this->geometryBoxes)) {
+            return $this->geometryBoxes[$state];
+        }
+
+        $json = $this->read($state.'.geo.boxes.json');
+
+        if ($json === null || ! is_array($json['boxes'] ?? null)) {
+            return $this->geometryBoxes[$state] = null;
+        }
+
+        $boxes = [];
+
+        foreach ($json['boxes'] as $box) {
+            if (is_array($box) && count($box) === 5 && is_numeric($box[0]) && is_numeric($box[1]) && is_numeric($box[2]) && is_numeric($box[3]) && is_string($box[4])) {
+                $boxes[] = [(float) $box[0], (float) $box[1], (float) $box[2], (float) $box[3], $box[4]];
+            }
+        }
+
+        return $this->geometryBoxes[$state] = ['formatVersion' => $json['formatVersion'] ?? null, 'boxes' => $boxes];
     }
 
     /**

@@ -291,6 +291,7 @@ readonly class Compiler
             }
 
             if ($this->boundaryArtifact($artifacts, 'geometry', $partial, $base, $state, 'geo')) {
+                GeometryIndex::write($partial.'/boundaries', $state);
                 $geo++;
             }
 

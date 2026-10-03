@@ -7,6 +7,17 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A Texas lookup decoded the whole state's polygons, past a 128 MB memory limit.**
+  Every lookup read and decoded the state's polygon layer — 8.4 MB of GeoJSON for
+  Texas, some 236 MB as PHP arrays, 98 ms — including a ZIP-only lookup that never uses
+  it. A ZIP lookup now reads no polygons at all (7 MB, 8 ms on release 339). A sync
+  splits each polygon layer by feature with an index of bounding boxes, and a point
+  lookup decodes only the features whose box holds the point (13 MB, 9 ms in Austin).
+  **Re-run `php artisan tax:data:sync` after upgrading**: a store compiled before
+  this has no index, and its point lookups still read the whole file.
+
 ## [0.17.2] - 2026-10-03
 
 ### Fixed
