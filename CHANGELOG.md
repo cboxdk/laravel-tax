@@ -23,6 +23,12 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **Several rows granting one relief were read as the first one.** Maryland exempts
+  residential electricity three ways at one rung, and only the first row's
+  conditions were asked, so whether the relief was held back depended on the order
+  the register listed them. The relief now stands if any agreeing row can — one that
+  holds, else one open only on the seller's side — and is held back only when every
+  one waits on the buyer.
 - **A purchaser rule asked the caller whether a supply was goods or a service.** The
   register's EU purchaser rules (Germany's UStG § 4 Nr. 7, France's CGI 262-00 bis)
   ask `supply.isGoods` and `supply.isService`, which the line's category already

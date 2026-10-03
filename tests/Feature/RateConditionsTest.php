@@ -503,3 +503,30 @@ it('keeps an increased rate whose condition turns on the buyer, rather than coll
         ->and($room?->kind)->toBe(RateKind::Increased)
         ->and($room?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
 });
+
+it('lets a relief stand when any of the rows that grant it can, whatever order they are listed in', function (): void {
+    // Maryland exempts residential electricity three ways at one rung. Only the first
+    // row was read, so a buyer-side row listed first held back a relief a seller-side
+    // row grants outright.
+    $root = config('tax.register.store').'/maryland';
+    FakeRegister::at($root)
+        ->category('goods')->category('goods.energy', 'goods')->category('goods.energy.electricity', 'goods.energy')
+        ->rate('us:MD', '6', from: '1990-01-01')
+        ->rate('us:MD', '0', 'exempt', 'goods.energy.electricity', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'use_is', 'says' => 'for use in a residential condominium',
+            'predicate' => ['fact' => 'use.inResidentialCondominium', 'op' => 'eq', 'value' => true],
+        ]]])
+        ->rate('us:MD', '0', 'exempt', 'goods.energy.electricity', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'use_is', 'says' => 'under a residential rate schedule on file with the Public Service Commission',
+            'predicate' => ['fact' => 'supply.underResidentialRateScheduleOnFileWithPublicServiceCommission', 'op' => 'eq', 'value' => true],
+        ]]])
+        ->install();
+    config()->set('tax.register.store', $root);
+    app()->forgetInstance(RegisterDataset::class);
+
+    $both = new RegisterRateSource(app(RegisterDataset::class))
+        ->rateForKey(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-MD')), 'goods.energy.electricity');
+
+    expect((string) $both?->percentage)->toBe('0')
+        ->and($both?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated);
+});

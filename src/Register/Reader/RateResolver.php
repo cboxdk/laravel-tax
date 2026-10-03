@@ -139,7 +139,7 @@ readonly class RateResolver
                 // nobody reads. Only a SHORTENED COMMODITY CODE is an inference,
                 // because there the register demonstrably disagrees with itself
                 // between one length and the next.
-                return $this->settled(['rate' => $atRung[0], 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
+                return $this->settled(['rate' => $this->strongest($atRung, $facts, $rung === $category), 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
             }
 
             // More than one live answer at the rung the item actually is. Climbing
@@ -193,6 +193,43 @@ readonly class RateResolver
         }
 
         return [...$answer, 'narrowed' => $unsettled !== [], 'unsettled' => $unsettled];
+    }
+
+    /**
+     * Of several rows that agree on the figure, the one that stands best.
+     *
+     * Maryland exempts residential electricity three ways at one rung: on a
+     * residential rate schedule (the seller's to state), to a residential
+     * condominium (the buyer's to show), and from home solar or wind. Only the first
+     * row was read, so whether the relief was held back came down to the order the
+     * register listed them in. The relief stands if ANY of them can: one whose
+     * conditions all hold, else one whose open conditions are the seller's to state;
+     * only where every row waits on the buyer is it held back.
+     *
+     * @param  non-empty-list<array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    private function strongest(array $rows, DecisionFacts $facts, bool $exactRung): array
+    {
+        $best = $rows[0];
+        $bestRank = PHP_INT_MAX;
+
+        foreach ($rows as $row) {
+            $verdict = RateConditions::verdict($row, $facts);
+            $open = array_filter($verdict['unsettled'], static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung, $facts));
+
+            $rank = match (true) {
+                $open === [] => 0,
+                ! array_any($open, static fn (UnsettledCondition $condition): bool => RateConditions::needsProof($condition, $facts)) => 1,
+                default => 2,
+            };
+
+            if ($rank < $bestRank) {
+                [$best, $bestRank] = [$row, $rank];
+            }
+        }
+
+        return $best;
     }
 
     /**
