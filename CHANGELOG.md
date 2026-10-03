@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-10-03
+
 ### Fixed
 
 - **An address in a state with no sales tax was flagged.** Oregon asked with a ZIP —
