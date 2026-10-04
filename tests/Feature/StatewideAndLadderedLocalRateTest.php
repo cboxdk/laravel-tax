@@ -229,6 +229,34 @@ it('adds a local share on an open condition only beside the relief it belongs to
         ->and((string) $prepared(['seller.isPresumedImmediateConsumptionFoodVendorInVirginia' => true])?->percentage)->toBe('5.3');
 });
 
+it('takes the row that stands on presumption over one waiting on a qualifying fact', function (): void {
+    // Massachusetts exempts candy unless sold as a meal, and taxes it only as a meal.
+    // An open exclusion is presumed to be about another sale, so the exemption is the
+    // answer for a bag of sweets; the meal row waits on its fact.
+    ladderRegister()
+        ->category('goods')->category('goods.food', 'goods')->category('goods.food.candy', 'goods.food')
+        ->rate('us:MA', '6.25')
+        ->rate('us:MA', '0', 'exempt', 'goods.food.candy', extra: ['conditions' => [[
+            'kind' => 'excludes', 'says' => 'not sold as a meal',
+            'predicate' => ['not' => ['fact' => 'supply.isSoldAsMeal', 'op' => 'eq', 'value' => true]],
+        ]]])
+        ->rate('us:MA', '6.25', category: 'goods.food.candy', extra: ['atGeneralRate' => true, 'conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'sold as a meal',
+            'predicate' => ['fact' => 'supply.isSoldAsMeal', 'op' => 'eq', 'value' => true],
+        ]]])
+        ->install();
+
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $ma = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-MA'));
+    $candy = fn (array $facts): ?TaxRate => new RegisterRateSource($dataset, new RateResolver)
+        ->withFacts(new DecisionFacts($facts))->rateForKey($ma, 'goods.food.candy');
+
+    expect((string) $candy([])?->percentage)->toBe('0')
+        ->and($candy([])?->limitedBy)->toBeNull()
+        ->and((string) $candy(['supply.isSoldAsMeal' => true])?->percentage)->toBe('6.25');
+});
+
 it('adds the statewide share on top of a resolved stack too', function (): void {
     ladderRegister()
         ->rate('us:VA', '5.3')

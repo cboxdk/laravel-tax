@@ -9,6 +9,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **A row standing on presumption lost to one waiting on a qualifying fact.**
+  Massachusetts exempts candy unless sold as a meal and taxes it only as a meal; with
+  nothing said, both rows were open and the disagreement charged the general rate on a
+  bag of sweets. An open exclusion is presumed to be about another sale, so where
+  exactly one figure among a category's own rows stands on that presumption, it is the
+  answer; rows open on qualifying conditions on both sides still answer the general
+  rate, flagged. Rows scoped to a tariff code take no part without a code. On release
+  366 this moves six answers: Kentucky medical services to 0, Vietnamese books to 5%,
+  Tajik education to 5%, and three Hawaii answers lose a needless flag.
 - **A relief's local half was added to the general rate.** Virginia files prepared
   food twice on the same open facts — exempt from the state share with a 1% local
   share in its place if it is SNAP food from a grocery, at the general rate if it is a

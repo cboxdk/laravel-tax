@@ -142,6 +142,20 @@ readonly class RateResolver
                 return $this->settled(['rate' => $this->strongest($atRung, $facts, $rung === $category), 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
             }
 
+            // ONE ROW THAT STANDS ON PRESUMPTION. Massachusetts exempts candy unless
+            // it is sold as a meal, and taxes it at the general rate only as a meal.
+            // An exclusion left open is presumed not to bite — it is usually about
+            // some other sale — so the exemption stands as the answer and the meal
+            // row, waiting on a qualifying fact, does not; reading them as two equal
+            // answers charged 6.25% on a bag of sweets.
+            // Only rows that answer for the category itself: one scoped to a tariff code
+            // answers for that code, and without one it is not this question's answer.
+            $presumed = array_values(array_filter($bare, fn (array $row): bool => $this->standsOnPresumption($row, $facts, $rung === $category)));
+
+            if ($presumed !== [] && count($this->distinct($presumed)) === 1) {
+                return $this->settled(['rate' => $this->strongest($presumed, $facts, $rung === $category), 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
+            }
+
             // More than one live answer at the rung the item actually is. Climbing
             // further would only widen the question, so stop and take the standard
             // rate, flagged — the caller closes this by supplying a commodity code.
@@ -199,6 +213,20 @@ readonly class RateResolver
         }
 
         return [...$answer, 'narrowed' => $unsettled !== [], 'unsettled' => $unsettled];
+    }
+
+    /**
+     * Whether a row applies on what is known plus the presumption every open
+     * exclusion at the asked rung carries: that it is about some other sale.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function standsOnPresumption(array $row, DecisionFacts $facts, bool $exactRung): bool
+    {
+        return ! array_any(
+            RateConditions::verdict($row, $facts)['unsettled'],
+            static fn (UnsettledCondition $condition): bool => RateConditions::worthFlagging($condition, $exactRung, $facts),
+        );
     }
 
     /**
