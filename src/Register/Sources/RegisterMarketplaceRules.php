@@ -33,7 +33,7 @@ readonly class RegisterMarketplaceRules implements MarketplaceRules
     {
         $conditioned = false;
 
-        foreach ($this->dataset->codesForCountry($country->value, $on) as $code) {
+        foreach ($this->codes($country, $on) as $code) {
             foreach ($this->dataset->rulesOn($code, 'marketplace_facilitator', $on) as $rule) {
                 $payload = Shape::map($rule['payload'] ?? null);
 
@@ -50,5 +50,29 @@ readonly class RegisterMarketplaceRules implements MarketplaceRules
         }
 
         return $conditioned ? MarketplaceLiability::Conditioned : MarketplaceLiability::SellerCollects;
+    }
+
+    /**
+     * The member's own code, then the regime it belongs to. Article 14a binds every
+     * member state, and the register can hold it once at the Union (`eu`) rather than
+     * twenty-seven times; read only by member, that rule was invisible and every EU
+     * sale through a platform answered as the seller's to collect.
+     *
+     * @return list<string>
+     */
+    private function codes(CountryCode $country, DateTimeImmutable $on): array
+    {
+        $codes = [];
+
+        foreach ($this->dataset->codesForCountry($country->value, $on) as $code) {
+            $codes[] = $code;
+            $regime = strstr($code, ':', true);
+
+            if ($regime !== false) {
+                $codes[] = $regime;
+            }
+        }
+
+        return array_values(array_unique($codes));
     }
 }

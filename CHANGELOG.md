@@ -22,6 +22,9 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **A Union-wide marketplace rule was invisible.** `marketplace_facilitator` was read
+  member state by member state, so Article 14a held once at the Union (`eu`) reached
+  no EU sale. The member's own rule is read first, then the regime's.
 - **A local rate's conditions were ignored.** Where a locality files more than one
   rate on a condition — Illinois' Metro East districts publish a higher combined rate
   for a retailer liable for the district tax and a lower one for a retailer who is

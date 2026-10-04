@@ -8,10 +8,15 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
+use Cbox\Tax\Enums\MarketplaceLiability;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
+use Cbox\Tax\Register\Store\StoreLayout;
+use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\OssStatus;
 use Cbox\Tax\ValueObjects\SellerRegistration;
@@ -186,4 +191,23 @@ it('does not read a scheme registration outside its window', function (): void {
     ));
 
     expect($a->treatment)->toBe(TaxTreatment::NotRegistered);
+});
+
+it('reads a Union-wide marketplace rule for every member state', function (): void {
+    // Article 14a binds every member state, and the register can hold it once at the
+    // Union. Read only member by member, that rule was invisible: a German sale through
+    // a platform answered as the seller's to collect, unflagged.
+    $root = config('tax.register.store').'/union-marketplace';
+    FakeRegister::at($root)
+        ->rate('eu:DE', '19', from: '1990-01-01')
+        ->rule('eu', 'marketplace_facilitator', ['platformOwes' => true, 'conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'Article 14a', 'names' => 'an imported consignment worth at most EUR 150',
+            'predicate' => ['fact' => 'consignment.intrinsicValueEur', 'op' => 'at_most', 'value' => '150'],
+        ]]], '2021-07-01')
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $rules = new RegisterMarketplaceRules(new RegisterDataset($layout, new StorePointer($layout)));
+
+    expect($rules->liability(new CountryCode('DE'), new DateTimeImmutable('2026-10-04')))->toBe(MarketplaceLiability::Conditioned);
 });
