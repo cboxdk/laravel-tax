@@ -68,7 +68,7 @@ class RateConditions
             }
 
             if ($truth === null) {
-                $unsettled[] = self::describe($kind, $condition);
+                $unsettled[] = self::describe($kind, $condition, $facts);
             }
         }
 
@@ -133,15 +133,11 @@ class RateConditions
             return false;
         }
 
-        if ($condition->facts === []) {
-            return in_array($condition->kind, ['recipient_is', 'use_is', 'supplier_must_prove'], true);
+        if ($condition->awaitsBuyer !== null) {
+            return $condition->awaitsBuyer;
         }
 
-        return array_any(
-            $condition->facts,
-            static fn (string $fact): bool => ! $facts->has($fact)
-                && in_array(strstr($fact, '.', true), ['recipient', 'use', 'evidence'], true),
-        );
+        return in_array($condition->kind, ['recipient_is', 'use_is', 'supplier_must_prove'], true);
     }
 
     /**
@@ -222,7 +218,7 @@ class RateConditions
     /**
      * @param  array<string, mixed>  $condition
      */
-    private static function describe(string $kind, array $condition): UnsettledCondition
+    private static function describe(string $kind, array $condition, DecisionFacts $known): UnsettledCondition
     {
         $predicate = $condition['predicate'] ?? null;
         $facts = is_array($predicate) ? Predicate::facts(Shape::map($predicate)) : [];
@@ -236,6 +232,7 @@ class RateConditions
             facts: array_values(array_filter($facts, static fn (string $fact): bool => ! str_starts_with($fact, 'classification.'))),
             settledByCommodityCode: $byCode,
             source: Shape::text($condition['source'] ?? null),
+            awaitsBuyer: is_array($predicate) ? Predicate::awaitsBuyer(Shape::map($predicate), $known) : null,
         );
     }
 }

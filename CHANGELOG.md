@@ -22,6 +22,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **One buyer-side branch held back a relief the seller could claim.** A relief is
+  held back on the buyer only when every way its conditions could still hold needs a
+  buyer fact. Luxembourg exempts medical care by a doctor (the seller's to state) or
+  paramedical care on a prescription (the buyer's), and the prescription branch held
+  back the doctor's exemption. `all` needs each part, so one buyer-side part still
+  holds it; `any` needs one, so a seller-side part is enough. A limb the register
+  could not read decides nothing either way. On release 360 this moves 55 answers,
+  all down to a relief with a path on the seller's side; none goes up.
+  `UnsettledCondition::$awaitsBuyer` carries the reading.
 - **A Union-wide marketplace rule was invisible.** `marketplace_facilitator` was read
   member state by member state, so Article 14a held once at the Union (`eu`) reached
   no EU sale. The member's own rule is read first, then the regime's.

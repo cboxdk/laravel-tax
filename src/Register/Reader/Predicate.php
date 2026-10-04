@@ -73,6 +73,95 @@ class Predicate
         return $names;
     }
 
+    /** Fact namespaces that describe the buyer's side of a sale. */
+    private const array BUYER = ['recipient', 'use', 'evidence'];
+
+    /** A path to true that stands on what the seller can state. */
+    private const int FREE = 0;
+
+    /** A path that needs only limbs the register could not read. */
+    private const int UNREAD = 1;
+
+    /** Every path needs a fact about the buyer. */
+    private const int BUYER_BOUND = 2;
+
+    /** No path: already the opposite of what is wanted. */
+    private const int DEAD = 3;
+
+    /**
+     * Whether every way a predicate that is not yet settled could still come true
+     * needs a fact about the buyer that has not been stated.
+     *
+     * Read through the structure, not a flat list of its facts: `all` needs each part,
+     * so one part waiting on the buyer holds the whole; `any` needs one part, so it
+     * waits on the buyer only if no part stands on the seller's side. A limb the
+     * register could not read decides nothing either way: it offers the seller no path
+     * (Texas exempts gas for residential use or on a limb nobody can read — that waits
+     * on the buyer), and it holds nothing back beside a part the seller can claim.
+     *
+     * @param  array<string, mixed>  $predicate
+     */
+    public static function awaitsBuyer(array $predicate, DecisionFacts $facts): bool
+    {
+        return self::reach($predicate, $facts, true, 0) === self::BUYER_BOUND;
+    }
+
+    /**
+     * @param  array<string, mixed>  $predicate
+     */
+    private static function reach(array $predicate, DecisionFacts $facts, bool $want, int $depth): int
+    {
+        if ($depth > 32 || array_key_exists('unsettled', $predicate)) {
+            return self::UNREAD;
+        }
+
+        $value = self::test($predicate, $facts, $depth);
+
+        if ($value !== null) {
+            return $value === $want ? self::FREE : self::DEAD;
+        }
+
+        if (array_key_exists('not', $predicate)) {
+            return is_array($predicate['not']) ? self::reach(Shape::map($predicate['not']), $facts, ! $want, $depth + 1) : self::UNREAD;
+        }
+
+        foreach (['all', 'any'] as $combinator) {
+            $parts = $predicate[$combinator] ?? null;
+
+            if (! is_array($parts)) {
+                continue;
+            }
+
+            $reached = [];
+
+            foreach ($parts as $part) {
+                $reached[] = is_array($part) ? self::reach(Shape::map($part), $facts, $want, $depth + 1) : self::UNREAD;
+            }
+
+            // Every part must come out as wanted (`all` for true, `any` for false).
+            if (($combinator === 'all') === $want) {
+                return match (true) {
+                    in_array(self::DEAD, $reached, true) => self::DEAD,
+                    in_array(self::BUYER_BOUND, $reached, true) => self::BUYER_BOUND,
+                    in_array(self::FREE, $reached, true) => self::FREE,
+                    default => self::UNREAD,
+                };
+            }
+
+            // One part will do.
+            return match (true) {
+                in_array(self::FREE, $reached, true) => self::FREE,
+                in_array(self::BUYER_BOUND, $reached, true) => self::BUYER_BOUND,
+                in_array(self::UNREAD, $reached, true) => self::UNREAD,
+                default => self::DEAD,
+            };
+        }
+
+        $fact = Shape::text($predicate['fact'] ?? null);
+
+        return $fact !== null && in_array(strstr($fact, '.', true), self::BUYER, true) ? self::BUYER_BOUND : self::FREE;
+    }
+
     /**
      * @param  array<string, mixed>  $predicate
      */

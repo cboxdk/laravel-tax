@@ -557,3 +557,72 @@ it('names the facts a held-back relief waits on, on the assessment', function ()
         // Only what is still missing: the buyer's status was stated.
         ->and($sale->openFacts)->toBe(['use.isDomesticOrPersonal']);
 });
+
+it('holds a relief back only when every way it could hold waits on the buyer', function (): void {
+    // Luxembourg exempts medical care given by a doctor, or paramedical care on a
+    // prescription. The doctor's path is the seller's to claim; holding the relief
+    // because the other path asks for a prescription charged 17% on every doctor.
+    $root = config('tax.register.store').'/luxembourg';
+    FakeRegister::at($root)
+        ->category('goods')->category('services')->category('services.medical', 'services')->category('services.counselling', 'services')
+        ->rate('eu:LU', '17', from: '1990-01-01')
+        ->rate('eu:LU', '0', 'exempt', 'services.medical', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'by a doctor, or paramedical care on a prescription',
+            'predicate' => ['any' => [
+                ['fact' => 'seller.isRegulatedMedicalProfession', 'op' => 'eq', 'value' => true],
+                ['all' => [
+                    ['fact' => 'service.isParamedical', 'op' => 'eq', 'value' => true],
+                    ['fact' => 'evidence.serviceOnMedicalPrescription', 'op' => 'eq', 'value' => true],
+                ]],
+            ]],
+        ]]])
+        // Both: the seller's status AND the buyer's — the buyer's limb holds it.
+        ->rate('eu:LU', '0', 'exempt', 'services.counselling', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'by a recognised body to a person in need',
+            'predicate' => ['all' => [
+                ['fact' => 'seller.isRecognisedBody', 'op' => 'eq', 'value' => true],
+                ['fact' => 'recipient.isInNeed', 'op' => 'eq', 'value' => true],
+            ]],
+        ]]])
+        ->install();
+    config()->set('tax.register.store', $root);
+    app()->forgetInstance(RegisterDataset::class);
+
+    $lu = app(JurisdictionRepository::class)->find(new CountryCode('LU'));
+    $rate = fn (string $key, array $facts = []): ?TaxRate => new RegisterRateSource(app(RegisterDataset::class))
+        ->withFacts(new DecisionFacts($facts))->rateForKey($lu, $key);
+
+    expect((string) $rate('services.medical')?->percentage)->toBe('0')
+        ->and($rate('services.medical')?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        // Told the seller is not a doctor, only the prescription path is left: held.
+        ->and((string) $rate('services.medical', ['seller.isRegulatedMedicalProfession' => false])?->percentage)->toBe('17')
+        ->and((string) $rate('services.counselling')?->percentage)->toBe('17')
+        ->and((string) $rate('services.counselling', ['recipient.isInNeed' => true])?->percentage)->toBe('0');
+});
+
+it('does not let a limb nobody can read stand in for the seller', function (): void {
+    // Texas exempts gas for residential use, or on a limb the register could not
+    // read. Nobody can claim the unread limb, so the relief still waits on the buyer;
+    // beside a limb the seller can claim, it holds nothing back.
+    $root = config('tax.register.store').'/texas';
+    FakeRegister::at($root)
+        ->category('goods')->category('goods.energy', 'goods')->category('goods.energy.gas', 'goods.energy')->category('goods.energy.electricity', 'goods.energy')
+        ->rate('us:TX', '6.25', from: '1990-01-01')
+        ->rate('us:TX', '0', 'exempt', 'goods.energy.gas', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'use_is', 'says' => 'residential use, or as the rule goes on',
+            'predicate' => ['any' => [['fact' => 'use.residential', 'op' => 'eq', 'value' => true], ['unsettled' => ['says' => 'unread']]]],
+        ]]])
+        ->rate('us:TX', '0', 'exempt', 'goods.energy.electricity', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'metered electricity, as the rule goes on',
+            'predicate' => ['all' => [['fact' => 'product.isMeteredElectricity', 'op' => 'eq', 'value' => true], ['unsettled' => ['says' => 'unread']]]],
+        ]]])
+        ->install();
+    config()->set('tax.register.store', $root);
+    app()->forgetInstance(RegisterDataset::class);
+
+    $tx = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-TX'));
+    $source = new RegisterRateSource(app(RegisterDataset::class));
+
+    expect((string) $source->rateForKey($tx, 'goods.energy.gas')?->percentage)->toBe('6.25')
+        ->and((string) $source->rateForKey($tx, 'goods.energy.electricity')?->percentage)->toBe('0');
+});

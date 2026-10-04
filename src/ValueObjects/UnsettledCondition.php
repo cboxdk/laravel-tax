@@ -35,6 +35,15 @@ readonly class UnsettledCondition
          * without this attributes the quote to the wrong statute.
          */
         public ?string $source = null,
+        /**
+         * Whether every way the condition could still hold needs a fact about the
+         * BUYER — who is buying, what for, what evidence of it the seller has. False
+         * where some path stands on what the seller knows: Luxembourg exempts medical
+         * care given by a doctor (the seller's to state) or on a prescription (the
+         * buyer's), and the doctor's path is enough. Null where the condition is
+         * published only as words.
+         */
+        public ?bool $awaitsBuyer = null,
     ) {}
 
     /** Whether anything a seller can supply would settle it. */
