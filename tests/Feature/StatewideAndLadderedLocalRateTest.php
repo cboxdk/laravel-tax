@@ -17,6 +17,7 @@ use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Testing\FakeRegister;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\TaxRate;
 
 /*
@@ -148,6 +149,43 @@ it('lets a total the state files for a category replace its share and every loca
     expect((string) $source->rateForKey($place, 'services.telecom')?->percentage)->toBe('7')
         ->and($source->rateForKey($place, 'services.telecom')?->limitedBy)->toBeNull()
         ->and((string) $source->rateFor($place, TaxClass::GeneralGoods)?->percentage)->toBe('7.25');
+});
+
+it('reads a condition on a local rate, and never takes the lower of two it cannot tell apart', function (): void {
+    // Illinois' Metro East districts publish two combined rates per place: the higher
+    // for a retailer liable for the district tax, the lower for one who is not. The
+    // local read ignored conditions and took whichever row came first.
+    ladderRegister()
+        ->rate('us:IL', '6.25')
+        ->rate('us:IL:COUNTY-119', '9.35', 'combined', extra: ['conditions' => [[
+            'kind' => 'supplier_is', 'says' => 'only if the taxpayer were liable for Metro East District rates',
+            'predicate' => ['fact' => 'seller.liableForMetroEastDistrictTax', 'op' => 'eq', 'value' => true],
+        ]]])
+        ->rate('us:IL:COUNTY-119', '9.1', 'combined', extra: ['conditions' => [[
+            'kind' => 'supplier_is', 'says' => 'only if the taxpayer were liable for Metro East District rates',
+            'predicate' => ['fact' => 'seller.liableForMetroEastDistrictTax', 'op' => 'eq', 'value' => false],
+        ]]])
+        ->boundary('IL', '62234', ['state:17', 'county:119'])
+        ->install();
+
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $place = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-IL'))
+        ->withLocality(new LocalityCode(new SubdivisionCode('US-IL'), LocalityScheme::Zip9->value, '62234-0001'));
+    $rate = fn (array $facts): ?TaxRate => new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
+        ->withFacts(new DecisionFacts($facts))
+        ->rateFor($place, TaxClass::GeneralGoods);
+
+    $unknown = $rate([]);
+    $liable = $rate(['seller.liableForMetroEastDistrictTax' => true]);
+    $notLiable = $rate(['seller.liableForMetroEastDistrictTax' => false]);
+
+    expect((string) $unknown?->percentage)->toBe('9.35')
+        ->and($unknown?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and((string) $liable?->percentage)->toBe('9.35')
+        ->and($liable?->limitedBy)->toBeNull()
+        ->and((string) $notLiable?->percentage)->toBe('9.1')
+        ->and($notLiable?->limitedBy)->toBeNull();
 });
 
 it('adds the statewide share on top of a resolved stack too', function (): void {

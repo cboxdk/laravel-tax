@@ -22,6 +22,12 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **A local rate's conditions were ignored.** Where a locality files more than one
+  rate on a condition — Illinois' Metro East districts publish a higher combined rate
+  for a retailer liable for the district tax and a lower one for a retailer who is
+  not — the engine took whichever row came first. A false condition now removes a
+  local row; rows that still disagree answer the higher, flagged
+  `ConditionsUnevaluated`, never the lower. No answer in release 360 moves.
 - **Several rows granting one relief were read as the first one.** Maryland exempts
   residential electricity three ways at one rung, and only the first row's
   conditions were asked, so whether the relief was held back depended on the order

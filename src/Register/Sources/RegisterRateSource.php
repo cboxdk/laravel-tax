@@ -488,6 +488,8 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         }
 
         $total = BigDecimal::zero();
+        // Whether a local share was chosen on a condition nobody settled.
+        $open = false;
         $components = [];
         $inPlaceOfState = null;
         $replacedState = null;
@@ -501,9 +503,11 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
 
             // The state is IN the set, and it is the one member whose rate is a
             // standard band rather than a local record.
-            $record = $isState
+            $answer = $isState
                 ? null
-                : $this->resolver->local($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at));
+                : $this->resolver->localAnswer($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at), $this->facts);
+            $record = $answer['rate'] ?? null;
+            $open = $open || ($answer['unsettled'] ?? []) !== [];
 
             if ($record === null) {
                 $resolved = $isState
@@ -571,7 +575,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 $all = BigDecimal::of($percentage);
                 $local = $all->minus($state->percentage);
 
-                return new TaxRate(
+                return $this->openIf($open, new TaxRate(
                     $all,
                     $state->kind,
                     self::SOURCE,
@@ -589,7 +593,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                     ],
                     null,
                     $state->provenance,
-                );
+                ));
             }
 
             $components[] = new RateComponent($this->levelOf($authority), $percentage, $authority, $this->nameOf($authority));
@@ -624,7 +628,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $tabled = $state->schedule !== null && $inPlaceOfState === null && $localShares > 0 && count($localTables) === $localShares;
         $approximated = $state->schedule !== null && $inPlaceOfState === null && ! $tabled;
 
-        return new TaxRate(
+        return $this->openIf($open, new TaxRate(
             // 5.3 + 1.7 is seven per cent. Printing it as 7.0 makes a scale artefact
             // of the addition look like a statement about precision.
             $total->strippedOfTrailingZeros(),
@@ -640,7 +644,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $state->provenance,
             // Every share a table: the total is the tables read one by one and added.
             $tabled ? new CombinedTaxTable([$state->schedule, ...$localTables]) : null,
-        );
+        ));
     }
 
     /**
@@ -738,7 +742,8 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             return $rate;
         }
 
-        $record = $this->resolver->local($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($code, $key, $at));
+        $answer = $this->resolver->localAnswer($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($code, $key, $at), $this->facts);
+        $record = $answer['rate'] ?? null;
 
         if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
             return $rate;
@@ -782,7 +787,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         // A table with a share added is no longer the table: priced by the sum, flagged.
         $approximated = $rate->schedule !== null;
 
-        return new TaxRate(
+        return $this->openIf(($answer['unsettled'] ?? []) !== [], new TaxRate(
             $rate->percentage->plus($share)->strippedOfTrailingZeros(),
             $rate->kind,
             self::SOURCE,
@@ -790,7 +795,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             $components,
             $rate->limitedBy ?? ($approximated ? RateLimit::BracketSchedule : null),
             $rate->provenance,
-        );
+        ));
     }
 
     /**
@@ -889,6 +894,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     private function taxedAsGeneralAt(string $state, string $key, ?DateTimeImmutable $at): ?string
     {
         return $key === CategoryMap::FALLBACK ? null : $this->resolver->taxedAsGeneralAt($this->dataset->ratesFor($state), $key, null, $at, $this->facts);
+    }
+
+    /** A rate whose local share was chosen on an open condition, flagged as one. */
+    private function openIf(bool $open, TaxRate $rate): TaxRate
+    {
+        return $open ? $rate->qualifiedBy(RateLimit::ConditionsUnevaluated) : $rate;
     }
 
     private function stateOf(string $code): string

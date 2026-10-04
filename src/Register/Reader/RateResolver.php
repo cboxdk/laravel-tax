@@ -325,8 +325,31 @@ readonly class RateResolver
      */
     public function local(array $rates, ?string $category = null, ?DateTimeImmutable $at = null, ?string $generalFrom = null): ?array
     {
+        return $this->localAnswer($rates, $category, $at, $generalFrom)['rate'] ?? null;
+    }
+
+    /**
+     * {@see self::local()}, with what its conditions left open.
+     *
+     * A LOCAL ROW CAN TURN ON A FACT TOO. Illinois' Metro East districts publish two
+     * combined rates per place — Collinsville 9.35% for a retailer liable for the
+     * district tax, 9.10% for one who is not — and the local read ignored conditions
+     * altogether, so it took whichever row came first. A false condition now removes
+     * a row; where rows at the rung still disagree, the higher is the answer, flagged
+     * with what would settle it, never the lower — the direction a customer can be
+     * refunded from. Rows that agree are one answer.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return array{rate: array<string, mixed>, unsettled: list<UnsettledCondition>}|null
+     */
+    public function localAnswer(array $rates, ?string $category = null, ?DateTimeImmutable $at = null, ?string $generalFrom = null, ?DecisionFacts $facts = null): ?array
+    {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
-        $live = $this->live($rates, $on);
+        $facts ??= new DecisionFacts;
+        $live = array_values(array_filter(
+            $this->live($rates, $on),
+            static fn (array $rate): bool => RateConditions::verdict($rate, $facts)['status'] !== RateConditions::DOES_NOT_APPLY,
+        ));
 
         // THE SAME LADDER `resolve()` CLIMBS, for the same reason. A local record is
         // filed at whatever rung the ordinance names, and that is hardly ever the
@@ -350,9 +373,9 @@ readonly class RateResolver
             $ladder = array_slice($ladder, 0, $cut + 1);
         }
 
-        $best = null;
+        $best = [];
         $bestRung = PHP_INT_MAX;
-        $fallback = null;
+        $fallback = [];
 
         foreach ($live as $rate) {
             if (! in_array($rate['kind'] ?? null, ['local_component', 'combined'], true)) {
@@ -362,20 +385,64 @@ readonly class RateResolver
             $its = $rate['category'] ?? null;
 
             if ($its === null) {
-                $fallback ??= $rate;
+                $fallback[] = $rate;
 
                 continue;
             }
 
             $rung = array_search($its, $ladder, true);
 
-            if ($rung !== false && $rung < $bestRung) {
-                $best = $rate;
-                $bestRung = $rung;
+            if ($rung === false || $rung > $bestRung) {
+                continue;
+            }
+
+            if ($rung < $bestRung) {
+                [$best, $bestRung] = [[], $rung];
+            }
+
+            $best[] = $rate;
+        }
+
+        $rows = $best !== [] ? $best : $fallback;
+
+        if ($rows === []) {
+            return null;
+        }
+
+        $chosen = count($this->distinct($rows)) === 1 ? $this->strongest($rows, $facts, true) : $this->highest($rows);
+        $unsettled = [];
+
+        foreach (count($this->distinct($rows)) === 1 ? [$chosen] : $rows as $row) {
+            foreach (RateConditions::verdict($row, $facts)['unsettled'] as $condition) {
+                if (RateConditions::worthFlagging($condition, true, $facts)) {
+                    $unsettled[] = $condition;
+                }
             }
         }
 
-        return $best ?? $fallback;
+        return ['rate' => $chosen, 'unsettled' => $unsettled];
+    }
+
+    /**
+     * The row charging the most, by percentage; a row with none is never preferred.
+     *
+     * @param  non-empty-list<array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    private function highest(array $rows): array
+    {
+        $best = $rows[0];
+
+        foreach ($rows as $row) {
+            $a = $best['percentage'] ?? null;
+            $b = $row['percentage'] ?? null;
+
+            if (is_numeric($b) && (! is_numeric($a) || (float) $b > (float) $a)) {
+                $best = $row;
+            }
+        }
+
+        return $best;
     }
 
     /**
