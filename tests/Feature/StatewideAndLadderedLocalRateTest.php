@@ -195,6 +195,40 @@ it('reads a condition on a local rate, and never takes the lower of two it canno
     expect(array_merge(...array_map(fn (UnsettledCondition $condition): array => $condition->facts, $open)))->toContain('seller.liableForMetroEastDistrictTax');
 });
 
+it('adds a local share on an open condition only beside the relief it belongs to', function (): void {
+    // Virginia files prepared food twice — exempt with the 1% local share in its
+    // place if it is SNAP food from a grocery, taxed at the general rate if it is a
+    // meal — on the same open facts. Told nothing, the state answers with its general
+    // rate, which already carries the local share; the grocery 1% added on top of it
+    // charged 6.3% on every hot meal.
+    $snap = ['kind' => 'applies_only_to', 'says' => 'SNAP-eligible food', 'predicate' => ['all' => [
+        ['fact' => 'product.isSnapEligibleFoodUnder7Usca2012k1', 'op' => 'eq', 'value' => true],
+        ['fact' => 'seller.isPresumedImmediateConsumptionFoodVendorInVirginia', 'op' => 'eq', 'value' => false],
+    ]]];
+    ladderRegister()
+        ->category('goods')->category('goods.food', 'goods')->category('goods.food.prepared', 'goods.food')
+        ->rate('us:VA', '5.3')
+        ->rate('us:VA', '0', 'exempt', 'goods.food.prepared', extra: ['conditions' => [$snap]])
+        ->rate('us:VA', '1', 'local_component', 'goods.food.prepared', extra: ['conditions' => [$snap]])
+        ->rate('us:VA', '5.3', category: 'goods.food.prepared', extra: ['atGeneralRate' => true, 'conditions' => [[
+            'kind' => 'applies_only_to', 'says' => 'a meal', 'predicate' => ['any' => [
+                ['fact' => 'product.isSnapEligibleFoodUnder7Usca2012k1', 'op' => 'eq', 'value' => false],
+                ['fact' => 'seller.isPresumedImmediateConsumptionFoodVendorInVirginia', 'op' => 'eq', 'value' => true],
+            ]],
+        ]]])
+        ->install();
+
+    $layout = new StoreLayout(ladderStore());
+    $dataset = new RegisterDataset($layout, new StorePointer($layout));
+    $va = app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-VA'));
+    $prepared = fn (array $facts): ?TaxRate => new RegisterRateSource($dataset, new RateResolver)
+        ->withFacts(new DecisionFacts($facts))->rateForKey($va, 'goods.food.prepared');
+
+    expect((string) $prepared([])?->percentage)->toBe('5.3')
+        ->and((string) $prepared(['product.isSnapEligibleFoodUnder7Usca2012k1' => true, 'seller.isPresumedImmediateConsumptionFoodVendorInVirginia' => false])?->percentage)->toBe('1')
+        ->and((string) $prepared(['seller.isPresumedImmediateConsumptionFoodVendorInVirginia' => true])?->percentage)->toBe('5.3');
+});
+
 it('adds the statewide share on top of a resolved stack too', function (): void {
     ladderRegister()
         ->rate('us:VA', '5.3')

@@ -519,7 +519,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             // standard band rather than a local record.
             $answer = $isState
                 ? null
-                : $this->resolver->localAnswer($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at), $this->facts);
+                : $this->resolver->localAnswer($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at), $this->facts, $this->relieves($state));
             $record = $answer['rate'] ?? null;
             $open = $open || ($answer['unsettled'] ?? []) !== [];
 
@@ -756,7 +756,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             return $rate;
         }
 
-        $answer = $this->resolver->localAnswer($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($code, $key, $at), $this->facts);
+        $answer = $this->resolver->localAnswer($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($code, $key, $at), $this->facts, $this->relieves($rate));
         $record = $answer['rate'] ?? null;
 
         if ($record === null || ($record['kind'] ?? null) !== 'local_component') {
@@ -908,6 +908,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     private function taxedAsGeneralAt(string $state, string $key, ?DateTimeImmutable $at): ?string
     {
         return $key === CategoryMap::FALLBACK ? null : $this->resolver->taxedAsGeneralAt($this->dataset->ratesFor($state), $key, null, $at, $this->facts);
+    }
+
+    /** Whether a band answer is a relief — zero, exempt or reduced — rather than the general rate. */
+    private function relieves(TaxRate $band): bool
+    {
+        return $band->kind->isNil() || $band->kind === RateKind::Reduced;
     }
 
     /** A rate whose local share was chosen on an open condition, flagged as one. */

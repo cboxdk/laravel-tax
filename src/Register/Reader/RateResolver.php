@@ -363,13 +363,24 @@ readonly class RateResolver
      * @param  list<array<string, mixed>>  $rates
      * @return array{rate: array<string, mixed>, unsettled: list<UnsettledCondition>}|null
      */
-    public function localAnswer(array $rates, ?string $category = null, ?DateTimeImmutable $at = null, ?string $generalFrom = null, ?DecisionFacts $facts = null): ?array
+    public function localAnswer(array $rates, ?string $category = null, ?DateTimeImmutable $at = null, ?string $generalFrom = null, ?DecisionFacts $facts = null, bool $bandRelieves = true): ?array
     {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
         $facts ??= new DecisionFacts;
+        // A CATEGORY'S LOCAL SHARE ON AN OPEN CONDITION IS THE LOCAL HALF OF A RELIEF.
+        // Virginia exempts SNAP food from its state share and levies 1% locally in its
+        // place, on the same conditions; where the state answers with its general rate
+        // — prepared food it cannot tell from a grocery — that general rate already
+        // carries the local share, and adding the grocery 1% charged 6.3%. Such a row
+        // stands only beside a band that relieves; otherwise the general share does.
         $live = array_values(array_filter(
             $this->live($rates, $on),
-            static fn (array $rate): bool => RateConditions::verdict($rate, $facts)['status'] !== RateConditions::DOES_NOT_APPLY,
+            static function (array $rate) use ($facts, $bandRelieves): bool {
+                $status = RateConditions::verdict($rate, $facts)['status'];
+
+                return $status !== RateConditions::DOES_NOT_APPLY
+                    && ($bandRelieves || $status === RateConditions::APPLIES || ($rate['category'] ?? null) === null);
+            },
         ));
 
         // THE SAME LADDER `resolve()` CLIMBS, for the same reason. A local record is

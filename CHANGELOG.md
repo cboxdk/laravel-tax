@@ -7,6 +7,16 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A relief's local half was added to the general rate.** Virginia files prepared
+  food twice on the same open facts — exempt from the state share with a 1% local
+  share in its place if it is SNAP food from a grocery, at the general rate if it is a
+  meal. Told nothing, the state answers with its general rate, which already carries
+  the local share, and the grocery 1% was added on top: 6.3% on a hot meal. A local
+  share filed for a category on a condition nobody has settled now stands only beside
+  a band answer that is itself a relief.
+
 ## [0.17.7] - 2026-10-04
 
 ### Added
