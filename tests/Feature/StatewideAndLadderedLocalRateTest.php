@@ -19,6 +19,7 @@ use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\TaxRate;
+use Cbox\Tax\ValueObjects\UnsettledCondition;
 
 /*
  * Three ways a local share went missing from a stacked rate, each found by reading
@@ -186,6 +187,12 @@ it('reads a condition on a local rate, and never takes the lower of two it canno
         ->and($liable?->limitedBy)->toBeNull()
         ->and((string) $notLiable?->percentage)->toBe('9.1')
         ->and($notLiable?->limitedBy)->toBeNull();
+
+    // What settles it is reported with the rest, for openFacts and a catalogue audit.
+    $open = new RegisterRateSource($dataset, new RateResolver, new RegisterBoundaries($layout, new StorePointer($layout)->current() ?? '', $dataset))
+        ->unsettledConditions($place, 'goods');
+
+    expect(array_merge(...array_map(fn (UnsettledCondition $condition): array => $condition->facts, $open)))->toContain('seller.liableForMetroEastDistrictTax');
 });
 
 it('adds the statewide share on top of a resolved stack too', function (): void {

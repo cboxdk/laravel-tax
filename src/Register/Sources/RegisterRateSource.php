@@ -103,6 +103,18 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
             }
         }
 
+        // AND THE LOCAL SHARES. A locality can file its rate on a condition too —
+        // Illinois' Metro East districts on whether the retailer is liable for the
+        // district tax — and what settles it belongs on the same list.
+        if ($jurisdiction->country->value === 'US' && $jurisdiction->subdivision !== null) {
+            $state = UsCode::of($jurisdiction->subdivision);
+
+            foreach ([$state, ...($this->authorities->authoritiesFor($jurisdiction, $at) ?? [])] as $code) {
+                $answer = $this->resolver->localAnswer($this->dataset->ratesFor($code), $key, $at, $this->taxedAsGeneralAt($this->stateOf($code), $key, $at), $this->facts);
+                array_push($unsettled, ...($answer['unsettled'] ?? []));
+            }
+        }
+
         return $unsettled;
     }
 
