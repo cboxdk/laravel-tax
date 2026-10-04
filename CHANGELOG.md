@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.7] - 2026-10-04
+
 ### Added
 
 - **`TaxAssessment::$openFacts`**: the facts an answer waits on, by the register's
