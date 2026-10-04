@@ -22,6 +22,13 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **A provincial relief on the buyer was never held back in Canada.** A province
+  files no band of its own, only its share (British Columbia's 7% PST), so a relief
+  held on the buyer found no general rate and kept the exemption: residential gas in
+  BC came out at the 5% GST alone. The share is now the general answer, flagged. On
+  release 360 six answers move: residential energy in Manitoba and Saskatchewan, and
+  the provincial prescription-drug relief in BC, Manitoba and Quebec, until the
+  prescription is shown.
 - **One buyer-side branch held back a relief the seller could claim.** A relief is
   held back on the buyer only when every way its conditions could still hold needs a
   buyer fact. Luxembourg exempts medical care by a doctor (the seller's to state) or

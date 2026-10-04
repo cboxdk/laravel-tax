@@ -383,7 +383,9 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         }
 
         $total = $federal->percentage->plus($part);
-        $derived = $federal->confidence !== Confidence::Authoritative || ($provincial !== null && $provincial->confidence !== Confidence::Authoritative);
+        // A provincial relief held back on the buyer leaves the share standing, flagged.
+        $held = $own !== null && $own['narrowed'];
+        $derived = $held || $federal->confidence !== Confidence::Authoritative || ($provincial !== null && $provincial->confidence !== Confidence::Authoritative);
 
         return new TaxRate(
             $total->strippedOfTrailingZeros(),
@@ -400,7 +402,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 new RateComponent(JurisdictionLevel::Country, $federal->percentage, $country, $this->nameOf($country)),
                 new RateComponent(JurisdictionLevel::State, $part->strippedOfTrailingZeros(), $province, $this->nameOf($province)),
             ],
-            $federal->limitedBy ?? $provincial?->limitedBy,
+            $federal->limitedBy ?? ($provincial instanceof TaxRate ? $provincial->limitedBy : null) ?? ($held ? RateLimit::ConditionsUnevaluated : null),
             $federal->provenance,
         );
     }

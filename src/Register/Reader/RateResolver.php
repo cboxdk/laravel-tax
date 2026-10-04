@@ -187,7 +187,11 @@ readonly class RateResolver
         ));
 
         if (array_any($unsettled, static fn (UnsettledCondition $condition): bool => RateConditions::needsProof($condition, $facts))) {
-            $general = $this->standard($live);
+            // A PROVINCE'S GENERAL ANSWER IS ITS SHARE. British Columbia files no band
+            // of its own, only its 7% PST beside the federal GST; a held relief found
+            // no general rate there and kept the exemption, so residential gas came
+            // out at the GST alone.
+            $general = $this->standard($live) ?? $this->untypedShare($live);
 
             if ($general !== null && ! $this->sameFigure($general, $answer['rate'])) {
                 return ['rate' => $general, 'inferred' => $answer['inferred'], 'ambiguous' => $answer['ambiguous'], 'narrowed' => true, 'unsettled' => $unsettled];
@@ -283,6 +287,23 @@ readonly class RateResolver
                 if (($rate['kind'] ?? null) === 'combined' && ($rate['category'] ?? null) === $rung) {
                     return $rate;
                 }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A place's untyped local share — a province's PST — where it has no band.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return array<string, mixed>|null
+     */
+    private function untypedShare(array $rates): ?array
+    {
+        foreach ($rates as $rate) {
+            if (($rate['kind'] ?? null) === 'local_component' && ($rate['category'] ?? null) === null && ($rate['conditions'] ?? []) === []) {
+                return $rate;
             }
         }
 

@@ -626,3 +626,29 @@ it('does not let a limb nobody can read stand in for the seller', function (): v
     expect((string) $source->rateForKey($tx, 'goods.energy.gas')?->percentage)->toBe('6.25')
         ->and((string) $source->rateForKey($tx, 'goods.energy.electricity')?->percentage)->toBe('0');
 });
+
+it('holds a provincial relief back on the buyer, leaving the province\'s share', function (): void {
+    // British Columbia exempts residential gas from its 7% PST. The province files no
+    // band of its own, only the share, so a held relief found no general rate and kept
+    // the exemption: GST alone, 5%, where 12% is due until the home use is shown.
+    $root = config('tax.register.store').'/british-columbia';
+    FakeRegister::at($root)
+        ->category('goods')->category('goods.energy', 'goods')->category('goods.energy.gas', 'goods.energy')
+        ->rate('ca:CA', '5', from: '1990-01-01')
+        ->rate('ca:BC', '7', 'local_component', from: '1990-01-01')
+        ->rate('ca:BC', '0', 'exempt', 'goods.energy.gas', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'use_is', 'says' => 'for residential use',
+            'predicate' => ['fact' => 'use.residential', 'op' => 'eq', 'value' => true],
+        ]]])
+        ->install();
+    config()->set('tax.register.store', $root);
+    app()->forgetInstance(RegisterDataset::class);
+
+    $bc = app(JurisdictionRepository::class)->find(new CountryCode('CA'), new SubdivisionCode('CA-BC'));
+    $gas = fn (array $facts): ?TaxRate => new RegisterRateSource(app(RegisterDataset::class))
+        ->withFacts(new DecisionFacts($facts))->rateForKey($bc, 'goods.energy.gas');
+
+    expect((string) $gas([])?->percentage)->toBe('12')
+        ->and($gas([])?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and((string) $gas(['use.residential' => true])?->percentage)->toBe('5');
+});
