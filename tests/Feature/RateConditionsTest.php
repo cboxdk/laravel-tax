@@ -652,3 +652,28 @@ it('holds a provincial relief back on the buyer, leaving the province\'s share',
         ->and($gas([])?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
         ->and((string) $gas(['use.residential' => true])?->percentage)->toBe('5');
 });
+
+it('reads what the category already says about the product', function (): void {
+    // Filed under candy, a product is confectionery: the register publishes that as the
+    // category's assertion. A food zero rate that excludes confectionery was left
+    // open for candy, and answered 0 instead of the standard rate.
+    $root = config('tax.register.store').'/asserts';
+    FakeRegister::at($root)
+        ->category('goods')->category('goods.food', 'goods')
+        ->category('goods.food.candy', 'goods.food', ['product.isConfectionery' => true])
+        ->rate('europe:GB', '20', from: '1990-01-01')
+        ->rate('europe:GB', '0', 'zero', 'goods.food', from: '1990-01-01', extra: ['conditions' => [[
+            'kind' => 'excludes', 'says' => 'Confectionery',
+            'predicate' => ['not' => ['fact' => 'product.isConfectionery', 'op' => 'eq', 'value' => true]],
+        ]]])
+        ->install();
+    config()->set('tax.register.store', $root);
+    app()->forgetInstance(RegisterDataset::class);
+
+    $gb = app(JurisdictionRepository::class)->find(new CountryCode('GB'));
+    $source = new RegisterRateSource(app(RegisterDataset::class));
+
+    expect((string) $source->rateForKey($gb, 'goods.food.candy')?->percentage)->toBe('20')
+        // The caller outranks the category.
+        ->and((string) $source->withFacts(new DecisionFacts(['product.isConfectionery' => false]))->rateForKey($gb, 'goods.food.candy')?->percentage)->toBe('0');
+});

@@ -245,9 +245,13 @@ class FakeRegister
         return $this;
     }
 
-    public function category(string $key, ?string $parent = null): self
+    /**
+     * @param  array<string, string|int|float|bool>  $asserts  facts the category states by being chosen
+     */
+    public function category(string $key, ?string $parent = null, array $asserts = []): self
     {
-        $this->categories[] = ['key' => $key, 'name' => $key, 'parent' => $parent, 'description' => null, 'regions' => [], 'cites' => null];
+        $this->categories[] = ['key' => $key, 'name' => $key, 'parent' => $parent, 'description' => null, 'regions' => [], 'cites' => null]
+            + ($asserts === [] ? [] : ['choosing' => ['asserts' => $asserts]]);
 
         return $this;
     }

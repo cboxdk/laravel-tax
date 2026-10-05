@@ -7,6 +7,17 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added
+
+- **What a category already says is read.** The register publishes, per category,
+  the facts choosing it asserts — candy is confectionery, prepared food is in a form
+  ready to eat, a book is a book — and the engine now fills them beneath the caller's
+  facts on every register lookup, nearest category first; a stated fact outranks
+  them. A food zero rate that excludes confectionery answered 0 for candy because
+  nobody had said candy is confectionery. On release 366 this moves Monaco and New
+  Caledonia candy to the standard rate, settles ebook rates in Monaco and Åland, and
+  clears or adds a flag on a dozen more.
+
 ### Fixed
 
 - **A row standing on presumption lost to one waiting on a qualifying fact.**

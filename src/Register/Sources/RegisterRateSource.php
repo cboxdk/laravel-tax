@@ -33,6 +33,7 @@ use Cbox\Tax\ValueObjects\RateProvenance;
 use Cbox\Tax\ValueObjects\TaxRate;
 use Cbox\Tax\ValueObjects\UnsettledCondition;
 use DateTimeImmutable;
+use InvalidArgumentException;
 
 /**
  * Rates out of the compiled register — the only rate source this package ships.
@@ -81,6 +82,14 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         ?string $commodityCode = null,
         ?DateTimeImmutable $at = null,
     ): array {
+        return $this->asserted($key)->unsettledAt($jurisdiction, $key, $commodityCode, $at);
+    }
+
+    /**
+     * @return list<UnsettledCondition>
+     */
+    private function unsettledAt(Jurisdiction $jurisdiction, string $key, ?string $commodityCode, ?DateTimeImmutable $at): array
+    {
         $unsettled = [];
 
         foreach ($this->candidates($jurisdiction, $at) as $code) {
@@ -147,6 +156,47 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     }
 
     private function rateAt(
+        Jurisdiction $jurisdiction,
+        string $key,
+        ?string $commodityCode,
+        ?DateTimeImmutable $at,
+    ): ?TaxRate {
+        return $this->asserted($key)->rateAtAsserted($jurisdiction, $key, $commodityCode, $at);
+    }
+
+    /**
+     * WHAT THE CATEGORY ALREADY SAYS, beneath what the caller says. Filed under candy,
+     * a product is confectionery; under prepared food, it is in a form ready to eat.
+     * The register publishes these as each category's assertions — about the product
+     * or the service, never the sale — and a condition asking them was left open for a
+     * caller who had answered by choosing the category. Nearest rung first, and a fact
+     * the caller states outranks every one.
+     */
+    private function asserted(string $key): self
+    {
+        $facts = $this->facts;
+        $categories = $this->dataset->categories();
+
+        foreach (CategoryMap::ladder($key) as $rung) {
+            $asserts = Shape::map(Shape::map(Shape::map($categories[$rung] ?? null)['choosing'] ?? null)['asserts'] ?? null);
+
+            foreach ($asserts as $fact => $value) {
+                if (! (is_bool($value) || is_string($value) || is_int($value) || is_float($value))) {
+                    continue;
+                }
+
+                try {
+                    $facts = $facts->withDefault($fact, $value);
+                } catch (InvalidArgumentException) {
+                    continue;
+                }
+            }
+        }
+
+        return $facts === $this->facts ? $this : $this->withFacts($facts);
+    }
+
+    private function rateAtAsserted(
         Jurisdiction $jurisdiction,
         string $key,
         ?string $commodityCode,
