@@ -23,6 +23,12 @@ or `RoundingScope::Invoice` using `TaxQuery::$roundingScope` or
 An absent local-aggregation assertion is accepted for a state-only rate; it cannot
 authorize aggregation of supplied local components.
 
+Outside the US no rounding is published, and tax is rounded per line unless the
+host asks for `RoundingScope::Invoice`. Every other regime then rounds the document
+half-up at the money's precision, so a basket's tax is the rate on its total and a
+basket discounted to nothing bears none. 0% rates and rate tables have nothing to
+reconcile and are unaffected.
+
 An invoice policy keeps exact tax until lines and delivery portions have been
 grouped by rate. Each group is rounded once, and the resulting minor units are
 distributed deterministically. Exclusive lines keep their net amounts; inclusive

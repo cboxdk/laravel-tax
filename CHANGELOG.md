@@ -20,6 +20,11 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ### Fixed
 
+- **Invoice rounding worked only in the US.** `RoundingScope::Invoice` reached the
+  US regime and no other, so a plan at 49.00 less 4.90 and 44.10 of discount came to
+  -0.01 of Danish VAT on a sale of nothing. The EU, national, Canadian, Indian and
+  Malaysian regimes now honour it: half-up at the money's precision, once per rate
+  over the document. Line rounding stays the default and its figures do not change.
 - **A row standing on presumption lost to one waiting on a qualifying fact.**
   Massachusetts exempts candy unless sold as a meal and taxes it only as a meal; with
   nothing said, both rows were open and the disagreement charged the general rate on a

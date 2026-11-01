@@ -51,7 +51,8 @@ readonly class IndiaGstRegime implements TaxRegime
             throw UnresolvedTaxRate::for($query->place);
         }
 
-        [$net, $tax, $gross] = $this->split($query, $rate);
+        $rounding = $this->requestedRounding($query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, rounding: $rounding);
 
         $component = $this->isIntraState($query) ? 'CGST+SGST' : 'IGST';
 
@@ -64,6 +65,8 @@ readonly class IndiaGstRegime implements TaxRegime
             rate: $rate,
             reason: sprintf('India GST: %s at %s%% (destination).', $component, $rate->percentage),
             breakdown: $this->breakdown($rate, $net, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate),
         );
     }
 

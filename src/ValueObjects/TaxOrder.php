@@ -73,7 +73,11 @@ readonly class TaxOrder
          * checked — but it IS a default and not a law, and the enum says why.
          */
         public ApportionmentBasis $apportionment = ApportionmentBasis::NetValue,
-        /** Used only when the published policy permits a seller election. */
+        /**
+         * `Invoice` rounds tax once per rate over the document, so the tax is the rate
+         * on the total. A published fixed scope outranks it; a US state with no
+         * published policy rounds per line.
+         */
         public RoundingScope $roundingScope = RoundingScope::Line,
         /** The customer's VAT number, as validated; see `TaxQuery::$customerTaxId`. */
         public ?string $customerTaxId = null,
