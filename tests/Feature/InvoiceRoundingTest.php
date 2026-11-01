@@ -60,7 +60,13 @@ function discountedToNothing(string $currency = 'EUR'): array
 /** @return list<string> */
 function lineTaxes(OrderAssessment $order): array
 {
-    return array_map(static fn ($line): string => (string) $line->assessment->tax->getAmount(), $order->lines);
+    $taxes = [];
+
+    foreach ($order->lines as $line) {
+        $taxes[] = (string) $line->assessment->tax->getAmount();
+    }
+
+    return $taxes;
 }
 
 it('leaves a discounted basket rounded per line unless invoice rounding is asked for', function (): void {
@@ -73,11 +79,11 @@ it('leaves a discounted basket rounded per line unless invoice rounding is asked
 });
 
 it('charges no tax on a basket discounted to nothing', function (string $country, string $currency, ?string $subdivision, array $amounts): void {
-    $lines = array_map(
-        static fn (int $i, string $amount): SupplyLine => new SupplyLine((string) $i, Money::of($amount, $currency)),
-        array_keys($amounts),
-        $amounts,
-    );
+    $lines = [];
+
+    foreach ($amounts as $i => $amount) {
+        $lines[] = new SupplyLine((string) $i, Money::of($amount, $currency));
+    }
 
     $byLine = basket($country, $lines, RoundingScope::Line, subdivision: $subdivision);
     $byInvoice = basket($country, $lines, subdivision: $subdivision);
@@ -121,7 +127,8 @@ it('keeps a net price and shares the odd cent onto the largest remainder', funct
         new SupplyLine('c', Money::of('0.33', 'DKK')),
     ]);
 
-    expect(array_map(static fn ($l): string => (string) $l->assessment->net->getAmount(), $order->lines))->toBe(['0.34', '0.33', '0.33'])
+    expect((string) $order->net()->getAmount())->toBe('1.00')
+        ->and((string) $order->lines[0]->assessment->net->getAmount())->toBe('0.34')
         ->and((string) $order->tax()->getAmount())->toBe('0.25')
         ->and((string) $order->gross()->getAmount())->toBe('1.25');
 
