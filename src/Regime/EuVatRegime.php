@@ -300,13 +300,13 @@ class EuVatRegime extends DestinationTaxRegime
             tax: $tax,
             gross: $gross,
             rate: $regional,
-            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $regional),
             reason: sprintf(
                 'EU VAT: %s%% in %s, which sets its own rate at each level (mainland %s%%).',
                 $regional->percentage,
                 $territory->name,
                 $rate->percentage,
             ),
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $regional),
         );
     }
 
