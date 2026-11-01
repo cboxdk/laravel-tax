@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.17.8] - 2026-11-01
+
 ### Added
 
 - **What a category already says is read.** The register publishes, per category,
