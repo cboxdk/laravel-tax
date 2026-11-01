@@ -139,7 +139,8 @@ abstract class DestinationTaxRegime implements TaxRegime
 
     private function applyRate(TaxQuery $query, Jurisdiction $place, TaxRate $rate): TaxAssessment
     {
-        [$net, $tax, $gross] = $this->split($query, $rate);
+        $rounding = $this->requestedRounding($query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, rounding: $rounding);
 
         // No breakdown on a zero-rated or exempt supply: there is no tax to split,
         // and a stack of zero shares would imply a decomposition that says nothing.
@@ -183,6 +184,8 @@ abstract class DestinationTaxRegime implements TaxRegime
                 $place->country->value,
             ),
             breakdown: $this->breakdown($rate, $net, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate),
         );
     }
 }

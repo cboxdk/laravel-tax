@@ -23,7 +23,8 @@ use Rector\Php71\Rector\FuncCall\RemoveExtraParametersRector;
  * Rector is pinned to an exact version in composer.json. Its rules change between
  * minor releases, and a library commits no lock, so a floating range let a new rule
  * fail CI on a push that touched nothing it checks. Upgrading it is a change of its
- * own: bump the pin, run `composer refactor`, read the diff.
+ * own: bump the pin, run `composer refactor`, read the diff. PHPStan is pinned beside
+ * it because Rector 2.6.7 crashes on PHPStan 2.3's closure types.
  */
 return RectorConfig::configure()
     ->withPaths([

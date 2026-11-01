@@ -292,7 +292,8 @@ class EuVatRegime extends DestinationTaxRegime
             $rate->provenance,
         );
 
-        [$net, $tax, $gross] = $this->split($query, $regional);
+        $rounding = $assessment->rounding;
+        [$net, $tax, $gross] = $this->split($query, $regional, rounding: $rounding);
 
         return $assessment->with(
             net: $net,
@@ -305,6 +306,7 @@ class EuVatRegime extends DestinationTaxRegime
                 $territory->name,
                 $rate->percentage,
             ),
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $regional),
         );
     }
 

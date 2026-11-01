@@ -164,6 +164,8 @@ readonly class TaxAssessment
         ?ExchangeRate $exchangeRate = null,
         ?RateLimit $limitedBy = null,
         ?array $openFacts = null,
+        /** Replaces the exact tax, for a caller that replaced the rate it came from. */
+        ?RationalMoney $unroundedTax = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -180,7 +182,7 @@ readonly class TaxAssessment
             mentions: $mentions ?? $this->mentions,
             charges: $charges ?? $this->charges,
             rounding: $this->rounding,
-            unroundedTax: $this->unroundedTax,
+            unroundedTax: $unroundedTax ?? $this->unroundedTax,
             portions: $portions ?? $this->portions,
             taxableBase: $taxableBase ?? $this->taxableBase,
             exchangeRate: $exchangeRate ?? $this->exchangeRate,
