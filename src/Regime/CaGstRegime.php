@@ -58,7 +58,8 @@ readonly class CaGstRegime implements TaxRegime
 
         $rate = $this->withoutUnregisteredProvincialShare($rate, $query, $subdivision);
 
-        [$net, $tax, $gross] = $this->split($query, $rate);
+        $rounding = $this->requestedRounding($query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, rounding: $rounding);
 
         return new TaxAssessment(
             treatment: $this->treatmentFor($rate),
@@ -69,6 +70,8 @@ readonly class CaGstRegime implements TaxRegime
             rate: $rate,
             reason: sprintf('Canadian sales tax: %s%% in %s.', $rate->percentage, $subdivision->value),
             breakdown: $this->breakdown($rate, $net, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate),
         );
     }
 

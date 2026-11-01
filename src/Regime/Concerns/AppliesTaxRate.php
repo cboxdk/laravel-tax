@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Cbox\Tax\Regime\Concerns;
 
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Brick\Money\AllocationMode;
 use Brick\Money\Money;
 use Brick\Money\RationalMoney;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
+use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\RateComponent;
@@ -73,6 +75,31 @@ trait AppliesTaxRate
     {
         return ($taxableBase ?? $query->amount)->toRational()->multipliedBy($rate->percentage)
             ->dividedBy($query->pricing === Pricing::Exclusive ? BigDecimal::of(100) : $rate->percentage->plus(100));
+    }
+
+    /**
+     * The policy for a host that asked to have its document rounded once, where the
+     * jurisdiction publishes none: half-up at the money's own precision, the same
+     * rounding the line default uses, applied to the document's total per rate. Null
+     * when line rounding stands, and on a rate with nothing to reconcile: a 0% rate,
+     * or a table, which is priced on the sale anyway. Null too for money a rounding
+     * policy cannot express, cash steps and scales past its eight places: the request
+     * is a preference, and it must not turn a working calculation into a refusal.
+     */
+    protected function requestedRounding(TaxQuery $query, TaxRate $rate): ?TaxRounding
+    {
+        if ($query->roundingScope !== RoundingScope::Invoice || $rate->isZero() || $rate->schedule !== null) {
+            return null;
+        }
+
+        $amount = $query->amount;
+        $places = $amount->getContext()->isFixedScale() ? $amount->getAmount()->getScale() : $amount->getCurrency()->getDefaultFractionDigits();
+
+        if ($amount->getContext()->getStep() !== 1 || $places > 8) {
+            return null;
+        }
+
+        return new TaxRounding(RoundingMode::HalfUp, $places, RoundingScope::Invoice);
     }
 
     protected function zero(TaxQuery $query): Money

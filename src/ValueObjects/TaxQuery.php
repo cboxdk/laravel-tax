@@ -146,7 +146,11 @@ readonly class TaxQuery
          * rather than quietly taxed at the standard rate forever.
          */
         public ?string $itemCode = null,
-        /** Used only when the published policy permits a seller election. */
+        /**
+         * `Invoice` rounds tax once per rate over the document, so the tax is the rate
+         * on the total. A published fixed scope outranks it; a US state with no
+         * published policy rounds per line.
+         */
         public RoundingScope $roundingScope = RoundingScope::Line,
         public ?DeliveryCharge $delivery = null,
         /**

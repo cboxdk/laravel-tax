@@ -32,7 +32,8 @@ readonly class MalaysiaSstRegime implements TaxRegime
             throw UnresolvedTaxRate::for($query->place);
         }
 
-        [$net, $tax, $gross] = $this->split($query, $rate);
+        $rounding = $this->requestedRounding($query, $rate);
+        [$net, $tax, $gross] = $this->split($query, $rate, rounding: $rounding);
 
         return new TaxAssessment(
             treatment: $this->treatmentFor($rate),
@@ -43,6 +44,8 @@ readonly class MalaysiaSstRegime implements TaxRegime
             rate: $rate,
             reason: sprintf('Malaysia SST: service tax at %s%% (charged on B2B and B2C; no reverse charge).', $rate->percentage),
             breakdown: $this->breakdown($rate, $net, $tax),
+            rounding: $rounding,
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate),
         );
     }
 }
