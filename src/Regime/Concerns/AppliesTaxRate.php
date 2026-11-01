@@ -82,7 +82,9 @@ trait AppliesTaxRate
      * jurisdiction publishes none: half-up at the money's own precision, the same
      * rounding the line default uses, applied to the document's total per rate. Null
      * when line rounding stands, and on a rate with nothing to reconcile: a 0% rate,
-     * or a table, which is priced on the sale anyway.
+     * or a table, which is priced on the sale anyway. Null too for money a rounding
+     * policy cannot express, cash steps and scales past its eight places: the request
+     * is a preference, and it must not turn a working calculation into a refusal.
      */
     protected function requestedRounding(TaxQuery $query, TaxRate $rate): ?TaxRounding
     {
@@ -91,12 +93,13 @@ trait AppliesTaxRate
         }
 
         $amount = $query->amount;
+        $places = $amount->getContext()->isFixedScale() ? $amount->getAmount()->getScale() : $amount->getCurrency()->getDefaultFractionDigits();
 
-        return new TaxRounding(
-            RoundingMode::HalfUp,
-            $amount->getContext()->isFixedScale() ? $amount->getAmount()->getScale() : $amount->getCurrency()->getDefaultFractionDigits(),
-            RoundingScope::Invoice,
-        );
+        if ($amount->getContext()->getStep() !== 1 || $places > 8) {
+            return null;
+        }
+
+        return new TaxRounding(RoundingMode::HalfUp, $places, RoundingScope::Invoice);
     }
 
     protected function zero(TaxQuery $query): Money

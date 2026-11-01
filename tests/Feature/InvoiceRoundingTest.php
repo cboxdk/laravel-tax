@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Brick\Money\Context\CashContext;
+use Brick\Money\Context\CustomContext;
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
@@ -176,6 +178,16 @@ it('rounds to a currency with no minor unit', function (): void {
 
     expect((string) $order->tax()->getAmount())->toBe('0');
 });
+
+it('keeps line rounding for money a rounding policy cannot express', function (Money $amount): void {
+    $line = [new SupplyLine('a', $amount)];
+
+    expect((string) basket('DK', $line)->tax()->getAmount())
+        ->toBe((string) basket('DK', $line, RoundingScope::Line)->tax()->getAmount());
+})->with([
+    'a cash step' => fn (): Money => Money::of('10.05', 'CHF', new CashContext(5)),
+    'more places than a policy has' => fn (): Money => Money::of('10.123456789', 'EUR', new CustomContext(9)),
+]);
 
 it('rounds each rate on its own', function (): void {
     // Standard 0.66 at 20% is 0.132; books 0.60 at 5.5% is 0.033. Rounded together

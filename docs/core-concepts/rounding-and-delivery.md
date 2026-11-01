@@ -27,7 +27,8 @@ Outside the US no rounding is published, and tax is rounded per line unless the
 host asks for `RoundingScope::Invoice`. Every other regime then rounds the document
 half-up at the money's precision, so a basket's tax is the rate on its total and a
 basket discounted to nothing bears none. 0% rates and rate tables have nothing to
-reconcile and are unaffected.
+reconcile and are unaffected, and money a policy cannot express (a cash step, more
+than eight places) stays on line rounding.
 
 An invoice policy keeps exact tax until lines and delivery portions have been
 grouped by rate. Each group is rounded once, and the resulting minor units are
