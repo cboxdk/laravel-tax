@@ -60,6 +60,7 @@ return [
 
     'register' => [
         'url' => env('TAX_REGISTER_URL', 'https://data.cboxtax.com'),
+        'token' => env('TAX_REGISTER_TOKEN'),
         'store' => env('TAX_REGISTER_STORE'),
         'version' => env('TAX_REGISTER_VERSION'),
         'regions' => env('TAX_REGISTER_REGIONS'),

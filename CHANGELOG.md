@@ -5,7 +5,15 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
-## [Unreleased]
+## [0.18.0] — prepared candidate, not published
+
+### Upgrade
+
+Configure tax.register.token on the server before register fetch/compile. Requests without a token fail closed. Local compiled tax calculation remains offline. Do not expose integration credentials to clients.
+
+### Changed
+
+- Register downloads now require the server-side `TAX_REGISTER_TOKEN`. Missing credentials fail closed; downloads refuse redirects and artifact URLs outside the configured origin. Install the matching Cadastre integration credential before syncing a register.
 
 ## [0.17.8] - 2026-11-01
 

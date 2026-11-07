@@ -247,10 +247,12 @@ class TaxServiceProvider extends ServiceProvider
 
         $this->app->singleton(SectionFetcher::class, static function (Application $app): SectionFetcher {
             $url = $app->make(Config::class)->get('tax.register.url');
+            $token = $app->make(Config::class)->get('tax.register.token');
 
             return new SectionFetcher(
                 $app->make(Factory::class),
                 is_string($url) && $url !== '' ? $url : 'https://data.cboxtax.com',
+                token: is_string($token) ? $token : null,
             );
         });
 

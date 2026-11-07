@@ -10,6 +10,7 @@ use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Sleep;
 use Throwable;
@@ -22,9 +23,9 @@ use Throwable;
  * engine reads a compiled store on local disk and makes no network call at all, which
  * is the point of compiling one.
  *
- * Reads are unauthenticated because the register is: the licence moves the line from
- * who may read to what may be done with it, so there is no key to hold and none to
- * leak. Requests accept gzip — the whole register is 1.8 MB compressed against 54 MB
+ * Reads require an explicit server-side integration token. Artifact URLs are pinned
+ * to the configured origin and redirects are refused so credentials cannot escape.
+ * Requests accept gzip — the whole register is 1.8 MB compressed against 54 MB
  * of JSON — and send `If-None-Match`, which the register answers from a manifest
  * without touching a file.
  *
@@ -45,6 +46,7 @@ readonly class SectionFetcher
         private Factory $http,
         private string $baseUrl = 'https://data.cboxtax.com',
         private int $timeout = 120,
+        private ?string $token = null,
     ) {}
 
     /**
@@ -160,7 +162,7 @@ readonly class SectionFetcher
     public function json(string $path): array
     {
         try {
-            $response = $this->patiently(fn (): Response => $this->http->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            $response = $this->patiently(fn (): Response => $this->request()->timeout($this->timeout)->acceptJson()->get($this->url($path)));
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
@@ -189,7 +191,7 @@ readonly class SectionFetcher
     public function jsonIfPublished(string $path): ?array
     {
         try {
-            $response = $this->patiently(fn (): Response => $this->http->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            $response = $this->patiently(fn (): Response => $this->request()->timeout($this->timeout)->acceptJson()->get($this->url($path)));
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
@@ -239,7 +241,7 @@ readonly class SectionFetcher
             // mid-file. So the connection has to open in reasonable time, and the
             // transfer is aborted only if it moves less than a kilobyte a second for a
             // full minute — never merely for taking a while.
-            $response = $this->patiently(fn (): Response => $this->http
+            $response = $this->patiently(fn (): Response => $this->request()
                 ->connectTimeout(30)
                 ->timeout(0)
                 ->withOptions([
@@ -307,9 +309,28 @@ readonly class SectionFetcher
      * `url` answers 200 and the `artifact` path 404s. Accepting either here lets the
      * caller prefer whichever the publisher actually serves.
      */
+    private function request(): PendingRequest
+    {
+        if ($this->token === null || trim($this->token) === '') {
+            throw RateSourceUnavailable::transport(self::SOURCE, 'Register integration token is not configured.');
+        }
+
+        return $this->http->withToken($this->token)->withoutRedirecting();
+    }
+
     private function url(string $path): string
     {
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            $base = parse_url($this->baseUrl);
+            $target = parse_url($path);
+            if (! is_array($base) || ! is_array($target)
+                || ($target['scheme'] ?? null) !== ($base['scheme'] ?? null)
+                || ($target['host'] ?? null) !== ($base['host'] ?? null)
+                || ($target['port'] ?? null) !== ($base['port'] ?? null)
+                || isset($target['user']) || isset($target['pass'])) {
+                throw RateSourceUnavailable::transport(self::SOURCE, 'Register artifact URL is outside the configured origin.');
+            }
+
             return $path;
         }
 

@@ -43,6 +43,9 @@ abstract class TestCase extends BaseTestCase
         SuiteRegister::install($this->store);
 
         $app['config']->set('tax.register.store', $this->store);
+        // Live register tests need the explicitly configured consumer credential;
+        // offline fixtures retain a deterministic, non-secret default.
+        $app['config']->set('tax.register.token', env('TAX_REGISTER_TOKEN', 'fixture-register-token'));
     }
 
     protected function tearDown(): void

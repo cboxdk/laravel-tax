@@ -23,7 +23,7 @@ it('waits out a rate limit as the register asks, then carries on', function (): 
         ->push(['message' => 'Too Many Attempts.'], 429, ['Retry-After' => '7'])
         ->push(['version' => '2026.10.03-343']);
 
-    expect(new SectionFetcher($http)->json('/api/v1/releases/latest'))->toBe(['version' => '2026.10.03-343']);
+    expect(new SectionFetcher($http, token: 'fixture-register-token')->json('/api/v1/releases/latest'))->toBe(['version' => '2026.10.03-343']);
 
     Sleep::assertSleptTimes(1);
     Sleep::assertSequence([Sleep::for(7)->seconds()]);
@@ -37,7 +37,7 @@ it('streams a file after a rate limit lifts', function (): void {
         ->push('{"rates":[]}');
     $to = sys_get_temp_dir().'/cbox-tax-fetch-'.getmypid().'/rates.json';
 
-    expect(new SectionFetcher($http)->download('/api/v1/releases/x/regions/eu', $to))->toBe(12)
+    expect(new SectionFetcher($http, token: 'fixture-register-token')->download('/api/v1/releases/x/regions/eu', $to))->toBe(12)
         ->and(file_get_contents($to))->toBe('{"rates":[]}');
 });
 
@@ -46,7 +46,7 @@ it('gives up on a limit that does not lift, and caps how long it waits', functio
     $http->preventStrayRequests();
     $http->fake(['data.cboxtax.com/*' => $http->response(['message' => 'Too Many Attempts.'], 429, ['Retry-After' => '3600'])]);
 
-    expect(fn (): array => new SectionFetcher($http)->json('/api/v1/releases/latest'))
+    expect(fn (): array => new SectionFetcher($http, token: 'fixture-register-token')->json('/api/v1/releases/latest'))
         ->toThrow(RateSourceUnavailable::class, 'HTTP 429');
 
     $http->assertSentCount(4);
@@ -58,9 +58,28 @@ it('does not retry an answer that is not about load', function (): void {
     $http->preventStrayRequests();
     $http->fake(['data.cboxtax.com/*' => $http->response([], 500)]);
 
-    expect(fn (): array => new SectionFetcher($http)->json('/api/v1/releases/latest'))
+    expect(fn (): array => new SectionFetcher($http, token: 'fixture-register-token')->json('/api/v1/releases/latest'))
         ->toThrow(RateSourceUnavailable::class, 'HTTP 500');
 
     $http->assertSentCount(1);
     Sleep::assertNeverSlept();
+});
+
+it('authenticates every register read and refuses missing credentials', function (): void {
+    $http = app(Factory::class);
+    $http->fake(['data.cboxtax.com/*' => $http->response(['version' => 'pinned-release'])]);
+    expect(fn () => new SectionFetcher($http)->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
+    $http->assertNothingSent();
+    new SectionFetcher($http, token: 'secret-register-token')->json('/api/v1/releases/latest');
+    $http->assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer secret-register-token'));
+});
+
+it('does not send register credentials to a foreign artifact URL or follow redirects', function (): void {
+    $http = app(Factory::class);
+    $http->fake(['data.cboxtax.com/*' => $http->response('', 302, ['Location' => 'https://untrusted.example/artifact'])]);
+    $fetcher = new SectionFetcher($http, token: 'secret-register-token');
+    expect(fn () => $fetcher->json('https://untrusted.example/artifact'))->toThrow(RateSourceUnavailable::class);
+    $http->assertNothingSent();
+    expect(fn () => $fetcher->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
+    $http->assertSentCount(1);
 });

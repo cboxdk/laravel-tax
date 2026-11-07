@@ -81,6 +81,7 @@ Publish `config/tax.php` with `php artisan vendor:publish --tag=tax-config`.
 | Config under `tax.register` | Environment | Default |
 | --- | --- | --- |
 | `url` | `TAX_REGISTER_URL` | `https://data.cboxtax.com` |
+| `token` | `TAX_REGISTER_TOKEN` | Required private integration credential |
 | `store` | `TAX_REGISTER_STORE` | `storage/app/cbox-tax/register` |
 | `version` | `TAX_REGISTER_VERSION` | Active release; sync selects latest |
 | `regions` | `TAX_REGISTER_REGIONS` | All published regions |
@@ -180,3 +181,5 @@ against — so corrections published on the old schema keep arriving until you
 upgrade. `tax:data:sync --check` compares against the same release. A release asked
 for by name (`--release=`, or pinned with `TAX_REGISTER_VERSION`) still refuses: you
 asked for that one. Nothing is downloaded or replaced for a release that is refused.
+
+Register downloads authenticate every request. Absolute artifact URLs must match the configured scheme, host and port, and redirects are refused. Pin `TAX_REGISTER_VERSION` for reproducible compilation. Browser code must never receive the integration token.

@@ -1,0 +1,9 @@
+{
+  "upstream_head": "5302dccca008972b8aa23dafa647ec369794051e",
+  "upstream_branch": "main",
+  "target_version": "0.18.0",
+  "status": "unpublished candidate based on actual upstream history",
+  "source_manifest": "evidence/laravel-tax-final-source-hashes.json",
+  "publication_parent": "786876544350118325d7c7fff3a95c09910d1c71",
+  "restored_public_files": []
+}

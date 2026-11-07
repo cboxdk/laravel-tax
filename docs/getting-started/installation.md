@@ -12,6 +12,8 @@ composer require cboxdk/laravel-tax
 
 Then sync the register, before anything is priced:
 
+Configure `TAX_REGISTER_TOKEN` with the private register integration credential before syncing. Keep it server-side; an absent or refused credential stops the sync.
+
 ```bash
 php artisan tax:data:sync
 ```

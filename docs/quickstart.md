@@ -11,6 +11,8 @@ description: Assess a supply and read the treatment, tax and reason.
 No rates ship inside the package, so the first step is installing a register release.
 Until it has run, the engine refuses to price anything rather than guess:
 
+Configure `TAX_REGISTER_TOKEN` with the private register integration credential before syncing. Keep it server-side; an absent or refused credential stops the sync.
+
 ```bash
 composer require cboxdk/laravel-tax
 php artisan tax:data:sync

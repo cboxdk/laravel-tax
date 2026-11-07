@@ -61,6 +61,7 @@ rather than a dataset one. Republish the config file or add the new block:
 ```php
 'register' => [
     'url'        => env('TAX_REGISTER_URL', 'https://data.cboxtax.com'),
+    'token'      => env('TAX_REGISTER_TOKEN'),
     'store'      => env('TAX_REGISTER_STORE'),      // null → storage_path('app/cbox-tax/register')
     'version'    => env('TAX_REGISTER_VERSION'),    // pins pricing AND sync; null follows `current`
     'regions'    => env('TAX_REGISTER_REGIONS'),

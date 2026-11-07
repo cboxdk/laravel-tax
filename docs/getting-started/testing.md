@@ -21,6 +21,10 @@ Pass no rates to use the helper's fixed test fixture; those figures are not a
 production rate source. Jurisdictions come from the real
 `laravel-geo` repository, so place-of-supply behaviour is exercised for free.
 
+Each call writes a small register to the system temp directory. The trait removes
+them after the test through a PHPUnit `#[After]` hook, so a test case needs no
+`tearDown` wiring. Outside a test case, call `removeTaxRegisters()` yourself.
+
 ## A register for the application container
 
 ```php

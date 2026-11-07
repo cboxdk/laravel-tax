@@ -27,6 +27,7 @@ use Cbox\Tax\ValueObjects\TaxExemption;
 use DateTimeImmutable;
 use Illuminate\Http\Client\Factory;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\After;
 
 /**
  * Test helper: build a calculator with the shipped regimes and a chosen rate map,
@@ -59,7 +60,15 @@ trait InteractsWithTax
     }
 
     /**
-     * Write a one-off store and return a reader over it.
+     * Stores written by {@see registerWith()} in this test, removed once it is over.
+     *
+     * @var list<string>
+     */
+    private array $taxRegisterRoots = [];
+
+    /**
+     * Write a one-off store and return a reader over it. The store lives in the
+     * temp directory until {@see removeTaxRegisters()} runs after the test.
      *
      * @param  array<string, string>  $rates
      * @param  array<string, RateBand>  $bands
@@ -67,6 +76,7 @@ trait InteractsWithTax
     protected function registerWith(array $rates, array $bands = []): RegisterDataset
     {
         $root = sys_get_temp_dir().'/cbox-tax-trait-'.getmypid().'-'.bin2hex(random_bytes(6));
+        $this->taxRegisterRoots[] = $root;
         $register = FakeRegister::at($root);
 
         foreach ($rates as $code => $percentage) {
@@ -93,6 +103,36 @@ trait InteractsWithTax
         $layout = new StoreLayout($root);
 
         return new RegisterDataset($layout, new StorePointer($layout));
+    }
+
+    /**
+     * Remove every store this test wrote. PHPUnit runs it after each test on its
+     * own; a consumer composing the trait outside a test case calls it directly.
+     */
+    #[After]
+    protected function removeTaxRegisters(): void
+    {
+        $roots = $this->taxRegisterRoots;
+        $this->taxRegisterRoots = [];
+
+        foreach ($roots as $root) {
+            self::removeTaxDirectory($root);
+        }
+    }
+
+    private static function removeTaxDirectory(string $directory): void
+    {
+        foreach (is_dir($directory) ? (array) scandir($directory) : [] as $entry) {
+            if (! is_string($entry) || $entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $path = $directory.'/'.$entry;
+
+            is_dir($path) ? self::removeTaxDirectory($path) : @unlink($path);
+        }
+
+        @rmdir($directory);
     }
 
     /** `DK` is a country in the union's regime here; `US-KS` is a state. */

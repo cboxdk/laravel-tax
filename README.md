@@ -29,6 +29,8 @@ composer require cboxdk/laravel-tax
 
 **2 — Install the data** (once, and on every deploy — like `php artisan migrate`)
 
+Configure `TAX_REGISTER_TOKEN` with the private register integration credential before syncing. Keep it server-side; an absent or refused credential stops the sync.
+
 ```bash
 php artisan tax:data:sync
 ```
