@@ -18,6 +18,8 @@ it('names the kinds it neither applies nor has set aside', function (): void {
 });
 
 it('reads or has set aside every kind of rule the live register publishes', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $fetcher = app(SectionFetcher::class);
     $version = $fetcher->resolve('latest');
     $rules = $fetcher->json("/api/v1/releases/{$version}/sections/rules")['rules'] ?? [];

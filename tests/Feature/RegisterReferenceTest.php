@@ -90,6 +90,8 @@ function referenceAmounts(TaxAssessment $assessment): array
 }
 
 it('matches 41 independent rate, amount, treatment and order references from a real release', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $corpus = json_decode(
         (string) file_get_contents(dirname(__DIR__, 2).'/conformance/reference/2026-09-17.json'),
         true,
@@ -197,6 +199,8 @@ it('matches 41 independent rate, amount, treatment and order references from a r
 })->group('e2e', 'reference');
 
 it('applies dated rules rounding and conditional delivery from a pinned release', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $corpus = json_decode((string) file_get_contents(dirname(__DIR__, 2).'/conformance/reference/2026-09-17.json'), true, flags: JSON_THROW_ON_ERROR);
     $this->artisan('tax:data:sync', [
         '--release' => getenv('CBOX_TAX_REFERENCE_RELEASE') ?: $corpus['release'],

@@ -68,7 +68,7 @@ it('does not retry an answer that is not about load', function (): void {
 it('authenticates every register read and refuses missing credentials', function (): void {
     $http = app(Factory::class);
     $http->fake(['data.cboxtax.com/*' => $http->response(['version' => 'pinned-release'])]);
-    expect(fn () => new SectionFetcher($http)->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
+    expect(fn (): array => new SectionFetcher($http)->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
     $http->assertNothingSent();
     new SectionFetcher($http, token: 'secret-register-token')->json('/api/v1/releases/latest');
     $http->assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer secret-register-token'));
@@ -78,8 +78,8 @@ it('does not send register credentials to a foreign artifact URL or follow redir
     $http = app(Factory::class);
     $http->fake(['data.cboxtax.com/*' => $http->response('', 302, ['Location' => 'https://untrusted.example/artifact'])]);
     $fetcher = new SectionFetcher($http, token: 'secret-register-token');
-    expect(fn () => $fetcher->json('https://untrusted.example/artifact'))->toThrow(RateSourceUnavailable::class);
+    expect(fn (): array => $fetcher->json('https://untrusted.example/artifact'))->toThrow(RateSourceUnavailable::class);
     $http->assertNothingSent();
-    expect(fn () => $fetcher->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
+    expect(fn (): array => $fetcher->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
     $http->assertSentCount(1);
 });

@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\Http;
  * run; `tax:data:sync` compiles a real published release; the same assessment then
  * prices from local files with no network call.
  *
- * The e2e group talks to data.cboxtax.com and runs as part of the full QA gate.
+ * The e2e group talks to the configured private register and requires TAX_REGISTER_TOKEN.
+ * Without that credential its cases are explicitly skipped, never counted as passed.
  * Use `pest --exclude-group=e2e` when working offline; the other tests use fixtures.
  */
 
@@ -65,6 +66,8 @@ it('refuses to price anything before a register is synced, and names the command
 });
 
 it('syncs a real release and prices from it, with no network call while pricing', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $this->artisan('tax:data:sync', ['--region' => ['eu'], '--no-boundaries' => true])
         ->assertSuccessful();
 
@@ -96,6 +99,8 @@ it('syncs a real release and prices from it, with no network call while pricing'
 })->group('e2e');
 
 it('reports what is installed, offline', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $this->artisan('tax:data:sync', ['--region' => ['gcc'], '--no-boundaries' => true])->assertSuccessful();
 
     $this->artisan('tax:data:status', ['--offline' => true])

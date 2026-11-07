@@ -37,6 +37,8 @@ afterEach(function (): void {
 });
 
 it('resolves the register\'s own conformance deck the way the register does', function (): void {
+    $this->requireLiveRegisterCredentials();
+
     $fetcher = app(SectionFetcher::class);
     $version = $fetcher->resolve('latest');
 

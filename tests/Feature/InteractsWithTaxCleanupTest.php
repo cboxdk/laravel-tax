@@ -19,7 +19,7 @@ function traitStores(): array
     return $found === false ? [] : $found;
 }
 
-it('removes every store it wrote once the test is over', function () {
+it('removes every store it wrote once the test is over', function (): void {
     $before = traitStores();
 
     $this->registerWith(['DK' => '25']);
@@ -32,7 +32,7 @@ it('removes every store it wrote once the test is over', function () {
     expect(traitStores())->toBe($before);
 });
 
-it('runs the clean-up as a PHPUnit after-test hook, so consumers need no wiring', function () {
+it('runs the clean-up as a PHPUnit after-test hook, so consumers need no wiring', function (): void {
     $method = new ReflectionMethod(InteractsWithTax::class, 'removeTaxRegisters');
 
     expect($method->getAttributes(After::class))->toHaveCount(1);

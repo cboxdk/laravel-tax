@@ -48,6 +48,16 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('tax.register.token', env('TAX_REGISTER_TOKEN', 'fixture-register-token'));
     }
 
+    /** Live acceptance must never send the hermetic fixture token to a real register. */
+    protected function requireLiveRegisterCredentials(): void
+    {
+        $token = env('TAX_REGISTER_TOKEN');
+        if (! is_string($token) || trim($token) === '') {
+            $this->markTestSkipped('Private register acceptance requires TAX_REGISTER_TOKEN and the intended TAX_REGISTER_URL; this case has not passed.');
+        }
+        config()->set('tax.register.token', $token);
+    }
+
     protected function tearDown(): void
     {
         $store = $this->store;
