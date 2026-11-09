@@ -36,6 +36,8 @@ return [
     | override sync defaults. `keep` retains the newest releases after each sync;
     | the active release and configured pin are always preserved. `boundaries`
     | includes postal/polygon indexes, and `streets` opts states into street indexes.
+    | `timeout` (seconds per API request) and `connect_timeout` bound the sync's
+    | calls; a file download is cut only when it stalls, never for being large.
     |
     | OPT IN TO LESS, NOT MORE. `regions` and `states` narrow what gets compiled,
     | and narrowing is safe precisely because a jurisdiction outside what you
@@ -68,6 +70,8 @@ return [
         'streets' => env('TAX_REGISTER_STREETS'),
         'boundaries' => env('TAX_REGISTER_BOUNDARIES', true),
         'keep' => (int) env('TAX_REGISTER_KEEP', 2),
+        'timeout' => env('TAX_REGISTER_TIMEOUT', 120),
+        'connect_timeout' => env('TAX_REGISTER_CONNECT_TIMEOUT', 5),
     ],
 
     /*
@@ -86,6 +90,9 @@ return [
     'exchange_rates' => [
         'store' => env('TAX_FX_STORE'),
         'url' => env('TAX_FX_URL', 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml'),
+        // Seconds for `tax:fx:sync` (a console command, never on the pricing path).
+        'timeout' => env('TAX_FX_TIMEOUT', 60),
+        'connect_timeout' => env('TAX_FX_CONNECT_TIMEOUT', 5),
     ],
 
     /*
@@ -111,10 +118,11 @@ return [
         'key' => env('GEOCODIO_API_KEY'),
         'base_url' => env('GEOCODIO_BASE_URL', 'https://api.geocod.io/v2'),
         'rooftop' => env('GEOCODIO_ROOFTOP', env('TAX_US_DATASET_ROOFTOP', false)),
-        // Seconds per request and to connect. A checkout waits on the geocoder, so set
-        // these; null keeps the HTTP client's default (30 s). Each retry gets its own.
-        'timeout' => env('GEOCODIO_TIMEOUT'),
-        'connect_timeout' => env('GEOCODIO_CONNECT_TIMEOUT'),
+        // Seconds per request and to connect. A checkout waits on the geocoder, so
+        // these are short; an unset or non-positive value falls back to 5 and 3, never
+        // to the HTTP client's 30 s. The adapter tries twice, each try with its own.
+        'timeout' => env('GEOCODIO_TIMEOUT', 5),
+        'connect_timeout' => env('GEOCODIO_CONNECT_TIMEOUT', 3),
     ],
 
     /*
@@ -126,10 +134,24 @@ return [
     | validate Australian ABNs, set an ABN Lookup GUID; without it, AU lookups
     | return inconclusive (and callers fall back to charging tax).
     |
+    | A lookup runs while a customer waits, so every registry call has a short
+    | `connect_timeout` and `timeout` (seconds). A registry that times out, refuses
+    | the connection or answers 5xx/429 is "unavailable": the lookup returns
+    | inconclusive, and that registry is not asked again for the same country for
+    | `unavailable_backoff` seconds — those lookups return inconclusive at once
+    | instead of each waiting out the timeout. 0 disables the backoff. It lives in
+    | the cache store named by `backoff_store` (null: the default store); use a
+    | shared store so every server backs off together. The backoff never makes an
+    | ID valid or invalid — it only ever means "could not verify", which charges tax.
+    |
     */
 
     'vat_id' => [
         'abn_guid' => env('ABN_LOOKUP_GUID'),
+        'timeout' => env('TAX_VAT_ID_TIMEOUT', 6),
+        'connect_timeout' => env('TAX_VAT_ID_CONNECT_TIMEOUT', 3),
+        'unavailable_backoff' => env('TAX_VAT_ID_UNAVAILABLE_BACKOFF', 60),
+        'backoff_store' => env('TAX_VAT_ID_BACKOFF_STORE'),
     ],
 
 ];

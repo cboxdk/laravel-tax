@@ -47,6 +47,8 @@ readonly class SectionFetcher
         private string $baseUrl = 'https://data.cboxtax.com',
         private int $timeout = 120,
         private ?string $token = null,
+        /** Seconds to open a connection, for every request including downloads. */
+        private float $connectTimeout = 5.0,
     ) {}
 
     /**
@@ -162,7 +164,7 @@ readonly class SectionFetcher
     public function json(string $path): array
     {
         try {
-            $response = $this->patiently(fn (): Response => $this->request()->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            $response = $this->patiently(fn (): Response => $this->request()->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson()->get($this->url($path)));
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
@@ -191,7 +193,7 @@ readonly class SectionFetcher
     public function jsonIfPublished(string $path): ?array
     {
         try {
-            $response = $this->patiently(fn (): Response => $this->request()->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            $response = $this->patiently(fn (): Response => $this->request()->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson()->get($this->url($path)));
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
@@ -242,7 +244,7 @@ readonly class SectionFetcher
             // transfer is aborted only if it moves less than a kilobyte a second for a
             // full minute — never merely for taking a while.
             $response = $this->patiently(fn (): Response => $this->request()
-                ->connectTimeout(30)
+                ->connectTimeout($this->connectTimeout)
                 ->timeout(0)
                 ->withOptions([
                     'read_timeout' => 60,

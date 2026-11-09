@@ -350,6 +350,29 @@ it('applies the configured timeouts to every request', function (): void {
         ->and($options['connect_timeout'] ?? null)->toBe(1.0);
 });
 
+it('defaults to short timeouts when none are configured', function (): void {
+    // A host whose published config predates the keys, or that leaves them unset,
+    // still never waits on the HTTP client's 30-second default.
+    config()->set('tax.geocodio.key', 'test-key');
+    config()->set('tax.geocodio.timeout', null);
+    config()->set('tax.geocodio.connect_timeout', '');
+    new TaxServiceProvider(app())->register();
+
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $options = [];
+    $http->fake(function ($request, array $sent) use ($http, &$options) {
+        $options = $sent;
+
+        return $http->response(['results' => []]);
+    });
+
+    app(AddressGeocoder::class)->locate(['line1' => '701 N 7th St', 'country' => 'US']);
+
+    expect($options['timeout'] ?? null)->toBe(5.0)
+        ->and($options['connect_timeout'] ?? null)->toBe(3.0);
+});
+
 it('binds the real adapter against a faked API for a host\'s test', function (): void {
     // The provider binds the geocoder only when a key is set at boot; a host's test
     // sets it later, and had to build the adapter from internals to get one.

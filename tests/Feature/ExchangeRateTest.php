@@ -176,3 +176,18 @@ it('carries no rate where the invoice states no tax, and converts an order aroun
         ->and($ride->exchangeRate)->toBeNull()
         ->and((string) $order->taxInLocalCurrency())->toBe('DKK 186.58');
 });
+
+it('syncs with explicit, configurable timeouts', function (): void {
+    config()->set('tax.exchange_rates.timeout', 20);
+    config()->set('tax.exchange_rates.connect_timeout', null);
+    $seen = [];
+    Http::fake(function ($request, array $options) use (&$seen) {
+        $seen = [$options['timeout'] ?? null, $options['connect_timeout'] ?? null];
+
+        return Http::response(ecbXml());
+    });
+
+    $this->artisan('tax:fx:sync')->assertSuccessful();
+
+    expect($seen)->toBe([20.0, 5.0]);
+});

@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\ValueObjects\VatIdValidation;
 use Illuminate\Http\Client\Factory;
-use Throwable;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 
 /**
  * Validates an Australian Business Number against the ABR ABN Lookup web service.
@@ -17,10 +18,18 @@ use Throwable;
  */
 readonly class AbnLookupValidator implements VatIdValidator
 {
+    use CallsRegistry;
+
     public function __construct(
         private Factory $http,
         private string $guid,
         private string $baseUrl = 'https://abr.business.gov.au',
+        /** Seconds the whole request may take — a checkout waits on it. */
+        private float $timeout = 6.0,
+        /** Seconds to open the connection. */
+        private float $connectTimeout = 3.0,
+        /** Answers inconclusive at once while the registry is known to be down. */
+        private ?RegistryBackoff $backoff = null,
     ) {}
 
     public function supports(CountryCode $country): bool
@@ -32,16 +41,12 @@ readonly class AbnLookupValidator implements VatIdValidator
     {
         $abn = (string) preg_replace('/[^0-9]/', '', $taxId);
 
-        try {
-            $response = $this->http->get($this->baseUrl.'/json/AbnDetails.aspx', [
-                'abn' => $abn,
-                'guid' => $this->guid,
-            ]);
-        } catch (Throwable) {
-            return VatIdValidation::inconclusive('abn');
-        }
+        $response = $this->callRegistry('abn', $country, fn (PendingRequest $http): Response => $http->get($this->baseUrl.'/json/AbnDetails.aspx', [
+            'abn' => $abn,
+            'guid' => $this->guid,
+        ]));
 
-        if (! $response->successful()) {
+        if ($response === null || ! $response->successful()) {
             return VatIdValidation::inconclusive('abn');
         }
 

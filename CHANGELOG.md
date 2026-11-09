@@ -5,6 +5,31 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.18.1] - 2026-11-09
+
+### Changed
+
+- **Every outbound call has a short, explicit timeout.** The VIES, HMRC and ABN
+  validators used the HTTP client's 30-second default, and they run on the pricing
+  path when a tax ID is not cached. They now connect within 3 seconds and finish
+  within 6 (`tax.vat_id.connect_timeout`, `tax.vat_id.timeout`). Geocodio defaults
+  to 3 and 5 instead of 30 (`tax.geocodio.*`). The register and ECB syncs, which run
+  from the console, gain `connect_timeout` keys (default 5) and a configurable
+  `timeout` (`tax.register.timeout`, 120; `tax.exchange_rates.timeout`, 60). A
+  missing or non-positive value falls back to the default, so an older published
+  config keeps working.
+
+### Added
+
+- **A registry that is down is not asked again straight away.** After a timeout,
+  a failed connection, a 5xx or a 429, the validator answers inconclusive for that
+  registry and country for `tax.vat_id.unavailable_backoff` seconds (default 60, `0`
+  disables) without a network call, so an outage costs one timeout per country
+  rather than one per request. It is held in the cache store named by
+  `tax.vat_id.backoff_store`. Valid and invalid answers are unchanged, and the
+  backoff never trips on an answer. See
+  [Tax-ID validation](docs/extension-points/vat-id-validation.md#timeouts-and-registry-outages).
+
 ## [0.18.0] - 2026-11-07
 
 ### Upgrade
