@@ -12,6 +12,7 @@ use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Register\Reader\RegisterDataset;
+use Cbox\Tax\Support\Timeout;
 use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Container\Container;
@@ -71,10 +72,11 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private ?RegisterDataset $register = null,
         /**
          * Seconds a request may take, and may take to connect — a checkout waits on
-         * this. Null leaves the HTTP client's own default. Each retry gets its own.
+         * this. Null leaves the HTTP client's own default (30 s); the configured
+         * adapter never passes null. Each retry gets its own.
          */
-        private ?float $timeout = null,
-        private ?float $connectTimeout = null,
+        private ?float $timeout = 5.0,
+        private ?float $connectTimeout = 3.0,
     ) {}
 
     /**
@@ -100,8 +102,8 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             // whole local share, so withholding it would just under-charge.
             $config->get('tax.geocodio.rooftop') === true,
             $app->make(RegisterDataset::class),
-            is_numeric($timeout) ? (float) $timeout : null,
-            is_numeric($connectTimeout) ? (float) $connectTimeout : null,
+            Timeout::seconds($timeout, 5.0),
+            Timeout::seconds($connectTimeout, 3.0),
         );
     }
 

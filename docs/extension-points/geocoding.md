@@ -66,10 +66,12 @@ versions.
 
 ## Timeouts
 
-A checkout waits on the geocoder. Set `tax.geocodio.timeout` and
-`tax.geocodio.connect_timeout` (`GEOCODIO_TIMEOUT`, `GEOCODIO_CONNECT_TIMEOUT`, in
-seconds) to bound each request; unset, the HTTP client's 30-second default applies.
-A failed request is retried once, and each attempt gets the full timeout.
+A checkout waits on the geocoder, so each request is bounded by
+`tax.geocodio.timeout` (default 5 seconds) and `tax.geocodio.connect_timeout`
+(default 3 seconds), set with `GEOCODIO_TIMEOUT` and `GEOCODIO_CONNECT_TIMEOUT`. A
+missing, empty or non-positive value falls back to those defaults, never to the HTTP
+client's 30 seconds. A failed request is retried once, and each attempt gets the
+full timeout, so a geocoder that is down costs at most about two timeouts.
 
 ## Address-level resolution
 

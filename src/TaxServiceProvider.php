@@ -61,11 +61,14 @@ use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Registry\DefaultRegimeRegistry;
 use Cbox\Tax\Returns\DefaultReturnAggregator;
+use Cbox\Tax\Support\Timeout;
 use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\Validators\AbnLookupValidator;
 use Cbox\Tax\Validators\DispatchingVatIdValidator;
 use Cbox\Tax\Validators\HmrcVatValidator;
+use Cbox\Tax\Validators\RegistryBackoff;
 use Cbox\Tax\Validators\ViesValidator;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
@@ -246,13 +249,16 @@ class TaxServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(SectionFetcher::class, static function (Application $app): SectionFetcher {
-            $url = $app->make(Config::class)->get('tax.register.url');
-            $token = $app->make(Config::class)->get('tax.register.token');
+            $config = $app->make(Config::class);
+            $url = $config->get('tax.register.url');
+            $token = $config->get('tax.register.token');
 
             return new SectionFetcher(
                 $app->make(Factory::class),
                 is_string($url) && $url !== '' ? $url : 'https://data.cboxtax.com',
+                timeout: (int) ceil(Timeout::seconds($config->get('tax.register.timeout'), 120.0)),
                 token: is_string($token) ? $token : null,
+                connectTimeout: Timeout::seconds($config->get('tax.register.connect_timeout'), 5.0),
             );
         });
 
@@ -283,13 +289,31 @@ class TaxServiceProvider extends ServiceProvider
     {
         $this->app->singleton(VatIdValidator::class, static function (Application $app): DispatchingVatIdValidator {
             $http = $app->make(Factory::class);
+            $config = $app->make(Config::class);
 
-            $validators = [new ViesValidator($http), new HmrcVatValidator($http)];
+            // A checkout waits on these, so they never get the HTTP client's 30 s
+            // default — and a registry that just timed out is not asked again for
+            // `unavailable_backoff` seconds (per registry and country). A published
+            // config from an older release lacks the keys; the defaults apply.
+            $timeout = Timeout::seconds($config->get('tax.vat_id.timeout'), 6.0);
+            $connectTimeout = Timeout::seconds($config->get('tax.vat_id.connect_timeout'), 3.0);
+            $backoffSeconds = $config->get('tax.vat_id.unavailable_backoff');
+            $store = $config->get('tax.vat_id.backoff_store');
+            // A host without a cache simply goes without the backoff.
+            $backoff = $app->bound(CacheFactory::class) ? new RegistryBackoff(
+                $app->make(CacheFactory::class)->store(is_string($store) && $store !== '' ? $store : null),
+                is_numeric($backoffSeconds) ? (int) $backoffSeconds : 60,
+            ) : null;
 
-            $guid = $app->make(Config::class)->get('tax.vat_id.abn_guid');
+            $validators = [
+                new ViesValidator($http, timeout: $timeout, connectTimeout: $connectTimeout, backoff: $backoff),
+                new HmrcVatValidator($http, timeout: $timeout, connectTimeout: $connectTimeout, backoff: $backoff),
+            ];
+
+            $guid = $config->get('tax.vat_id.abn_guid');
 
             if (is_string($guid) && $guid !== '') {
-                $validators[] = new AbnLookupValidator($http, $guid);
+                $validators[] = new AbnLookupValidator($http, $guid, timeout: $timeout, connectTimeout: $connectTimeout, backoff: $backoff);
             }
 
             return new DispatchingVatIdValidator($validators);

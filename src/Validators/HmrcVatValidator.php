@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\ValueObjects\VatIdValidation;
 use Illuminate\Http\Client\Factory;
-use Throwable;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 
 /**
  * Validates a UK VAT registration number against HMRC's public "Check a UK VAT
@@ -25,9 +26,17 @@ use Throwable;
  */
 readonly class HmrcVatValidator implements VatIdValidator
 {
+    use CallsRegistry;
+
     public function __construct(
         private Factory $http,
         private string $baseUrl = 'https://api.service.hmrc.gov.uk',
+        /** Seconds the whole request may take — a checkout waits on it. */
+        private float $timeout = 6.0,
+        /** Seconds to open the connection. */
+        private float $connectTimeout = 3.0,
+        /** Answers inconclusive at once while the registry is known to be down. */
+        private ?RegistryBackoff $backoff = null,
     ) {}
 
     public function supports(CountryCode $country): bool
@@ -39,11 +48,11 @@ readonly class HmrcVatValidator implements VatIdValidator
     {
         $vrn = (string) preg_replace('/[^0-9]/', '', $taxId);
 
-        try {
-            $response = $this->http
-                ->acceptJson()
-                ->get($this->baseUrl.'/organisations/vat/check-vat-number/lookup/'.$vrn);
-        } catch (Throwable) {
+        $response = $this->callRegistry('hmrc', $country, fn (PendingRequest $http): Response => $http
+            ->acceptJson()
+            ->get($this->baseUrl.'/organisations/vat/check-vat-number/lookup/'.$vrn));
+
+        if ($response === null) {
             return VatIdValidation::inconclusive('hmrc');
         }
 

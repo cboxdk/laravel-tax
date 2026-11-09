@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\ExchangeRates;
 
+use Cbox\Tax\Support\Timeout;
 use DOMDocument;
 use DOMElement;
 use Illuminate\Console\Command;
@@ -33,7 +34,11 @@ class SyncExchangeRatesCommand extends Command
         $directory = self::directory($config, $this->laravel->storagePath('app/cbox-tax/fx/ecb'));
 
         try {
-            $response = $http->timeout(60)->retry(2, 1000)->get($url);
+            $response = $http
+                ->connectTimeout(Timeout::seconds($config->get('tax.exchange_rates.connect_timeout'), 5.0))
+                ->timeout(Timeout::seconds($config->get('tax.exchange_rates.timeout'), 60.0))
+                ->retry(2, 1000)
+                ->get($url);
         } catch (Throwable $e) {
             $this->error('Could not reach the ECB: '.$e->getMessage());
 

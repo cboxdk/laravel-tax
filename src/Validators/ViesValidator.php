@@ -8,7 +8,8 @@ use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\ValueObjects\VatIdValidation;
 use Illuminate\Http\Client\Factory;
-use Throwable;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 
 /**
  * Validates an EU VAT number against the Commission's VIES service (REST). Returns
@@ -17,6 +18,8 @@ use Throwable;
  */
 readonly class ViesValidator implements VatIdValidator
 {
+    use CallsRegistry;
+
     /** @var list<string> */
     private const array EU = [
         'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
@@ -27,6 +30,12 @@ readonly class ViesValidator implements VatIdValidator
     public function __construct(
         private Factory $http,
         private string $baseUrl = 'https://ec.europa.eu/taxation_customs/vies/rest-api',
+        /** Seconds the whole request may take — a checkout waits on it. */
+        private float $timeout = 6.0,
+        /** Seconds to open the connection. */
+        private float $connectTimeout = 3.0,
+        /** Answers inconclusive at once while the registry is known to be down. */
+        private ?RegistryBackoff $backoff = null,
     ) {}
 
     public function supports(CountryCode $country): bool
@@ -40,16 +49,12 @@ readonly class ViesValidator implements VatIdValidator
         $viesCountry = $country->value === 'GR' ? 'EL' : $country->value;
         $number = $this->normalize($viesCountry, $taxId);
 
-        try {
-            $response = $this->http->asJson()->post($this->baseUrl.'/check-vat-number', [
-                'countryCode' => $viesCountry,
-                'vatNumber' => $number,
-            ]);
-        } catch (Throwable) {
-            return VatIdValidation::inconclusive('vies');
-        }
+        $response = $this->callRegistry('vies', $country, fn (PendingRequest $http): Response => $http->asJson()->post($this->baseUrl.'/check-vat-number', [
+            'countryCode' => $viesCountry,
+            'vatNumber' => $number,
+        ]));
 
-        if (! $response->successful()) {
+        if ($response === null || ! $response->successful()) {
             return VatIdValidation::inconclusive('vies');
         }
 

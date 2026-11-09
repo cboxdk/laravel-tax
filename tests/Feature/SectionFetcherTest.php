@@ -83,3 +83,19 @@ it('does not send register credentials to a foreign artifact URL or follow redir
     expect(fn (): array => $fetcher->json('/api/v1/releases/latest'))->toThrow(RateSourceUnavailable::class);
     $http->assertSentCount(1);
 });
+
+it('opens every register connection within the connect timeout', function (): void {
+    $http = app(Factory::class);
+    $seen = [];
+    $http->fake(function ($request, array $options) use ($http, &$seen) {
+        $seen[] = $options['connect_timeout'] ?? null;
+
+        return $http->response(['version' => '2026.10.03-343']);
+    });
+
+    $fetcher = new SectionFetcher($http, token: 'fixture-register-token', connectTimeout: 4);
+    $fetcher->json('/api/v1/releases/latest');
+    $fetcher->download('/api/v1/releases/x/regions/eu', sys_get_temp_dir().'/cbox-tax-ct-'.getmypid().'/eu.json');
+
+    expect($seen)->toBe([4.0, 4.0]);
+});
