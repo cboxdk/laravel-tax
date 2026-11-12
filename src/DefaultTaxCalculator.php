@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Tax;
 
+use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
@@ -198,7 +199,7 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->withOpenConditions($query, $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->gateCollection($query, $regime->assess($query, $this->rates)))))));
+        return $this->withOpenConditions($query, $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->exportFromUnion($query, $this->gateCollection($query, $regime->assess($query, $this->rates))))))));
     }
 
     /**
@@ -339,6 +340,21 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return $assessment;
         }
 
+        if ($place->taxProfile->isEuMember && $query->seller->hasScheme('ioss', $query->on())) {
+            return $this->underImportScheme($query, $assessment);
+        }
+
+        return $this->notRegistered($query, $place, sprintf(
+            'The seller is neither established nor registered in %s, so it collects nothing there: imported goods are '
+            .'taxed at the border. Some supplies oblige a non-resident seller to register from the first sale — '
+            .'digital services and low-value consignments in most places — and once registered, add it to the '
+            .'seller\'s registrations to collect.',
+            $place->country->value,
+        ));
+    }
+
+    private function notRegistered(TaxQuery $query, Jurisdiction $place, string $reason): TaxAssessment
+    {
         return new TaxAssessment(
             treatment: TaxTreatment::NotRegistered,
             net: $query->amount,
@@ -346,13 +362,193 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             gross: $query->amount,
             placeOfSupply: $place,
             rate: null,
-            reason: sprintf(
-                'The seller is neither established nor registered in %s, so it collects nothing there: imported goods are '
-                .'taxed at the border. Some supplies oblige a non-resident seller to register from the first sale — '
-                .'digital services and low-value consignments in most places — and once registered, add it to the '
-                .'seller\'s registrations to collect.',
-                $place->country->value,
+            reason: $reason,
+        );
+    }
+
+    /**
+     * IOSS COVERS A SMALL PARCEL, NOT A SALE. The Import One-Stop Shop collects the
+     * customer's VAT at checkout on distance sales of goods imported into the Union in
+     * a consignment of an intrinsic value of at most EUR 150, excise goods excepted
+     * (Art. 369l of the VAT Directive). Read as a registration in every member state,
+     * it charged German VAT on a EUR 400 parcel the customer then paid import VAT on
+     * again at the border.
+     *
+     * Outside the scheme the seller collects nothing — the import is taxed at the
+     * border — and the reason says which condition put it outside. Within it the
+     * charge stands, and the reason says what it was measured on.
+     */
+    private function underImportScheme(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        $place = $assessment->placeOfSupply;
+        $country = $place->country->value;
+        $from = $query->route->shipFrom;
+
+        $outside = match (true) {
+            ! CategoryMap::isGoods($this->categoryKey($query)) => sprintf(
+                'The seller\'s IOSS registration covers distance sales of imported goods only (Art. 369l of Council Directive '
+                .'2006/112/EC), not services, and it is neither established nor registered in %s, so it collects nothing there. '
+                .'A seller established outside the Union declares services to EU consumers under the non-Union scheme (Art. 358a).',
+                $country,
             ),
+            $this->isExcise($query) => sprintf(
+                'IOSS does not cover goods subject to excise duty (Art. 369l of Council Directive 2006/112/EC): the seller '
+                .'charges no VAT at checkout, and %s VAT is due on import at the border, with the duty.',
+                $country,
+            ),
+            $from !== null && $from->taxProfile->isEuMember => sprintf(
+                'IOSS covers goods imported into the Union (Art. 369l of Council Directive 2006/112/EC); these ship from %s, '
+                .'inside it, and the seller is neither established nor registered in %s, so it collects nothing there.',
+                $from->country->value,
+                $country,
+            ),
+            default => null,
+        };
+
+        if ($outside !== null) {
+            return $this->notRegistered($query, $place, $outside);
+        }
+
+        $value = $this->intrinsicValueInEuro($query, $assessment);
+
+        if ($value === null) {
+            return $assessment->with(
+                reason: $assessment->reason.sprintf(
+                    ' Collected under the seller\'s IOSS registration, which covers a consignment only up to EUR 150 of '
+                    .'intrinsic value (Art. 369l): no %s→EUR rate for the tax date could measure this one.',
+                    $query->amount->getCurrency()->getCurrencyCode(),
+                ),
+                limitedBy: RateLimit::ConsignmentValueUnmeasured,
+            );
+        }
+
+        if ($value->isGreaterThan(self::IOSS_CONSIGNMENT_LIMIT_EUR)) {
+            return $this->notRegistered($query, $place, sprintf(
+                'IOSS covers a consignment only up to an intrinsic value of EUR 150 (Art. 369l of Council Directive '
+                .'2006/112/EC), and this one\'s is EUR %s: the seller charges no VAT at checkout, and %s import VAT is '
+                .'due at the border.',
+                $value,
+                $country,
+            ));
+        }
+
+        return $assessment->with(reason: $assessment->reason.sprintf(
+            ' Collected under the seller\'s IOSS registration: the consignment\'s intrinsic value, EUR %s, is within the '
+            .'EUR 150 limit (Art. 369l of Council Directive 2006/112/EC).',
+            $value,
+        ));
+    }
+
+    /** Art. 369l's ceiling on a consignment's intrinsic value. */
+    private const string IOSS_CONSIGNMENT_LIMIT_EUR = '150';
+
+    /**
+     * The consignment's intrinsic value in euro: the goods on the document, without
+     * delivery and without VAT, converted at the rate for the tax date. Null where no
+     * rate converts it.
+     *
+     * A tax-inclusive price is brought back to its net at this line's own rate — the
+     * goods in one parcel almost always share one, and where they do not, the
+     * difference is a fraction of a rate on the excess.
+     */
+    private function intrinsicValueInEuro(TaxQuery $query, TaxAssessment $assessment): ?BigDecimal
+    {
+        $value = ($query->consignmentValue ?? $query->amount)->abs();
+
+        if ($query->pricing === Pricing::Inclusive && ! $query->amount->isZero()) {
+            $value = Money::of(
+                $value->getAmount()->multipliedBy($assessment->net->getAmount())->dividedBy($query->amount->getAmount(), $value->getCurrency()->getDefaultFractionDigits(), RoundingMode::HalfUp),
+                $value->getCurrency(),
+            );
+        }
+
+        $currency = $value->getCurrency()->getCurrencyCode();
+
+        if ($currency === 'EUR') {
+            return $value->getAmount()->toScale(2, RoundingMode::HalfUp);
+        }
+
+        return $this->exchangeRates?->rate($currency, 'EUR', $assessment->taxPoint ?? $query->on())?->convert($value)->getAmount()->toScale(2, RoundingMode::HalfUp);
+    }
+
+    /**
+     * Goods under excise duty — alcohol, tobacco, and energy products and electricity
+     * (Directive (EU) 2020/262) — which IOSS does not cover. Read from the register key
+     * where the caller named one, else from the class.
+     */
+    private function isExcise(TaxQuery $query): bool
+    {
+        if ($query->categoryKey === null) {
+            return in_array($query->category, [TaxClass::Wine, TaxClass::FossilFuel, TaxClass::Gas, TaxClass::Electricity], true);
+        }
+
+        return array_any(
+            ['goods.beverages.alcoholic', 'goods.tobacco', 'goods.energy.fossil_fuel', 'goods.energy.gas', 'goods.energy.electricity'],
+            static fn (string $excise): bool => str_starts_with($query->categoryKey.'.', $excise.'.'),
+        );
+    }
+
+    private function categoryKey(TaxQuery $query): string
+    {
+        return $query->categoryKey ?? CategoryMap::keyFor($query->category);
+    }
+
+    /**
+     * GOODS LEAVING THE UNION ARE AN EXPORT FROM IT. Dispatched from a member state to
+     * a customer outside the Union, a supply of goods is taxed where the dispatch
+     * begins (Art. 32) and exempt there (Art. 146(1)(a), or (b) where the customer
+     * collects them). It was answered as `NotRegistered` in the destination: the right
+     * zero, filed nowhere — while the sale belongs on the seller's own return as an
+     * export, and the invoice has to cite the exemption (Art. 226(11)).
+     *
+     * Only what the collection gate, or the US regime, left as not the seller's to
+     * collect: a seller registered in the destination charges that country's tax on
+     * its own terms. Goods only — a service's place of supply is its own question —
+     * from a seller established in a member state, shipped from inside the Union. A
+     * shop's US warehouse shipping to a US customer exports nothing.
+     */
+    private function exportFromUnion(TaxQuery $query, TaxAssessment $assessment): TaxAssessment
+    {
+        if ($assessment->treatment !== TaxTreatment::NotRegistered
+            || $query->place->taxProfile->isEuMember
+            || ! CategoryMap::isGoods($this->categoryKey($query))) {
+            return $assessment;
+        }
+
+        $from = $query->route->shipFrom;
+
+        if ($from !== null && ! $from->taxProfile->isEuMember) {
+            return $assessment;
+        }
+
+        $home = $this->jurisdictions?->find($query->seller->establishment);
+
+        if ($home === null || ! $home->taxProfile->isEuMember) {
+            return $assessment;
+        }
+
+        $origin = $from ?? $home;
+
+        return new TaxAssessment(
+            treatment: TaxTreatment::ZeroRated,
+            net: $query->amount,
+            tax: Money::zero($query->amount->getCurrency()),
+            gross: $query->amount,
+            placeOfSupply: $origin,
+            rate: null,
+            reason: sprintf(
+                'EU VAT: goods dispatched from %1$s to a customer in %2$s, outside the European Union, are an exempt export '
+                .'(Art. 146(1)(a) of Council Directive 2006/112/EC, or (b) where the customer collects them): no VAT is '
+                .'charged, and the sale is declared in %1$s\'s VAT return as an export, with proof kept that the goods left '
+                .'the Union. %2$s taxes them on import.',
+                $origin->country->value,
+                $query->place->country->value,
+            ),
+            mentions: [new InvoiceMention(
+                code: 'export',
+                text: 'Exempt export of goods',
+                reference: 'Article 146(1) of Council Directive 2006/112/EC',
+            )],
         );
     }
 
@@ -366,7 +562,9 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return false;
         }
 
-        if ($query->seller->oss?->registered === true || $query->seller->holdsUnionScheme($query->on())) {
+        // OSS collects across the Union from one number. IOSS does too, but only on a small
+        // imported parcel, so the gate asks it separately, of the consignment.
+        if ($query->seller->oss?->registered === true || $query->seller->hasScheme('oss', $query->on())) {
             return true;
         }
 

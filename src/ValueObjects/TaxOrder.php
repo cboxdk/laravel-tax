@@ -12,6 +12,7 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\PurchaserType;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Exceptions\InvalidTaxOrder;
+use Cbox\Tax\Register\Reader\CategoryMap;
 use DateTimeImmutable;
 
 /**
@@ -184,7 +185,28 @@ readonly class TaxOrder
             saleAmount: $this->saleAmount(),
             customerTaxId: $this->customerTaxId,
             purchaser: $this->purchaser,
+            consignmentValue: $this->consignmentValue(),
         );
+    }
+
+    /**
+     * The consignment's intrinsic value: every line of goods summed, delivery left
+     * out — the figure IOSS's EUR 150 limit is measured on (Art. 369l). A document
+     * ships as one consignment. Null where nothing on it is goods.
+     */
+    public function consignmentValue(): ?Money
+    {
+        $total = null;
+
+        foreach ($this->lines as $line) {
+            if ($line->isDeliveryCharge || ! CategoryMap::isGoods($line->categoryKey ?? CategoryMap::keyFor($line->category))) {
+                continue;
+            }
+
+            $total = $total === null ? $line->amount : $total->plus($line->amount);
+        }
+
+        return $total;
     }
 
     private function factsFor(SupplyLine $line): DecisionFacts

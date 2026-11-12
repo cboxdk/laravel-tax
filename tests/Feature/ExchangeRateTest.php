@@ -140,7 +140,8 @@ it('carries no Art. 91 rate outside the Union', function (): void {
     $abroad = $sale(new SellerRegistrations(new CountryCode('DK')));
     $registered = $sale(new SellerRegistrations(new CountryCode('DK'), [new SellerRegistration(new CountryCode('US'), new SubdivisionCode('US-TX'))]));
 
-    expect($abroad->treatment)->toBe(TaxTreatment::NotRegistered)
+    // Nothing collected in Texas: the goods are an exempt export from Denmark.
+    expect($abroad->treatment)->toBe(TaxTreatment::ZeroRated)
         ->and($abroad->exchangeRate)->toBeNull()
         ->and($abroad->taxInLocalCurrency())->toBeNull()
         ->and($registered->tax->isPositive())->toBeTrue()

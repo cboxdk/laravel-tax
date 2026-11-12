@@ -205,6 +205,15 @@ enum RateLimit: string
      */
     case ExemptionCertificateMissing = 'exemption_certificate_missing';
 
+    /**
+     * The seller collects under IOSS, which covers a consignment only up to EUR 150
+     * of intrinsic value (Art. 369l), and the consignment is priced in a currency no
+     * exchange rate for the tax date could bring to euro. The charge stands — it is
+     * the seller's own registration, and a refund is recoverable where a sale nobody
+     * taxed is not — and says the limit went unmeasured.
+     */
+    case ConsignmentValueUnmeasured = 'consignment_value_unmeasured';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -260,6 +269,9 @@ enum RateLimit: string
                 .'published, such as relief at the till or by refund, cannot be settled by input.',
             self::ExemptionCertificateMissing => 'Collect the certificate the reason names from the purchaser and keep '
                 .'it, then state `evidence.holdsExemptionCertificate` as true. Until then the sale is taxed.',
+            self::ConsignmentValueUnmeasured => 'Sync the ECB reference rates (`tax:fx:sync`), or bind an ExchangeRates '
+                .'that knows this currency: the consignment is measured against IOSS\'s EUR 150 limit in euro, at the '
+                .'rate for the tax date.',
             self::BracketSchedule => 'Price tax-exclusive where you can: the published table is then applied to '
                 .'the sale exactly. A tax-inclusive price, or a local share stacked on the state\'s table, is '
                 .'priced at the table\'s per-dollar rate — right for a price, within a cent for a return.',

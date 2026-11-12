@@ -73,11 +73,15 @@ function gateQuery(string $seller, string $buyer, array $registeredIn = [], ?Oss
 it('does not charge a destination tax the seller is not registered to collect', function (): void {
     // A Danish shop selling a laptop to a Norwegian consumer, with no Norwegian
     // registration. The seller has no number to remit Norwegian VAT under; the buyer
-    // pays it on import.
+    // pays it on import — and for the shop the sale is an exempt export from Denmark.
     $a = app(TaxCalculator::class)->assess(gateQuery('DK', 'NO'));
 
-    expect($a->treatment)->toBe(TaxTreatment::NotRegistered)
+    expect($a->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and($a->placeOfSupply->country->value)->toBe('DK')
         ->and((string) $a->tax->getAmount())->toBe('0.00');
+
+    // A service has no export to fall back on: not the seller's to collect.
+    expect(app(TaxCalculator::class)->assess(gateQuery('DK', 'NO', class: TaxClass::DigitalService))->treatment)->toBe(TaxTreatment::NotRegistered);
 });
 
 it('charges it once the seller is registered there', function (): void {
@@ -112,8 +116,9 @@ it('lets the platform collect where the register says the law makes it liable', 
 
 it('does not take a marketplace assertion where no rule makes the platform liable', function (): void {
     // No Norwegian marketplace rule is published: the assertion alone moves nothing,
-    // and a seller unregistered in Norway still collects nothing.
-    expect(app(TaxCalculator::class)->assess(gateQuery('DK', 'NO', marketplace: true))->treatment)->toBe(TaxTreatment::NotRegistered)
+    // and a seller unregistered in Norway still collects nothing: its goods are an
+    // export from Denmark.
+    expect(app(TaxCalculator::class)->assess(gateQuery('DK', 'NO', marketplace: true))->treatment)->toBe(TaxTreatment::ZeroRated)
         ->and(app(TaxCalculator::class)->assess(gateQuery('DK', 'NO', registeredIn: ['NO'], marketplace: true))->treatment)->toBe(TaxTreatment::Standard);
 });
 
