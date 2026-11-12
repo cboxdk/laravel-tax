@@ -361,7 +361,22 @@ readonly class Compiler
 
         $to = $partial.'/boundaries/'.$state.'.'.$suffix.'.json';
 
-        return $this->fetcher->download($address, $to) !== null;
+        return $this->fetcher->download($address, $to, self::published($entry)) !== null;
+    }
+
+    /**
+     * The sha256 the register's boundary listing publishes for a file, when it does.
+     *
+     * Releases built before the listing carried hashes list `bytes` and no `hash`;
+     * such a file is fetched as before, and only cannot be taken over a redirect.
+     *
+     * @param  array<array-key, mixed>  $entry
+     */
+    private static function published(array $entry): ?string
+    {
+        $hash = $entry['hash'] ?? null;
+
+        return is_string($hash) && $hash !== '' ? $hash : null;
     }
 
     /**
@@ -402,7 +417,7 @@ readonly class Compiler
 
         $download = $partial.'/.download/'.$state.'.zip.json';
 
-        if ($this->fetcher->download($address, $download) === null) {
+        if ($this->fetcher->download($address, $download, self::published($entry)) === null) {
             return false;
         }
 
@@ -444,7 +459,7 @@ readonly class Compiler
 
         $download = $partial.'/.download/'.$state.'.streets.json';
 
-        if ($this->fetcher->download($address, $download) === null) {
+        if ($this->fetcher->download($address, $download, self::published($entry)) === null) {
             return false;
         }
 

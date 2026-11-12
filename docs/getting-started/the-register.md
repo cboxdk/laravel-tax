@@ -89,6 +89,7 @@ Publish `config/tax.php` with `php artisan vendor:publish --tag=tax-config`.
 | `streets` | `TAX_REGISTER_STREETS` | No street indexes |
 | `boundaries` | `TAX_REGISTER_BOUNDARIES` | `true` |
 | `keep` | `TAX_REGISTER_KEEP` | `2` |
+| `redirect_origins` | `TAX_REGISTER_REDIRECT_ORIGINS` | Empty: every redirect is refused |
 
 Lists accept PHP arrays or comma-separated environment values. Explicit CLI values
 replace the corresponding sync defaults. `--no-boundaries` disables the boundary
@@ -182,4 +183,47 @@ upgrade. `tax:data:sync --check` compares against the same release. A release as
 for by name (`--release=`, or pinned with `TAX_REGISTER_VERSION`) still refuses: you
 asked for that one. Nothing is downloaded or replaced for a release that is refused.
 
-Register downloads authenticate every request. Absolute artifact URLs must match the configured scheme, host and port, and redirects are refused. Pin `TAX_REGISTER_VERSION` for reproducible compilation. Browser code must never receive the integration token.
+Register downloads authenticate every request. Absolute artifact URLs must match the configured scheme, host and port. Redirects are refused unless you allow one, as described below. Pin `TAX_REGISTER_VERSION` for reproducible compilation. Browser code must never receive the integration token.
+
+## Where the register lives
+
+`TAX_REGISTER_URL` sets the register's address. It defaults to
+`https://data.cboxtax.com`. To read from another address (a mirror, or the
+register's new home once it is announced), set the variable and run
+`tax:data:sync`. The integration token is sent only to this origin.
+
+## Downloads handed to object storage
+
+The register may answer a large file with a redirect to object storage, using a
+short-lived signed URL, instead of sending the bytes itself. By default a sync
+refuses every redirect. To accept one, list the storage origin:
+
+```dotenv
+TAX_REGISTER_REDIRECT_ORIGINS=https://<account-id>.r2.cloudflarestorage.com
+```
+
+An entry is an origin: `https://`, a host, and an optional port, with no path. List
+several by separating them with commas. Matching is exact, so wildcards are not
+supported. For Cloudflare R2, the host is the one in the signed URL:
+`<account-id>.r2.cloudflarestorage.com`, or `<bucket>.<account-id>.r2.cloudflarestorage.com`
+when the bucket is in the host name. The register's announcement gives the value. A
+refused redirect also prints the origin it pointed to, but only allow it if it matches
+the announcement.
+
+A sync follows a redirect only when all of these hold:
+
+- The target's origin is listed. It must use `https`, and the URL must not contain
+  a user name or password.
+- It is the first redirect. A redirect from storage is refused.
+- The file has a sha256 published by the register. The boundary listing publishes
+  one for every boundary, street and geometry file. After the download, the file is
+  hashed and compared with it. If they differ, the file is deleted and the sync stops.
+  Region and section documents have no published hash, so a redirect for one of them is
+  refused even when the origin is allowed.
+
+The redirected request is a new request without the integration token. A signed
+URL authorises itself, and the token never reaches the storage provider.
+
+Files served by the register itself are handled as before: they are not checked
+against the listing's hash at download time. The compiled store still gets its own
+manifest, which `tax:data:verify` checks.

@@ -72,6 +72,11 @@ return [
         'keep' => (int) env('TAX_REGISTER_KEEP', 2),
         'timeout' => env('TAX_REGISTER_TIMEOUT', 120),
         'connect_timeout' => env('TAX_REGISTER_CONNECT_TIMEOUT', 5),
+        // Origins a download may be redirected to (e.g. the register's object storage,
+        // https://<account>.r2.cloudflarestorage.com). Empty refuses every redirect.
+        // One redirect at most, https only, never with the token, and only for a file
+        // whose sha256 the register published — checked after the download.
+        'redirect_origins' => env('TAX_REGISTER_REDIRECT_ORIGINS'),
     ],
 
     /*

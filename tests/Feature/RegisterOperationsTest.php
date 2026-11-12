@@ -9,6 +9,8 @@ use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Exceptions\RateSourceUnavailable;
+use Cbox\Tax\Register\Compile\SectionFetcher;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
@@ -18,7 +20,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 use Illuminate\Support\Facades\Http;
 
 /** Small published documents exercise the real compiler and command wiring offline. */
-function publishOperationRegister(array $versions = ['2026.09.17-100']): void
+function publishOperationRegister(array $versions = ['2026.09.17-100'], array $overrides = []): void
 {
     $responses = [
         'https://data.cboxtax.com/api/v1/releases/latest' => Http::response(['version' => end($versions)]),
@@ -47,7 +49,7 @@ function publishOperationRegister(array $versions = ['2026.09.17-100']): void
         }
     }
 
-    Http::fake($responses);
+    Http::fake([...$responses, ...$overrides]);
 }
 
 function operationManifest(string $version = '2026.09.17-100'): array
@@ -231,3 +233,40 @@ it('verifies the pricing pin by default and an explicit release on request', fun
     $this->artisan('tax:data:verify', ['release' => '2026.09.17-100'])->expectsOutputToContain('Verified 2026.09.17-100:')->assertSuccessful();
     $this->artisan('tax:data:verify', ['release' => '2026.09.17-999'])->assertFailed();
 });
+
+it('takes a boundary file over one redirect, checked against the hash the listing publishes', function (bool $intact): void {
+    $version = '2026.09.17-100';
+    $base = 'https://data.cboxtax.com/api/v1/releases/'.$version;
+    $overlay = '{"type":"FeatureCollection","features":[]}';
+    $storage = 'https://register.fixture-account.r2.cloudflarestorage.com';
+
+    publishOperationRegister(overrides: [
+        $base.'/boundaries' => Http::response([
+            'integrity' => 'sha256',
+            'states' => ['NE' => ['overlay' => [
+                'url' => $base.'/boundaries/ne/overlay',
+                'artifact' => 'boundaries/ne.overlay.json',
+                'bytes' => strlen($overlay),
+                'hash' => hash('sha256', $intact ? $overlay : '{}'),
+            ]]],
+        ]),
+        $base.'/boundaries/ne/overlay' => Http::response('', 302, ['Location' => $storage.'/ne.overlay.json?X-Amz-Signature=fixture']),
+        $storage.'/*' => Http::response($overlay),
+    ]);
+    config()->set('tax.register.redirect_origins', $storage);
+    config()->set('tax.register.regions', 'us');
+    app()->forgetInstance(SectionFetcher::class);
+
+    $sync = fn () => $this->artisan('tax:data:sync')->assertSuccessful()->run();
+
+    if ($intact) {
+        $sync();
+    } else {
+        expect($sync)->toThrow(RateSourceUnavailable::class, 'integrity check failed for '.$base.'/boundaries/ne/overlay');
+    }
+
+    Http::assertSent(fn ($request): bool => str_starts_with($request->url(), $storage.'/') && ! $request->hasHeader('Authorization'));
+    $intact
+        ? expect(app(StoreLayout::class)->installed())->toContain($version)
+        : expect(app(StoreLayout::class)->installed())->not->toContain($version);
+})->with(['intact' => true, 'altered' => false]);

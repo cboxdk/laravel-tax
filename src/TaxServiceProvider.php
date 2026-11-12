@@ -259,6 +259,7 @@ class TaxServiceProvider extends ServiceProvider
                 timeout: (int) ceil(Timeout::seconds($config->get('tax.register.timeout'), 120.0)),
                 token: is_string($token) ? $token : null,
                 connectTimeout: Timeout::seconds($config->get('tax.register.connect_timeout'), 5.0),
+                redirectOrigins: self::origins($config->get('tax.register.redirect_origins')),
             );
         });
 
@@ -357,5 +358,24 @@ class TaxServiceProvider extends ServiceProvider
                 SyncExchangeRatesCommand::class,
             ]);
         }
+    }
+
+    /**
+     * `tax.register.redirect_origins` as a list: an array, or a comma-separated env value.
+     *
+     * @return list<string>
+     */
+    private static function origins(mixed $value): array
+    {
+        $entries = is_string($value) ? explode(',', $value) : (is_array($value) ? $value : []);
+        $origins = [];
+
+        foreach ($entries as $entry) {
+            if (is_string($entry) && trim($entry) !== '') {
+                $origins[] = trim($entry);
+            }
+        }
+
+        return $origins;
     }
 }
