@@ -216,9 +216,11 @@ class DatasetComparison
         $this->tally('jurisdictions', $leftRecord === null ? 0 : 1);
         $this->same('jurisdiction['.$code.']', $leftRecord, $right->jurisdiction($code));
 
-        $leftRules = $left->rulesFor($code);
-        $this->tally('rules', count($leftRules));
-        $this->same('rulesFor['.$code.']', $leftRules, $right->rulesFor($code));
+        // A rule the engine cannot apply is a refusal, and a refusal is an answer:
+        // both datasets must refuse the same rule for the same reason.
+        $leftRules = $this->ask(static fn (): array => $left->rulesFor($code));
+        $this->tally('rules', array_is_list($leftRules) ? count($leftRules) : 0);
+        $this->same('rulesFor['.$code.']', $leftRules, $this->ask(static fn (): array => $right->rulesFor($code)));
 
         $leftStandard = $left->standardRates($code);
         $this->tally('standardRates', count($leftStandard));
@@ -389,6 +391,21 @@ class DatasetComparison
             is_file($a) ? hash_file('sha256', $a) : null,
             is_file($b) ? hash_file('sha256', $b) : null,
         );
+    }
+
+    /**
+     * An answer, or the refusal given instead of one.
+     *
+     * @param  callable(): array<array-key, mixed>  $question
+     * @return array<array-key, mixed>
+     */
+    private function ask(callable $question): array
+    {
+        try {
+            return $question();
+        } catch (Throwable $e) {
+            return ['refused' => $e::class, 'because' => $e->getMessage()];
+        }
     }
 
     /**

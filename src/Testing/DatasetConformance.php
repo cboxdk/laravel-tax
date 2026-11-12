@@ -6,6 +6,7 @@ namespace Cbox\Tax\Testing;
 
 use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Exceptions\Refusal;
 use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
@@ -232,32 +233,36 @@ trait DatasetConformance
         }
 
         foreach ($byJurisdiction as $code => $rules) {
-            Assert::assertSame($rules, $dataset->rulesFor($code), "rulesFor({$code}) is the rules section's rules for it, in order.");
+            $byKind = [];
 
-            $kind = Shape::text($rules[0]['kind'] ?? null);
-
-            if ($kind === null) {
-                continue;
+            foreach ($rules as $rule) {
+                $byKind[Shape::scalar($rule['kind'] ?? null)][] = $rule;
             }
 
-            $ofKind = $dataset->rulesFor($code, $kind);
+            foreach ($byKind as $kind => $ofKind) {
+                try {
+                    $answered = $dataset->rulesFor($code, $kind);
+                } catch (Refusal) {
+                    // A rule this engine cannot apply is refused when it is asked for,
+                    // by every dataset alike; what is checked here is the reading.
+                    continue;
+                }
 
-            Assert::assertNotSame([], $ofKind);
+                Assert::assertSame($ofKind, $answered, "rulesFor({$code}, {$kind}) is the rules section's rules of that kind for it, in order.");
 
-            foreach ($ofKind as $rule) {
-                Assert::assertSame($kind, $rule['kind'] ?? null, "rulesFor({$code}, {$kind}) returned a rule of another kind.");
-            }
+                $from = Shape::text(Shape::map($ofKind[0]['effective'] ?? null)['from'] ?? null);
 
-            $from = Shape::text(Shape::map($rules[0]['effective'] ?? null)['from'] ?? null);
+                if ($from === null) {
+                    continue;
+                }
 
-            if ($from !== null) {
                 Assert::assertContains(
-                    $rules[0],
+                    $ofKind[0],
                     $dataset->rulesOn($code, $kind, new DateTimeImmutable($from)),
                     "rulesOn({$code}, {$kind}) includes a rule on the first day of its window.",
                 );
                 Assert::assertNotContains(
-                    $rules[0],
+                    $ofKind[0],
                     $dataset->rulesOn($code, $kind, new DateTimeImmutable($from)->modify('-1 day')),
                     "rulesOn({$code}, {$kind}) excludes a rule the day before its window opens.",
                 );

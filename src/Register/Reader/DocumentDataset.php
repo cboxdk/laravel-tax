@@ -52,6 +52,9 @@ abstract class DocumentDataset implements RegisterData
      * array where the release does not carry it. Called at most once per name and
      * only with a release resolved.
      *
+     * It must not call {@see requireVersion()} or {@see document()}: the schema check
+     * reads the manifest through this, and would never return.
+     *
      * @return array<string, mixed>
      */
     abstract protected function section(string $name): array;
