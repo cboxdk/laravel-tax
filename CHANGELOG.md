@@ -5,6 +5,42 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.18.2] - 2026-11-12
+
+### Fixed
+
+- **An EU seller's goods shipped out of the Union are an export.** Goods dispatched
+  from a member state to a customer outside the Union (the UK, Norway, Switzerland,
+  the United States) came back `NotRegistered` in the destination: no tax, which was
+  right, but nothing put the sale on the seller's own return or the exemption on the
+  invoice. They now come back `ZeroRated` in the seller's member state (or the one
+  the goods ship from) as an exempt export under Art. 146(1)(a)/(b), with an `export`
+  invoice mention citing Article 146(1). This applies only where the seller is not
+  registered in the destination, only to goods, and only when they ship from inside
+  the Union. It is not an intra-EU consumer sale and does not count toward the
+  €10,000 threshold. Services are unchanged.
+- **IOSS stops at a €150 consignment.** An `ioss` registration was read as a
+  registration in every member state, so a non-EU seller charged German VAT on a
+  €400 parcel that the customer then paid import VAT on again at the border. IOSS now
+  covers only goods imported in a consignment of an intrinsic value of at most €150,
+  excise goods excepted (Art. 369l). Above that, or for excise goods, services, or
+  goods shipped from inside the Union, the answer is `NotRegistered` and the reason
+  names the condition. Within it, the reason states the consignment's value in euro.
+  The consignment is the document's goods lines without delivery, measured net of VAT
+  and converted to euro at the `ExchangeRates` rate for the tax date.
+- **OSS does not carry an imported parcel either.** For a seller established outside
+  the Union, an `oss` registration (or `OssStatus::$registered`) now covers services
+  and goods shipping from inside the Union, not goods imported into it. A seller
+  holding both OSS and IOSS was still charged on the €400 parcel.
+
+### Added
+
+- `TaxOrder::consignmentValue()`, and an optional `consignmentValue` on `TaxQuery`
+  (filled by `TaxOrder`).
+- `RateLimit::ConsignmentValueUnmeasured` (`consignment_value_unmeasured`): an IOSS
+  charge whose consignment could not be converted to euro for want of a rate. The
+  charge stands and is flagged.
+
 ## [0.18.1] - 2026-11-09
 
 ### Changed

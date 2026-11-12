@@ -60,13 +60,14 @@ a supply that would otherwise be taxed at destination is returned as
 `NotRegistered` when the seller is neither established nor registered there:
 
 ```php
-// A Danish shop selling to a Norwegian consumer, with no Norwegian registration.
+// A Danish shop selling an e-book to a Norwegian consumer, with no Norwegian registration.
 $assessment->treatment;            // TaxTreatment::NotRegistered
 $assessment->tax->getAmount();     // 0.00
 ```
 
-That is not "no tax was due". Norwegian VAT is due — it is collected at the border
-from the buyer, because this seller has no number to remit it under. Add a
+That is not "no tax was due". Norwegian VAT is due — Norway asks a foreign seller of
+e-books to register from the first sale, and this seller has no number to remit it
+under. Add a
 `SellerRegistration` for Norway and the same query charges 25%. The distinction
 matters on a return, which is why `NotRegistered` is its own treatment rather than a
 zero: see [marketplace facilitator](marketplace-facilitator.md) for the four zeros
@@ -74,7 +75,37 @@ that mean different things.
 
 Two ways in are treated as registration across the whole Union, because that is what
 they are: an `OssStatus` with `registered: true`, or a registration whose `scheme` is
-`oss` or `ioss`, wherever it is filed. Both are read on the supply's date.
+`oss`, wherever it is filed. Both are read on the supply's date.
+
+An EU-established seller's **goods shipped outside the Union** are not `NotRegistered`
+at all: they come back `ZeroRated` in the seller's own member state as an exempt export
+(Art. 146), with an `export` invoice mention. See
+[regimes](regimes.md#goods-leaving-the-union-are-an-export).
+
+### IOSS and the €150 consignment
+
+An `ioss` registration is narrower than OSS. It collects the customer's VAT at checkout
+only on **goods imported into the Union in a consignment of an intrinsic value of at
+most €150**, and never on goods subject to excise duty — alcohol, tobacco, energy
+products (Art. 369l). Outside that, the seller charges nothing and the customer pays
+import VAT at the border; the reason names which condition applied.
+
+- **The consignment is the document.** A `TaxOrder` measures its goods lines together,
+  delivery left out (`TaxOrder::consignmentValue()`): two €100 items are a €200
+  consignment. A single `TaxQuery` is measured on its own amount, or on
+  `consignmentValue` where you pass it.
+- **In euro, without VAT.** A tax-inclusive price is measured net, and another currency
+  is converted at the `ExchangeRates` rate for the tax date (the ECB's, once
+  `tax:fx:sync` has run). With no rate the charge stands, flagged
+  `consignment_value_unmeasured`.
+- **Imported.** Goods shipped from inside the Union (`route->shipFrom` in a member state)
+  are not an import, and IOSS does not reach them; nor does it reach services.
+
+```php
+// A UK shop with IOSS, a €400 order to a German consumer.
+$assessment->treatment;   // TaxTreatment::NotRegistered — import VAT at the border
+$assessment->reason;      // "IOSS covers a consignment only up to … EUR 150 (Art. 369l …)"
+```
 
 ## Sub-federal permits: US nexus and Canadian PST
 
@@ -102,7 +133,8 @@ are read by the engine, and the rest are yours to keep for your own bookkeeping:
 
 | Scheme | Read by | What it does |
 | --- | --- | --- |
-| `oss`, `ioss` | the collection gate | Collects across all 27 Member States from one number |
+| `oss` | the collection gate | Collects across all 27 Member States from one number — for a seller established outside the Union, on services and on goods shipping from inside the Union, not on imported goods |
+| `ioss` | the collection gate | Collects across all 27 Member States on imported goods in a consignment of at most €150, excise goods excepted |
 | `remote-election` | `UsSalesTaxRegime` | Prices a state's flat-rate remote-seller programme instead of resolving the rate — Texas's single local rate, Alabama's SSUT |
 
 A `remote-election` scheme needs the **subdivision** as well; an election is a state's

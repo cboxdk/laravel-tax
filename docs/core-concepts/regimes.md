@@ -26,8 +26,24 @@ customer reverse-charges; everything else is taxed at the place-of-supply rate
 A regime decides the rate and the treatment. Whether this seller collects it is a
 separate question, asked after: outside the United States, a would-be `Standard`
 supply comes back **`NotRegistered`** when the seller is neither established nor
-registered in the place of supply. Inside the Union an OSS or IOSS registration
-covers every Member State, and an EU-established seller stays on the Union's rules.
+registered in the place of supply. Inside the Union an OSS registration covers every
+Member State (for a seller established outside the Union: its services and goods
+already inside the Union, not imports), and an EU-established seller stays on the
+Union's rules. An IOSS
+registration covers only imported goods in a consignment of at most €150 of intrinsic
+value, excise goods excepted (Art. 369l) — see
+[seller registrations](seller-registrations.md#ioss-and-the-150-consignment).
+
+## Goods leaving the Union are an export
+
+An EU-established seller's goods shipped from inside the Union to a customer outside it
+— the UK, Norway, Switzerland, the United States — come back **`ZeroRated`** in the
+**seller's own member state** (or the member state they ship from), not `NotRegistered`
+in the destination. That is the exempt export of Art. 146(1)(a)/(b): it goes in the
+seller's own return as an export, and the invoice carries an `export` mention citing
+Article 146(1). It is not a cross-border EU consumer sale, so it does not count toward
+the €10,000 threshold. Services keep their own place-of-supply rules, and a seller
+registered in the destination charges that country's tax as before.
 
 This catches the common case of a shop selling abroad for the first time: the tax is
 due, but it is collected at the border from the buyer, not by a seller with no number

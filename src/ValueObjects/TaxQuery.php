@@ -217,6 +217,15 @@ readonly class TaxQuery
          * and the answer is the ordinary one.
          */
         public ?PurchaserType $purchaser = null,
+        /**
+         * The intrinsic value of the consignment this supply ships in: the price of the
+         * GOODS on the document, without delivery, in the query's currency. IOSS reads
+         * it — it covers a consignment of at most EUR 150 (Art. 369l), and two EUR 100
+         * items in one parcel are a EUR 200 consignment. `TaxOrder` fills it from its
+         * goods lines; null for a query that is the whole consignment, which is then
+         * measured on its own amount.
+         */
+        public ?Money $consignmentValue = null,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
@@ -297,6 +306,7 @@ readonly class TaxQuery
             $this->saleAmount,
             $this->customerTaxId,
             $this->purchaser,
+            $this->consignmentValue,
         );
     }
 
