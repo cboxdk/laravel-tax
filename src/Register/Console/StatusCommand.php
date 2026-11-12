@@ -22,12 +22,16 @@ use Throwable;
  */
 class StatusCommand extends Command
 {
+    use ManagesFileStore;
+
     protected $signature = 'tax:data:status {--offline : Do not ask the register what the latest release is}';
 
     protected $description = 'Show the installed Cbox Tax register and what it covers';
 
     public function handle(StoreLayout $layout, StorePointer $pointer, SectionFetcher $fetcher, RegisterDataset $dataset, Config $config): int
     {
+        $this->sayWhatPricingReads();
+
         $live = $pointer->current();
         $pricing = $dataset->version();
         $pin = Shape::text($config->get('tax.register.version'));

@@ -8,13 +8,13 @@ use Brick\Math\BigDecimal;
 use Brick\Math\Exception\MathException;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\PurchaserExemptions;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\PurchaserExemptionEffect;
 use Cbox\Tax\Enums\PurchaserExemptionRoute;
 use Cbox\Tax\Enums\PurchaserExemptionStatus;
 use Cbox\Tax\Enums\PurchaserType;
 use Cbox\Tax\Register\Reader\Predicate;
 use Cbox\Tax\Register\Reader\RateConditions;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\PurchaserExemption;
@@ -31,7 +31,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterPurchaserExemptions implements PurchaserExemptions
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function for(Jurisdiction $place, PurchaserType $purchaser, DecisionFacts $facts, DateTimeImmutable $on): PurchaserExemption
     {

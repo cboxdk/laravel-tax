@@ -6,10 +6,10 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\DeliveryRules;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\Decision;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\DeliveryCharge;
 use Cbox\Tax\ValueObjects\DeliveryTreatment;
@@ -27,7 +27,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterDelivery implements DeliveryRules
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function treatment(SubdivisionCode $state, DeliveryCharge $delivery, DateTimeImmutable $at): ?DeliveryTreatment
     {

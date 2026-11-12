@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Enums\SourcingMode;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\IntrastateSourcing;
 use DateTimeImmutable;
@@ -26,7 +26,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterSourcing implements SourcingRules
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?IntrastateSourcing
     {

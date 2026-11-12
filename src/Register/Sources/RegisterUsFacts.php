@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Cbox\Tax\Register\Sources;
 
 use Brick\Money\Money;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Register\Reader\CategoryMap;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use DateTimeImmutable;
 use Throwable;
@@ -24,7 +24,7 @@ use Throwable;
  */
 readonly class RegisterUsFacts implements UsTaxFacts
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function stateRatePercent(string $state, ?DateTimeImmutable $at = null): ?string
     {

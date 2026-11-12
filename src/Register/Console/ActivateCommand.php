@@ -19,12 +19,16 @@ use Illuminate\Contracts\Config\Repository as Config;
  */
 class ActivateCommand extends Command
 {
+    use ManagesFileStore;
+
     protected $signature = 'tax:data:activate {version : An installed version, or "previous"}';
 
     protected $description = 'Make an already-installed register version live';
 
     public function handle(StoreLayout $layout, StorePointer $pointer, Config $config): int
     {
+        $this->sayWhatPricingReads();
+
         $installed = $layout->installed();
         $wanted = Shape::scalar($this->argument('version'));
 

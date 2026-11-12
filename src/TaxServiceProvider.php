@@ -24,6 +24,7 @@ use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\ProductTaxability;
 use Cbox\Tax\Contracts\PurchaserExemptions;
 use Cbox\Tax\Contracts\RegimeRegistry;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Contracts\SourcingRules;
@@ -98,12 +99,11 @@ class TaxServiceProvider extends ServiceProvider
         // attaches to the vendor who used it, so it cannot be obtained on a
         // customer's behalf through somebody else's key.
         $this->app->singleton(LocalAuthorityResolver::class, static function (Application $app): LocalAuthorityResolver {
-            $dataset = $app->make(RegisterDataset::class);
-            $version = $dataset->version();
+            $dataset = $app->make(RegisterData::class);
 
-            return $version === null
+            return $dataset->version() === null
                 ? new DefersLocalAuthorities
-                : new RegisterBoundaries($app->make(StoreLayout::class), $version, $dataset);
+                : RegisterBoundaries::over($dataset);
         });
 
         // Knows no item codes until a host binds its own. An app that never sends an
@@ -117,8 +117,8 @@ class TaxServiceProvider extends ServiceProvider
         // in front of it does not publish.
         $this->app->bind(CatalogueAudit::class, static fn (Application $app): CatalogueAudit => new CatalogueAudit(
             $app->make(ProductCatalogue::class),
-            new RegisterRateSource($app->make(RegisterDataset::class)),
-            $app->make(RegisterDataset::class),
+            new RegisterRateSource($app->make(RegisterData::class)),
+            $app->make(RegisterData::class),
         ));
 
         // ONE RATE SOURCE. The register covers 80 jurisdictions across eleven
@@ -131,7 +131,7 @@ class TaxServiceProvider extends ServiceProvider
         // A host that has something better still rebinds this contract, and
         // ChainTaxRateSource is still shipped for putting its own source in front.
         $this->app->singleton(TaxRateSource::class, static fn (Application $app): TaxRateSource => new RegisterRateSource(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
             new RateResolver,
             // Resolved from the container so a host can bind its own — a state portal
             // it holds credentials for, a commercial adapter, an internal boundary
@@ -141,32 +141,32 @@ class TaxServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(ProductTaxability::class, static fn (Application $app): ProductTaxability => new RegisterTaxability(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(NexusThresholds::class, static fn (Application $app): NexusThresholds => new RegisterNexus(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(SourcingRules::class, static fn (Application $app): SourcingRules => new RegisterSourcing(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(UsTaxFacts::class, static fn (Application $app): UsTaxFacts => new RegisterUsFacts(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(RoundingRules::class, static fn (Application $app): RoundingRules => new RegisterRounding(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
-        $this->app->singleton(PurchaserExemptions::class, static fn (Application $app): PurchaserExemptions => new RegisterPurchaserExemptions($app->make(RegisterDataset::class)));
+        $this->app->singleton(PurchaserExemptions::class, static fn (Application $app): PurchaserExemptions => new RegisterPurchaserExemptions($app->make(RegisterData::class)));
         $this->app->singleton(AttributionRules::class, static fn (Application $app): AttributionRules => new RegisterAttribution(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(DeliveryRules::class, static fn (Application $app): DeliveryRules => new RegisterDelivery(
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
         ));
 
         $this->app->singleton(RegimeRegistry::class, static fn (Application $app): DefaultRegimeRegistry => DefaultRegimeRegistry::withDefaults(
@@ -188,7 +188,7 @@ class TaxServiceProvider extends ServiceProvider
         // a supply, the other to a delivery however many lines it has. Colorado's
         // Retail Delivery Fee is the second kind, and charging it through the first
         // billed a two-line order twice for one delivery.
-        $this->app->singleton(EuTerritories::class, static fn (Application $app): EuTerritories => new StaticEuTerritories($app->make(RegisterDataset::class)));
+        $this->app->singleton(EuTerritories::class, static fn (Application $app): EuTerritories => new StaticEuTerritories($app->make(RegisterData::class)));
 
         $this->app->singleton(FlatChargeSource::class, static fn (): FlatChargeSource => new NoFlatCharges);
         $this->app->singleton(OrderFlatChargeSource::class, static fn (): OrderFlatChargeSource => new NoOrderFlatCharges);
@@ -205,7 +205,7 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(PurchaserExemptions::class),
         ));
 
-        $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterDataset::class)));
+        $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterData::class)));
 
         // The shipped calculator assesses documents directly. A host that rebound
         // TaxCalculator to its own engine gets the same capability by fan-out —
@@ -262,11 +262,18 @@ class TaxServiceProvider extends ServiceProvider
             );
         });
 
+        // THE FILE STORE, under its own name: what `tax:data:*` manages, and what a
+        // host that binds another dataset can still reach.
         $this->app->singleton(RegisterDataset::class, static fn (Application $app): RegisterDataset => new RegisterDataset(
             $app->make(StoreLayout::class),
             $app->make(StorePointer::class),
             Shape::text($app->make(Config::class)->get('tax.register.version')),
         ));
+
+        // WHAT THE ENGINE READS. The file store unless a host binds its own dataset:
+        // every source, the boundary resolver, the geocoder and TaxRegister ask for
+        // this contract and nothing else.
+        $this->app->singleton(RegisterData::class, static fn (Application $app): RegisterData => $app->make(RegisterDataset::class));
 
         // The register's public face. It reads through the same dataset the engine
         // prices with, so what it reports is what a calculation in this request uses.
@@ -275,9 +282,7 @@ class TaxServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(TaxRegister::class, static fn (Application $app): TaxRegister => new InstalledRegister(
-            $app->make(RegisterDataset::class),
-            $app->make(StoreLayout::class),
-            $app->make(StorePointer::class),
+            $app->make(RegisterData::class),
         ));
     }
 

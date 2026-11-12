@@ -6,8 +6,8 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\MarketplaceRules;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\MarketplaceLiability;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use DateTimeImmutable;
 
@@ -18,7 +18,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterMarketplaceRules implements MarketplaceRules
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     /**
      * A MANDATE THAT NAMES CONDITIONS IS NOT A MANDATE OVER EVERY SALE. Schema 2.6

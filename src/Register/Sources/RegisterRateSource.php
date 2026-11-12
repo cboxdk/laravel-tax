@@ -11,6 +11,7 @@ use Cbox\Tax\Contracts\CategoryKeyedRateSource;
 use Cbox\Tax\Contracts\CommodityRateSource;
 use Cbox\Tax\Contracts\FactAwareRateSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\ReportsDistrictOverlays;
 use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\Confidence;
@@ -22,7 +23,6 @@ use Cbox\Tax\Exceptions\DatasetNotInstalled;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RateResolver;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\BracketRow;
 use Cbox\Tax\ValueObjects\BracketSchedule;
@@ -55,7 +55,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     private const string SOURCE = 'cbox-tax';
 
     public function __construct(
-        private RegisterDataset $dataset,
+        private RegisterData $dataset,
         private RateResolver $resolver = new RateResolver,
         private LocalAuthorityResolver $authorities = new DefersLocalAuthorities,
         private DecisionFacts $facts = new DecisionFacts,

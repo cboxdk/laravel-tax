@@ -136,3 +136,10 @@ $this->fakeGeocodio(500);                          // the next request fails: nu
 
 Requests stay assertable with `Http::assertSent()`. Outside a test,
 `GeocodioGeocoder::configured($app, $key)` builds the same adapter from the config.
+
+## Testing a dataset of your own
+
+A host that binds its own `RegisterData` has two shipped tools for it:
+`DatasetConformance` (a trait with one assertion every implementation must pass) and
+`DatasetComparison` (walks two datasets and reports where they answer differently).
+See [Your own dataset](../extension-points/datasets.md#prove-it).
