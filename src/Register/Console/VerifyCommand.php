@@ -12,12 +12,16 @@ use Illuminate\Console\Command;
 /** Checks the installed files against the manifest written during compilation. */
 class VerifyCommand extends Command
 {
+    use ManagesFileStore;
+
     protected $signature = 'tax:data:verify {release? : Installed release; defaults to the version used for pricing}';
 
     protected $description = 'Verify the local register files against their compiled manifest, without network access';
 
     public function handle(StoreLayout $layout, RegisterDataset $dataset): int
     {
+        $this->sayWhatPricingReads();
+
         $version = Shape::text($this->argument('release')) ?? $dataset->version();
 
         if ($version === null || ! in_array($version, $layout->installed(), true)) {

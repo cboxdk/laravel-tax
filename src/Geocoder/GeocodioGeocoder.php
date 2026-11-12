@@ -10,8 +10,8 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\AddressGeocoder;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\LocalityScheme;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Support\Timeout;
 use Cbox\Tax\Territories\UsLocalStructure;
 use Illuminate\Contracts\Config\Repository as Config;
@@ -69,7 +69,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
         private string $baseUrl = 'https://api.geocod.io/v2',
         private bool $rooftop = false,
         /** The installed register, which says which states resolve by point. */
-        private ?RegisterDataset $register = null,
+        private ?RegisterData $register = null,
         /**
          * Seconds a request may take, and may take to connect — a checkout waits on
          * this. Null leaves the HTTP client's own default (30 s); the configured
@@ -101,7 +101,7 @@ readonly class GeocodioGeocoder implements AddressGeocoder
             // regardless: it needs no append, and in those states the county is the
             // whole local share, so withholding it would just under-charge.
             $config->get('tax.geocodio.rooftop') === true,
-            $app->make(RegisterDataset::class),
+            $app->make(RegisterData::class),
             Timeout::seconds($timeout, 5.0),
             Timeout::seconds($connectTimeout, 3.0),
         );

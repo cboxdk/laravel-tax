@@ -7,10 +7,10 @@ namespace Cbox\Tax\Register\Sources;
 use Brick\Math\BigDecimal;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\NexusThresholds;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\ThresholdOperator;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\NexusThreshold;
 use Cbox\Tax\ValueObjects\ThresholdMeasurement;
@@ -35,7 +35,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterNexus implements NexusThresholds
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?NexusThreshold
     {

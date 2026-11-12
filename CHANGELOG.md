@@ -5,6 +5,45 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [0.19.0] - 2026-11-12
+
+### Added
+
+- **The dataset is a contract.** Everything that reads the register (the rate source,
+  nexus, delivery, rounding, sourcing, marketplace rules, purchaser exemptions, the
+  boundary resolver, the geocoder, the catalogue audit and `TaxRegister`) now asks
+  for `Contracts\RegisterData` instead of the concrete file reader. A host that
+  keeps the register somewhere else, a database for one, binds its own
+  implementation and the engine reads that. The file store is still the default
+  binding and nothing changes for an application that binds nothing. See
+  [Your own dataset](docs/extension-points/datasets.md).
+- `Register\Reader\DocumentDataset`: an abstract dataset that answers every question
+  derivable from a release's small sections, so an implementation only says where
+  the release, the sections, the rows and the boundary files are.
+- `RegisterData::at()`, `document()`, `shards()`, `codesIn()` and `boundaryPath()`,
+  implemented by the file store.
+- `Register\Compile\BoundaryCompiler`: the step that turns one published boundary
+  artifact into the files the resolver reads, usable on artifacts already on disk.
+  `tax:data:sync` runs the same code.
+- `RegisterBoundaries::over($dataset)`: the boundary resolver over any dataset.
+- `Testing\DatasetConformance`, a trait with one assertion every dataset must pass,
+  and `Testing\DatasetComparison`, which walks two datasets and reports every place
+  they answer differently, grouped by cause.
+
+### Changed
+
+- `Register\Reader\RegisterDataset` (the file store) now extends `DocumentDataset`
+  and implements `RegisterData`. Its constructor, its public methods and its
+  container binding are unchanged, so `new RegisterDataset($layout, $pointer)` and
+  `app(RegisterDataset::class)` keep working.
+- `InstalledRegister` takes the dataset alone. Code passing the store layout and
+  pointer positionally still works; code passing them by name must drop them.
+- `RegisterBoundaries` accepts a null layout when it is given a dataset (use
+  `RegisterBoundaries::over()`); the existing constructor form is unchanged.
+- `tax:data:sync`, `status`, `verify`, `activate` and `prune` manage the file store
+  and print one line saying so when another dataset is bound, since what they do
+  then does not change what a calculation reads.
+
 ## [0.18.2] - 2026-11-12
 
 ### Fixed

@@ -7,13 +7,11 @@ namespace Cbox\Tax\Register\Sources;
 use Brick\Math\BigDecimal;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Enums\LocalResolution;
 use Cbox\Tax\Enums\ThresholdOperator;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
-use Cbox\Tax\Register\Store\StoreLayout;
-use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\ValueObjects\DistanceSalesThreshold;
 use Cbox\Tax\ValueObjects\RateRecord;
 use Cbox\Tax\ValueObjects\RegisterCategory;
@@ -31,11 +29,12 @@ use Throwable;
  */
 readonly class InstalledRegister implements TaxRegister
 {
-    public function __construct(
-        private RegisterDataset $dataset,
-        private StoreLayout $layout,
-        private StorePointer $pointer,
-    ) {}
+    /**
+     * Another release is asked of the dataset itself ({@see RegisterData::at()}), so
+     * this reads any dataset. It used to take the store's layout and pointer as well;
+     * code still passing them positionally keeps working, PHP ignores the extras.
+     */
+    public function __construct(private RegisterData $dataset) {}
 
     public function release(): ?RegisterRelease
     {
@@ -129,7 +128,7 @@ readonly class InstalledRegister implements TaxRegister
 
     public function rateRecords(Jurisdiction $place, ?string $release = null): array
     {
-        $dataset = $release === null ? $this->dataset : new RegisterDataset($this->layout, $this->pointer, $release);
+        $dataset = $release === null ? $this->dataset : $this->dataset->at($release);
         $dataset->requireVersion();
 
         $codes = $place->subdivision === null

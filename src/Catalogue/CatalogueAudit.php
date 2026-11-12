@@ -6,8 +6,8 @@ namespace Cbox\Tax\Catalogue;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\ProductCatalogue;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Register\Reader\CategoryMap;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\CatalogueFinding;
 use Cbox\Tax\ValueObjects\RegisterFact;
@@ -35,7 +35,7 @@ readonly class CatalogueAudit
     public function __construct(
         private ProductCatalogue $catalogue,
         private RegisterRateSource $rates,
-        private ?RegisterDataset $dataset = null,
+        private ?RegisterData $dataset = null,
     ) {}
 
     /**

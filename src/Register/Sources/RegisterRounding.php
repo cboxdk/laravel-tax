@@ -6,17 +6,17 @@ namespace Cbox\Tax\Register\Sources;
 
 use Brick\Math\RoundingMode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\RoundingRules;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\TaxRounding;
 use DateTimeImmutable;
 
 readonly class RegisterRounding implements RoundingRules
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function for(SubdivisionCode $state, DateTimeImmutable $at): ?TaxRounding
     {

@@ -7,11 +7,11 @@ namespace Cbox\Tax\Register\Sources;
 use Brick\Money\Money;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\CategoryKeyedTaxability;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\ThresholdRule;
 use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
 use Cbox\Tax\Register\Reader\CategoryMap;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use DateTimeImmutable;
@@ -38,7 +38,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterTaxability implements CategoryKeyedTaxability
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function determine(
         Jurisdiction $jurisdiction,

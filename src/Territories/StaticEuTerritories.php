@@ -7,8 +7,8 @@ namespace Cbox\Tax\Territories;
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\EuTerritoriesBySubdivision;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\EuTerritory;
 use DateTimeImmutable;
@@ -67,7 +67,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
     /** Register codes for the territories that keep their own rates. */
     private const array OWN_RATES = ['PT-30' => ['eu:PT:MADEIRA', 'Madeira'], 'PT-20' => ['eu:PT:AZORES', 'Azores']];
 
-    public function __construct(private ?RegisterDataset $register = null) {}
+    public function __construct(private ?RegisterData $register = null) {}
 
     public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
     {

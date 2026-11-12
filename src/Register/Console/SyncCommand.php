@@ -20,6 +20,8 @@ use Illuminate\Contracts\Config\Repository as Config;
  */
 class SyncCommand extends Command
 {
+    use ManagesFileStore;
+
     protected $signature = 'tax:data:sync
         {--release= : A release to compile, or "latest"; defaults to tax.register.version or latest}
         {--region=* : Limit to these regimes (eu, us, apac, …); overrides tax.register.regions}
@@ -33,6 +35,8 @@ class SyncCommand extends Command
 
     public function handle(SectionFetcher $fetcher, StoreLayout $layout, StorePointer $pointer, RegisterDataset $dataset, Config $config): int
     {
+        $this->sayWhatPricingReads();
+
         $pin = Shape::text($config->get('tax.register.version'));
         $release = Shape::text($this->option('release')) ?? $pin ?? 'latest';
 

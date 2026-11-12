@@ -19,12 +19,16 @@ use Illuminate\Contracts\Config\Repository as Config;
  */
 class PruneCommand extends Command
 {
+    use ManagesFileStore;
+
     protected $signature = 'tax:data:prune {--keep= : How many versions to retain, newest first; defaults to tax.register.keep}';
 
     protected $description = 'Delete old installed register versions';
 
     public function handle(StoreLayout $layout, StorePointer $pointer, Config $config): int
     {
+        $this->sayWhatPricingReads();
+
         $keep = max(1, (int) Shape::scalar($this->option('keep') ?? $config->get('tax.register.keep', 2)));
         $installed = $layout->installed();
         $live = $pointer->current();

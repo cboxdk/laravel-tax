@@ -6,9 +6,9 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Tax\Contracts\AttributionRules;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\AttributionStatus;
 use Cbox\Tax\Register\Reader\RateConditions;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\Attribution;
 use Cbox\Tax\ValueObjects\DecisionFacts;
@@ -24,7 +24,7 @@ use DateTimeImmutable;
  */
 readonly class RegisterAttribution implements AttributionRules
 {
-    public function __construct(private RegisterDataset $dataset) {}
+    public function __construct(private RegisterData $dataset) {}
 
     public function verdict(CountryCode $state, DecisionFacts $facts, DateTimeImmutable $on): Attribution
     {

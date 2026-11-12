@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Register\Reader;
 
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
-use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Register\Store\ShardKey;
 use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
-use Cbox\Tax\ValueObjects\RegisterFact;
-use DateTimeImmutable;
 
 /**
  * The typed way into a compiled store: what a jurisdiction charges, what rules scope
@@ -27,31 +25,23 @@ use DateTimeImmutable;
  * not move the answer under a half-priced invoice: two lines of one order have to be
  * priced by the same register, or the totals do not reconcile with either.
  *
+ * THE FILE STORE, and the default binding of {@see RegisterData}. What a release means
+ * is answered by {@see DocumentDataset}; this says where the compiled files are.
+ *
  * @internal Changes with the store it reads. An application asks the register through
  *           {@see TaxRegister}, which does not.
  */
-class RegisterDataset
+class RegisterDataset extends DocumentDataset
 {
     private ?string $version = null;
 
     private bool $resolved = false;
-
-    private bool $schemaChecked = false;
 
     /** @var array<string, ShardReader> */
     private array $rates = [];
 
     /** @var array<string, ShardReader> */
     private array $jurisdictions = [];
-
-    /** @var array<string, array<string, mixed>>|null */
-    private ?array $documents = null;
-
-    /** @var array<string, list<array<string, mixed>>>|null */
-    private ?array $rulesByJurisdiction = null;
-
-    /** @var array<string, RegisterFact>|null */
-    private ?array $factIndex = null;
 
     public function __construct(
         private readonly StoreLayout $layout,
@@ -63,46 +53,6 @@ class RegisterDataset
     public function storeRoot(): string
     {
         return $this->layout->root();
-    }
-
-    /**
-     * Whether the installed release carries a GEOMETRY artifact for a US state —
-     * the states an address resolves against by point rather than by ZIP+4.
-     *
-     * Read from what was installed, not from a list: California and New Mexico are
-     * the two today, and a third published tomorrow is resolved by point the day it
-     * is synced. Null when no store is installed, so a caller can fall back.
-     */
-    public function publishesGeometryFor(string $state): ?bool
-    {
-        $version = $this->version();
-
-        if ($version === null) {
-            return null;
-        }
-
-        return is_file($this->layout->file($version, 'boundaries/'.strtoupper($state).'.geo.json'));
-    }
-
-    /**
-     * Whether the installed store holds a district overlay for a US state — districts
-     * drawn over its postal layer, which only a point can place an address inside.
-     * Null when no store is installed.
-     */
-    public function publishesOverlayFor(string $state): ?bool
-    {
-        $version = $this->version();
-
-        if ($version === null) {
-            return null;
-        }
-
-        return is_file($this->layout->file($version, 'boundaries/'.strtoupper($state).'.overlay.json'));
-    }
-
-    public function isInstalled(): bool
-    {
-        return $this->version() !== null;
     }
 
     /** The live version, pinned for the life of this instance. */
@@ -118,25 +68,10 @@ class RegisterDataset
         return $this->version;
     }
 
-    /**
-     * @throws DatasetNotInstalled
-     */
-    public function requireVersion(): string
+    /** The same store at another installed release; one that is not on disk refuses. */
+    public function at(string $release): self
     {
-        $version = $this->version();
-
-        if ($version === null) {
-            throw new DatasetNotInstalled($this->layout->root(), $this->pinnedVersion);
-        }
-
-        // A store can be installed by a newer worker and then opened by an older
-        // one. Checking only at sync time does not protect offline pricing.
-        if (! $this->schemaChecked) {
-            RegisterCompatibility::schema($this->readDocument('manifest', $version)['schemaVersion'] ?? null, $version);
-            $this->schemaChecked = true;
-        }
-
-        return $version;
+        return new self($this->layout, $this->pointer, $release);
     }
 
     /**
@@ -203,359 +138,93 @@ class RegisterDataset
     }
 
     /**
-     * Whether the store actually carries this regime, as opposed to carrying it and
-     * finding nothing.
-     *
-     * The distinction is the whole reason per-region and per-state opt-in is safe. A
-     * store compiled with `--region=eu` holds no answer for Japan, and answering
-     * "no tax in Japan" would be a fabrication; the manifest says which regimes were
-     * compiled, so the engine can refuse with a remedy instead.
-     */
-    public function carries(string $jurisdiction): bool
-    {
-        $manifest = $this->document('manifest');
-        $regions = $manifest['regions'] ?? null;
-        $regime = ShardKey::regime($jurisdiction);
-
-        if (is_array($regions) && ! in_array($regime, $regions, true)) {
-            return false;
-        }
-
-        if ($regime !== 'us') {
-            return true;
-        }
-
-        $states = $manifest['states'] ?? null;
-        $parts = explode(':', $jurisdiction);
-
-        return ! is_array($states) || ($parts[1] ?? null) === null || in_array($parts[1], $states, true);
-    }
-
-    /**
-     * Rules of one kind that apply to a jurisdiction, in publication order.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function rulesFor(string $jurisdiction, ?string $kind = null): array
-    {
-        if ($this->rulesByJurisdiction === null) {
-            $index = [];
-
-            foreach (Shape::records($this->document('rules')['rules'] ?? null) as $rule) {
-                $code = Shape::text($rule['jurisdiction'] ?? null);
-
-                if ($code !== null) {
-                    $index[$code][] = $rule;
-                }
-            }
-
-            $this->rulesByJurisdiction = $index;
-        }
-
-        $rules = $this->rulesByJurisdiction[$jurisdiction] ?? [];
-
-        if ($kind !== null) {
-            $rules = array_values(array_filter($rules, static fn (array $rule): bool => ($rule['kind'] ?? null) === $kind));
-        }
-
-        foreach ($rules as $rule) {
-            RegisterCompatibility::applicable($rule);
-        }
-
-        return $rules;
-    }
-
-    /**
-     * Rules whose published window contains the requested calendar date.
-     * End dates are inclusive. A capture floor does not establish earlier coverage.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function rulesOn(string $jurisdiction, string $kind, DateTimeImmutable $at): array
-    {
-        $on = $at->format('Y-m-d');
-
-        return array_values(array_filter($this->rulesFor($jurisdiction, $kind), static function (array $rule) use ($on): bool {
-            $effective = Shape::map($rule['effective'] ?? null);
-            $from = Shape::text($effective['from'] ?? null);
-            $until = Shape::text($effective['until'] ?? null);
-
-            return ($from === null || $from <= $on) && ($until === null || $until >= $on);
-        }));
-    }
-
-    /**
-     * The standard-rate backbone: every jurisdiction that sets one, worldwide.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function standardRates(string $jurisdiction): array
-    {
-        $rows = [];
-
-        foreach (Shape::records($this->document('standard-rates')['standardRates'] ?? null) as $rate) {
-            if (($rate['jurisdiction'] ?? null) === $jurisdiction) {
-                $rows[] = $rate;
-            }
-        }
-
-        return $rows;
-    }
-
-    /**
-     * The category vocabulary, keyed by its own key, so a resolver can walk `parent`
-     * upward without a second lookup.
-     *
-     * @return array<string, array<string, mixed>>
-     */
-    public function categories(): array
-    {
-        $byKey = [];
-
-        foreach (Shape::records($this->document('meta')['categories'] ?? null) as $category) {
-            $key = Shape::text($category['key'] ?? null);
-
-            if ($key !== null) {
-                $byKey[$key] = $category;
-            }
-        }
-
-        return $byKey;
-    }
-
-    /**
-     * Refuse a category key this release does not publish, naming the closest keys
-     * it does publish, so a typo is a one-look fix.
-     */
-    public function assertCategoryPublished(string $key): void
-    {
-        $vocabulary = $this->categories();
-
-        if (isset($vocabulary[$key])) {
-            return;
-        }
-
-        // Closest first, by edit distance within the same root — `goods` or `services` —
-        // so a typo's intended key leads the list instead of whatever sorts first.
-        $root = explode('.', $key)[0].'.';
-        $nearby = array_values(array_filter(array_keys($vocabulary), static fn (string $k): bool => str_starts_with($k, $root)));
-        usort($nearby, static fn (string $a, string $b): int => levenshtein($key, $a) <=> levenshtein($key, $b) ?: strcmp($a, $b));
-
-        throw UnknownCategory::notPublished($key, $this->requireVersion(), array_slice($nearby, 0, 5));
-    }
-
-    /**
-     * The jurisdiction codes a country could be addressed by, best first.
-     *
-     * A country is not one code. Regimes are membership over TIME, so the United
-     * Kingdom is `eu:GB` while it was a member and `europe:GB` after — and the
-     * register is explicit that its RATES sit at `europe:GB` for every date,
-     * including 1994. Following membership alone for a 2019 British invoice finds
-     * four exemptions and no standard rate at all.
-     *
-     * So this returns candidates rather than an answer: the regime whose membership
-     * covers the date first, then every other regime that ever claimed the country.
-     * The caller takes the first that actually carries a rate, which is the only
-     * test that cannot be wrong about this.
-     *
-     * A MEMBER IS ONLY A CANDIDATE IF IT IS A COUNTRY. The `us` regime lists all
-     * fifty-four states as members, and matching a code by its trailing ISO alone
-     * made `us:GA` an answer for Gabon, `us:IL` for Israel and `us:CA` for Canada —
-     * twenty-five countries priced at a US state's rate and stamped `Authoritative`.
-     * Which one won came down to the order regimes happened to appear in, so the EU
-     * escaped and everything listed after `us` did not. The register labels each
-     * jurisdiction's `level`, and a `state` is never the answer to "what does this
-     * COUNTRY charge".
-     *
-     * Where the level cannot be read the member is kept, because an unlabelled
-     * jurisdiction is a gap in what we know and not evidence that it is sub-national.
+     * Every shard this version was compiled with, from what is on disk.
      *
      * @return list<string>
      */
-    public function codesForCountry(string $iso, ?DateTimeImmutable $at = null): array
+    public function shards(): array
     {
-        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
-        $current = [];
-        $other = [];
+        $root = $this->layout->version($this->requireVersion());
+        $found = [];
 
-        foreach (Shape::records($this->document('meta')['regimes'] ?? null) as $regime) {
-            foreach (Shape::records($regime['members'] ?? null) as $member) {
-                $code = Shape::text($member['code'] ?? null);
-
-                if ($code === null || ! str_ends_with($code, ':'.$iso)) {
-                    continue;
-                }
-
-                $level = Shape::text($this->jurisdiction($code)['level'] ?? null);
-
-                if ($level !== null && $level !== 'country') {
-                    continue;
-                }
-
-                $from = $member['from'] ?? null;
-                $until = $member['until'] ?? null;
-                $covers = (! is_string($from) || $from <= $on) && (! is_string($until) || $until >= $on);
-
-                if ($covers) {
-                    $current[] = $code;
-
-                    continue;
-                }
-
-                $other[] = $code;
+        foreach (['rates', 'jurisdictions'] as $kind) {
+            foreach ($this->indexes($root.'/'.$kind, '') as $shard) {
+                $found[$shard] = true;
             }
         }
 
-        return array_values(array_unique([...$current, ...$other]));
+        $shards = array_keys($found);
+        sort($shards);
+
+        return $shards;
     }
 
     /**
-     * @return array<string, mixed>
+     * @return list<string>
      */
-    public function manifest(): array
+    public function codesIn(string $shard): array
     {
-        return $this->document('manifest');
-    }
+        $version = $this->requireVersion();
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function coverage(): array
-    {
-        return $this->document('coverage');
-    }
+        $this->rates[$shard] ??= new ShardReader($this->layout->file($version, 'rates/'.$shard));
+        $this->jurisdictions[$shard] ??= new ShardReader($this->layout->file($version, 'jurisdictions/'.$shard));
 
-    /**
-     * What a local answer in a US state needs, as the register states it —
-     * `state`, `county` or `address` — or null where the release does not say.
-     */
-    public function usLocalResolution(string $state): ?string
-    {
-        $entry = Shape::map(Shape::map($this->document('us-local')['resolution'] ?? null)[$state] ?? null);
+        $codes = [];
 
-        return Shape::text($entry['needs'] ?? null);
-    }
-
-    /**
-     * The county-equivalents in a US state that the register draws and prices at
-     * nothing local — a real place, with no local levy in this release.
-     *
-     * Null where the release makes no claim for the state, which is not the same as
-     * an empty list: `[]` says every drawn county-equivalent carries a rate.
-     *
-     * @return list<array{name: string, legalName: string}>|null
-     */
-    public function usLocalUnpriced(string $state): ?array
-    {
-        $claim = Shape::map($this->document('us-local')['unpriced'] ?? null)[$state] ?? null;
-
-        if (! is_array($claim)) {
-            return null;
+        foreach ([...$this->jurisdictions[$shard]->keys(), ...$this->rates[$shard]->keys()] as $code) {
+            $codes[(string) $code] = true;
         }
 
-        $places = [];
-
-        foreach ($claim as $entry) {
-            $entry = Shape::map($entry);
-            $name = Shape::text($entry['name'] ?? null);
-            $legalName = Shape::text($entry['legalName'] ?? null);
-
-            if ($name !== null && $legalName !== null) {
-                $places[] = ['name' => $name, 'legalName' => $legalName];
-            }
-        }
-
-        return $places;
+        return array_map(strval(...), array_keys($codes));
     }
 
-    /**
-     * Whether ground no artifact places is ground without local tax in a US state, on
-     * a date.
-     *
-     * True only where the register publishes an absence claim for the state and none
-     * of the codes blocking it is in force on the date. A blocker with no `from` is
-     * one known only from a floor, so it blocks every earlier date too. False where the
-     * claim is "unknown", and false where the release makes none — which is what every
-     * release before the field meant.
-     */
-    public function usLocalAbsenceHolds(string $state, DateTimeImmutable $on): bool
+    public function boundaryPath(string $file): string
     {
-        $claim = Shape::map($this->document('us-local')['absence'] ?? null)[$state] ?? null;
-
-        if (! is_array($claim) || ! array_key_exists('blockedBy', $claim) || ! is_array($claim['blockedBy'])) {
-            return false;
-        }
-
-        $day = $on->format('Y-m-d');
-
-        foreach ($claim['blockedBy'] as $blocker) {
-            $blocker = Shape::map($blocker);
-            $from = Shape::text($blocker['from'] ?? null);
-            $until = Shape::text($blocker['until'] ?? null);
-
-            if (($from === null || $from <= $day) && ($until === null || $until >= $day)) {
-                return false;
-            }
-        }
-
-        return true;
+        return $this->layout->file((string) $this->version(), 'boundaries/'.$file);
     }
 
-    /**
-     * The question behind one of the register's fact names, or null where the
-     * installed release carries no vocabulary or does not know the fact.
-     */
-    public function fact(string $name): ?RegisterFact
+    protected function notInstalled(): DatasetNotInstalled
     {
-        if ($this->factIndex === null) {
-            $index = [];
-
-            foreach (Shape::records($this->document('facts')['facts'] ?? null) as $fact) {
-                $key = Shape::text($fact['fact'] ?? null);
-                $question = Shape::text($fact['question'] ?? null);
-
-                if ($key === null || $question === null) {
-                    continue;
-                }
-
-                $index[$key] = new RegisterFact(
-                    $key,
-                    Shape::text($fact['type'] ?? null) ?? 'boolean',
-                    Shape::text($fact['subject'] ?? null) ?? 'sale',
-                    Shape::text($fact['askedPer'] ?? null) ?? 'sale',
-                    $question,
-                    Shape::text($fact['note'] ?? null),
-                    array_values(array_filter((array) ($fact['values'] ?? []), is_string(...))),
-                );
-            }
-
-            $this->factIndex = $index;
-        }
-
-        return $this->factIndex[$name] ?? null;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function document(string $name): array
-    {
-        return $this->readDocument($name, $this->requireVersion());
+        return new DatasetNotInstalled($this->layout->root(), $this->pinnedVersion);
     }
 
     /** @return array<string, mixed> */
-    private function readDocument(string $name, string $version): array
+    protected function section(string $name): array
     {
-        if (isset($this->documents[$name])) {
-            return $this->documents[$name];
-        }
-
-        $raw = @file_get_contents($this->layout->file($version, $name.'.json'));
+        $raw = @file_get_contents($this->layout->file((string) $this->version(), $name.'.json'));
         $decoded = $raw === false ? null : json_decode($raw, true);
 
         /** @var array<string, mixed> $document */
         $document = is_array($decoded) ? $decoded : [];
 
-        return $this->documents[$name] = $document;
+        return $document;
+    }
+
+    /**
+     * The shards indexed under a directory, by the name a lookup uses (`eu`, `us/TX`).
+     *
+     * @return list<string>
+     */
+    private function indexes(string $directory, string $prefix): array
+    {
+        $found = [];
+
+        foreach ((array) @scandir($directory) as $entry) {
+            if (! is_string($entry) || $entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if (is_dir($directory.'/'.$entry)) {
+                $found = [...$found, ...$this->indexes($directory.'/'.$entry, $prefix.$entry.'/')];
+
+                continue;
+            }
+
+            if (str_ends_with($entry, '.idx')) {
+                $found[] = $prefix.substr($entry, 0, -4);
+            }
+        }
+
+        return $found;
     }
 }

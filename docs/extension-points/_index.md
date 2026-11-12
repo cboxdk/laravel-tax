@@ -15,4 +15,5 @@ replaceable.
 - [Local authorities](local-authorities.md) — resolve US addresses below the state line in the 12 states the shipped dataset cannot.
 - [Tax-ID validation](vat-id-validation.md) — validate VAT/registration numbers (VIES, HMRC, ABN).
 - [Marketplace liability](../core-concepts/marketplace-facilitator.md#the-contract) — bind `MarketplaceRules` to decide who collects on a facilitated sale.
+- [Your own dataset](datasets.md) — keep the register in a database or a service of your own, and prove it reads the same as the file store.
 - [Flat charges](flat-charges.md) — fixed per-supply and per-delivery fees that are not a percentage of anything.

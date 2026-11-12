@@ -6,11 +6,11 @@ namespace Cbox\Tax\Register\Sources;
 
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\ReportsDistrictOverlays;
 use Cbox\Tax\Contracts\ReportsSplitPostcodes;
 use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Exceptions\DatasetUnreadable;
-use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Store\ShardReader;
 use Cbox\Tax\Register\Store\StoreLayout;
@@ -25,6 +25,7 @@ use Cboxdk\TaxResolver\Resolver;
 use Cboxdk\TaxResolver\UnsupportedFormatVersion;
 use DateTimeImmutable;
 use InvalidArgumentException;
+use LogicException;
 use Throwable;
 
 /**
@@ -66,12 +67,39 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
     /** @var array<string, array<string, mixed>|null> */
     private array $postalHeads = [];
 
+    /**
+     * Over a store directory and a version, as before, or over a dataset alone
+     * ({@see over()}), which says itself where its boundary files are.
+     */
     public function __construct(
-        private readonly StoreLayout $layout,
+        private readonly ?StoreLayout $layout,
         private readonly string $version,
-        private readonly ?RegisterDataset $dataset = null,
+        private readonly ?RegisterData $dataset = null,
         private readonly Resolver $resolver = new Resolver,
     ) {}
+
+    /**
+     * The boundaries of whatever release a dataset reads, found where the dataset
+     * says they are ({@see RegisterData::boundaryPath()}).
+     */
+    public static function over(RegisterData $dataset, Resolver $resolver = new Resolver): self
+    {
+        return new self(null, (string) $dataset->version(), $dataset, $resolver);
+    }
+
+    /** Where one compiled boundary file is; the file may not exist. */
+    private function path(string $file): string
+    {
+        if ($this->layout instanceof StoreLayout) {
+            return $this->layout->file($this->version, 'boundaries/'.$file);
+        }
+
+        if (! $this->dataset instanceof RegisterData) {
+            throw new LogicException('Boundaries need a store layout or a dataset to say where their files are.');
+        }
+
+        return $this->dataset->boundaryPath($file);
+    }
 
     /**
      * `$at` DOES NOT NARROW THIS ANSWER, and the reason is in the data rather than in
@@ -172,7 +200,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
 
         $state = substr($subdivision->value, 3);
 
-        if (! is_file($this->layout->file($this->version, 'boundaries/'.$state.'.overlay.json'))) {
+        if (! is_file($this->path($state.'.overlay.json'))) {
             return [];
         }
 
@@ -267,7 +295,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
         $json = $this->read($state.'.overlay.json');
 
         if ($json === null) {
-            return $this->districts[$state] = is_file($this->layout->file($this->version, 'boundaries/'.$state.'.overlay.json')) ? null : [];
+            return $this->districts[$state] = is_file($this->path($state.'.overlay.json')) ? null : [];
         }
 
         if (($json['formatVersion'] ?? null) !== self::OVERLAY_FORMAT || ! is_array($json['features'] ?? null)) {
@@ -853,7 +881,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
         }
 
         $reader = $this->postalShards[$state] ??= new ShardReader(
-            $this->layout->file($this->version, 'boundaries/'.$state.'.zip'),
+            $this->path($state.'.zip'),
         );
 
         if (! $reader->exists() || ! $reader->has($zip5)) {
@@ -865,7 +893,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
         $records = $reader->read($zip5);
 
         return count($records) === 1 ? [$zip5 => $records[0]] : throw DatasetUnreadable::corruptShard(
-            $this->layout->file($this->version, 'boundaries/'.$state.'.zip'),
+            $this->path($state.'.zip'),
             sprintf('postcode %s has %d records where the compile writes one', $zip5, count($records)),
         );
     }
@@ -883,7 +911,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
     private function streets(string $state, string $zip5): ?array
     {
         $reader = $this->streetShards[$state] ??= new ShardReader(
-            $this->layout->file($this->version, 'boundaries/'.$state.'.street'),
+            $this->path($state.'.street'),
         );
 
         if (! $reader->exists()) {
@@ -921,7 +949,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
             return $json === null ? null : Geometry::fromFeatureCollection($json);
         }
 
-        $shard = $this->geometryShards[$state] ??= new ShardReader($this->layout->file($this->version, 'boundaries/'.$state.'.geo'));
+        $shard = $this->geometryShards[$state] ??= new ShardReader($this->path($state.'.geo'));
         $features = [];
 
         foreach ($boxes['boxes'] as [$minLng, $minLat, $maxLng, $maxLat, $key]) {
@@ -966,7 +994,7 @@ class RegisterBoundaries implements LocalAuthorityResolver, ReportsDistrictOverl
      */
     private function read(string $file): ?array
     {
-        $path = $this->layout->file($this->version, 'boundaries/'.$file);
+        $path = $this->path($file);
 
         if (! is_file($path)) {
             return null;

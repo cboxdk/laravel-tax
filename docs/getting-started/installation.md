@@ -38,6 +38,7 @@ See [Invoice currency](../core-concepts/invoice-currency.md).
 - `Contracts\TaxCalculator` → `DefaultTaxCalculator`
 - `Contracts\RegimeRegistry` → the shipped regimes (`DefaultRegimeRegistry::withDefaults()`)
 - `Contracts\TaxRateSource` → `RegisterRateSource` (the compiled register — run `php artisan tax:data:sync` first)
+- `Contracts\RegisterData` → `RegisterDataset` (the file store the engine reads; [bind your own](../extension-points/datasets.md))
 - `Contracts\TaxRegister` → `InstalledRegister` (what the installed register says, typed)
 - `Contracts\ExchangeRates` → `EcbExchangeRates` (the ECB's rates — run `php artisan tax:fx:sync`)
 

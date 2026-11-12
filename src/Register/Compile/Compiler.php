@@ -291,7 +291,7 @@ readonly class Compiler
             }
 
             if ($this->boundaryArtifact($artifacts, 'geometry', $partial, $base, $state, 'geo')) {
-                GeometryIndex::write($partial.'/boundaries', $state);
+                new BoundaryCompiler()->geometry($partial.'/boundaries', $state);
                 $geo++;
             }
 
@@ -406,31 +406,7 @@ readonly class Compiler
             return false;
         }
 
-        $sets = [];
-
-        foreach (JsonArrayStream::fromFile($download, 'sets') as $set) {
-            $sets[] = $set;
-        }
-
-        $ranges = [];
-
-        foreach (JsonArrayStream::fromFile($download, 'ranges') as $range) {
-            $ranges[] = $range;
-        }
-
-        $this->put($partial, 'boundaries/'.$state.'.zip.head.json', [
-            'formatVersion' => JsonArrayStream::scalarOfFile($download, 'formatVersion'),
-            'sets' => $sets,
-            'ranges' => $ranges,
-        ]);
-
-        $writer = new ShardWriter($partial.'/boundaries/'.$state.'.zip');
-
-        foreach (JsonArrayStream::membersOfFile($download, 'zip') as $zip5 => $rows) {
-            $writer->append((string) $zip5, $rows);
-        }
-
-        $writer->close();
+        new BoundaryCompiler()->postal($download, $partial.'/boundaries', $state);
         @unlink($download);
 
         return true;
@@ -472,24 +448,7 @@ readonly class Compiler
             return false;
         }
 
-        $sets = [];
-
-        foreach (JsonArrayStream::fromFile($download, 'sets') as $set) {
-            $sets[] = $set;
-        }
-
-        $this->put($partial, 'boundaries/'.$state.'.street.sets.json', [
-            'formatVersion' => 3,
-            'sets' => $sets,
-        ]);
-
-        $writer = new ShardWriter($partial.'/boundaries/'.$state.'.street');
-
-        foreach (JsonArrayStream::membersOfFile($download, 'street') as $zip => $streets) {
-            $writer->append((string) $zip, $streets);
-        }
-
-        $writer->close();
+        new BoundaryCompiler()->street($download, $partial.'/boundaries', $state);
         @unlink($download);
 
         return true;
