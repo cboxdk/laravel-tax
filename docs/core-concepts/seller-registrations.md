@@ -133,7 +133,7 @@ are read by the engine, and the rest are yours to keep for your own bookkeeping:
 
 | Scheme | Read by | What it does |
 | --- | --- | --- |
-| `oss` | the collection gate | Collects across all 27 Member States from one number |
+| `oss` | the collection gate | Collects across all 27 Member States from one number — for a seller established outside the Union, on services and on goods shipping from inside the Union, not on imported goods |
 | `ioss` | the collection gate | Collects across all 27 Member States on imported goods in a consignment of at most €150, excise goods excepted |
 | `remote-election` | `UsSalesTaxRegime` | Prices a state's flat-rate remote-seller programme instead of resolving the rate — Texas's single local rate, Alabama's SSUT |
 

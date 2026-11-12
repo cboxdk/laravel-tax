@@ -28,6 +28,10 @@ minor bumps may carry additive features; patches are fixes and docs).
   names the condition. Within it, the reason states the consignment's value in euro.
   The consignment is the document's goods lines without delivery, measured net of VAT
   and converted to euro at the `ExchangeRates` rate for the tax date.
+- **OSS does not carry an imported parcel either.** For a seller established outside
+  the Union, an `oss` registration (or `OssStatus::$registered`) now covers services
+  and goods shipping from inside the Union, not goods imported into it. A seller
+  holding both OSS and IOSS was still charged on the €400 parcel.
 
 ### Added
 

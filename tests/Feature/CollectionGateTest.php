@@ -93,8 +93,10 @@ it('charges it once the seller is registered there', function (): void {
 
 it('treats a non-EU seller without an EU scheme as not registered in the Union', function (): void {
     expect(app(TaxCalculator::class)->assess(gateQuery('US', 'DE'))->treatment)->toBe(TaxTreatment::NotRegistered)
-        // ...and one that holds OSS (non-Union) or IOSS as registered in every member state.
-        ->and((string) app(TaxCalculator::class)->assess(gateQuery('US', 'DE', oss: new OssStatus(registered: true)))->tax->getAmount())->toBe('19.00');
+        // ...and one that holds OSS (non-Union) as registered in every member state for
+        // what OSS covers: services. Goods it imports are IOSS's or the border's.
+        ->and((string) app(TaxCalculator::class)->assess(gateQuery('US', 'DE', oss: new OssStatus(registered: true), class: TaxClass::DigitalService))->tax->getAmount())->toBe('19.00')
+        ->and(app(TaxCalculator::class)->assess(gateQuery('US', 'DE', oss: new OssStatus(registered: true)))->treatment)->toBe(TaxTreatment::NotRegistered);
 });
 
 it('leaves an EU-established seller on the Union rules it already applies', function (): void {

@@ -27,7 +27,9 @@ A regime decides the rate and the treatment. Whether this seller collects it is 
 separate question, asked after: outside the United States, a would-be `Standard`
 supply comes back **`NotRegistered`** when the seller is neither established nor
 registered in the place of supply. Inside the Union an OSS registration covers every
-Member State, and an EU-established seller stays on the Union's rules. An IOSS
+Member State (for a seller established outside the Union: its services and goods
+already inside the Union, not imports), and an EU-established seller stays on the
+Union's rules. An IOSS
 registration covers only imported goods in a consignment of at most €150 of intrinsic
 value, excise goods excepted (Art. 369l) — see
 [seller registrations](seller-registrations.md#ioss-and-the-150-consignment).

@@ -344,6 +344,16 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return $this->underImportScheme($query, $assessment);
         }
 
+        if ($place->taxProfile->isEuMember && $this->holdsOss($query)) {
+            return $this->notRegistered($query, $place, sprintf(
+                'The seller\'s OSS registration covers services and goods already inside the Union, not goods imported into '
+                .'it, and it is neither established nor registered in %s: it collects nothing, and %s import VAT is due at '
+                .'the border. An IOSS registration collects it at checkout on a consignment of up to EUR 150 (Art. 369l).',
+                $place->country->value,
+                $place->country->value,
+            ));
+        }
+
         return $this->notRegistered($query, $place, sprintf(
             'The seller is neither established nor registered in %s, so it collects nothing there: imported goods are '
             .'taxed at the border. Some supplies oblige a non-resident seller to register from the first sale — '
@@ -562,18 +572,37 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             return false;
         }
 
-        // OSS collects across the Union from one number. IOSS does too, but only on a small
-        // imported parcel, so the gate asks it separately, of the consignment.
-        if ($query->seller->oss?->registered === true || $query->seller->hasScheme('oss', $query->on())) {
-            return true;
-        }
-
         // An EU-established seller is on the Union's own rules, which its regime has
         // already applied: OSS, the micro-business relief, or destination when no OSS
         // status was stated. Without a repository to tell, it is given the same benefit.
         $home = $this->jurisdictions?->find($query->seller->establishment);
 
-        return $this->jurisdictions === null || ($home !== null && $home->taxProfile->isEuMember);
+        if ($this->jurisdictions === null || ($home !== null && $home->taxProfile->isEuMember)) {
+            return true;
+        }
+
+        // OSS collects across the Union from one number — on services (the non-Union
+        // scheme) and on goods already inside the Union (the Union scheme). Not on goods
+        // imported into it: that is IOSS, up to EUR 150, which the gate asks of the
+        // consignment, or import VAT at the border. Read as covering everything, a
+        // seller holding both charged checkout VAT on a parcel taxed again on import.
+        return $this->holdsOss($query) && ! $this->importedGoods($query);
+    }
+
+    private function holdsOss(TaxQuery $query): bool
+    {
+        return $query->seller->oss?->registered === true || $query->seller->hasScheme('oss', $query->on());
+    }
+
+    /**
+     * Goods from a seller established outside the Union that do not ship from inside
+     * it — an unknown origin is the seller's own, outside.
+     */
+    private function importedGoods(TaxQuery $query): bool
+    {
+        $from = $query->route->shipFrom;
+
+        return CategoryMap::isGoods($this->categoryKey($query)) && ($from === null || ! $from->taxProfile->isEuMember);
     }
 
     /**

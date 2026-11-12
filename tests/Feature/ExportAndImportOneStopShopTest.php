@@ -267,3 +267,20 @@ it('does not read IOSS as covering services or goods already inside the Union', 
         ->and($warehoused->treatment)->toBe(TaxTreatment::NotRegistered)
         ->and($warehoused->reason)->toContain('IOSS');
 });
+
+it('does not let an OSS registration carry an imported parcel past the IOSS limit', function (): void {
+    // A UK shop holding both: OSS for its services, IOSS for its parcels. The parcel
+    // over EUR 150 is still the border's; the one under is still IOSS's; and a service
+    // is OSS's.
+    $both = new SellerRegistrations(new CountryCode('GB'), [
+        new SellerRegistration(new CountryCode('GB')),
+        new SellerRegistration(new CountryCode('IE'), scheme: 'ioss', validFrom: new DateTimeImmutable('2026-01-01')),
+        new SellerRegistration(new CountryCode('IE'), scheme: 'oss', validFrom: new DateTimeImmutable('2026-01-01')),
+    ]);
+
+    expect(app(TaxCalculator::class)->assess(borderQuery($both, 'DE', '400.00'))->treatment)->toBe(TaxTreatment::NotRegistered)
+        ->and(app(TaxCalculator::class)->assess(borderQuery($both, 'DE', '100.00'))->treatment)->toBe(TaxTreatment::Standard)
+        ->and(app(TaxCalculator::class)->assess(borderQuery($both, 'DE', class: TaxClass::DigitalService))->treatment)->toBe(TaxTreatment::Standard)
+        // Goods already in an EU warehouse are a distance sale inside the Union: OSS's.
+        ->and(app(TaxCalculator::class)->assess(borderQuery($both, 'DE', '400.00', route: new SupplyRoute(shipFrom: borderPlace('NL'))))->treatment)->toBe(TaxTreatment::Standard);
+});
