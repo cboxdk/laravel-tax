@@ -5,7 +5,7 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
-## [Unreleased]
+## [0.20.0] - 2026-11-13
 
 ### Added
 
