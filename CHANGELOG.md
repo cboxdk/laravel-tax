@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-13
+
 ### Added
 
 - **A share of the price (register schema 2.8).** Some states tax only part of the
