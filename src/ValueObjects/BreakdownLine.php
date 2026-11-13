@@ -19,6 +19,10 @@ use Cbox\Tax\Enums\JurisdictionLevel;
  * the state level while its localities still tax it (Illinois and Missouri do
  * this for groceries). Modelling that needs a per-level taxability seam, and
  * until it exists a per-level base is deliberately not claimed here.
+ *
+ * Where the rate is computed on a share of the price ({@see TaxRate::$taxableShare}),
+ * it is that share of the net on every line: Texas taxes data processing on 80% of
+ * the price, and its cities, counties and transit authorities on the same 80%.
  */
 readonly class BreakdownLine
 {

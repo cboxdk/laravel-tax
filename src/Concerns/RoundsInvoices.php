@@ -168,12 +168,15 @@ trait RoundsInvoices
                 continue;
             }
 
-            // Different rates are totalled separately. A mixed delivery contributes
-            // its portions to the same groups as the goods those portions accompany.
+            // Different rates are totalled separately, and a rate on a share of the
+            // price is a different rate from the same one on the whole. A mixed
+            // delivery contributes its portions to the same groups as the goods those
+            // portions accompany.
             $components = array_map(static fn (RateComponent $component): string => $component->level->value.':'.$component->code.':'.$component->percentage->strippedOfTrailingZeros(), $a->rate->components ?? []);
             sort($components);
             $key = $a->placeOfSupply->country->value.':'.$a->placeOfSupply->subdivision?->value
-                .':'.$a->rate?->percentage->strippedOfTrailingZeros().':'.$a->rounding->key().':'.implode('|', $components);
+                .':'.$a->rate?->percentage->strippedOfTrailingZeros().':'.$a->rate?->taxableShare?->strippedOfTrailingZeros()
+                .':'.$a->rounding->key().':'.implode('|', $components);
             $groups[$key][] = $index;
         }
 

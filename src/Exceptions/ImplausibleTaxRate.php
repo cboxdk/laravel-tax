@@ -35,4 +35,17 @@ class ImplausibleTaxRate extends InvalidArgumentException
             $source,
         ));
     }
+
+    /**
+     * A share of the price that cannot be one: zero or less, above the whole price,
+     * or set on a rate a table prices.
+     */
+    public static function share(BigDecimal $share, string $source): self
+    {
+        return new self(sprintf(
+            'Taxable share %s%% from source "%s" is not a share of the price this rate can be computed on: it must be above 0 and at most 100, on a rate that is a percentage rather than a table.',
+            $share,
+            $source,
+        ));
+    }
 }

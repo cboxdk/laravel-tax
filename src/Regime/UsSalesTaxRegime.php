@@ -32,6 +32,7 @@ use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -402,7 +403,9 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // local half away and undid exactly that, turning a correct 6.25% into
         // 4.00% — an under-collection wearing the state's own published figure.
         if ($determination->reducedRate !== null && $rate->kind !== RateKind::Reduced) {
-            $rate = new TaxRate($determination->reducedRate, RateKind::Reduced, $rate->source, $rate->confidence, [], $rate->limitedBy, $rate->provenance);
+            // The share of the price the state taxes is a statement about the base, not
+            // the rate, so it survives the rate being replaced.
+            $rate = new TaxRate($determination->reducedRate, RateKind::Reduced, $rate->source, $rate->confidence, [], $rate->limitedBy, $rate->provenance, taxableShare: $rate->taxableShare);
         }
 
         // A SERVICE NOBODY PUBLISHED A RULE FOR. US states tax services only where they
@@ -435,13 +438,14 @@ readonly class UsSalesTaxRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf(
-                'US sales tax: %s%% in %s%s%s.',
+                'US sales tax: %s%% in %s%s%s%s.',
                 $rate->percentage,
                 $subdivision->value,
                 $from === $query->place ? '' : ', sourced at the seller\'s location',
                 $determination->isPartial($query->amount)
                     ? sprintf(', charged on %s of %s above the exemption threshold', $base->getAmount(), $net->getAmount())
                     : '',
+                $rate->taxableShare === null ? '' : sprintf(', on %s%% of the price', $rate->taxableShare),
             ),
             breakdown: $this->breakdown($rate, $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base, $tax),
             rounding: $rounding,
@@ -474,7 +478,26 @@ readonly class UsSalesTaxRegime implements TaxRegime
             default => throw UnresolvedTaxRate::underElection($subdivision, $election['program']),
         };
 
-        $rate = new TaxRate($percent, RateKind::Standard, self::ELECTION_SOURCE, Confidence::Authoritative);
+        // A SHARE OF THE PRICE HOLDS UNDER THE ELECTION TOO. Texas taxes data processing
+        // on 80% of the price, and its single local rate stands in for local use taxes
+        // that are computed on the same 80%. An elected figure always carries a local
+        // part — the flat total replaces the locals, the single local rate is one — so
+        // a share that does not say what its local taxes do refuses here.
+        $share = $this->dataset instanceof RegisterUsFacts
+            ? $this->dataset->taxableShare($subdivision->value, $query->categoryKey ?? CategoryMap::keyFor($query->category), $query->on())
+            : null;
+
+        if ($share !== null && ! $share->coversLocalTaxes()) {
+            throw new UnresolvedTaxRule(sprintf(
+                '%s taxes %s on %s%% of the price, and the register does not say whether local taxes are computed on the same share; the elected %s includes a local rate, so no amount is given.',
+                $subdivision->value,
+                $share->category,
+                $share->proportion,
+                $election['program'],
+            ));
+        }
+
+        $rate = new TaxRate($percent, RateKind::Standard, self::ELECTION_SOURCE, Confidence::Authoritative, taxableShare: $share?->proportion);
         $base = $determination->taxableBase($query->amount, $query->quantity);
         $rounding = $this->roundingPolicy($subdivision, $query, $rate);
         [$net, $tax, $gross] = $this->split($query, $rate, $base, $rounding);
@@ -487,12 +510,13 @@ readonly class UsSalesTaxRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf(
-                'US sales tax: %s%% in %s under the elected %s (%s), %s.',
+                'US sales tax: %s%% in %s under the elected %s (%s), %s%s.',
                 $rate->percentage,
                 $subdivision->value,
                 $election['program'],
                 $election['statute'],
                 $composition,
+                $rate->taxableShare === null ? '' : sprintf(', on %s%% of the price', $rate->taxableShare),
             ),
             breakdown: $this->breakdown($rate, $query->pricing === Pricing::Inclusive ? $base->minus($tax) : $base, $tax),
             rounding: $rounding,

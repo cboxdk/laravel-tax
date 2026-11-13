@@ -110,7 +110,7 @@ instance. Restart long-running queue workers and Octane processes after changing
 the release or pin, and retain releases that are still used by running workers.
 
 Schema compatibility is checked during sync and again before reading an installed
-store. This reader accepts reviewed schema versions through `1.34.x`; a newer
+store. This reader accepts reviewed schema versions through `1.34.x` and `2.8.x`; a newer
 minor or major requires a package update. Unknown fields on consumed rules also
 refuse, so a new condition cannot be dropped while retaining the old boolean or
 rate decision. Do not strip conditions or edit the schema version to bypass this
