@@ -50,6 +50,26 @@ class RateSourceUnavailable extends RuntimeException implements Transient
         return new self($source, sprintf('the endpoint answered HTTP %d', $status));
     }
 
+    /**
+     * A redirect this source will not follow: to an origin nobody allowed, a second
+     * one, or one for a file with no published hash to check the bytes against.
+     */
+    public static function refusedRedirect(string $source, string $why): self
+    {
+        return new self($source, 'redirect refused: '.$why);
+    }
+
+    /** What was downloaded is not what the source published for it. */
+    public static function integrityMismatch(string $source, string $path, string $expected, ?string $actual): self
+    {
+        return new self($source, sprintf(
+            'integrity check failed for %s: the register published sha256 %s, the download is %s',
+            $path,
+            $expected,
+            $actual ?? 'unreadable',
+        ));
+    }
+
     public static function unreadable(string $source): self
     {
         return new self($source, 'the response could not be read as the expected format');

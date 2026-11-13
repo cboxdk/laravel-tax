@@ -75,14 +75,14 @@ readonly class Compiler
         // vocabulary a category is named in, the mappings a catalogue reaches it by,
         // and the rules that scope it.
         $this->put($partial, 'meta.json', [
-            'regimes' => $this->fetcher->json("{$base}/sections/regimes")['regimes'] ?? [],
-            'categories' => $this->fetcher->json("{$base}/sections/categories")['categories'] ?? [],
-            'mappings' => $this->fetcher->json("{$base}/sections/mappings")['mappings'] ?? [],
-            'sources' => $this->fetcher->json("{$base}/sections/sources")['sources'] ?? [],
+            'regimes' => $this->section($base, $release, 'regimes')['regimes'] ?? [],
+            'categories' => $this->section($base, $release, 'categories')['categories'] ?? [],
+            'mappings' => $this->section($base, $release, 'mappings')['mappings'] ?? [],
+            'sources' => $this->section($base, $release, 'sources')['sources'] ?? [],
         ]);
         $say('  meta — regimes, categories, mappings, sources');
 
-        $rules = $this->fetcher->json("{$base}/sections/rules");
+        $rules = $this->section($base, $release, 'rules');
         $kinds = [];
         foreach (Shape::records($rules['rules'] ?? null) as $rule) {
             RegisterCompatibility::rule($rule);
@@ -98,7 +98,7 @@ readonly class Compiler
             $say('  rules of kinds this engine does not read: '.implode(', ', $unread).' — answers they bear on do not apply them');
         }
         $this->put($partial, 'coverage.json', $this->fetcher->json("{$base}/coverage"));
-        $this->put($partial, 'standard-rates.json', $this->fetcher->json("{$base}/sections/standard-rates"));
+        $this->put($partial, 'standard-rates.json', $this->section($base, $release, 'standard-rates'));
         $say('  rules, coverage, standard rates');
 
         // THE FACT VOCABULARY IS ADVISORY. It turns `product.isConfectionery` into the
@@ -122,7 +122,7 @@ readonly class Compiler
         $wanted = $this->regionsOf($release, $regions);
 
         foreach ($wanted as $region) {
-            $this->compileRegion($base, $partial, $region, $states, $say);
+            $this->compileRegion($base, $partial, $region, $states, $say, self::releaseHash($release, 'regions', $region));
         }
 
         if ($boundaries && in_array('us', $wanted, true)) {
@@ -151,10 +151,10 @@ readonly class Compiler
      * @param  list<string>|null  $states
      * @param  Closure(string): void  $say
      */
-    private function compileRegion(string $base, string $partial, string $region, ?array $states, Closure $say): void
+    private function compileRegion(string $base, string $partial, string $region, ?array $states, Closure $say, ?string $sha256 = null): void
     {
         $document = $partial.'/.download/'.$region.'.json';
-        $bytes = $this->fetcher->download("{$base}/regions/{$region}", $document);
+        $bytes = $this->fetcher->download("{$base}/regions/{$region}", $document, $sha256);
 
         if ($bytes === null) {
             $say(sprintf('  %s — not in this release', $region));
@@ -361,7 +361,50 @@ readonly class Compiler
 
         $to = $partial.'/boundaries/'.$state.'.'.$suffix.'.json';
 
-        return $this->fetcher->download($address, $to) !== null;
+        return $this->fetcher->download($address, $to, self::published($entry)) !== null;
+    }
+
+    /**
+     * One small section of the release, with the hash the release publishes for it.
+     *
+     * @param  array<string, mixed>  $release
+     * @return array<string, mixed>
+     */
+    private function section(string $base, array $release, string $name): array
+    {
+        return $this->fetcher->json("{$base}/sections/{$name}", self::releaseHash($release, 'sections', $name));
+    }
+
+    /**
+     * The sha256 a release publishes for one of its regions or sections.
+     *
+     * Releases on schema 2.7.9 and later carry `sha256.regions.{region}` and
+     * `sha256.sections.{section}`: lowercase hex of the exact bytes served. Older
+     * releases carry none, and their documents are fetched as before, only never
+     * over a redirect. `coverage` and `facts` have no hash, so they never follow one.
+     *
+     * @param  array<string, mixed>  $release
+     */
+    private static function releaseHash(array $release, string $kind, string $name): ?string
+    {
+        $hash = Shape::map(Shape::map($release['sha256'] ?? null)[$kind] ?? null)[$name] ?? null;
+
+        return is_string($hash) && $hash !== '' ? $hash : null;
+    }
+
+    /**
+     * The sha256 the register's boundary listing publishes for a file, when it does.
+     *
+     * Releases built before the listing carried hashes list `bytes` and no `hash`;
+     * such a file is fetched as before, and only cannot be taken over a redirect.
+     *
+     * @param  array<array-key, mixed>  $entry
+     */
+    private static function published(array $entry): ?string
+    {
+        $hash = $entry['hash'] ?? null;
+
+        return is_string($hash) && $hash !== '' ? $hash : null;
     }
 
     /**
@@ -402,7 +445,7 @@ readonly class Compiler
 
         $download = $partial.'/.download/'.$state.'.zip.json';
 
-        if ($this->fetcher->download($address, $download) === null) {
+        if ($this->fetcher->download($address, $download, self::published($entry)) === null) {
             return false;
         }
 
@@ -444,7 +487,7 @@ readonly class Compiler
 
         $download = $partial.'/.download/'.$state.'.streets.json';
 
-        if ($this->fetcher->download($address, $download) === null) {
+        if ($this->fetcher->download($address, $download, self::published($entry)) === null) {
             return false;
         }
 

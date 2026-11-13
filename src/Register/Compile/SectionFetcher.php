@@ -9,6 +9,7 @@ use Cbox\Tax\Exceptions\DatasetUnreadable;
 use Cbox\Tax\Exceptions\RateSourceUnavailable;
 use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
+use Closure;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -24,7 +25,16 @@ use Throwable;
  * is the point of compiling one.
  *
  * Reads require an explicit server-side integration token. Artifact URLs are pinned
- * to the configured origin and redirects are refused so credentials cannot escape.
+ * to the configured origin, and the token goes to that origin and nowhere else.
+ *
+ * ONE REDIRECT, TO A TRUSTED ORIGIN, FOR A FILE WITH A PUBLISHED HASH. The register
+ * may hand a large file over to object storage — a short-lived signed URL — instead
+ * of streaming the bytes itself. Such a redirect is followed only when its target's
+ * origin is on `tax.register.redirect_origins` (empty by default, which refuses every
+ * redirect as before), only once, only over https, never with the token, and only
+ * for a download whose sha256 the register published: the bytes then come from
+ * somebody other than the register, and the hash is what ties them back to it. A
+ * redirect for anything else is refused and says why.
  * Requests accept gzip — the whole register is 1.8 MB compressed against 54 MB
  * of JSON — and send `If-None-Match`, which the register answers from a manifest
  * without touching a file.
@@ -42,6 +52,9 @@ readonly class SectionFetcher
     /** The longest a sync waits on one `Retry-After` before trying again. */
     private const int MAX_WAIT_SECONDS = 60;
 
+    /** The answers that send a client somewhere else. 304 is not one of them. */
+    private const array REDIRECTS = [301, 302, 303, 307, 308];
+
     public function __construct(
         private Factory $http,
         private string $baseUrl = 'https://data.cboxtax.com',
@@ -49,6 +62,13 @@ readonly class SectionFetcher
         private ?string $token = null,
         /** Seconds to open a connection, for every request including downloads. */
         private float $connectTimeout = 5.0,
+        /**
+         * Origins a download may be redirected to, as `https://host[:port]`. Empty
+         * refuses every redirect.
+         *
+         * @var list<string>
+         */
+        private array $redirectOrigins = [],
     ) {}
 
     /**
@@ -159,18 +179,32 @@ readonly class SectionFetcher
     }
 
     /**
+     * A small document, decoded.
+     *
+     * `$sha256` is the hash the release publishes for it (`sha256.sections.*`). With
+     * one, a single redirect to an allowed origin is followed and the body is checked
+     * against it before it is decoded; without one, a redirect is refused.
+     *
      * @return array<string, mixed>
      */
-    public function json(string $path): array
+    public function json(string $path, ?string $sha256 = null): array
     {
+        $sha256 = self::digest($sha256);
+
         try {
-            $response = $this->patiently(fn (): Response => $this->request()->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            [$response, $redirected] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: $sha256 !== null);
+        } catch (RateSourceUnavailable $e) {
+            throw $e;
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
 
         if (! $response->successful()) {
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
+        }
+
+        if ($redirected) {
+            self::verify($path, $sha256, hash('sha256', $response->body()));
         }
 
         $decoded = $response->json();
@@ -188,12 +222,18 @@ readonly class SectionFetcher
      * else. Only for advisory documents — a section the engine prices from is never
      * optional, and a missing one must stop the compile.
      *
+     * `$sha256` works as it does for {@see self::json()}.
+     *
      * @return array<string, mixed>|null
      */
-    public function jsonIfPublished(string $path): ?array
+    public function jsonIfPublished(string $path, ?string $sha256 = null): ?array
     {
+        $sha256 = self::digest($sha256);
+
         try {
-            $response = $this->patiently(fn (): Response => $this->request()->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson()->get($this->url($path)));
+            [$response, $redirected] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: $sha256 !== null);
+        } catch (RateSourceUnavailable $e) {
+            throw $e;
         } catch (Throwable $e) {
             throw RateSourceUnavailable::transport(self::SOURCE, $e->getMessage());
         }
@@ -204,6 +244,10 @@ readonly class SectionFetcher
 
         if (! $response->successful()) {
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
+        }
+
+        if ($redirected) {
+            self::verify($path, $sha256, hash('sha256', $response->body()));
         }
 
         $decoded = $response->json();
@@ -226,9 +270,16 @@ readonly class SectionFetcher
      * Returns the number of bytes written, or null when the register says the file
      * is missing — a state with no boundary artifact answers 404, which is an
      * answer about coverage rather than a failure.
+     *
+     * `$sha256` is the hash the register published for the file (the boundary
+     * listing's `hash`, or the release's `sha256.regions.*`). Without one a redirect
+     * is refused; with one, a redirected download is checked against it and refused,
+     * and removed, if the bytes differ. A file the register serves itself is taken as
+     * it was before.
      */
-    public function download(string $path, string $to): ?int
+    public function download(string $path, string $to, ?string $sha256 = null): ?int
     {
+        $sha256 = self::digest($sha256);
         $directory = dirname($to);
 
         if (! is_dir($directory)) {
@@ -243,7 +294,7 @@ readonly class SectionFetcher
             // mid-file. So the connection has to open in reasonable time, and the
             // transfer is aborted only if it moves less than a kilobyte a second for a
             // full minute — never merely for taking a while.
-            $response = $this->patiently(fn (): Response => $this->request()
+            [$response, $redirected] = $this->send(fn (PendingRequest $request): PendingRequest => $request
                 ->connectTimeout($this->connectTimeout)
                 ->timeout(0)
                 ->withOptions([
@@ -253,8 +304,11 @@ readonly class SectionFetcher
                         CURLOPT_LOW_SPEED_TIME => 60,
                     ] : [],
                 ])
-                ->sink($to)
-                ->get($this->url($path)));
+                ->sink($to), $this->url($path), verifiable: $sha256 !== null);
+        } catch (RateSourceUnavailable $e) {
+            @unlink($to);
+
+            throw $e;
         } catch (Throwable $e) {
             @unlink($to);
 
@@ -273,9 +327,163 @@ readonly class SectionFetcher
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
         }
 
+        if ($redirected) {
+            try {
+                self::verify($path, $sha256, @hash_file('sha256', $to));
+            } catch (RateSourceUnavailable $e) {
+                @unlink($to);
+
+                throw $e;
+            }
+        }
+
         $size = @filesize($to);
 
         return $size === false ? 0 : $size;
+    }
+
+    /**
+     * One request to the register, and at most one redirect after it.
+     *
+     * The first request carries the token and goes to the register. A redirect is
+     * followed only when `$verifiable` (the caller can check what comes back), only
+     * to an allowed https origin, and with a request built fresh from the factory —
+     * so the token, which was added to the first request alone, is not on it. A second
+     * redirect is refused rather than followed.
+     *
+     * @param  Closure(PendingRequest): PendingRequest  $configure
+     * @return array{0: Response, 1: bool} the response, and whether it came from a redirect
+     */
+    private function send(Closure $configure, string $url, bool $verifiable): array
+    {
+        $response = $this->patiently(fn (): Response => $configure($this->request())->get($url));
+
+        if (! in_array($response->status(), self::REDIRECTS, true)) {
+            return [$response, false];
+        }
+
+        $target = $this->redirectTarget($url, $response->header('Location'));
+
+        if (! $verifiable) {
+            throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
+                'the register redirected %s to %s, and nothing was published to verify it against — only a document with a published sha256 may be redirected',
+                $url,
+                self::origin($target) ?? $target,
+            ));
+        }
+
+        $followed = $this->patiently(fn (): Response => $configure($this->http->withoutRedirecting())->get($target));
+
+        if (in_array($followed->status(), self::REDIRECTS, true)) {
+            throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
+                'the register redirected %s more than once; one redirect is followed, never two',
+                $url,
+            ));
+        }
+
+        return [$followed, true];
+    }
+
+    /**
+     * Where a redirect points, if it points somewhere this sync trusts.
+     *
+     * Absolute, or root-relative to the register (which must then itself be listed);
+     * https; no credentials in the URL; and an origin listed in
+     * `tax.register.redirect_origins`, compared exactly — scheme, host and port.
+     */
+    private function redirectTarget(string $from, string $location): string
+    {
+        $location = trim($location);
+
+        if ($location === '') {
+            throw RateSourceUnavailable::refusedRedirect(self::SOURCE, 'the register answered a redirect with no Location');
+        }
+
+        if (str_starts_with($location, '/') && ! str_starts_with($location, '//')) {
+            $location = (self::origin($from) ?? '').$location;
+        }
+
+        $parts = parse_url($location);
+        $origin = self::origin($location);
+
+        if (! is_array($parts) || $origin === null || ($parts['scheme'] ?? null) !== 'https'
+            || isset($parts['user']) || isset($parts['pass'])) {
+            throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
+                'the register redirected %s to %s, which is not an https URL this sync can follow',
+                $from,
+                $location,
+            ));
+        }
+
+        $allowed = [];
+
+        foreach ($this->redirectOrigins as $entry) {
+            $normal = self::origin($entry);
+
+            if ($normal === null || ! str_starts_with($normal, 'https://') || ! in_array(parse_url($entry, PHP_URL_PATH) ?? '', ['', '/'], true)) {
+                throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
+                    'tax.register.redirect_origins lists "%s", which is not an https origin (https://host[:port])',
+                    $entry,
+                ));
+            }
+
+            $allowed[] = $normal;
+        }
+
+        if (! in_array($origin, $allowed, true)) {
+            throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
+                'the register redirected %s to %s, which is not in tax.register.redirect_origins (%s)',
+                $from,
+                $origin,
+                $allowed === [] ? 'none configured' : implode(', ', $allowed),
+            ));
+        }
+
+        return $location;
+    }
+
+    /** A published sha256 as lowercase hex, or null for anything that is not one. */
+    private static function digest(?string $sha256): ?string
+    {
+        return is_string($sha256) && preg_match('/^[0-9a-f]{64}$/i', $sha256) === 1 ? strtolower($sha256) : null;
+    }
+
+    /**
+     * Refuse what came over a redirect unless it is what the register published.
+     *
+     * Only reached for a redirected answer, and a redirect is only followed with a
+     * hash in hand — so a null `$expected` here is a refusal, never a pass.
+     */
+    private static function verify(string $path, ?string $expected, string|false $actual): void
+    {
+        if ($expected === null || $actual === false || ! hash_equals($expected, $actual)) {
+            throw RateSourceUnavailable::integrityMismatch(self::SOURCE, $path, $expected ?? 'none', $actual === false ? null : $actual);
+        }
+    }
+
+    /**
+     * `scheme://host[:port]`, lowercased, with the scheme's default port dropped —
+     * or null for anything that is not an absolute http(s) URL.
+     */
+    private static function origin(string $url): ?string
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $scheme = strtolower($parts['scheme'] ?? '');
+        $host = strtolower($parts['host'] ?? '');
+
+        if (! in_array($scheme, ['http', 'https'], true) || $host === '') {
+            return null;
+        }
+
+        $port = $parts['port'] ?? null;
+        $default = $scheme === 'https' ? 443 : 80;
+
+        return $scheme.'://'.$host.($port === null || $port === $default ? '' : ':'.$port);
     }
 
     /**
