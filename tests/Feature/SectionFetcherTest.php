@@ -234,9 +234,9 @@ it('refuses a redirect for a file with no published hash, even to an allowed ori
     $http->fake(['data.cboxtax.com/*' => $http->response('', 302, ['Location' => R2_ORIGIN.'/regions/us.json'])]);
 
     expect(fn (): ?int => r2Fetcher($http)->download('/api/v1/releases/x/regions/us', r2Target()))
-        ->toThrow(RateSourceUnavailable::class, 'only a download with a published sha256 may be redirected');
+        ->toThrow(RateSourceUnavailable::class, 'only a document with a published sha256 may be redirected');
     expect(fn (): array => r2Fetcher($http)->json('/api/v1/releases/latest'))
-        ->toThrow(RateSourceUnavailable::class, 'only a download with a published sha256 may be redirected');
+        ->toThrow(RateSourceUnavailable::class, 'only a document with a published sha256 may be redirected');
 
     $http->assertSentCount(2);
 });
@@ -295,3 +295,38 @@ it('reads the allowed origins from config, as a list or comma-separated', functi
     'comma-separated' => ' https://elsewhere.example , '.R2_ORIGIN.' ',
     'array' => [[R2_ORIGIN]],
 ]);
+
+it('takes a section over one redirect when its published hash matches the body', function (): void {
+    $body = '{"regimes":[{"code":"eu"}]}';
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $http->fake([
+        'data.cboxtax.com/*' => $http->response('', 302, ['Location' => R2_ORIGIN.'/sections/regimes.json']),
+        'register.fixture-account.r2.cloudflarestorage.com/*' => $http->response($body),
+    ]);
+
+    expect(r2Fetcher($http)->json('/api/v1/releases/x/sections/regimes', strtoupper(hash('sha256', $body))))
+        ->toBe(['regimes' => [['code' => 'eu']]]);
+    $http->assertSent(fn ($request): bool => str_starts_with($request->url(), R2_ORIGIN.'/') && ! $request->hasHeader('Authorization'));
+});
+
+it('refuses a redirected section whose body does not match its published hash', function (string $method): void {
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $http->fake([
+        'data.cboxtax.com/*' => $http->response('', 302, ['Location' => R2_ORIGIN.'/sections/rules.json']),
+        'register.fixture-account.r2.cloudflarestorage.com/*' => $http->response('{"rules":[{"tampered":true}]}'),
+    ]);
+
+    expect(fn (): ?array => r2Fetcher($http)->{$method}('/api/v1/releases/x/sections/rules', hash('sha256', '{"rules":[]}')))
+        ->toThrow(RateSourceUnavailable::class, 'integrity check failed for /api/v1/releases/x/sections/rules');
+})->with(['json', 'jsonIfPublished']);
+
+it('reads a section the register serves itself exactly as before, hash or not', function (): void {
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $http->fake(['data.cboxtax.com/*' => $http->response(['rules' => []])]);
+
+    expect(r2Fetcher($http)->json('/api/v1/releases/x/sections/rules', str_repeat('a', 64)))->toBe(['rules' => []])
+        ->and(r2Fetcher($http)->json('/api/v1/releases/x/sections/rules'))->toBe(['rules' => []]);
+});

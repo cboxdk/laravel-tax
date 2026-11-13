@@ -270,3 +270,98 @@ it('takes a boundary file over one redirect, checked against the hash the listin
         ? expect(app(StoreLayout::class)->installed())->toContain($version)
         : expect(app(StoreLayout::class)->installed())->not->toContain($version);
 })->with(['intact' => true, 'altered' => false]);
+
+/**
+ * A register whose sections and regions are all handed to object storage, the way the
+ * register's new home serves them, with the release publishing `sha256` (schema 2.7.9+)
+ * or not (older releases). `coverage` and `facts` stay with the register.
+ *
+ * @return array{0: string, 1: string}
+ */
+function publishStoredRegister(bool $hashes, ?string $tamper = null, bool $redirectCoverage = false): array
+{
+    $version = '2026.11.13-1';
+    $base = 'https://data.cboxtax.com/api/v1/releases/'.$version;
+    $storage = 'https://register.fixture-account.r2.cloudflarestorage.com';
+    $documents = [];
+
+    foreach (['regimes', 'categories', 'mappings', 'sources', 'rules', 'standard-rates'] as $section) {
+        $documents['sections/'.$section] = '{}';
+    }
+
+    $documents['regions/eu'] = json_encode([
+        'rates' => [['jurisdiction' => 'eu:DK', 'percentage' => '25']],
+        'jurisdictions' => [['code' => 'eu:DK', 'level' => 'country']],
+    ], JSON_THROW_ON_ERROR);
+
+    $responses = [];
+    $sha256 = ['regions' => [], 'sections' => []];
+
+    foreach ($documents as $address => $body) {
+        [$kind, $name] = explode('/', $address);
+        $sha256[$kind][$name] = hash('sha256', $body);
+        $responses[$base.'/'.$address] = Http::response('', 302, ['Location' => $storage.'/'.$version.'/'.$address.'.json?X-Amz-Signature=fixture']);
+        $responses[$storage.'/'.$version.'/'.$address.'.json*'] = Http::response($address === $tamper ? '{"tampered":true}' : $body);
+    }
+
+    $responses[$base] = Http::response([
+        'version' => $version,
+        'schemaVersion' => $hashes ? '2.7.9' : '2.7.8',
+        'links' => ['regions' => [$base.'/regions/eu']],
+        ...($hashes ? ['sha256' => ['dataset' => str_repeat('0', 64), ...$sha256]] : []),
+    ]);
+    $responses[$base.'/coverage'] = $redirectCoverage
+        ? Http::response('', 302, ['Location' => $storage.'/'.$version.'/coverage.json'])
+        : Http::response([]);
+    $responses[$base.'/facts'] = Http::response('', 302, ['Location' => $storage.'/'.$version.'/facts.json']);
+    $responses[$storage.'/*'] = Http::response('{}');
+
+    Http::fake($responses);
+    config()->set('tax.register.redirect_origins', $storage);
+    config()->set('tax.register.regions', 'eu');
+    app()->forgetInstance(SectionFetcher::class);
+
+    return [$version, $storage];
+}
+
+it('compiles a release whose sections and regions come from storage, each checked against its published hash', function (): void {
+    [$version, $storage] = publishStoredRegister(hashes: true);
+
+    $this->artisan('tax:data:sync', ['--release' => $version])->assertSuccessful()->run();
+
+    expect(app(StoreLayout::class)->installed())->toContain($version)
+        ->and(app(RegisterDataset::class)->ratesFor('eu:DK'))->toHaveCount(1);
+    Http::assertSent(fn ($request): bool => str_starts_with($request->url(), $storage.'/'.$version.'/regions/eu.json'));
+    Http::assertSent(fn ($request): bool => str_starts_with($request->url(), $storage.'/'.$version.'/sections/rules.json'));
+    Http::assertNotSent(fn ($request): bool => str_starts_with($request->url(), $storage.'/') && $request->hasHeader('Authorization'));
+    // The fact vocabulary has no hash: its redirect is refused, and the sync carries on without it.
+    Http::assertNotSent(fn ($request): bool => $request->url() === $storage.'/'.$version.'/facts.json');
+});
+
+it('refuses a release when a stored section or region does not match its published hash, and installs nothing', function (string $tamper): void {
+    [$version] = publishStoredRegister(hashes: true, tamper: $tamper);
+
+    expect(fn () => $this->artisan('tax:data:sync', ['--release' => $version])->run())
+        ->toThrow(RateSourceUnavailable::class, 'integrity check failed for /api/v1/releases/'.$version.'/'.$tamper);
+
+    expect(app(StoreLayout::class)->installed())->not->toContain($version)
+        ->and(is_dir(app(StoreLayout::class)->partial($version).'/.download') ? glob(app(StoreLayout::class)->partial($version).'/.download/*') : [])->toBe([]);
+})->with(['sections/rules', 'regions/eu']);
+
+it('refuses a redirect for a release published before hashes, even to an allowed origin', function (): void {
+    [$version, $storage] = publishStoredRegister(hashes: false);
+
+    expect(fn () => $this->artisan('tax:data:sync', ['--release' => $version])->run())
+        ->toThrow(RateSourceUnavailable::class, 'only a document with a published sha256 may be redirected');
+
+    Http::assertNotSent(fn ($request): bool => str_starts_with($request->url(), $storage.'/'));
+});
+
+it('never follows a redirect for coverage, which the release publishes no hash for', function (): void {
+    [$version, $storage] = publishStoredRegister(hashes: true, redirectCoverage: true);
+
+    expect(fn () => $this->artisan('tax:data:sync', ['--release' => $version])->run())
+        ->toThrow(RateSourceUnavailable::class, 'only a document with a published sha256 may be redirected');
+
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'coverage.json'));
+});

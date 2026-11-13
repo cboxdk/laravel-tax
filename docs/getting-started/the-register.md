@@ -215,15 +215,26 @@ A sync follows a redirect only when all of these hold:
 - The target's origin is listed. It must use `https`, and the URL must not contain
   a user name or password.
 - It is the first redirect. A redirect from storage is refused.
-- The file has a sha256 published by the register. The boundary listing publishes
-  one for every boundary, street and geometry file. After the download, the file is
-  hashed and compared with it. If they differ, the file is deleted and the sync stops.
-  Region and section documents have no published hash, so a redirect for one of them is
-  refused even when the origin is allowed.
+- The register published a sha256 for the file. The file is hashed after download
+  (a section is hashed before it is decoded). If the hashes differ, the sync stops,
+  a downloaded file is deleted and nothing is installed.
+
+Where the hashes come from:
+
+| Document | Published hash |
+| --- | --- |
+| Region documents (`regions/eu`, `regions/us`, …) | `sha256.regions.{region}` on the release, schema 2.7.9 and later |
+| Sections: `regimes`, `categories`, `mappings`, `sources`, `rules`, `standard-rates` | `sha256.sections.{section}` on the release, schema 2.7.9 and later |
+| Boundary, street and geometry files | `hash` in the boundary listing |
+| `coverage`, `facts`, the release document and `latest` | None, so a redirect is always refused |
+
+Releases published before schema 2.7.9 carry no `sha256`. Their regions and sections
+are fetched as before when the register serves them itself. A redirect for one of them
+is refused.
 
 The redirected request is a new request without the integration token. A signed
 URL authorises itself, and the token never reaches the storage provider.
 
 Files served by the register itself are handled as before: they are not checked
-against the listing's hash at download time. The compiled store still gets its own
+against a published hash at download time. The compiled store still gets its own
 manifest, which `tax:data:verify` checks.

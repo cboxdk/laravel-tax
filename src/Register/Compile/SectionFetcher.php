@@ -179,12 +179,20 @@ readonly class SectionFetcher
     }
 
     /**
+     * A small document, decoded.
+     *
+     * `$sha256` is the hash the release publishes for it (`sha256.sections.*`). With
+     * one, a single redirect to an allowed origin is followed and the body is checked
+     * against it before it is decoded; without one, a redirect is refused.
+     *
      * @return array<string, mixed>
      */
-    public function json(string $path): array
+    public function json(string $path, ?string $sha256 = null): array
     {
+        $sha256 = self::digest($sha256);
+
         try {
-            [$response] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: false);
+            [$response, $redirected] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: $sha256 !== null);
         } catch (RateSourceUnavailable $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -193,6 +201,10 @@ readonly class SectionFetcher
 
         if (! $response->successful()) {
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
+        }
+
+        if ($redirected) {
+            self::verify($path, $sha256, hash('sha256', $response->body()));
         }
 
         $decoded = $response->json();
@@ -210,12 +222,16 @@ readonly class SectionFetcher
      * else. Only for advisory documents — a section the engine prices from is never
      * optional, and a missing one must stop the compile.
      *
+     * `$sha256` works as it does for {@see self::json()}.
+     *
      * @return array<string, mixed>|null
      */
-    public function jsonIfPublished(string $path): ?array
+    public function jsonIfPublished(string $path, ?string $sha256 = null): ?array
     {
+        $sha256 = self::digest($sha256);
+
         try {
-            [$response] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: false);
+            [$response, $redirected] = $this->send(fn (PendingRequest $request): PendingRequest => $request->connectTimeout($this->connectTimeout)->timeout($this->timeout)->acceptJson(), $this->url($path), verifiable: $sha256 !== null);
         } catch (RateSourceUnavailable $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -228,6 +244,10 @@ readonly class SectionFetcher
 
         if (! $response->successful()) {
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
+        }
+
+        if ($redirected) {
+            self::verify($path, $sha256, hash('sha256', $response->body()));
         }
 
         $decoded = $response->json();
@@ -252,13 +272,14 @@ readonly class SectionFetcher
      * answer about coverage rather than a failure.
      *
      * `$sha256` is the hash the register published for the file (the boundary
-     * listing's `hash`). Without one a redirect is refused; with one, a redirected
-     * download is checked against it and refused, and removed, if the bytes differ.
-     * A file the register serves itself is taken as it was before.
+     * listing's `hash`, or the release's `sha256.regions.*`). Without one a redirect
+     * is refused; with one, a redirected download is checked against it and refused,
+     * and removed, if the bytes differ. A file the register serves itself is taken as
+     * it was before.
      */
     public function download(string $path, string $to, ?string $sha256 = null): ?int
     {
-        $sha256 = is_string($sha256) && preg_match('/^[0-9a-f]{64}$/i', $sha256) === 1 ? strtolower($sha256) : null;
+        $sha256 = self::digest($sha256);
         $directory = dirname($to);
 
         if (! is_dir($directory)) {
@@ -306,13 +327,13 @@ readonly class SectionFetcher
             throw RateSourceUnavailable::badResponse(self::SOURCE, $response->status());
         }
 
-        if ($redirected && $sha256 !== null) {
-            $actual = @hash_file('sha256', $to);
-
-            if ($actual === false || ! hash_equals($sha256, $actual)) {
+        if ($redirected) {
+            try {
+                self::verify($path, $sha256, @hash_file('sha256', $to));
+            } catch (RateSourceUnavailable $e) {
                 @unlink($to);
 
-                throw RateSourceUnavailable::integrityMismatch(self::SOURCE, $path, $sha256, $actual === false ? null : $actual);
+                throw $e;
             }
         }
 
@@ -345,7 +366,7 @@ readonly class SectionFetcher
 
         if (! $verifiable) {
             throw RateSourceUnavailable::refusedRedirect(self::SOURCE, sprintf(
-                'the register redirected %s to %s, and nothing was published to verify it against — only a download with a published sha256 may be redirected',
+                'the register redirected %s to %s, and nothing was published to verify it against — only a document with a published sha256 may be redirected',
                 $url,
                 self::origin($target) ?? $target,
             ));
@@ -419,6 +440,25 @@ readonly class SectionFetcher
         }
 
         return $location;
+    }
+
+    /** A published sha256 as lowercase hex, or null for anything that is not one. */
+    private static function digest(?string $sha256): ?string
+    {
+        return is_string($sha256) && preg_match('/^[0-9a-f]{64}$/i', $sha256) === 1 ? strtolower($sha256) : null;
+    }
+
+    /**
+     * Refuse what came over a redirect unless it is what the register published.
+     *
+     * Only reached for a redirected answer, and a redirect is only followed with a
+     * hash in hand — so a null `$expected` here is a refusal, never a pass.
+     */
+    private static function verify(string $path, ?string $expected, string|false $actual): void
+    {
+        if ($expected === null || $actual === false || ! hash_equals($expected, $actual)) {
+            throw RateSourceUnavailable::integrityMismatch(self::SOURCE, $path, $expected ?? 'none', $actual === false ? null : $actual);
+        }
     }
 
     /**

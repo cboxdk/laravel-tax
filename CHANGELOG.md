@@ -10,18 +10,24 @@ minor bumps may carry additive features; patches are fixes and docs).
 ### Added
 
 - **One redirect to a trusted origin for register downloads.** The register can now
-  send a large file to object storage (a short-lived signed URL, such as Cloudflare
-  R2) instead of sending the bytes itself. A sync follows that redirect only if all
-  of these hold: the target origin is listed in the new `tax.register.redirect_origins`
+  send a document to object storage (a short-lived signed URL, such as Cloudflare R2)
+  instead of sending the bytes itself. A sync follows that redirect only if all of
+  these hold: the target origin is listed in the new `tax.register.redirect_origins`
   (`TAX_REGISTER_REDIRECT_ORIGINS`), it uses https, it is the only redirect, and the
-  file has a sha256 published in the register's boundary listing. The redirected
-  request does not carry the integration token. The file is hashed after download,
-  and if the hash differs from the published one the file is deleted and the sync
-  stops. The list is empty by default, so every redirect is refused as before. See
+  register published a sha256 for the document. The redirected request does not carry
+  the integration token. The bytes are hashed (a section before it is decoded), and if
+  the hash differs from the published one the sync stops and nothing is installed. The
+  list is empty by default, so every redirect is refused as before. See
   [the register](docs/getting-started/the-register.md#downloads-handed-to-object-storage).
-- `SectionFetcher::download()` takes an optional published sha256, and its
-  constructor takes `redirectOrigins`. Both are trailing optional arguments, so
-  existing calls still work.
+- **Published hashes are read from the release.** On schema 2.7.9 and later, the
+  release carries `sha256.regions.{region}` and `sha256.sections.{section}`.
+  `tax:data:sync` passes them with each region download and with the `regimes`,
+  `categories`, `mappings`, `sources`, `rules` and `standard-rates` sections.
+  Boundary files use the `hash` from the boundary listing. Older releases, `coverage`
+  and `facts` have no hash and are never taken over a redirect.
+- `SectionFetcher::download()`, `json()` and `jsonIfPublished()` take an optional
+  published sha256, and the constructor takes `redirectOrigins`. All are trailing
+  optional arguments, so existing calls still work.
 - `RateSourceUnavailable::refusedRedirect()` and `::integrityMismatch()`.
 
 ### Changed
@@ -29,9 +35,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 - A refused redirect now names the origin it pointed to and the setting that would
   allow it. It used to say only `HTTP 302`. It is still refused, and still throws
   `RateSourceUnavailable`.
-- `tax:data:sync` passes the hash from the boundary listing with each boundary,
-  street and geometry download. A file the register serves itself is not checked
-  against it, as before.
+- A document the register serves itself is not checked against its published hash,
+  as before. Only a redirected one is.
 
 ## [0.19.0] - 2026-11-12
 
