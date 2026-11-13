@@ -20,10 +20,12 @@ use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\DatasetNotInstalled;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\Shape;
+use Cbox\Tax\Register\Reader\TaxableShare;
 use Cbox\Tax\ValueObjects\BracketRow;
 use Cbox\Tax\ValueObjects\BracketSchedule;
 use Cbox\Tax\ValueObjects\CombinedTaxTable;
@@ -259,10 +261,65 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 }
             }
 
-            return $this->withDeclined($replaced ? $stacked : $this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at);
+            return $this->onShareOfPrice(
+                $this->withDeclined($replaced ? $stacked : $this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at),
+                $code,
+                $rate,
+                $replaced,
+                $key,
+                $at,
+            );
         }
 
         return null;
+    }
+
+    /**
+     * The answer computed on the share of the price the state taxes, where it taxes
+     * only a share; see {@see TaxableShare}.
+     *
+     * LAST, on the finished stack, because what the share may cover depends on what
+     * the stack turned out to hold. `same_share` covers it all. `unstated` covers the
+     * state's own tax, so it applies only where that is the whole answer: the state's
+     * band, nothing stacked on it, nothing standing in its place, and no all-in total
+     * filed over it. Any local tax in the stack and its base is unknown — taxed on the
+     * whole price it over-collects, on the share it may under-collect — and the stack
+     * refuses before an amount rather than pick one.
+     *
+     * An answer that could not resolve its locals is the state's band, flagged as
+     * short already; the share is right for what it holds, and the flag still says
+     * what is missing.
+     */
+    private function onShareOfPrice(TaxRate $answer, string $code, TaxRate $band, bool $replaced, string $key, ?DateTimeImmutable $at): TaxRate
+    {
+        if (! str_starts_with($code, 'us:') || $code !== $this->stateOf($code)) {
+            return $answer;
+        }
+
+        $share = TaxableShare::of($this->dataset, $code, $key, $at ?? new DateTimeImmutable('today'));
+
+        if ($share === null) {
+            return $answer;
+        }
+
+        $localInStack = $replaced
+            || ! $answer->percentage->isEqualTo($band->percentage)
+            || array_any($answer->components, static fn (RateComponent $component): bool => $component->code !== $code);
+
+        if (! $share->coversLocalTaxes() && $localInStack) {
+            throw new UnresolvedTaxRule(sprintf(
+                '%s taxes %s on %s%% of the price, and the register does not say whether its local taxes are computed on the same share. The rate here includes a local tax, so no amount is given rather than one on a base nobody published.',
+                $code,
+                $share->category,
+                $share->proportion,
+            ));
+        }
+
+        if ($answer->schedule !== null) {
+            throw new UnresolvedTaxRule(sprintf('%s taxes %s on %s%% of the price, under a rate written as a table, which this engine does not read on a share.', $code, $share->category, $share->proportion));
+        }
+
+        return $answer->withTaxableShare($share->proportion);
     }
 
     /**

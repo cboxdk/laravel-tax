@@ -130,9 +130,13 @@ trait AssessesOrders
                 performedAt: $line->performedAt,
             ));
 
+            // Goods taxed on a share of their price are partially exempt in the same
+            // sense, and assessing the delivery as them would carry their share onto
+            // the freight, which no rule says.
             if ($order->place->country->value === 'US' && ! $share->isZero() && $portion->isTaxable()
-                && $assessed->taxableBase !== null && $assessed->isTaxable()
-                && $assessed->taxableBase->abs()->isLessThan($assessed->net->abs())) {
+                && $assessed->isTaxable()
+                && (($assessed->taxableBase !== null && $assessed->taxableBase->abs()->isLessThan($assessed->net->abs()))
+                    || $assessed->rate?->taxableShare !== null)) {
                 throw new UnresolvedTaxRule('Taxable delivery of partially exempt goods requires a rule for allocating its taxable base.');
             }
 

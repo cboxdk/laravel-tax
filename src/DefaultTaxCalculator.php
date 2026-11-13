@@ -151,6 +151,8 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             $assessment->rate->components,
             RateLimit::ItemUnmapped,
             $assessment->rate->provenance,
+            // The tax was computed on this share; the rate on the assessment must say so.
+            taxableShare: $assessment->rate->taxableShare,
         ));
     }
 

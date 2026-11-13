@@ -34,6 +34,20 @@ readonly class TaxRate
     public BigDecimal $percentage;
 
     /**
+     * The share of the price the tax is computed on, as a percentage: `80` taxes
+     * 80% of the price. Null is the whole price, which is nearly every rate.
+     *
+     * KEPT BESIDE THE PERCENTAGE, NOT FOLDED INTO IT. Texas taxes data processing at
+     * its 6.25% on 80% of the price, and its cities, counties and transit authorities
+     * take their shares on the same 80%. Multiplying that out to a 5% "rate" would
+     * be a figure no statute names, the components would stop summing to it, and a
+     * return filed per authority would carry rates nobody publishes. So the
+     * percentage and its components stay the statutory ones, and every place that
+     * turns a rate into money reads {@see effectivePercentage()} instead.
+     */
+    public ?BigDecimal $taxableShare;
+
+    /**
      * @param  list<RateComponent>  $components  The authorities this rate is made
      *                                           of; empty when the source cannot
      *                                           decompose it.
@@ -77,8 +91,23 @@ readonly class TaxRate
          * Null for every rate that is a percentage, which is nearly all of them.
          */
         public ?TaxTable $schedule = null,
+        /**
+         * The share of the price that bears the tax; see {@see $taxableShare}. Added
+         * last, like every parameter before it.
+         */
+        BigDecimal|string|int|null $taxableShare = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
+        $this->taxableShare = $taxableShare === null ? null : BigDecimal::of($taxableShare);
+
+        // A share is of the price: above 100 would tax more than was sold, and zero
+        // or below is an exemption, which the register files as one rather than as a
+        // share. A table and a share together is a combination no state publishes
+        // and that this class could not price consistently: a table is read on the
+        // sale, and a document reads it on the sum of its lines.
+        if ($this->taxableShare !== null && (! $this->taxableShare->isPositive() || $this->taxableShare->isGreaterThan(100) || $schedule !== null)) {
+            throw ImplausibleTaxRate::share($this->taxableShare, $source);
+        }
 
         // A rate outside 0–100% is not a rate, it is corrupt data. Left unchecked a
         // negative percentage produces NEGATIVE tax (money handed back on every
@@ -108,6 +137,54 @@ readonly class TaxRate
         if (! $sum->isEqualTo($this->percentage)) {
             throw RateComponentsDoNotReconcile::for($this->percentage, $sum);
         }
+    }
+
+    /**
+     * The rate as it bears on the WHOLE price: the percentage, scaled by the share of
+     * the price that is taxed. 8.25% on 80% of the price is 6.6% of it.
+     *
+     * This is the figure to turn into money, and only that. It is not a rate any
+     * authority publishes, so it is never shown as one and never split into
+     * components; {@see $percentage} is.
+     */
+    public function effectivePercentage(): BigDecimal
+    {
+        if ($this->taxableShare === null) {
+            return $this->percentage;
+        }
+
+        // Exact: a share divides by 100 by moving the point two places.
+        return $this->percentage->multipliedBy($this->taxableShare)->dividedByExact(100);
+    }
+
+    /**
+     * The part of an amount the tax is computed on — the amount itself, unless only a
+     * share of the price is taxed. What a per-authority line reports as its base.
+     */
+    public function taxablePartOf(Money $amount): Money
+    {
+        if ($this->taxableShare === null) {
+            return $amount;
+        }
+
+        return $amount->toRational()->multipliedBy($this->taxableShare)->dividedBy(100)
+            ->toContext($amount->getContext(), RoundingMode::HalfUp);
+    }
+
+    /** The same rate, computed on a share of the price; see {@see $taxableShare}. */
+    public function withTaxableShare(BigDecimal|string|int|null $share): self
+    {
+        return new self(
+            $this->percentage,
+            $this->kind,
+            $this->source,
+            $this->confidence,
+            $this->components,
+            $this->limitedBy,
+            $this->provenance,
+            $this->schedule,
+            $share,
+        );
     }
 
     public function isZero(): bool
@@ -148,6 +225,7 @@ readonly class TaxRate
             $this->limitedBy ?? $limit,
             $this->provenance,
             $this->schedule,
+            $this->taxableShare,
         );
     }
 
@@ -162,6 +240,7 @@ readonly class TaxRate
             $this->limitedBy,
             $this->provenance,
             $this->schedule,
+            $this->taxableShare,
         );
     }
 
@@ -190,8 +269,10 @@ readonly class TaxRate
             return $scheduled;
         }
 
+        // On a share of the price, the share scales the rate: 8.25% of 80% of the
+        // price is 6.6% of it, still rounded once, at the money.
         $tax = $net->toRational()
-            ->multipliedBy($this->percentage)
+            ->multipliedBy($this->effectivePercentage())
             ->dividedBy(100);
 
         return $rounding?->round($tax, $net->getContext())
@@ -202,20 +283,24 @@ readonly class TaxRate
      * The net amount contained within a gross (tax-inclusive) amount.
      *
      * `gross × 100 ÷ (100 + percentage)`, kept rational for the same reason as
-     * {@see taxOnNet()}: one rounding step, and it happens at the money.
+     * {@see taxOnNet()}: one rounding step, and it happens at the money. On a share
+     * of the price the effective percentage stands in for the percentage, because
+     * the tax added to the net was the effective percentage of it.
      */
     public function netFromGross(Money $gross, ?TaxRounding $rounding = null): Money
     {
+        $percentage = $this->effectivePercentage();
+
         if ($rounding !== null) {
-            $tax = $gross->toRational()->multipliedBy($this->percentage)
-                ->dividedBy(BigDecimal::of(100)->plus($this->percentage));
+            $tax = $gross->toRational()->multipliedBy($percentage)
+                ->dividedBy(BigDecimal::of(100)->plus($percentage));
 
             return $gross->minus($rounding->round($tax, $gross->getContext()));
         }
 
         return $gross->toRational()
             ->multipliedBy(100)
-            ->dividedBy(BigDecimal::of(100)->plus($this->percentage))
+            ->dividedBy(BigDecimal::of(100)->plus($percentage))
             ->toContext($gross->getContext(), RoundingMode::HalfUp);
     }
 }

@@ -125,10 +125,51 @@ the named city would put other authorities' money on the city's line.
 ## Known limitation: one taxable base
 
 Every line reports `taxableAmount` as the supply's full net, because the engine
-applies a single taxable base across the stack.
+applies a single taxable base across the stack. The one exception is a state that
+taxes a share of the price (below): there every line reports that share of the net.
 
 That is correct for the states modelled today, but it would **not** be for a state
 that exempts a category at the state level while its localities still tax it —
 Illinois and Missouri both do this for groceries. Supporting that needs a per-level
 taxability seam, which does not exist yet, so a per-level base is deliberately not
 claimed here.
+
+## A share of the price
+
+Some states tax only part of the price. Texas taxes data processing, SaaS and
+hosting at 6.25% on 80% of the price, and its cities, counties and transit
+authorities tax the same 80%. Arizona taxes prime contracting on 65% of the gross.
+The register publishes each state's own rate and, beside it, a `taxable_base` rule
+on the `supplied_item` with a `category`, a `proportion` and (from schema 2.8)
+`localTaxes`.
+
+The resolved `TaxRate` keeps the statutory rate and carries the share separately:
+
+```php
+$a = $calculator->assess($query); // Texas SaaS in Austin, $100.00 net
+
+$a->rate->percentage;          // 8.25 (6.25 state + 1 city + 1 transit)
+$a->rate->taxableShare;        // 80
+$a->rate->effectivePercentage(); // 6.6, the figure the money is computed from
+$a->tax;                       // USD 6.60
+$a->breakdown->lines[0]->taxableAmount; // USD 80.00 on every line
+```
+
+The components still sum to `percentage`, and the tax is split across them in
+proportion to their own rates. Tax-inclusive prices, invoice rounding and
+per-authority returns all use the effective percentage.
+
+The rule applies to its category and everything beneath it, with the nearest rung
+winning. What `localTaxes` says decides what the share covers:
+
+| `localTaxes` | Meaning | Engine |
+|---|---|---|
+| `same_share` | Every local tax in the state is computed on the same share. | The share applies to the whole stack. |
+| `unstated` | The rule speaks for the state's own tax only. | Applied where the rate is the state's tax alone. With any local tax in the stack it throws `UnresolvedTaxRule`, because the local base is not published. |
+| absent | A rule published before schema 2.8. | Not applied: the whole price is taxed, as before. |
+
+A remote seller's elected figure (Texas' single local rate, a flat total) always
+includes a local part, so it keeps a `same_share` share and refuses an `unstated`
+one. A delivery charge on a line taxed on a share refuses, like any delivery of
+partially exempt goods.
+

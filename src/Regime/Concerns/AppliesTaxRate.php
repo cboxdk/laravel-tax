@@ -70,11 +70,20 @@ trait AppliesTaxRate
         return [$net, $tax, $gross];
     }
 
-    /** Exact tax retained until a document's rounding policy is applied. */
+    /**
+     * Exact tax retained until a document's rounding policy is applied.
+     *
+     * At the EFFECTIVE percentage, as {@see TaxRate::taxOnNet()} computes it. Read at
+     * the bare percentage, a rate on a share of the price would be taxed on the share
+     * line by line and on the whole price once the document is rounded, and a Texas
+     * SaaS invoice rounded once would come out a quarter higher than its lines.
+     */
     protected function unroundedTax(TaxQuery $query, TaxRate $rate, ?Money $taxableBase = null): RationalMoney
     {
-        return ($taxableBase ?? $query->amount)->toRational()->multipliedBy($rate->percentage)
-            ->dividedBy($query->pricing === Pricing::Exclusive ? BigDecimal::of(100) : $rate->percentage->plus(100));
+        $percentage = $rate->effectivePercentage();
+
+        return ($taxableBase ?? $query->amount)->toRational()->multipliedBy($percentage)
+            ->dividedBy($query->pricing === Pricing::Exclusive ? BigDecimal::of(100) : $percentage->plus(100));
     }
 
     /**
@@ -141,6 +150,12 @@ trait AppliesTaxRate
      * statement about who is owed the odd cent, and a 0%-rate authority must never
      * collect one.
      *
+     * The shares are in proportion to the authorities' own percentages, which is
+     * right on a share of the price too: Texas' 80% applies to the state and every
+     * local tax alike, so it scales every share by the same factor. What changes is
+     * the base each line reports — the taxed share of the net, which is the taxable
+     * amount the authority's return asks for.
+     *
      * Returns null — "no breakdown" — rather than a degenerate one when the rate
      * carries no components, when nothing was taxed, or when the money uses an
      * auto-scaling context that has no minor unit to allocate in.
@@ -161,12 +176,13 @@ trait AppliesTaxRate
         );
 
         $lines = [];
+        $taxable = $rate->taxablePartOf($net);
 
         foreach ($rate->components as $index => $component) {
             $lines[] = new BreakdownLine(
                 level: $component->level,
                 percentage: $component->percentage,
-                taxableAmount: $net,
+                taxableAmount: $taxable,
                 tax: $shares[$index],
                 code: $component->code,
                 name: $component->name,

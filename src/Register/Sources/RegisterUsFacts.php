@@ -8,8 +8,10 @@ use Brick\Money\Money;
 use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\TaxClass;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Reader\Shape;
+use Cbox\Tax\Register\Reader\TaxableShare;
 use DateTimeImmutable;
 use Throwable;
 
@@ -175,6 +177,19 @@ readonly class RegisterUsFacts implements UsTaxFacts
         $case = TaxClass::tryFrom($class);
 
         return $case === null ? null : CategoryMap::keyFor($case);
+    }
+
+    /**
+     * The share of the price a state taxes a category on, where it taxes only a share;
+     * see {@see TaxableShare}. Not on {@see UsTaxFacts}, so a host's own facts keep
+     * compiling: a remote-seller election read from them prices the whole price, as it
+     * did before.
+     *
+     * @throws UnresolvedTaxRule When the rule that applies cannot be read as a share.
+     */
+    public function taxableShare(string $state, string $key, DateTimeImmutable $at): ?TaxableShare
+    {
+        return TaxableShare::of($this->dataset, $this->code($state), $key, $at);
     }
 
     /** `US-KS` as the regime holds it, `us:KS` as the register addresses it. */

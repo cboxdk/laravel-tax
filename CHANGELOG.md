@@ -5,6 +5,45 @@ based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this proj
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (`0.x`:
 minor bumps may carry additive features; patches are fixes and docs).
 
+## [Unreleased]
+
+### Added
+
+- **A share of the price (register schema 2.8).** Some states tax only part of the
+  price: Texas taxes data processing, SaaS and hosting on 80% of it, and Arizona
+  prime contracting on 65%. The register publishes these as a `taxable_base` rule on
+  the `supplied_item`, with a `proportion` and the new `localTaxes` field. A
+  resolved rate now carries the share in `TaxRate::$taxableShare` beside the
+  statutory percentage, and the tax is computed on it. Texas SaaS in Austin at
+  8.25% on $100.00 is $6.60: $5.00 state, $1.60 local. See
+  [a share of the price](docs/core-concepts/rate-breakdown.md#a-share-of-the-price).
+- `TaxRate::effectivePercentage()`, `taxablePartOf()` and `withTaxableShare()`, and
+  a trailing optional `taxableShare` constructor argument.
+- `RegisterUsFacts::taxableShare()`, so a remote seller's elected figure keeps the
+  share too.
+
+### Changed
+
+- The reader accepts schema 2.8.x. 2.9 and later still refuse, and an unknown field
+  on a `taxable_base` rule still refuses.
+- `localTaxes: same_share` applies the share to the state and every local tax.
+  `localTaxes: unstated` applies it only where the rate is the state's tax alone;
+  with any local tax in the stack the rate throws `UnresolvedTaxRule`, because the
+  local base is not published. An elected remote-seller figure always includes a
+  local part, so it refuses an `unstated` share.
+- Breakdown lines on a share report that share of the net as `taxableAmount`.
+  Tax-inclusive prices, invoice rounding and returns all use the effective
+  percentage, and invoice rounding groups a rate on a share apart from the same
+  rate on the whole price.
+- A delivery charge on goods taxed on a share refuses, like any taxable delivery of
+  partially exempt goods.
+
+### Known gap
+
+- Share rules published without `localTaxes` (Georgia, Kansas, Minnesota and Utah,
+  bundled software maintenance) are still not applied, so those supplies are taxed
+  on the whole price, as before.
+
 ## [0.20.0] - 2026-11-13
 
 ### Added
