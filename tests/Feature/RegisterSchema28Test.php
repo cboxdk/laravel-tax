@@ -27,12 +27,14 @@ use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\DecisionFacts;
+use Cbox\Tax\ValueObjects\RateRecord;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
+use Cbox\Tax\ValueObjects\UnsettledCondition;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -282,7 +284,7 @@ it('applies a levy on its own conditions, and flags it where they are open', fun
         ->and((string) $open->tax->getAmount())->toBe('6.00')
         ->and($open->rate?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
         ->and(array_merge(...array_map(
-            static fn ($c): array => $c->facts,
+            static fn (UnsettledCondition $c): array => $c->facts,
             new RegisterRateSource(app(RegisterDataset::class))->unsettledConditions(schema28Query('TX', '1.00', 'services')->place, 'services.accommodation'),
         )))->toContain('charge.accommodationRatePerDayUsd');
 });
@@ -345,7 +347,7 @@ it('names each separate levy\'s tax type on the records a host reads', function 
 
     $records = app(TaxRegister::class)->rateRecords(app(JurisdictionRepository::class)->find(new CountryCode('US'), new SubdivisionCode('US-SC')));
 
-    expect(array_map(static fn ($r): ?string => $r->taxType, $records))->toBe(['sales_use', 'sales_use', 'admissions']);
+    expect(array_map(static fn (RateRecord $r): ?string => $r->taxType, $records))->toBe(['sales_use', 'sales_use', 'admissions']);
 });
 
 it('refuses an obligation shape it has not been told about, rather than dropping it', function (array $date, string $trigger): void {
