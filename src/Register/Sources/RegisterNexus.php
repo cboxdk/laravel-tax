@@ -35,6 +35,46 @@ use DateTimeImmutable;
  */
 readonly class RegisterNexus implements NexusThresholds
 {
+    /** @var list<string> */
+    private const array ACTIONS = ['register', 'collect', 'remit', 'registration_effective', 'cancel_registration'];
+
+    /** @var list<string> */
+    private const array TRIGGERS = ['threshold_met', 'first_crossing_in_current_year', 'quarter_end_test_met', 'registration_filed', 'measurement_window_end'];
+
+    /**
+     * Every date kind schema 2.8 names, with the figures each one carries. A kind
+     * outside this list, or a figure it does not carry, refuses: the date it gives
+     * is a different date, and handing a host the kind without it would be
+     * presenting a qualified obligation as a plain one.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array DATE_KINDS = [
+        'at_trigger' => [],
+        'first_day_of_next_calendar_year' => [],
+        'calendar_days_after' => ['days'],
+        'first_month_start_on_or_after_days' => ['days'],
+        'first_month_start_after_days' => ['days'],
+        'earlier_of_days_after_or_next_year' => ['days'],
+        'first_day_of_nth_following_month' => ['months'],
+        'calendar_days_after_month_end' => ['days'],
+        'calendar_days_including_trigger' => ['days'],
+        'working_days_after' => ['days'],
+        'last_month_start_on_or_before_days' => ['days'],
+        'next_calendar_date' => ['month', 'day'],
+        'date_in_year_after_trigger' => ['month', 'day'],
+        'return_due_after_following_filing_period' => ['days', 'annualReturnMonth'],
+    ];
+
+    /** The bounds of each figure, as the schema states them. */
+    private const array FIGURE_RANGE = [
+        'days' => [1, 366],
+        'months' => [1, 366],
+        'month' => [1, 12],
+        'day' => [1, 31],
+        'annualReturnMonth' => [1, 12],
+    ];
+
     public function __construct(private RegisterData $dataset) {}
 
     public function for(SubdivisionCode $state, ?DateTimeImmutable $at = null): ?NexusThreshold
@@ -76,7 +116,7 @@ readonly class RegisterNexus implements NexusThresholds
                 $this->operator($payload, 'amountOperator', $state),
                 $transactions === null ? null : $this->operator($payload, 'transactionsOperator', $state),
                 $this->measurements($payload),
-                $this->obligations($payload),
+                $this->obligations($payload, $state),
                 Shape::text($payload['measuredOver'] ?? null),
                 Shape::text($payload['counts'] ?? null),
                 Shape::text($payload['basis'] ?? null),
@@ -117,10 +157,16 @@ readonly class RegisterNexus implements NexusThresholds
     /**
      * What crossing obliges, and from when.
      *
+     * READ WHOLE OR REFUSED. Every action, trigger and date kind is one the schema
+     * names, with exactly the figures that kind carries; anything else — a kind a
+     * newer schema adds, a figure missing or out of range — refuses rather than
+     * being dropped or handed over without the part that dates it. Dropping one
+     * left a state looking as though crossing obliged nothing.
+     *
      * @param  array<string, mixed>  $payload
      * @return list<ThresholdObligation>
      */
-    private function obligations(array $payload): array
+    private function obligations(array $payload, SubdivisionCode $state): array
     {
         $obligations = [];
 
@@ -130,14 +176,34 @@ readonly class RegisterNexus implements NexusThresholds
             $says = Shape::text($rule['says'] ?? null);
             $date = Shape::map($rule['date'] ?? null);
             $kind = Shape::text($date['kind'] ?? null);
+            $figures = self::DATE_KINDS[$kind ?? ''] ?? null;
+            $unknown = array_diff(array_keys($rule), ['action', 'trigger', 'date', 'says', 'source']);
 
-            if ($action === null || $trigger === null || $says === null || $kind === null) {
-                continue;
+            if ($action === null || ! in_array($action, self::ACTIONS, true)
+                || $trigger === null || ! in_array($trigger, self::TRIGGERS, true)
+                || $says === null || $figures === null || $unknown !== []
+                || array_diff(array_keys($date), ['kind', ...$figures]) !== []) {
+                throw new UnresolvedTaxRule(sprintf(
+                    'Unsupported obligation on the remote-seller threshold for %s (action %s, trigger %s, date kind %s). Upgrade the reader; the obligation cannot be read without it.',
+                    $state->value,
+                    $action ?? '(none)',
+                    $trigger ?? '(none)',
+                    $kind ?? '(none)',
+                ));
             }
 
-            $figure = $date['days'] ?? $date['months'] ?? null;
-            $month = $date['month'] ?? null;
-            $day = $date['day'] ?? null;
+            $read = [];
+
+            foreach ($figures as $field) {
+                $value = $date[$field] ?? null;
+                [$min, $max] = self::FIGURE_RANGE[$field];
+
+                if (! is_int($value) || $value < $min || $value > $max) {
+                    throw new UnresolvedTaxRule(sprintf('The %s obligation on the remote-seller threshold for %s carries no readable %s.', $kind, $state->value, $field));
+                }
+
+                $read[$field] = $value;
+            }
 
             // A FIXED DATE IS CARRIED WHOLE. `next_calendar_date` names a month and a
             // day — North Macedonia's "by 15 January" — and reading only a count gave
@@ -145,11 +211,12 @@ readonly class RegisterNexus implements NexusThresholds
             $obligations[] = new ThresholdObligation(
                 $action,
                 $trigger,
-                $kind,
-                is_int($figure) ? $figure : null,
+                (string) $kind,
+                $read['days'] ?? $read['months'] ?? null,
                 $says,
-                is_int($month) && $month >= 1 && $month <= 12 ? $month : null,
-                is_int($day) && $day >= 1 && $day <= 31 ? $day : null,
+                $read['month'] ?? null,
+                $read['day'] ?? null,
+                $read['annualReturnMonth'] ?? null,
             );
         }
 

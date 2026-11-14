@@ -56,5 +56,9 @@ $register->distanceSalesThreshold()?->amount; // EUR 10000.00
 $register->rateRecords($place, '2026.09.01-1'); // what an older installed release filed
 ```
 
+`UnstatedReadings` says where the register read a place's law for a category and
+found it silent. It never changes a rate; see
+[Read, and the law is silent](rate-breakdown.md#read-and-the-law-is-silent).
+
 `ExchangeRates` is public in the same way: bind your own source of rates, or read the
 ECB's through the shipped one. See [Invoice currency](invoice-currency.md).

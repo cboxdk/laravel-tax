@@ -7,6 +7,56 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-14
+
+### Added
+
+- **Separate levies (register schema 2.8).** Some states charge a second tax beside
+  their sales tax on the same supply: South Carolina's 5% admissions tax, Virginia's
+  5% communications tax, the Texas and Hawaii hotel taxes, Arizona's 911 excise. The
+  register files each as a rate row of its own `taxType` (`admissions`,
+  `communications`, `lodging`, `excise`). The engine resolves the category in the
+  jurisdiction's own tax as before, then adds each levy that names the category as
+  its own line. An admission in South Carolina is now 0% sales tax plus 5% admissions
+  tax. See [a separate levy](docs/core-concepts/rate-breakdown.md#a-separate-levy-beside-the-tax).
+- `taxType` on `RateComponent`, `BreakdownLine`, `AuthorityTotal` and `RateRecord`, as
+  trailing optional arguments. It is set on a levy and `null` on the authority's own
+  tax.
+- `RateLimit::SeparateLevyUnpriced`, for a levy that is not a percentage of the price
+  (Arizona's 20 cents per account per month).
+- **`read_unstated` records.** The new `UnstatedReadings` contract (bound to
+  `RegisterUnstatedReadings`) returns where the register read a place's law for a
+  category and found it silent, so a host can tell that from "not yet covered". It
+  never changes a rate.
+- **Two remote-seller obligation shapes.** The date kind
+  `return_due_after_following_filing_period` (Hawaii) and the trigger
+  `measurement_window_end` (Connecticut). `ThresholdObligation::$annualReturnMonth` is a
+  new trailing optional argument.
+
+### Changed
+
+- A separate-levy row is never a category's answer. Before, such a row made the
+  category ambiguous (South Carolina admissions resolved to the 6% general rate,
+  flagged), or answered instead of the sales tax, or was dropped. A levy has no
+  fallback, so where no row of it names the category it does not apply.
+- A levy whose rows disagree at one category, or a levy beside a rate on a share of
+  the price or a bracket table, throws `UnresolvedTaxRule`.
+- Taxability ignores levy rows when deciding whether the jurisdiction's own tax
+  exempts a category. Where it exempts the category and a levy applies, the supply is
+  taxable, so the levy is priced and the assessment is `Standard`.
+- An order's `taxByAuthority()` and the return aggregator keep a levy apart from the
+  same authority's own tax.
+- A threshold obligation must be one the schema names: a known action, trigger and
+  date kind, with exactly the figures that kind carries, in range. Anything else now
+  throws `UnresolvedTaxRule`. Before, an incomplete obligation was dropped and an
+  unknown kind was passed through without its figures.
+
+### Known gap
+
+- A remote seller pricing under an elected flat rate (Alabama SSUT, the Texas single
+  local rate) does not get separate levies added; the election replaces rate
+  resolution. No levy the register publishes today overlaps an election program.
+
 ## [0.21.0] - 2026-11-13
 
 ### Added

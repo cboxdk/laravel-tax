@@ -153,6 +153,7 @@ readonly class InstalledRegister implements TaxRegister
                     from: $this->date($effective['from'] ?? null),
                     until: $this->date($effective['until'] ?? null),
                     atGeneralRate: ($rate['atGeneralRate'] ?? false) === true,
+                    taxType: Shape::text($rate['taxType'] ?? null),
                 );
             }
         }

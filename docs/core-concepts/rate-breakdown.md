@@ -173,3 +173,68 @@ includes a local part, so it keeps a `same_share` share and refuses an `unstated
 one. A delivery charge on a line taxed on a share refuses, like any delivery of
 partially exempt goods.
 
+## A separate levy beside the tax
+
+Some states charge a second tax on a supply, under another chapter and on another
+return. From schema 2.8 the register files it as a rate row of its own `taxType`:
+`admissions` (South Carolina's 5%), `communications` (Virginia's 5%), `lodging`
+(the Texas and Hawaii hotel taxes) and `excise` (Arizona's 911 charge).
+
+Such a row is never the category's answer. The engine resolves the category in the
+jurisdiction's own tax exactly as before, then resolves each levy on its own over
+the same category ladder, and adds what it finds as a line of its own:
+
+```php
+$a = $calculator->assess($query); // an admission in South Carolina, $100.00 net
+
+$a->rate->percentage;                // 5 (0 sales tax + 5 admissions tax)
+$a->tax;                             // USD 5.00
+$a->breakdown->lines[0]->taxType;    // null: South Carolina's sales tax, 0%
+$a->breakdown->lines[1]->taxType;    // "admissions", 5%, USD 5.00
+$a->breakdown->lines[1]->label();    // "South Carolina admissions tax"
+```
+
+`RateComponent`, `BreakdownLine` and `AuthorityTotal` carry `taxType` for a levy and
+`null` for the authority's own tax. An order's `taxByAuthority()` and a return keep
+the two apart, because they are filed on different returns.
+
+How a levy is read:
+
+- **No fallback.** Where no row of the levy names the category or one above it, the
+  levy does not apply. It never falls back to a standard rate.
+- **The nearest rung wins.** An exempt row of the levy on a narrower category
+  answers that category with nothing: Virginia's coin-operated calls do not inherit
+  the 5% on telecom.
+- **Conditions work as on any rate.** Texas' hotel tax applies to a room of $15 a
+  day or more (`charge.accommodationRatePerDayUsd`). An open condition keeps the levy
+  and flags the rate `ConditionsUnevaluated`.
+- **`borneBy` and `mayBePassedOn` apply as on any rate.** A levy the supplier bears
+  and may not pass on is not added.
+- **Refused where its base is unknown.** Two rows of one levy that disagree at one
+  category, or a levy beside a rate on a share of the price or a bracket table,
+  throw `UnresolvedTaxRule`.
+- **Flagged where it is not a percentage.** Arizona's 911 excise is 20 cents per
+  account per month, which cannot be put on a sale. The rate stands without it and
+  carries `RateLimit::SeparateLevyUnpriced`.
+
+Where the jurisdiction's own tax exempts the category and a levy applies, the supply
+is taxed (by the levy) and reported as `Standard`, not `Exempt`.
+`TaxRegister::rateRecords()` names each record's `taxType`.
+
+## Read, and the law is silent
+
+From schema 2.8 the register can record that it read a source for a category and
+found that the law does not answer it (a `read_unstated` rule). This is not a rate
+and not an exemption. The engine prices the category exactly as it would without
+it. A host that wants to tell "read, and silent" from "not yet covered" asks for it:
+
+```php
+use Cbox\Tax\Contracts\UnstatedReadings;
+
+foreach (app(UnstatedReadings::class)->for($place, 'services.cultural_admission') as $reading) {
+    [$reading->finding, $reading->sections, $reading->readOn, $reading->source];
+}
+```
+
+Do not show a reading as 0% or as exempt.
+

@@ -50,6 +50,22 @@ readonly class RateResolver
     private const array SHARES = ['local_component', 'combined'];
 
     /**
+     * Taxes levied BESIDE a jurisdiction's own tax on the same supply, under another
+     * chapter and on another return (register schema 2.8): South Carolina's 5%
+     * admissions tax, Virginia's communications tax, the Texas and Hawaii lodging
+     * taxes, Arizona's 911 excise.
+     *
+     * A ROW OF ONE IS NEVER THE CATEGORY'S ANSWER. Read as one, South Carolina's
+     * admissions row and its sales-tax exemption were two answers at one rung, and
+     * the engine charged the 6% general rate; with no sales-tax row beside it, the
+     * 5% levy answered INSTEAD of the 6% sales tax. Every read here leaves them out,
+     * and {@see self::levies()} reads each one on its own.
+     *
+     * @var list<string>
+     */
+    public const array SEPARATE_LEVIES = ['admissions', 'communications', 'excise', 'lodging'];
+
+    /**
      * @param  list<array<string, mixed>>  $rates
      * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled?: list<UnsettledCondition>}|null
      */
@@ -58,17 +74,89 @@ readonly class RateResolver
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
         $facts = RateConditions::withCommodityCode($facts ?? new DecisionFacts, $commodityCode);
 
-        // CONDITIONS FILTER BEFORE ANYTHING IS CHOSEN. A row whose conditions say it
-        // does not reach this supply is not a candidate at all — not a competing
-        // answer to be disambiguated, not a rate to fall back from. Removing it here
-        // is what lets the ladder carry on to the answer that does apply: fertiliser
-        // filed under agricultural inputs climbs past the zero rate for seeds and
-        // lands on the standard band.
-        $live = array_values(array_filter(
-            $this->live($rates, $on),
+        return $this->climb($this->applicable($this->live($rates, $on), $facts), $category, $commodityCode, $facts, true);
+    }
+
+    /**
+     * Each separate levy that reaches the category, resolved on its own: the type's
+     * answer, keyed by `taxType`.
+     *
+     * THE SAME LADDER, WITH NO FALLBACK. Conditions filter first, the nearest rung
+     * wins and a classification refines it, exactly as for the jurisdiction's own
+     * tax. But where no row of the type names the category, the type does not apply:
+     * nothing falls back to a standard rate, of this type or any other. An exempt or
+     * zero row of the type on a narrower category answers that category with
+     * nothing, so Virginia's coin-operated calls do not inherit the 5% on telecom.
+     * Where a rung holds rows of the type that disagree, the answer carries
+     * `ambiguous` and the highest of them, for the caller to refuse.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return array<string, array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled?: list<UnsettledCondition>}>
+     */
+    public function levies(array $rates, string $category, ?string $commodityCode, ?DateTimeImmutable $at = null, ?DecisionFacts $facts = null): array
+    {
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $facts = RateConditions::withCommodityCode($facts ?? new DecisionFacts, $commodityCode);
+        $ladder = CategoryMap::ladder($category);
+        $levies = [];
+
+        foreach (self::SEPARATE_LEVIES as $type) {
+            // Only rows that NAME a category on the ladder: a levy without one, or on
+            // some other category, says nothing about this supply.
+            $rows = array_values(array_filter(
+                $this->live($rates, $on, $type),
+                static fn (array $rate): bool => in_array($rate['category'] ?? null, $ladder, true),
+            ));
+
+            $answer = $rows === [] ? null : $this->climb($this->applicable($rows, $facts), $category, $commodityCode, $facts, false);
+
+            if ($answer !== null) {
+                $levies[$type] = $answer;
+            }
+        }
+
+        return $levies;
+    }
+
+    /**
+     * Whether a row is of a separate levy rather than of the jurisdiction's own tax.
+     *
+     * @param  array<string, mixed>  $rate
+     */
+    public static function isSeparateLevy(array $rate): bool
+    {
+        return in_array($rate['taxType'] ?? null, self::SEPARATE_LEVIES, true);
+    }
+
+    /**
+     * CONDITIONS FILTER BEFORE ANYTHING IS CHOSEN. A row whose conditions say it
+     * does not reach this supply is not a candidate at all — not a competing answer
+     * to be disambiguated, not a rate to fall back from. Removing it here is what
+     * lets the ladder carry on to the answer that does apply: fertiliser filed under
+     * agricultural inputs climbs past the zero rate for seeds and lands on the
+     * standard band.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return list<array<string, mixed>>
+     */
+    private function applicable(array $rates, DecisionFacts $facts): array
+    {
+        return array_values(array_filter(
+            $rates,
             static fn (array $rate): bool => RateConditions::verdict($rate, $facts)['status'] !== RateConditions::DOES_NOT_APPLY,
         ));
+    }
 
+    /**
+     * The category ladder over rows already live and applicable. `$fallback` false is
+     * a separate levy's read: no standard rate where nothing answers, and a rung that
+     * disagrees with itself is reported rather than replaced.
+     *
+     * @param  list<array<string, mixed>>  $live
+     * @return array{rate: array<string, mixed>, inferred: bool, ambiguous: bool, narrowed: bool, by?: ?string, unsettled?: list<UnsettledCondition>}|null
+     */
+    private function climb(array $live, string $category, ?string $commodityCode, DecisionFacts $facts, bool $fallback): ?array
+    {
         if ($live === []) {
             return null;
         }
@@ -156,12 +244,21 @@ readonly class RateResolver
                 return $this->settled(['rate' => $this->strongest($presumed, $facts, $rung === $category), 'inferred' => false, 'ambiguous' => false, 'narrowed' => false], $facts, $rung === $category, $live);
             }
 
+            // A separate levy has no standard rate to take instead: the caller refuses.
+            if (! $fallback) {
+                return ['rate' => $this->highest($atRung), 'inferred' => false, 'ambiguous' => true, 'narrowed' => false, 'unsettled' => []];
+            }
+
             // More than one live answer at the rung the item actually is. Climbing
             // further would only widen the question, so stop and take the standard
             // rate, flagged — the caller closes this by supplying a commodity code.
             $standard = $this->standard($live);
 
             return $standard === null ? null : $this->settled(['rate' => $standard, 'inferred' => false, 'ambiguous' => true, 'narrowed' => false], $facts, false, $live);
+        }
+
+        if (! $fallback) {
+            return null;
         }
 
         $standard = $this->standard($live);
@@ -623,12 +720,19 @@ readonly class RateResolver
      * one row in the register today that this filter was meant to catch: all
      * nineteen supplier-borne rows may be passed on.
      *
+     * ONE TAX AT A TIME. With no `$levy` these are the jurisdiction's own rows and
+     * every separate levy is left out; with one, only that levy's rows.
+     *
      * @param  list<array<string, mixed>>  $rates
      * @return list<array<string, mixed>>
      */
-    private function live(array $rates, string $on): array
+    private function live(array $rates, string $on, ?string $levy = null): array
     {
-        return array_values(array_filter($rates, static function (array $rate) use ($on): bool {
+        return array_values(array_filter($rates, static function (array $rate) use ($on, $levy): bool {
+            if ($levy === null ? self::isSeparateLevy($rate) : ($rate['taxType'] ?? null) !== $levy) {
+                return false;
+            }
+
             if (($rate['borneBy'] ?? null) !== 'customer' && ($rate['mayBePassedOn'] ?? null) !== true) {
                 return false;
             }

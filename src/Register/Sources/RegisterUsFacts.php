@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Reader\TaxableShare;
 use DateTimeImmutable;
@@ -33,7 +34,7 @@ readonly class RegisterUsFacts implements UsTaxFacts
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
 
         foreach ($this->dataset->ratesFor($this->code($state)) as $rate) {
-            if (($rate['kind'] ?? null) !== 'standard' || ($rate['category'] ?? null) !== null) {
+            if (($rate['kind'] ?? null) !== 'standard' || ($rate['category'] ?? null) !== null || RateResolver::isSeparateLevy($rate)) {
                 continue;
             }
 

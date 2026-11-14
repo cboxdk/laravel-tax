@@ -31,6 +31,7 @@ use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegister;
+use Cbox\Tax\Contracts\UnstatedReadings;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Contracts\VatIdValidator;
 use Cbox\Tax\ExchangeRates\EcbExchangeRates;
@@ -57,6 +58,7 @@ use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterRounding;
 use Cbox\Tax\Register\Sources\RegisterSourcing;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
+use Cbox\Tax\Register\Sources\RegisterUnstatedReadings;
 use Cbox\Tax\Register\Sources\RegisterUsFacts;
 use Cbox\Tax\Register\Store\StoreLayout;
 use Cbox\Tax\Register\Store\StorePointer;
@@ -161,6 +163,7 @@ class TaxServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(PurchaserExemptions::class, static fn (Application $app): PurchaserExemptions => new RegisterPurchaserExemptions($app->make(RegisterData::class)));
+        $this->app->singleton(UnstatedReadings::class, static fn (Application $app): UnstatedReadings => new RegisterUnstatedReadings($app->make(RegisterData::class)));
         $this->app->singleton(AttributionRules::class, static fn (Application $app): AttributionRules => new RegisterAttribution(
             $app->make(RegisterData::class),
         ));

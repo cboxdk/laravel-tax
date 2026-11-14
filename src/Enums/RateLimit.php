@@ -214,6 +214,18 @@ enum RateLimit: string
      */
     case ConsignmentValueUnmeasured = 'consignment_value_unmeasured';
 
+    /**
+     * A separate levy reaches this supply and is not in the figure, because it is not
+     * a percentage of the price.
+     *
+     * Arizona's 911 excise is twenty cents per activated telephone account per month,
+     * charged beside the transaction privilege tax on telecommunications. The rate
+     * here is the state's own tax, right as far as it goes; the levy is a charge per
+     * account the engine cannot put on a sale, and saying nothing would have the
+     * figure read as the whole of it.
+     */
+    case SeparateLevyUnpriced = 'separate_levy_unpriced';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -272,6 +284,9 @@ enum RateLimit: string
             self::ConsignmentValueUnmeasured => 'Sync the ECB reference rates (`tax:fx:sync`), or bind an ExchangeRates '
                 .'that knows this currency: the consignment is measured against IOSS\'s EUR 150 limit in euro, at the '
                 .'rate for the tax date.',
+            self::SeparateLevyUnpriced => 'Charge the levy yourself, outside this rate: the register files it beside '
+                .'the jurisdiction\'s own tax as a per-unit amount (a `taxType` such as `excise` on '
+                .'TaxRegister::rateRecords()), which is owed per account or unit, not per sale.',
             self::BracketSchedule => 'Price tax-exclusive where you can: the published table is then applied to '
                 .'the sale exactly. A tax-inclusive price, or a local share stacked on the state\'s table, is '
                 .'priced at the table\'s per-dollar rate — right for a price, within a cent for a return.',

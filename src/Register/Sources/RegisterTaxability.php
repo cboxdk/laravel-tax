@@ -12,6 +12,7 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\ThresholdRule;
 use Cbox\Tax\Exceptions\UnresolvedProductTaxability;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\TaxDetermination;
 use DateTimeImmutable;
@@ -147,11 +148,22 @@ readonly class RegisterTaxability implements CategoryKeyedTaxability
     {
         $rates = $this->dataset->ratesFor($code);
 
+        // A SEPARATE LEVY IS NOT THE CATEGORY'S ANSWER (schema 2.8), and it is not
+        // left behind either. South Carolina exempts an admission from its sales tax
+        // and levies 5% on it under its admissions tax: read as one of the answers
+        // the levy made the admission taxable under the sales tax, and an exemption
+        // here stopped the levy from ever being priced. The rate decides both.
+        $levied = array_any($rates, fn (array $rate): bool => RateResolver::isSeparateLevy($rate)
+            && in_array($rate['category'] ?? null, CategoryMap::ladder($key), true)
+            && $this->covers($rate, $on)
+            && (($rate['borneBy'] ?? null) === 'customer' || ($rate['mayBePassedOn'] ?? null) === true)
+            && ! in_array($rate['kind'] ?? null, ['zero', 'exempt'], true));
+
         foreach (CategoryMap::ladder($key) as $rung) {
             $atRung = [];
 
             foreach ($rates as $rate) {
-                if (($rate['category'] ?? null) === $rung && $this->covers($rate, $on)) {
+                if (($rate['category'] ?? null) === $rung && ! RateResolver::isSeparateLevy($rate) && $this->covers($rate, $on)) {
                     $atRung[] = $rate;
                 }
             }
@@ -164,7 +176,7 @@ readonly class RegisterTaxability implements CategoryKeyedTaxability
             // charges something, the supply is taxable — an exemption sitting beside
             // a rate is a scope the register expresses through classification, and
             // reading it as a blanket exemption would zero-rate the whole category.
-            return array_all($atRung, fn ($rate): bool => in_array($rate['kind'] ?? null, ['zero', 'exempt'], true));
+            return array_all($atRung, fn ($rate): bool => in_array($rate['kind'] ?? null, ['zero', 'exempt'], true)) && ! $levied;
         }
 
         return null;

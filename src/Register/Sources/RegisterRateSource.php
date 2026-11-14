@@ -107,6 +107,12 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
 
             array_push($unsettled, ...($resolved['unsettled'] ?? []));
 
+            // A separate levy beside the answer can turn on a fact too: Texas' hotel
+            // tax on the room's daily rate.
+            foreach ($this->resolver->levies($this->dataset->ratesFor($code), $key, $commodityCode, $at, $this->facts) as $levy) {
+                array_push($unsettled, ...($levy['unsettled'] ?? []));
+            }
+
             // The province answers alongside the country in Canada; everywhere else the
             // first place that answers is the answer.
             if ($jurisdiction->subdivision === null || $jurisdiction->country->value === 'US') {
@@ -223,7 +229,7 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         $composed = $this->composed($jurisdiction, $candidates, $carried, $key, $commodityCode, $at, $version);
 
         if ($composed !== null) {
-            return $this->withDeclined($composed, array_slice($carried, 0, 2), $key, $at);
+            return $this->withLevies($this->withDeclined($composed, array_slice($carried, 0, 2), $key, $at), array_slice($carried, 0, 2), $key, $commodityCode, $at);
         }
 
         foreach ($carried as $code) {
@@ -261,17 +267,122 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 }
             }
 
-            return $this->onShareOfPrice(
+            return $this->withLevies($this->onShareOfPrice(
                 $this->withDeclined($replaced ? $stacked : $this->withStatewideLocal($stacked, $code, $key, $at), [$code], $key, $at),
                 $code,
                 $rate,
                 $replaced,
                 $key,
                 $at,
-            );
+            ), [$code], $key, $commodityCode, $at);
         }
 
         return null;
+    }
+
+    /**
+     * Each separate levy that reaches the supply, ADDED to the answer as its own
+     * share (register schema 2.8); see {@see RateResolver::levies()}.
+     *
+     * South Carolina exempts an admission from its sales tax and levies 5% on it
+     * under its admissions tax: the answer is 0% sales tax and 5% admissions tax, two
+     * lines on two returns, not one 5% nor the 6% general rate. The levy keeps its
+     * `taxType` on its share, so a breakdown, an order's totals and a return keep it
+     * apart from the authority's own tax.
+     *
+     * Nothing is guessed. A levy whose rows disagree at one rung refuses, because it
+     * has no general rate to fall back to. A levy on a share of the price, or beside
+     * a bracket table, refuses: its base is not published. A per-unit levy — Arizona's
+     * 911 excise, per account per month — cannot be priced on a sale, so the answer
+     * stands without it and says so ({@see RateLimit::SeparateLevyUnpriced}).
+     *
+     * @param  list<string>  $codes
+     */
+    private function withLevies(TaxRate $answer, array $codes, string $key, ?string $commodityCode, ?DateTimeImmutable $at): TaxRate
+    {
+        $added = [];
+        $unpriced = false;
+        $open = false;
+
+        foreach ($codes as $code) {
+            foreach ($this->resolver->levies($this->dataset->ratesFor($code), $key, $commodityCode, $at, $this->facts) as $type => $levy) {
+                if ($levy['ambiguous']) {
+                    throw new UnresolvedTaxRule(sprintf(
+                        '%s files more than one %s rate for %s at one category, and a separate levy has no general rate to fall back to; no amount is given rather than either.',
+                        $code,
+                        $type,
+                        $key,
+                    ));
+                }
+
+                $percentage = Shape::text($levy['rate']['percentage'] ?? null);
+                $open = $open || $levy['narrowed'];
+
+                if ($percentage === null || ! is_numeric($percentage)) {
+                    $unpriced = true;
+
+                    continue;
+                }
+
+                $figure = BigDecimal::of($percentage);
+
+                if ($figure->isZero()) {
+                    continue;
+                }
+
+                $added[] = new RateComponent($this->authorityLevel($code), $figure->strippedOfTrailingZeros(), $code, $this->levyName($code, $type), $type);
+            }
+        }
+
+        if ($added !== []) {
+            if ($answer->taxableShare !== null || $answer->schedule !== null) {
+                throw new UnresolvedTaxRule(sprintf(
+                    '%s levies %s beside a rate on %s, and the register does not say the levy is computed on that base; no amount is given rather than one on a base nobody published.',
+                    $codes[0],
+                    implode(', ', array_map(static fn (RateComponent $levy): string => (string) $levy->taxType, $added)),
+                    $answer->taxableShare !== null ? 'a share of the price' : 'a bracket table',
+                ));
+            }
+
+            $own = $answer->components !== []
+                ? $answer->components
+                : [new RateComponent($this->authorityLevel($codes[0]), $answer->percentage, $codes[0], $this->nameOf($codes[0]))];
+            $total = $answer->percentage;
+
+            foreach ($added as $levy) {
+                $total = $total->plus($levy->percentage);
+            }
+
+            $answer = new TaxRate(
+                $total->strippedOfTrailingZeros(),
+                // Nothing due under the authority's own tax, and a levy beside it: the
+                // supply is taxed, by the levy, and is reported as taxed.
+                $answer->percentage->isZero() ? RateKind::Standard : $answer->kind,
+                $answer->source,
+                $answer->confidence,
+                [...$own, ...$added],
+                $answer->limitedBy,
+                $answer->provenance,
+            );
+        }
+
+        $answer = $this->openIf($open, $answer);
+
+        return $unpriced ? $answer->qualifiedBy(RateLimit::SeparateLevyUnpriced) : $answer;
+    }
+
+    /** The level the register files an authority at, else the one its code implies. */
+    private function authorityLevel(string $code): JurisdictionLevel
+    {
+        $published = Shape::text(Shape::map($this->dataset->jurisdiction($code))['level'] ?? null);
+
+        return ($published === null ? null : JurisdictionLevel::tryFrom($published)) ?? $this->levelOf($code);
+    }
+
+    /** "South Carolina admissions tax", for a remittance line somebody files from. */
+    private function levyName(string $code, string $type): string
+    {
+        return ($this->nameOf($code) ?? $code).' '.($type === 'excise' ? 'excise' : $type.' tax');
     }
 
     /**

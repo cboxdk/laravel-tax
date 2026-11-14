@@ -24,6 +24,11 @@ readonly class AuthorityTotal
         public Money $tax,
         public ?string $code = null,
         public ?string $name = null,
+        /**
+         * Set where the total is a separate levy — South Carolina's admissions tax —
+         * which is filed on its own return, apart from the authority's sales tax.
+         */
+        public ?string $taxType = null,
     ) {}
 
     /** A short label for audit trails: the authority's name, else its code, else its level. */

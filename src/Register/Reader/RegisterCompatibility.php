@@ -51,6 +51,7 @@ class RegisterCompatibility
         'rounding' => ['method', 'places', 'appliesTo', 'aggregatesLocal'],
         'taxable_base' => ['component', 'included', 'category', 'proportion', 'decision', 'localTaxes'],
         'declined_rate' => ['reason', 'names', 'category', 'rate', 'says'],
+        'read_unstated' => ['category', 'finding', 'sections', 'readOn', 'readOnIsCeiling'],
         'purchaser_exemption' => ['purchaser', 'effect', 'rate', 'accountedForBy', 'route', 'certificate', 'conditions', 'citation', 'says'],
     ];
 
