@@ -37,6 +37,14 @@ readonly class RateRecord
          * it cannot drift from it. A row the source rated itself is false.
          */
         public bool $atGeneralRate = false,
+        /**
+         * Which tax this is a rate of, as the register names it: `vat`, `sales_use`,
+         * `gross_receipts`… and, from schema 2.8, the separate levies `admissions`,
+         * `communications`, `lodging` and `excise`, which are charged beside the
+         * jurisdiction's own tax and are never its answer. Null where the release
+         * does not say.
+         */
+        public ?string $taxType = null,
     ) {}
 
     /** Whether the record is in force on the date. */

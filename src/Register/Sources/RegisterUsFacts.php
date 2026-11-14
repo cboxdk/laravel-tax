@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Reader\TaxableShare;
 use DateTimeImmutable;
@@ -33,7 +34,7 @@ readonly class RegisterUsFacts implements UsTaxFacts
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
 
         foreach ($this->dataset->ratesFor($this->code($state)) as $rate) {
-            if (($rate['kind'] ?? null) !== 'standard' || ($rate['category'] ?? null) !== null) {
+            if (($rate['kind'] ?? null) !== 'standard' || ($rate['category'] ?? null) !== null || RateResolver::isSeparateLevy($rate)) {
                 continue;
             }
 
@@ -196,5 +197,18 @@ readonly class RegisterUsFacts implements UsTaxFacts
     private function code(string $state): string
     {
         return str_starts_with($state, 'US-') ? 'us:'.substr($state, 3) : $state;
+    }
+
+    /**
+     * The separate levies a state files on the category or one above it, whatever
+     * their conditions; see {@see RateResolver::leviesNaming()}. Not on
+     * {@see UsTaxFacts}: it is the register's shape, read by the regime only to keep
+     * an elected rate off a supply a levy reaches.
+     *
+     * @return list<string>
+     */
+    public function separateLevies(string $state, string $categoryKey, DateTimeImmutable $at): array
+    {
+        return new RateResolver()->leviesNaming($this->dataset->ratesFor($this->code($state)), $categoryKey, $at);
     }
 }

@@ -57,6 +57,17 @@ first day of the month beginning at least 30 days after the crossing, not the
 crossing itself, so a system that starts charging immediately bills tax for up to two
 months the state did not ask for.
 
+Every action, trigger and date kind is one the register's schema names, with the
+figures that kind carries. Schema 2.8 adds two. `return_due_after_following_filing_period`
+(Hawaii) is due `dateFigure` days after the close of the seller's filing period that
+follows the one it crossed in, its periods being its own monthly, quarterly or
+semiannual ones; crossing in the year's last period, the annual return is due on day
+`dateFigure` of the `annualReturnMonth`-th month after the year closes (Hawaii: 20 and
+4). The trigger `measurement_window_end` (Connecticut) is the last day of the
+threshold's own measuring window, `measuredOver`, in which the test is met. A shape
+outside the list, or a figure missing or out of range, throws `UnresolvedTaxRule`
+rather than being dropped.
+
 Both are reported, never applied. This package is not told the seller's marketplace
 sales, its affiliates, or the day it crossed. Refusing them instead left Arizona,
 California, Colorado, Iowa, Michigan, Minnesota, North Carolina, North Dakota,

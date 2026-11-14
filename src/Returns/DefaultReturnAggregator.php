@@ -183,7 +183,9 @@ readonly class DefaultReturnAggregator implements ReturnAggregator
                     return null;
                 }
 
-                $mergeKey = $share->level->value.'|'.$identity;
+                // A separate levy is another return to the same authority, never
+                // merged into its sales tax.
+                $mergeKey = $share->level->value.'|'.$identity.'|'.($share->taxType ?? '');
                 $existing = $totals[$mergeKey] ?? null;
 
                 $totals[$mergeKey] = new AuthorityTotal(
@@ -191,6 +193,7 @@ readonly class DefaultReturnAggregator implements ReturnAggregator
                     $existing === null ? $share->tax : $existing->tax->plus($share->tax),
                     $share->code,
                     $share->name,
+                    $share->taxType,
                 );
             }
         }

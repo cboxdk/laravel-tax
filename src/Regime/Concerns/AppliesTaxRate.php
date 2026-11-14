@@ -186,6 +186,7 @@ trait AppliesTaxRate
                 tax: $shares[$index],
                 code: $component->code,
                 name: $component->name,
+                taxType: $component->taxType,
             );
         }
 

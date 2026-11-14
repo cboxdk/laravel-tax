@@ -199,7 +199,7 @@ readonly class OrderAssessment
                     // they stay distinct and simply do not combine across lines.
                     $key = $share->code === null
                         ? $share->level->value.'|#'.$index.'@'.$line->id
-                        : $share->level->value.'|'.$share->code;
+                        : $share->level->value.'|'.$share->code.'|'.($share->taxType ?? '');
 
                     $totals[$key] = isset($totals[$key])
                         ? new AuthorityTotal(
@@ -207,8 +207,9 @@ readonly class OrderAssessment
                             $totals[$key]->tax->plus($share->tax),
                             $share->code,
                             $totals[$key]->name ?? $share->name,
+                            $share->taxType,
                         )
-                        : new AuthorityTotal($share->level, $share->tax, $share->code, $share->name);
+                        : new AuthorityTotal($share->level, $share->tax, $share->code, $share->name, $share->taxType);
                 }
             }
         }

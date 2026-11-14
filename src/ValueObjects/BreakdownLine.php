@@ -33,6 +33,8 @@ readonly class BreakdownLine
         public Money $tax,
         public ?string $code = null,
         public ?string $name = null,
+        /** See {@see RateComponent::$taxType}: set on a separate levy, null otherwise. */
+        public ?string $taxType = null,
     ) {}
 
     /** A short label for audit trails: the authority's name, else its code, else its level. */

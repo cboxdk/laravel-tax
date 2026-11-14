@@ -42,6 +42,9 @@ class RuleKinds
         'margin_scheme' => 'VAT on the margin for second-hand goods, art and antiques. It needs the purchase '
             .'price and the seller\'s election, which a supply does not carry; a host that uses the scheme '
             .'computes it before the engine.',
+        'read_unstated' => 'A source was read for a category and its law does not answer it (schema 2.8). '
+            .'Not a rate and never an answer: a lookup falls back exactly as without it. A host can show '
+            .'it through UnstatedReadings, to tell "read, and the law is silent" from "not yet covered".',
         'self_collecting' => 'Who collects a local tax, not what it is: a filing question, not a price.',
     ];
 

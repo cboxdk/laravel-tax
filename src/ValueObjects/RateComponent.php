@@ -30,6 +30,13 @@ readonly class RateComponent
         BigDecimal|string|int $percentage,
         public ?string $code = null,
         public ?string $name = null,
+        /**
+         * The register's `taxType` where this share is a SEPARATE LEVY charged beside
+         * the authority's own tax — `admissions`, `communications`, `lodging`,
+         * `excise` — on another return. Null for the authority's own tax, which is
+         * every share but those. Added last, so positional callers are unaffected.
+         */
+        public ?string $taxType = null,
     ) {
         $this->percentage = BigDecimal::of($percentage);
     }
