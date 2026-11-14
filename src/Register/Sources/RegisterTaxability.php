@@ -153,11 +153,7 @@ readonly class RegisterTaxability implements CategoryKeyedTaxability
         // and levies 5% on it under its admissions tax: read as one of the answers
         // the levy made the admission taxable under the sales tax, and an exemption
         // here stopped the levy from ever being priced. The rate decides both.
-        $levied = array_any($rates, fn (array $rate): bool => RateResolver::isSeparateLevy($rate)
-            && in_array($rate['category'] ?? null, CategoryMap::ladder($key), true)
-            && $this->covers($rate, $on)
-            && (($rate['borneBy'] ?? null) === 'customer' || ($rate['mayBePassedOn'] ?? null) === true)
-            && ! in_array($rate['kind'] ?? null, ['zero', 'exempt'], true));
+        $levied = new RateResolver()->leviesNaming($rates, $key, new DateTimeImmutable($on)) !== [];
 
         foreach (CategoryMap::ladder($key) as $rung) {
             $atRung = [];

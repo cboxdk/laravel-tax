@@ -198,4 +198,17 @@ readonly class RegisterUsFacts implements UsTaxFacts
     {
         return str_starts_with($state, 'US-') ? 'us:'.substr($state, 3) : $state;
     }
+
+    /**
+     * The separate levies a state files on the category or one above it, whatever
+     * their conditions; see {@see RateResolver::leviesNaming()}. Not on
+     * {@see UsTaxFacts}: it is the register's shape, read by the regime only to keep
+     * an elected rate off a supply a levy reaches.
+     *
+     * @return list<string>
+     */
+    public function separateLevies(string $state, string $categoryKey, DateTimeImmutable $at): array
+    {
+        return new RateResolver()->leviesNaming($this->dataset->ratesFor($this->code($state)), $categoryKey, $at);
+    }
 }

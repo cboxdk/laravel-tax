@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
 use Cbox\Geo\ValueObjects\CountryCode;
+use Cbox\Geo\ValueObjects\LocalityCode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
@@ -13,10 +14,12 @@ use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Contracts\UnstatedReadings;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
+use Cbox\Tax\Enums\LocalityScheme;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Register\Compile\Compiler;
 use Cbox\Tax\Register\Reader\RegisterDataset;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
@@ -27,6 +30,7 @@ use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
+use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Illuminate\Support\Facades\Http;
@@ -229,20 +233,19 @@ it('compiles a 2.8.0 release carrying every shape 2.8 adds, and names no rule ki
         ->and(implode("\n", $said))->not->toContain('this engine does not read');
 });
 
-it('adds South Carolina\'s admissions tax beside its sales-tax exemption, as a line of its own', function (): void {
+it('adds South Carolina\'s admissions tax beside its sales-tax exemption', function (): void {
     installSchema28Register();
 
     $a = app(TaxCalculator::class)->assess(schema28Query('SC', '100.00', 'services.cultural_admission'));
-    $lines = $a->breakdown->lines ?? [];
 
     // 0% sales tax and 5% admissions tax: not the 6% general rate, not 5% sales tax.
+    // A state-level answer has no breakdown, with or without a levy beside it.
     expect((string) $a->rate?->percentage)->toBe('5')
         ->and($a->treatment)->toBe(TaxTreatment::Standard)
         ->and($a->rate?->confidence)->toBe(Confidence::Authoritative)
         ->and((string) $a->tax->getAmount())->toBe('5.00')
-        ->and(array_map(static fn ($line): array => [$line->code, $line->taxType, (string) $line->percentage, (string) $line->tax->getAmount()], $lines))
-        ->toBe([['us:SC', null, '0', '0.00'], ['us:SC', 'admissions', '5', '5.00']])
-        ->and($lines[1]->label())->toBe('South Carolina admissions tax');
+        ->and($a->rate?->components)->toBe([])
+        ->and($a->breakdown)->toBeNull();
 });
 
 it('leaves a supply the levy does not name on the jurisdiction\'s own answer', function (): void {
@@ -254,20 +257,6 @@ it('leaves a supply the levy does not name on the jurisdiction\'s own answer', f
         ->and($a->rate?->components)->toBe([]);
 });
 
-it('keeps the levy apart from the sales tax in an order\'s totals per authority', function (): void {
-    installSchema28Register();
-    $query = schema28Query('SC', '100.00', 'services');
-
-    $order = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($query->place, $query->customer, $query->seller, Pricing::Exclusive, [
-        new SupplyLine('ticket', Money::of('100.00', 'USD'), categoryKey: 'services.cultural_admission'),
-        new SupplyLine('ticket-2', Money::of('40.00', 'USD'), categoryKey: 'services.cultural_admission'),
-    ], suppliedAt: $query->suppliedAt));
-
-    $totals = array_map(static fn ($t): array => [$t->code, $t->taxType, (string) $t->tax->getAmount()], $order->taxByAuthority() ?? []);
-
-    expect($totals)->toBe([['us:SC', null, '0.00'], ['us:SC', 'admissions', '7.00']]);
-});
-
 it('lets a narrower exempt row of the levy answer its own category', function (): void {
     installSchema28Register();
 
@@ -275,7 +264,6 @@ it('lets a narrower exempt row of the levy answer its own category', function ()
     $coin = app(TaxCalculator::class)->assess(schema28Query('VA', '100.00', 'services.telecom.coin_operated'));
 
     expect((string) $telecom->tax->getAmount())->toBe('5.00')
-        ->and($telecom->breakdown?->lines[1]->taxType)->toBe('communications')
         ->and((string) $coin->tax->getAmount())->toBe('0.00')
         ->and($coin->treatment)->toBe(TaxTreatment::Exempt);
 });
@@ -431,5 +419,162 @@ it('never lets a levy stand in for an answer the jurisdiction does not give', fu
     $a = app(TaxCalculator::class)->assess(schema28Query('SC', '100.00', 'services.cultural_admission'));
 
     expect((string) $a->tax->getAmount())->toBe('11.00')
-        ->and(array_map(static fn ($l): ?string => $l->taxType, $a->breakdown->lines ?? []))->toBe([null, 'admissions']);
+        ->and((string) $a->rate?->percentage)->toBe('11');
+});
+
+/*
+ * AT A RESOLVED ADDRESS, with the localities' own rows. A category the state does not
+ * tax takes no general local share, levy or not: only a local row that names the
+ * category reaches it.
+ */
+
+function levyAddressQuery(string $state, string $zip, string $amount, string $key, array $facts = [], bool $elected = false): TaxQuery
+{
+    $country = new CountryCode('US');
+    $subdivision = new SubdivisionCode('US-'.$state);
+
+    return new TaxQuery(
+        amount: Money::of($amount, 'USD'),
+        pricing: Pricing::Exclusive,
+        place: app(JurisdictionRepository::class)->find($country, $subdivision)->withLocality(new LocalityCode($subdivision, LocalityScheme::Zip9->value, $zip)),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations($country, [new SellerRegistration($country, $subdivision, scheme: $elected ? UsSalesTaxRegime::REMOTE_ELECTION_SCHEME : null)]),
+        suppliedAt: new DateTimeImmutable('2026-11-14'),
+        categoryKey: $key,
+        facts: new DecisionFacts($facts),
+    );
+}
+
+/** @return list<array{?string, ?string, string, string}> */
+function levyLines(?TaxBreakdown $breakdown): array
+{
+    return array_map(static fn ($l): array => [$l->code, $l->taxType, (string) $l->percentage, (string) $l->tax->getAmount()], $breakdown->lines ?? []);
+}
+
+function southCarolinaAt29401(string $local, string $kind): FakeRegister
+{
+    $code = $kind === 'combined' ? 'us:SC:CITY-CHARLESTON' : 'us:SC:COUNTY-019';
+
+    return FakeRegister::at(config('tax.register.store'))
+        ->category('services')->category('services.cultural_admission', 'services')
+        ->rate('us:SC', '6', from: '2000-01-01', extra: ['taxType' => 'sales_use'])->named('us:SC', 'South Carolina')
+        ->rate('us:SC', '0', 'exempt', 'services.cultural_admission', from: '2000-01-01', extra: ['taxType' => 'sales_use'])
+        ->rate('us:SC', '5', category: 'services.cultural_admission', from: '2000-01-01', extra: ['taxType' => 'admissions'])
+        ->rate($code, $local, $kind, from: '2000-01-01', extra: ['taxType' => 'sales_use'])->named($code, 'Charleston')
+        ->boundary('SC', '29401', ['state:SC', $kind === 'combined' ? 'city:CHARLESTON' : 'county:019']);
+}
+
+it('charges only the admissions tax on a South Carolina admission at an address, whatever the locality levies in general', function (string $local, string $kind, string $general): void {
+    southCarolinaAt29401($local, $kind)->install();
+
+    $admission = app(TaxCalculator::class)->assess(levyAddressQuery('SC', '29401-0001', '100.00', 'services.cultural_admission'));
+    $other = app(TaxCalculator::class)->assess(levyAddressQuery('SC', '29401-0001', '100.00', 'services'));
+
+    expect((string) $admission->tax->getAmount())->toBe('5.00')
+        ->and($admission->treatment)->toBe(TaxTreatment::Standard)
+        ->and($admission->rate?->limitedBy)->toBeNull()
+        ->and(levyLines($admission->breakdown))->toBe([['us:SC', null, '0', '0.00'], ['us:SC', 'admissions', '5', '5.00']])
+        ->and($admission->breakdown?->lines[1]->label())->toBe('South Carolina admissions tax')
+        // The locality's general share still reaches what the state taxes.
+        ->and((string) $other->tax->getAmount())->toBe($general);
+})->with([
+    'an untyped county share' => ['2', 'local_component', '8.00'],
+    'a city\'s all-in combined rate' => ['9', 'combined', '9.00'],
+]);
+
+it('keeps the levy apart from the sales tax in an order\'s totals per authority', function (): void {
+    southCarolinaAt29401('2', 'local_component')->install();
+    $query = levyAddressQuery('SC', '29401-0001', '100.00', 'services');
+
+    $order = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($query->place, $query->customer, $query->seller, Pricing::Exclusive, [
+        new SupplyLine('ticket', Money::of('100.00', 'USD'), categoryKey: 'services.cultural_admission'),
+        new SupplyLine('ticket-2', Money::of('40.00', 'USD'), categoryKey: 'services.cultural_admission'),
+        new SupplyLine('parking', Money::of('10.00', 'USD'), categoryKey: 'services'),
+    ], suppliedAt: $query->suppliedAt));
+
+    $totals = array_map(static fn ($t): array => [$t->code, $t->taxType, (string) $t->tax->getAmount()], $order->taxByAuthority() ?? []);
+
+    expect($totals)->toBe([['us:SC', null, '0.60'], ['us:SC', 'admissions', '7.00'], ['us:SC:COUNTY-019', null, '0.20']]);
+});
+
+function texasRoomsAt78701(): FakeRegister
+{
+    return FakeRegister::at(config('tax.register.store'))
+        ->category('services')->category('services.accommodation', 'services')
+        ->rate('us:TX', '6.25', from: '2000-01-01', extra: ['taxType' => 'sales_use'])
+        ->rate('us:TX', '0', 'exempt', 'services.accommodation', from: '2000-01-01', extra: ['taxType' => 'sales_use'])
+        ->rate('us:TX', '6', category: 'services.accommodation', from: '2000-01-01', extra: ['taxType' => 'lodging', 'conditions' => [[
+            'kind' => 'applies_only_to',
+            'says' => 'a room that costs $15 or more each day',
+            'predicate' => ['fact' => 'charge.accommodationRatePerDayUsd', 'op' => 'at_least', 'value' => '15', 'says' => '$15 or more each day'],
+        ]]])
+        ->rate('us:TX:CITY-AUSTIN', '1', 'local_component', from: '2000-01-01', extra: ['taxType' => 'sales_use'])->named('us:TX:CITY-AUSTIN', 'Austin')
+        ->rate('us:TX:DISTRICT-CAPMETRO', '1', 'local_component', from: '2000-01-01', extra: ['taxType' => 'sales_use'])->named('us:TX:DISTRICT-CAPMETRO', 'Capital Metro')
+        ->boundary('TX', '78701', ['state:TX', 'city:AUSTIN', 'district:CAPMETRO']);
+}
+
+it('charges a Texas room in Austin the hotel tax and no city or transit sales tax', function (): void {
+    texasRoomsAt78701()->install();
+
+    $room = app(TaxCalculator::class)->assess(levyAddressQuery('TX', '78701-0001', '100.00', 'services.accommodation', ['charge.accommodationRatePerDayUsd' => '120']));
+    $cheap = app(TaxCalculator::class)->assess(levyAddressQuery('TX', '78701-0001', '100.00', 'services.accommodation', ['charge.accommodationRatePerDayUsd' => '10']));
+    $other = app(TaxCalculator::class)->assess(levyAddressQuery('TX', '78701-0001', '100.00', 'services'));
+
+    expect((string) $room->tax->getAmount())->toBe('6.00')
+        ->and(levyLines($room->breakdown))->toBe([['us:TX', null, '0', '0.00'], ['us:TX', 'lodging', '6', '6.00']])
+        ->and((string) $cheap->tax->getAmount())->toBe('0.00')
+        ->and($cheap->treatment)->toBe(TaxTreatment::Exempt)
+        ->and((string) $other->tax->getAmount())->toBe('8.25');
+});
+
+it('charges Virginia telecom at an address the communications tax and no local sales tax', function (): void {
+    FakeRegister::at(config('tax.register.store'))
+        ->category('services')->category('services.telecom', 'services')
+        ->rate('us:VA', '4.3', from: '2000-01-01', extra: ['taxType' => 'sales_use'])
+        ->rate('us:VA', '0', 'exempt', 'services.telecom', from: '2000-01-01', extra: ['taxType' => 'sales_use'])
+        ->rate('us:VA', '5', category: 'services.telecom', from: '2000-01-01', extra: ['taxType' => 'communications'])
+        ->rate('us:VA:COUNTY-760', '1', 'local_component', from: '2000-01-01', extra: ['taxType' => 'sales_use'])->named('us:VA:COUNTY-760', 'Richmond')
+        ->boundary('VA', '23219', ['state:VA', 'county:760'])
+        ->install();
+
+    $telecom = app(TaxCalculator::class)->assess(levyAddressQuery('VA', '23219-0001', '100.00', 'services.telecom'));
+
+    expect((string) $telecom->tax->getAmount())->toBe('5.00')
+        ->and(levyLines($telecom->breakdown))->toBe([['us:VA', null, '0', '0.00'], ['us:VA', 'communications', '5', '5.00']]);
+});
+
+it('refuses an elected rate on a supply a separate levy reaches, whatever the levy\'s conditions', function (string $perDay): void {
+    texasRoomsAt78701()->rule('us:TX', 'remote_seller_election', [
+        'program' => 'Single Local Use Tax Rate', 'mechanic' => 'single_local_rate',
+        'ratePercent' => '1.75', 'statute' => 'Tex. Tax Code § 151.0595',
+    ], '2000-01-01')->install();
+
+    expect(fn () => app(TaxCalculator::class)->assess(levyAddressQuery('TX', '78701-0001', '100.00', 'services.accommodation', ['charge.accommodationRatePerDayUsd' => $perDay], elected: true)))
+        ->toThrow(UnresolvedTaxRule::class, 'lodging');
+
+    // What the election does cover is still priced by it.
+    expect((string) app(TaxCalculator::class)->assess(levyAddressQuery('TX', '78701-0001', '100.00', 'services', elected: true))->tax->getAmount())->toBe('8.00');
+})->with(['a room of $120 a day' => '120', 'a room of $10 a day' => '10']);
+
+it('keeps a state-level answer without a breakdown when a levy is added, so no return drops the county', function (): void {
+    FakeRegister::at(config('tax.register.store'))
+        ->category('services')->category('services.accommodation', 'services')
+        ->rate('us:HI', '4', from: '2000-01-01', extra: ['taxType' => 'gross_receipts', 'borneBy' => 'supplier', 'mayBePassedOn' => true])
+        ->rate('us:HI', '10.25', category: 'services.accommodation', from: '2000-01-01', extra: ['taxType' => 'lodging', 'borneBy' => 'supplier', 'mayBePassedOn' => true])
+        ->rate('us:HI:COUNTY-003', '0.5', 'local_component', from: '2000-01-01', extra: ['taxType' => 'gross_receipts', 'borneBy' => 'supplier', 'mayBePassedOn' => true])
+        ->boundary('HI', '96813', ['state:HI', 'county:003'])
+        ->install();
+    $place = levyAddressQuery('HI', '96813-0001', '100.00', 'services.accommodation')->place;
+    $query = new TaxQuery(Money::of('100.00', 'USD'), Pricing::Exclusive, app(JurisdictionRepository::class)->find($place->country, $place->subdivision), CustomerType::Consumer,
+        new SellerRegistrations($place->country, [new SellerRegistration($place->country, $place->subdivision)]), suppliedAt: new DateTimeImmutable('2026-11-14'), categoryKey: 'services.accommodation');
+
+    $room = app(TaxCalculator::class)->assess($query);
+    $order = app(OrderTaxCalculator::class)->assessOrder(new TaxOrder($query->place, $query->customer, $query->seller, Pricing::Exclusive, [
+        new SupplyLine('room', Money::of('100.00', 'USD'), categoryKey: 'services.accommodation'),
+    ], suppliedAt: $query->suppliedAt));
+
+    expect((string) $room->tax->getAmount())->toBe('14.25')
+        ->and($room->rate?->limitedBy)->toBe(RateLimit::NoLocalResolution)
+        ->and($room->rate?->components)->toBe([])
+        ->and($order->taxByAuthority())->toBeNull();
 });

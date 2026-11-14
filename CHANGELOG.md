@@ -51,11 +51,23 @@ minor bumps may carry additive features; patches are fixes and docs).
   throws `UnresolvedTaxRule`. Before, an incomplete obligation was dropped and an
   unknown kind was passed through without its figures.
 
-### Known gap
-
-- A remote seller pricing under an elected flat rate (Alabama SSUT, the Texas single
-  local rate) does not get separate levies added; the election replaces rate
-  resolution. No levy the register publishes today overlaps an election program.
+- A category the state's own tax exempts takes no general local share at an address:
+  untyped local components and `combined` local rates are left out, and only a local
+  row that names the category applies. This was already the rule for a state's own
+  statewide local share. A South Carolina admission in Charleston is now 5.00 on
+  100.00 (admissions tax only), not the city's rate plus the levy.
+- A levy added to a state-level answer whose components are empty leaves them empty,
+  so the rate keeps no breakdown (and `taxByAuthority()` stays `null`) rather than
+  reporting a state line that omits the localities.
+- **Arizona telecom.** The 911 excise row (20 cents per account per month) used to
+  answer `services.telecom` and throw `UnresolvedTaxRate`. It is now left out of the
+  answer: telecom prices at the 5.6% transaction privilege tax, flagged
+  `SeparateLevyUnpriced`.
+- **Remote-seller elections.** Under an elected rate (Alabama SSUT, the Texas single
+  local rate), a supply that a separate levy names throws `UnresolvedTaxRule`,
+  whatever the levy's conditions say. The election covers the sales tax only. A Texas
+  room priced under the single local rate came out at 8% sales tax with no hotel tax,
+  where 6% hotel tax is due.
 
 ## [0.21.0] - 2026-11-13
 

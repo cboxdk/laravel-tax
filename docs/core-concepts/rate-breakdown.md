@@ -185,7 +185,7 @@ jurisdiction's own tax exactly as before, then resolves each levy on its own ove
 the same category ladder, and adds what it finds as a line of its own:
 
 ```php
-$a = $calculator->assess($query); // an admission in South Carolina, $100.00 net
+$a = $calculator->assess($query); // an admission at a Charleston address, $100.00 net
 
 $a->rate->percentage;                // 5 (0 sales tax + 5 admissions tax)
 $a->tax;                             // USD 5.00
@@ -218,7 +218,12 @@ How a levy is read:
   carries `RateLimit::SeparateLevyUnpriced`.
 
 Where the jurisdiction's own tax exempts the category and a levy applies, the supply
-is taxed (by the levy) and reported as `Standard`, not `Exempt`.
+is taxed (by the levy) and reported as `Standard`, not `Exempt`. The localities' general
+shares (untyped components and all-in `combined` rates) do not reach that category,
+because the state does not tax it. Only a local row that names the category applies.
+A state-level answer with no breakdown keeps none when a levy is added. Under a
+remote-seller election, a supply that a levy names throws `UnresolvedTaxRule`,
+because the elected rate covers the sales tax only.
 `TaxRegister::rateRecords()` names each record's `taxType`.
 
 ## Read, and the law is silent

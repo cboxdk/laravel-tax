@@ -344,9 +344,6 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 ));
             }
 
-            $own = $answer->components !== []
-                ? $answer->components
-                : [new RateComponent($this->authorityLevel($codes[0]), $answer->percentage, $codes[0], $this->nameOf($codes[0]))];
             $total = $answer->percentage;
 
             foreach ($added as $levy) {
@@ -360,7 +357,11 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 $answer->percentage->isZero() ? RateKind::Standard : $answer->kind,
                 $answer->source,
                 $answer->confidence,
-                [...$own, ...$added],
+                // AN EMPTY BREAKDOWN STAYS EMPTY. A state-level answer carries no
+                // components because the source could not say what is stacked on it;
+                // a state line beside the levy would read as the whole of it, and a
+                // return would file it without the county.
+                $answer->components === [] ? [] : [...$answer->components, ...$added],
                 $answer->limitedBy,
                 $answer->provenance,
             );
@@ -739,6 +740,18 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
                 ? null
                 : $this->resolver->localAnswer($this->dataset->ratesFor($authority), $key, $at, $this->taxedAsGeneralAt($this->stateOf($authority), $key, $at), $this->facts, $this->relieves($state));
             $record = $answer['rate'] ?? null;
+
+            // A CATEGORY THE STATE ITSELF DOES NOT TAX takes no general local share,
+            // as {@see self::withStatewideLocal()} already holds for the state's own:
+            // only a local row that NAMES the category says the locality levies there
+            // whatever the state does (Virginia's 1% on groceries). Reached since a
+            // separate levy makes an exempt category taxable (schema 2.8): South
+            // Carolina's admission at a Charleston address took the city's 9% all-in
+            // rate and its 5% admissions tax, where only the 5% is due.
+            if (! $isState && $state->kind->isNil()
+                && ($record === null || ($record['category'] ?? null) === null || ($record['kind'] ?? null) === 'combined')) {
+                continue;
+            }
             $open = $open || ($answer['unsettled'] ?? []) !== [];
 
             if ($record === null) {

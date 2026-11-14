@@ -119,6 +119,33 @@ readonly class RateResolver
     }
 
     /**
+     * The separate levies with a chargeable row in force that names a category on the
+     * ladder, read BEFORE any condition: whether a levy could reach the supply at all.
+     * For a gate that must not let one through unseen, not for pricing.
+     *
+     * @param  list<array<string, mixed>>  $rates
+     * @return list<string>
+     */
+    public function leviesNaming(array $rates, string $category, ?DateTimeImmutable $at = null): array
+    {
+        $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
+        $ladder = CategoryMap::ladder($category);
+        $types = [];
+
+        foreach (self::SEPARATE_LEVIES as $type) {
+            foreach ($this->live($rates, $on, $type) as $rate) {
+                if (in_array($rate['category'] ?? null, $ladder, true) && ! in_array($rate['kind'] ?? null, ['zero', 'exempt'], true)) {
+                    $types[] = $type;
+
+                    break;
+                }
+            }
+        }
+
+        return $types;
+    }
+
+    /**
      * Whether a row is of a separate levy rather than of the jurisdiction's own tax.
      *
      * @param  array<string, mixed>  $rate

@@ -470,6 +470,26 @@ readonly class UsSalesTaxRegime implements TaxRegime
             throw UnresolvedTaxRate::underElection($subdivision, $election['program']);
         }
 
+        // A SEPARATE LEVY IS NOT PART OF ANY ELECTION. The elected figure stands in for
+        // the state's and its localities' sales tax; Texas' hotel tax is another tax on
+        // another return, and its rooms are not taxed under the sales tax at all. Priced
+        // by the election a room came out at 8% sales tax and no hotel tax, where 6%
+        // hotel tax is due. Refused, whatever the levy's conditions say: a room under
+        // $15 a day is still not a sale the elected rate reaches.
+        $levies = $this->dataset instanceof RegisterUsFacts
+            ? $this->dataset->separateLevies($subdivision->value, $query->categoryKey ?? CategoryMap::keyFor($query->category), $query->on())
+            : [];
+
+        if ($levies !== []) {
+            throw new UnresolvedTaxRule(sprintf(
+                '%s levies %s on %s beside its sales tax, which the elected %s does not cover; no amount is given rather than the elected rate on a supply it does not describe.',
+                $subdivision->value,
+                implode(', ', $levies),
+                $query->categoryKey ?? CategoryMap::keyFor($query->category),
+                $election['program'],
+            ));
+        }
+
         [$percent, $composition] = match ($election['mechanic']) {
             'flat_total' => [$election['ratePercent'], 'replacing all state and local rates'],
             'single_local_rate' => $this->composeSingleLocalRate($subdivision, $election, $query->on()),
