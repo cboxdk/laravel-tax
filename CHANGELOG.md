@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-15
+
 ### Fixed
 
 - **Harmonised provinces' point-of-sale rebates.** Ontario, Nova Scotia, New
