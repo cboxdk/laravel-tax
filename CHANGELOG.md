@@ -7,6 +7,21 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Harmonised provinces' point-of-sale rebates.** Ontario, Nova Scotia, New
+  Brunswick, Newfoundland and Labrador and Prince Edward Island file rebated supplies
+  (printed books, children's clothing, Ontario's prepared food) as `combined` rows of
+  their own at the federal 5%. The engine read a categorised `combined` row only in a
+  US state, so a book in Toronto came back at 13%. It now reads a harmonised
+  province's own total for the category, flagged `conditions_unevaluated` while its
+  conditions are open, and leaves the harmonised rate standing where the facts refuse
+  the row.
+- **A price cap governs the exemption it was written for.** The cap was matched up the
+  asked key's ladder, so Rhode Island's $250 clothing cap reached diapers, which the
+  state exempts on a row of their own, and diapers came back at 7%. It is now matched
+  on the category of the row that answered, as the register's own resolver matches it.
+
 ## [0.22.0] - 2026-11-14
 
 ### Added

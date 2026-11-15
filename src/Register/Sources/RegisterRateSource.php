@@ -23,6 +23,7 @@ use Cbox\Tax\Exceptions\DatasetNotInstalled;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\DefersLocalAuthorities;
 use Cbox\Tax\Register\Reader\CategoryMap;
+use Cbox\Tax\Register\Reader\RateConditions;
 use Cbox\Tax\Register\Reader\RateResolver;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\Register\Reader\TaxableShare;
@@ -932,16 +933,22 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
     }
 
     /**
-     * Whether a live `price_exemption` rule caps this category's exemption.
+     * Whether a live `price_exemption` rule caps the exemption that answered.
      *
-     * Matched up the category ladder, as everything category-keyed in this source
-     * is: the rule is filed at the rung the statute names and the invoice sells at a
-     * leaf below it.
+     * MATCHED ON THE ROW THAT ANSWERED, NOT THE KEY ASKED, as the register's own resolver
+     * matches it: a cap governs the exemption filed at the rung the statute names, and
+     * a leaf below it that holds no row of its own reaches that exemption by climbing.
+     * A leaf that holds an exemption of its own is not under the parent's cap. Matched
+     * up the asked key's ladder, Rhode Island's $250 clothing cap reached its diapers,
+     * which the state exempts on a row of their own, and a pack of diapers came back at
+     * 7% where the register answers 0 (consumer check on release 457: 2 pairs).
+     *
+     * @param  string  $answeredAt  the category of the row that answered
      */
-    private function cappedByPrice(string $code, string $key, ?DateTimeImmutable $at): bool
+    private function cappedByPrice(string $code, string $answeredAt, ?DateTimeImmutable $at): bool
     {
         $on = ($at ?? new DateTimeImmutable('today'))->format('Y-m-d');
-        $ladder = CategoryMap::ladder($key);
+        $ladder = [$answeredAt];
 
         foreach ($this->dataset->rulesFor($code, 'price_exemption') as $rule) {
             $effective = Shape::map($rule['effective'] ?? null);
@@ -1135,6 +1142,47 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
         return is_string($combined['percentage'] ?? null) ? $combined : null;
     }
 
+    /**
+     * A harmonised province's own all-in total for the key, where it files one.
+     *
+     * ⚠️ ONTARIO'S POINT-OF-SALE REBATES WERE INVISIBLE. The province charges its HST as
+     * one `combined` row at 13%, and files the rebated supplies — printed books,
+     * children's clothing, prepared food up to $4 — as `combined` rows of their own at 5%,
+     * the whole tax once the provincial part is credited. A band read skips every
+     * `combined` row as a share, and {@see self::replacesTheStack()} reads a categorised
+     * total only in a US state, so a book in Toronto came back at 13%, authoritative,
+     * where the register answers 5% with the rebate's conditions open (consumer check on
+     * release 457: 9 pairs in ON, NS, NB, NL and PE).
+     *
+     * Read only in a sub-national place whose general rate is itself `combined`, and only
+     * where the facts do not refuse the row: a condition the facts settle against it
+     * leaves the harmonised rate standing, an open one keeps the row and says so.
+     *
+     * @return array{rate: array<string, mixed>, unsettled: list<UnsettledCondition>}|null
+     */
+    private function harmonisedTotal(string $code, string $key, ?string $commodityCode, ?DateTimeImmutable $at): ?array
+    {
+        if (str_starts_with($code, 'us:') || substr_count($code, ':') !== 1) {
+            return null;
+        }
+
+        $records = $this->dataset->ratesFor($code);
+
+        if (($this->resolver->local($records, null, $at)['kind'] ?? null) !== 'combined') {
+            return null;
+        }
+
+        $row = $this->resolver->combinedFor($records, $key, $commodityCode, $at, $this->facts);
+
+        if ($row === null || ($row['category'] ?? null) === null || ! is_string($row['percentage'] ?? null)) {
+            return null;
+        }
+
+        $verdict = RateConditions::verdict($row, RateConditions::withCommodityCode($this->facts, $commodityCode));
+
+        return $verdict['status'] === RateConditions::DOES_NOT_APPLY ? null : ['rate' => $row, 'unsettled' => $verdict['unsettled']];
+    }
+
     /** See {@see RateResolver::taxedAsGeneralAt()}; never for the general rate itself. */
     private function taxedAsGeneralAt(string $state, string $key, ?DateTimeImmutable $at): ?string
     {
@@ -1224,13 +1272,17 @@ readonly class RegisterRateSource implements CategoryKeyedRateSource, CommodityR
 
         $rate = $resolved['rate'];
         $combined = $this->replacesTheStack($code, $key, $commodityCode, $at);
+        $harmonised = $combined === null ? $this->harmonisedTotal($code, $key, $commodityCode, $at) : null;
 
         if ($combined !== null) {
             $resolved = ['rate' => $combined, 'inferred' => false, 'ambiguous' => false, 'narrowed' => false];
             $rate = $combined;
+        } elseif ($harmonised !== null) {
+            $resolved = ['rate' => $harmonised['rate'], 'inferred' => false, 'ambiguous' => false, 'narrowed' => $harmonised['unsettled'] !== [], 'unsettled' => $harmonised['unsettled']];
+            $rate = $harmonised['rate'];
         }
 
-        if (in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && $this->cappedByPrice($code, $key, $at)) {
+        if (in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && $this->cappedByPrice($code, Shape::text($rate['category'] ?? null) ?? $key, $at)) {
             // A PRICE-CAPPED EXEMPTION IS NOT A RATE OF ZERO. Massachusetts files
             // clothing two ways at once: a `goods.clothing` row at 0% exempt, and a
             // `price_exemption` rule capping that exemption at $175 with the excess
