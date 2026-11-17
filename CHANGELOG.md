@@ -7,6 +7,21 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A delivery to France's overseas territories sent as `FR` is no longer charged
+  French VAT.** A postcode in Guadeloupe (971), Martinique (972), French Guiana
+  (973), Réunion (974), Mayotte (976) or Saint-Martin (97150) is outside the EU VAT
+  area under Art. 6(1)(c) of the VAT Directive, and Saint-Barthélemy, Saint-Pierre-
+  et-Miquelon and the Pacific collectivities are outside the EU. They are now
+  zero-rated as exports, like the Canary Islands, and the reason names the territory.
+  A country-level `FR` address with a 97100 postcode was charged 20%. The territories'
+  ISO 3166-2 codes (`FR-971`, `FR-GP`, `FR-NC`...) are placed the same way.
+- **A country-wide exemption certificate covers an address that names its
+  subdivision in a national-VAT country.** A certificate for `ES` did not exempt a
+  sale to `ES-M`; only sub-federal places (US states, Canadian provinces) need a
+  certificate for the subdivision.
+
 ## [0.22.2] - 2026-11-17
 
 ### Changed

@@ -98,6 +98,41 @@ it('recognises the single-municipality territories', function (): void {
         ->and($this->tax->assess(delivery('IT', '22061'))->treatment)->toBe(TaxTreatment::ZeroRated);
 });
 
+it('charges no French VAT on a delivery to the overseas territories sent as FR', function (string $postalCode, string $territory): void {
+    // Guadeloupe, Martinique, French Guiana, Réunion, Mayotte and Saint-Martin are
+    // outside the EU VAT area (Art. 6(1)(c)); the collectivities are outside the EU.
+    // All have French postcodes, and a 97100 address sent as FR was charged 20%.
+    $assessment = $this->tax->assess(delivery('FR', $postalCode));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and((string) $assessment->tax->getAmount())->toBe('0.00')
+        ->and($assessment->reason)->toContain($territory);
+})->with([
+    ['97100', 'Guadeloupe'],
+    ['97200', 'Martinique'],
+    ['97300', 'French Guiana'],
+    ['97400', 'Réunion'],
+    ['97600', 'Mayotte'],
+    ['97150', 'Saint-Martin'],
+    ['97133', 'Saint-Barthélemy'],
+    ['97500', 'Saint-Pierre-et-Miquelon'],
+    ['98800', 'New Caledonia'],
+]);
+
+it('keeps mainland France and Monaco French', function (): void {
+    // Paris is 75001; 98000 is Monaco, which Art. 7 treats as France.
+    expect($this->tax->assess(delivery('FR', '75001'))->treatment)->toBe(TaxTreatment::Standard)
+        ->and($this->tax->assess(delivery('FR', '98000'))->treatment)->toBe(TaxTreatment::Standard);
+});
+
+it('places a French overseas territory named by subdivision', function (): void {
+    $territories = new StaticEuTerritories(app(RegisterDataset::class));
+
+    expect($territories->forSubdivision(new SubdivisionCode('FR-971'))?->name)->toBe('Guadeloupe')
+        ->and($territories->forSubdivision(new SubdivisionCode('FR-RE'))?->outsideVatArea)->toBeTrue()
+        ->and($territories->forSubdivision(new SubdivisionCode('FR-IDF')))->toBeNull();
+});
+
 it('does not catch the neighbouring postcodes of those municipalities', function (): void {
     // A single-code territory must match that code and nothing near it. Konstanz
     // is 78462 and Como 22100 — both ordinary.

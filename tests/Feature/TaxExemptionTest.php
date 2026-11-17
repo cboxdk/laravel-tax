@@ -164,6 +164,24 @@ it('does not let a country-level certificate exempt a sub-federal state supply',
     expect($this->tax->assess($query)->treatment)->toBe(TaxTreatment::Standard);
 });
 
+it('lets a country certificate cover a national-VAT address that names its subdivision', function (): void {
+    // Madrid province is ES-M. Spain sets VAT nationally, so the subdivision says
+    // where in Spain, not which certificate regime applies; a Spanish certificate
+    // exempts the sale with or without it, as it does at Stripe.
+    $query = fn (?string $subdivision): TaxQuery => new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: $subdivision === null ? $this->geo->find(new CountryCode('ES')) : $this->geo->find(new CountryCode('ES'), new SubdivisionCode($subdivision)),
+        customer: CustomerType::Consumer,
+        seller: new SellerRegistrations(new CountryCode('ES')),
+        exemption: $this->taxExemption(reference: 'ES-WIDE', countries: ['ES']),
+        postalCode: '28001',
+    );
+
+    $this->assertExempt($this->tax->assess($query('ES-M')), 'ES-WIDE');
+    $this->assertExempt($this->tax->assess($query(null)), 'ES-WIDE');
+});
+
 it('leaves a reverse-charge supply untouched even with a covering exemption', function (): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'EUR'),

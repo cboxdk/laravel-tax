@@ -56,13 +56,20 @@ readonly class TaxExemption
 
     /**
      * Whether the certificate covers the taxing jurisdiction. Deny-by-default:
-     * a sub-federal place requires a matching subdivision; a national place
-     * requires a matching country.
+     * a sub-federal place (a US state, a Canadian province) requires a matching
+     * subdivision; a national place requires a matching country, or the matching
+     * subdivision when the certificate names one. A subdivision on a national-VAT
+     * address (ES-M, DE-BE) does not narrow a country-wide certificate.
      */
     public function covers(Jurisdiction $place): bool
     {
-        if ($place->subdivision !== null) {
-            return array_any($this->subdivisions, fn (SubdivisionCode $subdivision): bool => $subdivision->equals($place->subdivision));
+        if ($place->subdivision !== null
+            && array_any($this->subdivisions, fn (SubdivisionCode $subdivision): bool => $subdivision->equals($place->subdivision))) {
+            return true;
+        }
+
+        if ($place->subdivision !== null && $place->taxProfile->isSubFederal) {
+            return false;
         }
 
         return array_any($this->countries, fn (CountryCode $country): bool => $country->equals($place->country));

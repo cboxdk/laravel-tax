@@ -58,9 +58,16 @@ use DateTimeImmutable;
  *  - Italy: Livigno 23041, Campione d'Italia 22061.
  *  - Greece: Mount Athos 63086.
  *
- * France's overseas départements need no entry: Guadeloupe, Martinique, French
- * Guiana, Réunion and Mayotte each carry their own ISO 3166-1 country code, and
- * the geo repository already resolves them as non-EU.
+ *  - France: the overseas départements Guadeloupe 971xx, Martinique 972xx, French
+ *    Guiana 973xx, Réunion 974xx and Mayotte 976xx (Art. 6(1)(c) with TFEU 349 and
+ *    355(1); Mayotte since 2014), and Saint-Martin 97150. Saint-Barthélemy 97133,
+ *    Saint-Pierre-et-Miquelon 975xx, the Southern Lands 984xx, Wallis and Futuna
+ *    986xx, French Polynesia 987xx and New Caledonia 988xx are outside the EU
+ *    altogether. All of them have French postcodes, so an address sent as FR with
+ *    one is not mainland France. Monaco (980xx) is: Art. 7 treats it as France.
+ *
+ * Each of the French territories also has its own ISO 3166-1 code (GP, RE, NC...),
+ * and an address sent that way never reaches this class.
  */
 readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 {
@@ -82,6 +89,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 
         return match ($country->value) {
             'ES' => $this->spain($digits),
+            'FR' => $this->france($digits),
             'PT' => $this->portugal($digits, $at),
             'FI' => str_starts_with($digits, '22')
                 ? EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession')
@@ -113,10 +121,34 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
         };
     }
 
+    private function france(string $digits): ?EuTerritory
+    {
+        $local = 'the local taxes of the territory';
+
+        return match (substr($digits, 0, 5)) {
+            '97133' => EuTerritory::outsideVatArea('BL', 'Saint-Barthélemy', $local),
+            '97150' => EuTerritory::outsideVatArea('MF', 'Saint-Martin', $local),
+            default => match (substr($digits, 0, 3)) {
+                '971' => EuTerritory::outsideVatArea('GP', 'Guadeloupe', 'the TVA of the overseas départements'),
+                '972' => EuTerritory::outsideVatArea('MQ', 'Martinique', 'the TVA of the overseas départements'),
+                '973' => EuTerritory::outsideVatArea('GF', 'French Guiana', 'no VAT is levied for now (CGI art. 294-1)'),
+                '974' => EuTerritory::outsideVatArea('RE', 'Réunion', 'the TVA of the overseas départements'),
+                '975' => EuTerritory::outsideVatArea('PM', 'Saint-Pierre-et-Miquelon', $local),
+                '976' => EuTerritory::outsideVatArea('YT', 'Mayotte', 'no VAT is levied for now (CGI art. 294-1)'),
+                '984' => EuTerritory::outsideVatArea('TF', 'French Southern and Antarctic Lands', $local),
+                '986' => EuTerritory::outsideVatArea('WF', 'Wallis and Futuna', $local),
+                '987' => EuTerritory::outsideVatArea('PF', 'French Polynesia', $local),
+                '988' => EuTerritory::outsideVatArea('NC', 'New Caledonia', $local),
+                default => null,
+            },
+        };
+    }
+
     /**
      * The territories an ISO 3166-2 code names outright. The Canary Islands are two
      * provinces (Las Palmas, Santa Cruz de Tenerife) and an autonomous community;
-     * Ceuta, Melilla, the Azores, Madeira and Åland each have their own code. The
+     * Ceuta, Melilla, the Azores, Madeira, Åland and the French overseas territories
+     * each have their own code. The
      * municipal territories — Büsingen, Heligoland, Livigno, Campione, Mount Athos —
      * have none, and are only reachable by postcode.
      */
@@ -128,6 +160,20 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             'ES-ML' => EuTerritory::outsideVatArea('ES-ML', 'Melilla', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
             'FI-01' => EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession'),
             'PT-20', 'PT-30' => $this->ownRates($subdivision->value, 'eu:PT', $at),
+            // laravel-geo denies these (each is its own country), but a host's own
+            // repository may not: placed by a postcode of the territory.
+            'FR-971', 'FR-GP' => $this->france('97100'),
+            'FR-972', 'FR-MQ' => $this->france('97200'),
+            'FR-973', 'FR-GF' => $this->france('97300'),
+            'FR-974', 'FR-RE' => $this->france('97400'),
+            'FR-976', 'FR-YT' => $this->france('97600'),
+            'FR-MF' => $this->france('97150'),
+            'FR-BL' => $this->france('97133'),
+            'FR-PM' => $this->france('97500'),
+            'FR-TF' => $this->france('98400'),
+            'FR-WF' => $this->france('98600'),
+            'FR-PF' => $this->france('98700'),
+            'FR-NC' => $this->france('98800'),
             default => null,
         };
     }

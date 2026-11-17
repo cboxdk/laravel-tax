@@ -6,7 +6,7 @@ description: Eleven places inside a Member State where its VAT rules do not simp
 
 # EU special territories
 
-A country code is not always enough to know which tax applies. Eleven territories
+A country code is not always enough to know which tax applies. The territories below
 sit inside an EU Member State and outside its VAT rules, and they fail in two
 completely different ways.
 
@@ -15,6 +15,14 @@ completely different ways.
 The Canary Islands, Ceuta, Melilla, Åland, Livigno, Campione d'Italia, Büsingen,
 Heligoland and Mount Athos are in the European Union but **not in its VAT
 territory**. A supply into one of them from a Member State is an **export**.
+
+So are France's overseas departments (Guadeloupe, Martinique, French Guiana,
+Réunion, Mayotte) and Saint-Martin, under Art. 6(1)(c). Saint-Barthélemy,
+Saint-Pierre-et-Miquelon, the Southern Lands, Wallis and Futuna, French Polynesia and
+New Caledonia are outside the EU altogether. Each has its own ISO 3166-1 code, but
+all of them have French postcodes (97xxx, 98xxx), so an address sent as `FR` with
+one is placed there rather than in mainland France. Monaco (98000) stays French:
+Art. 7 treats it as France.
 
 This is not a rate error. Charging 21% Spanish VAT on a delivery to Tenerife
 invents a liability that does not exist, while the customer separately owes IGIC
