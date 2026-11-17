@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.3] - 2026-11-17
+
 ### Fixed
 
 - **A delivery to France's overseas territories sent as `FR` is no longer charged
