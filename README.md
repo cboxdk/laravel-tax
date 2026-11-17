@@ -115,7 +115,7 @@ sides are contracts: bind your own `TaxRateSource`, `ProductTaxability`,
 
 | | |
 | --- | --- |
-| **EU VAT** | Place of supply per the Directive — goods and electronic services at the customer, general B2C services at the supplier — intra-EU B2B as an exempt Art. 138 supply, the Art. 59c €10,000 relief, and the ten special territories a country code cannot find |
+| **EU VAT** | Place of supply per the Directive — goods and electronic services at the customer, general B2C services at the supplier — intra-EU B2B as an exempt Art. 138 supply, the Art. 59c €10,000 relief, and the special territories a country code cannot find, including France's overseas departments |
 | **National VAT/GST** | UK, CH, NO, AU, NZ, MX, SG, TW, AE, SA, BH, OM, TR, CL, ID, VN, PH, JP, KR, TH, UA |
 | **India · Malaysia** | Dual GST (IGST vs CGST+SGST) · SST service tax |
 | **United States** | Nexus, taxability, marketplace and intrastate-sourcing gates, with local authorities stacked to the house number where a state publishes a street index, the point in California and New Mexico, and ZIP+4 across the Streamlined states |
