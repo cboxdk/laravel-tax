@@ -29,7 +29,7 @@ Put it in your deploy alongside `php artisan migrate`. Until it has run, the eng
 **refuses** rather than guessing, and the refusal names this command.
 
 That refusal is deliberate. No rate data ships inside this package — it is MIT and the
-register is PolyForm Internal Use, and bundling one inside the other would mislabel it
+register is licensed commercially by Cbox, and bundling one inside the other would mislabel it
 — so a fresh install genuinely has nothing. The only unacceptable behaviour would be a
 plausible number: an invoice priced from a stale snapshot or a guessed standard rate is
 wrong in a way nobody notices until a return is filed.
@@ -157,16 +157,23 @@ local installation.
 
 This package is MIT. **The register it compiles is not.**
 
-The register is published under the
-[PolyForm Internal Use Licence 1.0.0](https://polyformproject.org/licenses/internal-use/1.0.0/).
+The register is a commercial product, licensed by Cbox under the
+[Cbox Tax terms](https://app.cboxtax.com/legal/terms) or a self-hosted licence. Each
+release states its terms in its own `license` block, and `tax:data:sync` copies them into
+the installed release's `manifest.json`. Releases published before schema 2.8.1 state the
+PolyForm Internal Use Licence 1.0.0, which they were published under.
 
-**You may** use it inside your own organisation for anything, including commercially.
-Pricing your own sales is exactly the intended use. You may keep copies, read every
+**You may** use it for your own business and the companies in its group, including
+commercially. Pricing your own sales is exactly the intended use. You may keep copies, read every
 byte, and check any figure against your own reading of the same statute.
 
+**You need a licence for that purpose** to run a marketplace, a SaaS or another
+platform where other businesses are the sellers, such as a webshop platform that
+calculates tax for its merchants.
+
 **You may not** pass the data on: redistribute it, bundle it into something you ship,
-or offer your customers a rate lookup, an API or a product feature that gives them the
-rates themselves.
+or offer a rate lookup, an API or a product feature that gives others the rates
+themselves.
 
 The line is *charging your customers tax you computed with it* (fine) against *telling
 your customers what the rates are* (not covered). The second needs a licence from Cbox

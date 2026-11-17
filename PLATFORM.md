@@ -19,9 +19,10 @@ laravel-tax      the engine             Decides whether and how to tax. MIT.
 ```
 
 **The engine owns the logic; the register owns the numbers.** That line is load-bearing
-in two directions. Legally, `laravel-tax` is MIT and the register is **PolyForm
-Internal Use** — you may compute your own tax with it, you may not resell a rate
-lookup. Practically, it means a rate change is a data release, not a code release.
+in two directions. Legally, `laravel-tax` is MIT and the register is **licensed
+commercially by Cbox** — you may compute tax for your own business and its group with
+it; a marketplace or SaaS for other businesses needs a licence for that purpose, and
+you may not resell a rate lookup. Practically, it means a rate change is a data release, not a code release.
 
 **The compiler is not the register.** `cadastre` is the private pipeline that reads
 the authorities and publishes; `data.cboxtax.com` is what a consumer syncs from. The

@@ -70,7 +70,7 @@ class StatusCommand extends Command
         }
 
         $this->newLine();
-        $this->comment('Licensed PolyForm Internal Use 1.0.0 — your own organisation, including commercially; no redistribution or resale.');
+        $this->comment('Licensed by Cbox for your own business and its group, including commercially. A marketplace, SaaS or platform for other businesses needs a licence for that purpose; no redistribution or resale.');
 
         return self::SUCCESS;
     }

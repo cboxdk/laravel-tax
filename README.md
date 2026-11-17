@@ -154,9 +154,10 @@ php artisan tax:data:activate previous               # instant rollback
 php artisan tax:data:status                          # what is live, what is installed
 ```
 
-The package is MIT. **The register's data is licensed separately** (PolyForm Internal
-Use 1.0.0): computing your own tax is covered; redistributing the data or reselling
-lookups from it is not. → [The register](docs/getting-started/the-register.md)
+The package is MIT. **The register's data is licensed separately** and commercially by
+Cbox: computing tax for your own business and its group is covered; running a
+marketplace, a SaaS or another platform for other businesses needs a licence for that
+purpose, and redistributing the data or reselling lookups from it is not allowed. → [The register](docs/getting-started/the-register.md)
 
 ## The data is in beta
 

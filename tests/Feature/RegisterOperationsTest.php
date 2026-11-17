@@ -119,6 +119,25 @@ it('honours sync configuration and verifies the resulting store offline', functi
     Http::assertSentCount($requests);
 });
 
+it('installs a release with the licence the release states, and the Cbox terms when it states none', function (): void {
+    $polyform = ['id' => 'PolyForm-Internal-Use-1.0.0', 'url' => 'https://polyformproject.org/licenses/internal-use/1.0.0/', 'permits' => 'p', 'forbids' => 'f', 'attribution' => 'a'];
+    $base = 'https://data.cboxtax.com/api/v1/releases/2026.09.17-99';
+    publishOperationRegister(['2026.09.17-99', '2026.09.17-100'], [$base => Http::response([
+        'version' => '2026.09.17-99',
+        'schemaVersion' => '1.34.0',
+        'links' => ['regions' => [$base.'/regions/eu']],
+        'license' => $polyform,
+    ])]);
+
+    $this->artisan('tax:data:sync', ['--release' => '2026.09.17-99', '--no-boundaries' => true])->assertSuccessful();
+    $this->artisan('tax:data:sync', ['--release' => '2026.09.17-100', '--no-boundaries' => true])
+        ->expectsOutputToContain('marketplace, a SaaS or another platform')
+        ->assertSuccessful();
+
+    expect(operationManifest('2026.09.17-99')['licence'])->toBe(['id' => 'PolyForm-Internal-Use-1.0.0', 'url' => 'https://polyformproject.org/licenses/internal-use/1.0.0/', 'permits' => 'p', 'forbids' => 'f'])
+        ->and(operationManifest()['licence']['id'])->toBe('LicenseRef-Cbox-Tax-Register');
+});
+
 it('lets CLI options override sync defaults without moving the pricing pin', function (): void {
     publishOperationRegister(['2026.09.17-99', '2026.09.17-100']);
     FakeRegister::at(app(StoreLayout::class)->root(), '2026.09.17-99')->rate('eu:DK', '20')->install();
