@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:e89806cc-0227-41eb-9ed1-97e128d6d6ae",
+    "serialNumber": "urn:uuid:62ec6162-067d-40b6-917e-890101cbb533",
     "version": 1,
     "metadata": {
         "tools": [
@@ -261,11 +261,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.5.0",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.5.1",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "8.5.0",
-            "purl": "pkg:composer/guzzlehttp/guzzle@8.5.0",
+            "version": "8.5.1",
+            "purl": "pkg:composer/guzzlehttp/guzzle@8.5.1",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -485,11 +485,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/monolog/monolog@3.12.1",
+            "bom-ref": "pkg:composer/monolog/monolog@3.13.0",
             "group": "monolog",
             "name": "monolog",
-            "version": "3.12.1",
-            "purl": "pkg:composer/monolog/monolog@3.12.1",
+            "version": "3.13.0",
+            "purl": "pkg:composer/monolog/monolog@3.13.0",
             "description": "Sends your logs to files, sockets, inboxes, databases and various web services",
             "licenses": [
                 {
@@ -1057,11 +1057,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/polyfill-php85@v1.43.0",
+            "bom-ref": "pkg:composer/symfony/polyfill-php85@v1.44.0",
             "group": "symfony",
             "name": "polyfill-php85",
-            "version": "v1.43.0",
-            "purl": "pkg:composer/symfony/polyfill-php85@v1.43.0",
+            "version": "v1.44.0",
+            "purl": "pkg:composer/symfony/polyfill-php85@v1.44.0",
             "description": "Symfony polyfill backporting some PHP 8.5+ features to lower PHP versions",
             "licenses": [
                 {

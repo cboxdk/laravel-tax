@@ -539,11 +539,14 @@ readonly class Compiler
             'regions' => $regions,
             'states' => $states,
             'streets' => $streets,
-            'licence' => [
-                'id' => 'PolyForm-Internal-Use-1.0.0',
-                'url' => 'https://polyformproject.org/licenses/internal-use/1.0.0/',
-                'permits' => 'Any use inside your own organisation, including commercial use.',
-                'forbids' => 'Redistribution, resale, or making this data available to anyone outside your organisation.',
+            // The terms the release itself states, so an installed release keeps the
+            // licence it was published under. A release that states none is still
+            // covered by the agreement with Cbox it was synced under.
+            'licence' => array_intersect_key(Shape::map($release['license'] ?? null), array_flip(['id', 'url', 'permits', 'forbids'])) ?: [
+                'id' => 'LicenseRef-Cbox-Tax-Register',
+                'url' => 'https://app.cboxtax.com/legal/terms',
+                'permits' => 'Use under an agreement with Cbox, for your own business and the companies in its group, including commercial use.',
+                'forbids' => 'Redistribution, resale or republishing of the data, and using it to serve other businesses through a marketplace, a SaaS or another platform, without a licence from Cbox for that purpose.',
             ],
             'files' => $files,
         ]);

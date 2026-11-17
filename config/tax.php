@@ -24,8 +24,8 @@ return [
     | default one.
     |
     | A FRESH INSTALL HAS NOTHING AND SAYS SO. No rate data ships inside this
-    | package — it is MIT and the register is PolyForm Internal Use, and bundling
-    | one inside the other would mislabel it. Until `tax:data:sync` has run the
+    | package — it is MIT and the register is licensed commercially by Cbox, and
+    | bundling one inside the other would mislabel it. Until `tax:data:sync` has run the
     | engine REFUSES rather than guessing, and the refusal names the command. Add
     | it to your deploy alongside `php artisan migrate`.
     |
@@ -47,16 +47,14 @@ return [
     | Texas wants `states => ['TX']`.
     |
     | LICENCE — read this before you build a product on it. This package is MIT;
-    | the register it compiles is NOT. It is published under the PolyForm Internal
-    | Use Licence 1.0.0: use it inside your own organisation for anything,
+    | the register it compiles is NOT. It is a commercial product, used under an
+    | agreement with Cbox, and each release states its terms in its own `license`
+    | block. The licence covers your own business and the companies in your group,
     | including commercially — pricing your own sales is exactly the intended use.
-    | What it does not permit is passing the data on: redistributing it, bundling
-    | it into something you ship, or offering your customers a rate lookup, an API
-    | or a feature that gives them the rates themselves. The line is "charging your
-    | customers tax you computed with it" (fine) against "telling your customers
-    | what the rates are" (not covered). The second needs a licence from Cbox, and
-    | it is a thing you buy when you cross the line rather than a gate on getting
-    | started.
+    | Running a marketplace, a SaaS or another platform where other businesses are
+    | the sellers needs a licence for that purpose, and so does passing the data
+    | on: redistributing it, bundling it into something you ship, or offering a
+    | rate lookup or an API that gives others the rates themselves.
     |
     */
 

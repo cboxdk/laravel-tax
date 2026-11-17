@@ -11,8 +11,8 @@ use RuntimeException;
  * No compiled register is on disk, so there is nothing to price with.
  *
  * THE FIRST-RUN FAILURE, AND IT IS DELIBERATELY LOUD. No rate data ships inside this
- * package: it is MIT and the register is PolyForm Internal Use, and bundling the one
- * inside the other would mislabel it. So a fresh install has an empty store until
+ * package: it is MIT and the register is licensed commercially by Cbox, and bundling
+ * the one inside the other would mislabel it. So a fresh install has an empty store until
  * `tax:data:sync` has run.
  *
  * The only unacceptable behaviour here would be a plausible number. A missing store

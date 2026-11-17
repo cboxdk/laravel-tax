@@ -7,6 +7,25 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-11-17
+
+### Changed
+
+- **The register is licensed commercially by Cbox, not under PolyForm Internal
+  Use.** The licence covers your own business and the companies in its group,
+  including commercially. Running a marketplace, a SaaS or another platform where
+  other businesses are the sellers needs a licence for that purpose, and the data
+  may not be redistributed. `tax:data:sync`, `tax:data:status` and the docs say so.
+  See [the register](docs/getting-started/the-register.md#licence).
+
+### Fixed
+
+- **An installed release keeps the licence it was published under.** The compiler
+  wrote PolyForm Internal Use into every `manifest.json`, whatever the release said.
+  It now copies the release's own `license` block, so a release from before register
+  schema 2.8.1 keeps its PolyForm terms. A release that states none gets the Cbox
+  terms.
+
 ## [0.22.1] - 2026-11-15
 
 ### Fixed

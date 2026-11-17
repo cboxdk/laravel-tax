@@ -80,7 +80,7 @@ class SyncCommand extends Command
         $keep = Shape::text($this->option('keep'));
         $this->call('tax:data:prune', $keep === null ? [] : ['--keep' => $keep]);
 
-        $this->comment('The register is licensed PolyForm Internal Use 1.0.0: use it inside your own organisation for anything, including commercially. Do not redistribute it or resell lookups from it.');
+        $this->comment('The register is licensed commercially by Cbox: use it for your own business and the companies in its group, including commercially. Running a marketplace, a SaaS or another platform for other businesses needs a licence for that purpose. Do not redistribute it or resell lookups from it.');
 
         return self::SUCCESS;
     }
