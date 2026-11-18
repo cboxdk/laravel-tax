@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.4] - 2026-11-18
+
 ### Changed
 
 - **Guadeloupe, Martinique and Réunion are charged France's TVA at their own rates
@@ -18,8 +20,9 @@ minor bumps may carry additive features; patches are fixes and docs).
   reason saying it owes that VAT. Goods sent into a department stay zero-rated: import
   VAT and octroi de mer are due at the border. A service to a business there from a
   seller outside France is reverse-charged (art. 283-2). French Guiana and Mayotte
-  stay at no VAT. Needs laravel-geo with the departments' country codes (GP, MQ, RE,
-  GF, YT) on the EU VAT engine; before, those codes were refused as unmodelled.
+  stay at no VAT. Requires laravel-geo ^0.6.3, which puts the departments' country
+  codes (GP, MQ, RE, GF, YT) on the EU VAT engine; before, those codes were refused
+  as unmodelled.
 
 ## [0.22.3] - 2026-11-17
 
