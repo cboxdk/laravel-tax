@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Tax\Regime;
 
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Geo\ValueObjects\CountryCode;
 use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Tax\Contracts\AttributionRules;
 use Cbox\Tax\Contracts\EuTerritories;
@@ -13,8 +14,10 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\AttributionStatus;
 use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\PlaceOfSupplyRule;
+use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxTreatment;
+use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\ValueObjects\Attribution;
 use Cbox\Tax\ValueObjects\DecisionFacts;
@@ -71,6 +74,10 @@ class EuVatRegime extends DestinationTaxRegime
     public function assess(TaxQuery $query, TaxRateSource $rates): TaxAssessment
     {
         $territory = $this->territory($query);
+
+        if ($territory?->collectedUnder !== null) {
+            return $this->assessInDepartment($query, $rates, $territory);
+        }
 
         if ($territory !== null && $territory->outsideVatArea) {
             return new TaxAssessment(
@@ -130,6 +137,126 @@ class EuVatRegime extends DestinationTaxRegime
             ),
             limitedBy: RateLimit::AttributionUnsettled,
             openFacts: array_values(array_unique($open)),
+        );
+    }
+
+    /**
+     * Guadeloupe, Martinique and Réunion: outside the EU VAT area, and France levies
+     * its own TVA there at their own rates (CGI art. 296), on any seller.
+     *
+     * Goods from elsewhere are taxed on import, at the border, with octroi de mer; the
+     * Union's online-sales rules do not reach the departments (BOI-TVA-GEO-20-40 §65).
+     * Only goods already there are a local sale. A service to a business there is the
+     * customer's to self-account (CGI art. 283-2). A service to a consumer is taxed
+     * there whoever sells it (art. 259 D), but OSS does not reach the departments
+     * (art. 296 quater): a seller collects only under a French registration, and one
+     * without is told so rather than charged or quietly let off.
+     */
+    private function assessInDepartment(TaxQuery $query, TaxRateSource $rates, EuTerritory $territory): TaxAssessment
+    {
+        $state = new CountryCode((string) $territory->collectedUnder);
+        $from = $query->route->shipFrom;
+
+        if ($this->isGoods($query->categoryKey ?? CategoryMap::keyFor($query->category)) && $from?->country->value !== $territory->code) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::ZeroRated,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf(
+                    'EU VAT: %1$s lies outside the EU VAT area, so goods delivered there from elsewhere carry no VAT on this invoice. %2$s import VAT and octroi de mer are due at the border, from the customer unless the goods are shipped duties paid.',
+                    $territory->name,
+                    $state->value,
+                ),
+            );
+        }
+
+        if ($this->taxableCustomer($query) && ! $query->seller->isEstablishedIn($state)) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::ReverseCharge,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf(
+                    'EU VAT: the customer in %s accounts for the %s VAT on a supply by a supplier not established in %s (CGI art. 283-2).',
+                    $territory->name,
+                    $state->value,
+                    $state->value,
+                ),
+                mentions: [new InvoiceMention(
+                    code: 'reverse_charge',
+                    text: 'Autoliquidation',
+                    reference: 'Article 283-2 du code général des impôts',
+                )],
+            );
+        }
+
+        if (! $query->seller->isRegisteredIn($state, $query->on())) {
+            return new TaxAssessment(
+                treatment: TaxTreatment::NotRegistered,
+                net: $query->amount,
+                tax: $this->zero($query),
+                gross: $query->amount,
+                placeOfSupply: $query->place,
+                rate: null,
+                reason: sprintf(
+                    '%1$s levies %2$s VAT at its own rates (%3$s%% standard) on this supply, whoever the seller is, and the seller is not registered in %2$s: it collects nothing, and owes that VAT once it is. OSS does not reach %1$s (CGI art. 296 quater); a %2$s VAT registration does. Add it to the seller\'s registrations to collect.',
+                    $territory->name,
+                    $state->value,
+                    $territory->standardRate ?? 'its own',
+                ),
+            );
+        }
+
+        // Charged under the French registration, and reported on France's return: the
+        // place of supply is France, with the department's band.
+        $home = $query->place->country->equals($state) ? $query->place : $this->jurisdictions?->find($state);
+
+        if ($home === null) {
+            throw new UnresolvedTaxRule(sprintf('%s cannot be priced without %s to read its bands against.', $territory->name, $state->value));
+        }
+
+        $mainland = $this->chargeAt($query, $rates, $home);
+        $rate = $mainland->rate;
+
+        if ($rate === null || $rate->isZero()) {
+            return $mainland;
+        }
+
+        $band = $territory->bands[$rate->kind === RateKind::Reduced ? 'reduced' : 'standard'] ?? null;
+
+        if ($band === null) {
+            throw new UnresolvedTaxRule(sprintf(
+                '%s charges its own %s VAT rates, and the installed register does not supply its %s band. Refusing rather than charging the mainland rate.',
+                $territory->name,
+                $state->value,
+                $rate->kind->value,
+            ));
+        }
+
+        $regional = new TaxRate($band, $rate->kind, 'eu-territory', Confidence::Derived, [], $rate->limitedBy, $rate->provenance);
+        $rounding = $mainland->rounding;
+        [$net, $tax, $gross] = $this->split($query, $regional, rounding: $rounding);
+
+        return $mainland->with(
+            net: $net,
+            tax: $tax,
+            gross: $gross,
+            rate: $regional,
+            reason: sprintf(
+                'EU VAT: %s%% %s VAT in %s, which sets its own rates (CGI art. 296; mainland %s%%).%s',
+                $regional->percentage,
+                $state->value,
+                $territory->name,
+                $rate->percentage,
+                (string) $rate->percentage === '2.1' ? ' Some supplies France taxes at 2.1% are 1.05% there (CGI art. 296 ter), so the band may be high.' : '',
+            ),
+            breakdown: $this->breakdown($regional, $net, $tax),
+            unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $regional),
         );
     }
 
