@@ -7,6 +7,23 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.4] - 2026-11-18
+
+### Changed
+
+- **Guadeloupe, Martinique and Réunion are charged France's TVA at their own rates
+  when the seller is registered in France.** A digital service to a consumer there is
+  taxed whoever sells it (CGI art. 259 D) at 8.5% / 2.1% (art. 296), and OSS does not
+  reach the departments (art. 296 quater). A seller with a French registration now
+  charges the department band, read from the register (`eu:FR:GUADELOUPE` and so on),
+  reported under France. A seller without one gets `not_registered` with 0 tax and a
+  reason saying it owes that VAT. Goods sent into a department stay zero-rated: import
+  VAT and octroi de mer are due at the border. A service to a business there from a
+  seller outside France is reverse-charged (art. 283-2). French Guiana and Mayotte
+  stay at no VAT. Requires laravel-geo ^0.6.3, which puts the departments' country
+  codes (GP, MQ, RE, GF, YT) on the EU VAT engine; before, those codes were refused
+  as unmodelled.
+
 ## [0.22.3] - 2026-11-17
 
 ### Fixed

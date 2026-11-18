@@ -62,7 +62,40 @@ readonly class EuTerritory
          * @var array<array-key, string>
          */
         public array $rates = [],
+        /**
+         * The member state whose own VAT registration collects a tax levied there,
+         * though the territory is outside the EU VAT area: France's TVA in Guadeloupe,
+         * Martinique and Réunion (CGI art. 296). Null for every other territory. OSS
+         * does not reach it (CGI art. 296 quater); only that state's registration does.
+         */
+        public ?string $collectedUnder = null,
+        /**
+         * That tax's bands by kind, `['standard' => '8.5', 'reduced' => '2.1']`, read
+         * from the register. Empty when the register did not supply them.
+         *
+         * @var array<string, string>
+         */
+        public array $bands = [],
     ) {}
+
+    /**
+     * A territory outside the EU VAT area where a member state levies its own VAT at
+     * the territory's own rates.
+     *
+     * @param  array<string, string>  $bands  kind => percentage
+     */
+    public static function collectedUnder(string $memberState, string $code, string $name, array $bands): self
+    {
+        return new self(
+            $code,
+            $name,
+            true,
+            $bands['standard'] ?? null,
+            sprintf('%s VAT at the territory\'s own rates', $memberState),
+            collectedUnder: $memberState,
+            bands: $bands,
+        );
+    }
 
     public static function outsideVatArea(string $code, string $name, string $ownTaxName): self
     {

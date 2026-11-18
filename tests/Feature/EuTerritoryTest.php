@@ -13,6 +13,7 @@ use Cbox\Tax\Enums\Confidence;
 use Cbox\Tax\Enums\CustomerType;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
+use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Register\Reader\RegisterDataset;
@@ -21,7 +22,9 @@ use Cbox\Tax\Register\Store\StorePointer;
 use Cbox\Tax\Territories\StaticEuTerritories;
 use Cbox\Tax\Testing\FakeRegister;
 use Cbox\Tax\ValueObjects\EuTerritory;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
+use Cbox\Tax\ValueObjects\SupplyRoute;
 use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxQuery;
 
@@ -118,6 +121,81 @@ it('charges no French VAT on a delivery to the overseas territories sent as FR',
     ['97500', 'Saint-Pierre-et-Miquelon'],
     ['98800', 'New Caledonia'],
 ]);
+
+// Guadeloupe, Martinique and Réunion: France levies its own TVA there at 8.5% and
+// 2.1% on any seller (CGI art. 259 D, 296), and OSS does not reach them (296 quater).
+// A French registration collects it; without one the seller is told it owes it.
+
+function department(string $country, SellerRegistrations $seller, TaxClass $class = TaxClass::DigitalService, ?string $postalCode = null, ?string $shipFrom = null, bool $business = false): TaxQuery
+{
+    return new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: test()->geo->find(new CountryCode($country)),
+        customer: $business ? CustomerType::Business : CustomerType::Consumer,
+        seller: $seller,
+        category: $class,
+        customerTaxIdValidated: $business,
+        route: new SupplyRoute(shipFrom: $shipFrom === null ? null : test()->geo->find(new CountryCode($shipFrom))),
+        postalCode: $postalCode,
+    );
+}
+
+it('charges a French-registered seller the department rate on a digital service', function (string $country, ?string $postalCode): void {
+    $seller = new SellerRegistrations(new CountryCode('DK'), [new SellerRegistration(new CountryCode('FR'))]);
+    $assessment = $this->tax->assess(department($country, $seller, postalCode: $postalCode));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $assessment->rate?->percentage)->toBe('8.5')
+        ->and((string) $assessment->tax->getAmount())->toBe('8.50')
+        ->and($assessment->placeOfSupply->country->value)->toBe('FR');
+})->with([
+    'Guadeloupe by country' => ['GP', null],
+    'Réunion by country' => ['RE', null],
+    'Martinique as FR with its postcode' => ['FR', '97200'],
+]);
+
+it('tells a seller without a French registration that it owes the department VAT, OSS or not', function (): void {
+    $seller = new SellerRegistrations(new CountryCode('DK'), [new SellerRegistration(new CountryCode('DK'), scheme: 'oss')]);
+    $assessment = $this->tax->assess(department('GP', $seller));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::NotRegistered)
+        ->and((string) $assessment->tax->getAmount())->toBe('0.00')
+        ->and($assessment->reason)->toContain('8.5% standard')
+        ->and($assessment->reason)->toContain('OSS does not reach Guadeloupe');
+});
+
+it('charges the reduced department band on goods already in the department', function (): void {
+    // A French book is 5.5% on the mainland; in the departments the reduced band is 2.1%.
+    $seller = new SellerRegistrations(new CountryCode('FR'));
+    $assessment = $this->tax->assess(department('RE', $seller, TaxClass::Book, shipFrom: 'RE'));
+
+    expect((string) $assessment->rate?->percentage)->toBe('2.1')
+        ->and((string) $assessment->tax->getAmount())->toBe('2.10');
+});
+
+it('charges no VAT on goods sent into a department, even by a French seller', function (): void {
+    $assessment = $this->tax->assess(department('MQ', new SellerRegistrations(new CountryCode('FR')), TaxClass::Book, shipFrom: 'FR'));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and((string) $assessment->tax->getAmount())->toBe('0.00')
+        ->and($assessment->reason)->toContain('octroi de mer');
+});
+
+it('reverse-charges a service to a business in a department from a seller outside France', function (): void {
+    $assessment = $this->tax->assess(department('GP', new SellerRegistrations(new CountryCode('DK')), business: true));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::ReverseCharge)
+        ->and($assessment->reason)->toContain('283-2');
+});
+
+it('charges no VAT in French Guiana or Mayotte', function (string $country): void {
+    $seller = new SellerRegistrations(new CountryCode('DK'), [new SellerRegistration(new CountryCode('FR'))]);
+    $assessment = $this->tax->assess(department($country, $seller));
+
+    expect($assessment->treatment)->toBe(TaxTreatment::ZeroRated)
+        ->and((string) $assessment->tax->getAmount())->toBe('0.00');
+})->with(['GF', 'YT']);
 
 it('keeps mainland France and Monaco French', function (): void {
     // Paris is 75001; 98000 is Monaco, which Art. 7 treats as France.

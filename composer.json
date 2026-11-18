@@ -18,7 +18,7 @@
         "ext-dom": "*",
         "ext-zlib": "*",
         "brick/money": "^0.14 || ^0.15",
-        "cboxdk/laravel-geo": "^0.6",
+        "cboxdk/laravel-geo": "^0.6.3",
         "cboxdk/tax-resolver": "^1.1",
         "illuminate/contracts": "^13.0",
         "illuminate/http": "^13.0",

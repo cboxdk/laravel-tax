@@ -137,6 +137,11 @@ final class SuiteRegister
         $register->rate('eu:PT:AZORES', '16', 'standard', from: '2021-07-01');
         $register->rate('eu:PT:AZORES', '9', 'intermediate', from: '2021-07-01');
         $register->rate('eu:PT:AZORES', '4', 'reduced', from: '2021-07-01');
+        // France's TVA in the overseas departments, bands by kind (CGI art. 296).
+        foreach (['GUADELOUPE', 'MARTINIQUE', 'REUNION'] as $department) {
+            $register->rate('eu:FR:'.$department, '8.5', 'standard', from: '2014-01-01');
+            $register->rate('eu:FR:'.$department, '2.1', 'reduced', from: '2014-01-01');
+        }
         $register->rate('eu:ES', '10', 'reduced', 'services.accommodation');
         $register->rate('eu:PL', '5', 'reduced', 'goods.food');
 

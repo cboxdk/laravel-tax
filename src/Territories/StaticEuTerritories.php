@@ -78,6 +78,12 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 
     public function for(CountryCode $country, ?string $postalCode, ?DateTimeImmutable $at = null): ?EuTerritory
     {
+        $department = $this->forCountry($country, $at);
+
+        if ($department !== null) {
+            return $department;
+        }
+
         $digits = $postalCode === null ? null : preg_replace('/\D/', '', $postalCode);
 
         if ($digits === null || $digits === '') {
@@ -89,7 +95,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 
         return match ($country->value) {
             'ES' => $this->spain($digits),
-            'FR' => $this->france($digits),
+            'FR' => $this->france($digits, $at),
             'PT' => $this->portugal($digits, $at),
             'FI' => str_starts_with($digits, '22')
                 ? EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession')
@@ -111,6 +117,22 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
         };
     }
 
+    /**
+     * A French overseas department sent under its own country code, which carries no
+     * postcode to read: placed as the department itself. Null for every other country.
+     */
+    private function forCountry(CountryCode $country, ?DateTimeImmutable $at = null): ?EuTerritory
+    {
+        return match ($country->value) {
+            'GP' => $this->france('97100', $at),
+            'MQ' => $this->france('97200', $at),
+            'GF' => $this->france('97300', $at),
+            'RE' => $this->france('97400', $at),
+            'YT' => $this->france('97600', $at),
+            default => null,
+        };
+    }
+
     private function spain(string $digits): ?EuTerritory
     {
         return match (substr($digits, 0, 2)) {
@@ -121,7 +143,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
         };
     }
 
-    private function france(string $digits): ?EuTerritory
+    private function france(string $digits, ?DateTimeImmutable $at = null): ?EuTerritory
     {
         $local = 'the local taxes of the territory';
 
@@ -129,10 +151,10 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             '97133' => EuTerritory::outsideVatArea('BL', 'Saint-Barthélemy', $local),
             '97150' => EuTerritory::outsideVatArea('MF', 'Saint-Martin', $local),
             default => match (substr($digits, 0, 3)) {
-                '971' => EuTerritory::outsideVatArea('GP', 'Guadeloupe', 'the TVA of the overseas départements'),
-                '972' => EuTerritory::outsideVatArea('MQ', 'Martinique', 'the TVA of the overseas départements'),
+                '971' => $this->department('GP', 'Guadeloupe', 'eu:FR:GUADELOUPE', $at),
+                '972' => $this->department('MQ', 'Martinique', 'eu:FR:MARTINIQUE', $at),
                 '973' => EuTerritory::outsideVatArea('GF', 'French Guiana', 'no VAT is levied for now (CGI art. 294-1)'),
-                '974' => EuTerritory::outsideVatArea('RE', 'Réunion', 'the TVA of the overseas départements'),
+                '974' => $this->department('RE', 'Réunion', 'eu:FR:REUNION', $at),
                 '975' => EuTerritory::outsideVatArea('PM', 'Saint-Pierre-et-Miquelon', $local),
                 '976' => EuTerritory::outsideVatArea('YT', 'Mayotte', 'no VAT is levied for now (CGI art. 294-1)'),
                 '984' => EuTerritory::outsideVatArea('TF', 'French Southern and Antarctic Lands', $local),
@@ -162,18 +184,18 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             'PT-20', 'PT-30' => $this->ownRates($subdivision->value, 'eu:PT', $at),
             // laravel-geo denies these (each is its own country), but a host's own
             // repository may not: placed by a postcode of the territory.
-            'FR-971', 'FR-GP' => $this->france('97100'),
-            'FR-972', 'FR-MQ' => $this->france('97200'),
-            'FR-973', 'FR-GF' => $this->france('97300'),
-            'FR-974', 'FR-RE' => $this->france('97400'),
-            'FR-976', 'FR-YT' => $this->france('97600'),
-            'FR-MF' => $this->france('97150'),
-            'FR-BL' => $this->france('97133'),
-            'FR-PM' => $this->france('97500'),
-            'FR-TF' => $this->france('98400'),
-            'FR-WF' => $this->france('98600'),
-            'FR-PF' => $this->france('98700'),
-            'FR-NC' => $this->france('98800'),
+            'FR-971', 'FR-GP' => $this->france('97100', $at),
+            'FR-972', 'FR-MQ' => $this->france('97200', $at),
+            'FR-973', 'FR-GF' => $this->france('97300', $at),
+            'FR-974', 'FR-RE' => $this->france('97400', $at),
+            'FR-976', 'FR-YT' => $this->france('97600', $at),
+            'FR-MF' => $this->france('97150', $at),
+            'FR-BL' => $this->france('97133', $at),
+            'FR-PM' => $this->france('97500', $at),
+            'FR-TF' => $this->france('98400', $at),
+            'FR-WF' => $this->france('98600', $at),
+            'FR-PF' => $this->france('98700', $at),
+            'FR-NC' => $this->france('98800', $at),
             default => null,
         };
     }
@@ -206,6 +228,17 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
         };
 
         return $code === null ? null : $this->ownRates($code, 'eu:PT', $at);
+    }
+
+    /**
+     * Guadeloupe, Martinique or Réunion: outside the EU VAT area, with France's TVA
+     * levied at their own bands (CGI art. 296), which the register publishes as
+     * `eu:FR:GUADELOUPE` and so on. Bands that are missing are left empty here and
+     * refused where a charge needs them, not where a sale is only placed.
+     */
+    private function department(string $code, string $name, string $registerCode, ?DateTimeImmutable $at): EuTerritory
+    {
+        return EuTerritory::collectedUnder('FR', $code, $name, $this->bands($registerCode, ($at ?? new DateTimeImmutable('today'))->format('Y-m-d')));
     }
 
     /**
