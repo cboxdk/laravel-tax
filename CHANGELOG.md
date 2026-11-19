@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.5] - 2026-11-19
+
 ### Fixed
 
 - **Goods into Northern Ireland are no longer an export.** Under Article 8 of the
