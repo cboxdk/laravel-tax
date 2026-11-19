@@ -7,6 +7,28 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.6] - 2026-11-19
+
+### Fixed
+
+- **A US shipping line is priced in states that publish a rate for delivery
+  instead of a Streamlined delivery rule.** Texas, New York, California, Florida
+  and about 30 other states publish `services.delivery` with conditions, not a
+  `transport_on_taxable_goods` component, and every order with shipping in them was
+  refused with "No applicable delivery rule". Freight on taxable goods is now
+  assessed as that category. The facts the order establishes are filled in beneath
+  the caller's: the seller charges the delivery, on a line of its own, for taxable
+  goods. Freight on exempt goods, and states that publish neither, still refuse.
+- **A conditional US exemption reads its conditions.** A category whose rates are
+  all exempt or zero, but on conditions, was exempt whatever the facts said:
+  California freight stated as not separately stated came back exempt and
+  authoritative. The rate now decides, with the conditions read against the facts.
+  An open condition is reported as `conditions_unevaluated` with its facts in
+  `openFacts`. A relief the buyer must prove, such as medical equipment on a
+  prescription, charges the general rate until the evidence fact is stated.
+- Freight priced under a delivery category lists that category's open facts, not
+  the goods'.
+
 ## [0.22.5] - 2026-11-19
 
 ### Fixed
