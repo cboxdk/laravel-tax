@@ -18,6 +18,7 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\ValueObjects\ExchangeRate;
 use Cbox\Tax\ValueObjects\InvoiceMention;
+use Cbox\Tax\ValueObjects\OssStatus;
 use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
@@ -161,6 +162,67 @@ it('does not make a non-EU shop an EU exporter', function (): void {
 
     expect($a->treatment)->toBe(TaxTreatment::NotRegistered);
 });
+
+// --- Northern Ireland ---------------------------------------------------------------
+
+/** A Dutch shop's sale to an address in the United Kingdom, by postcode. */
+function ulsterQuery(string $postcode, ?OssStatus $oss = null, TaxClass $class = TaxClass::GeneralGoods, ?string $vat = null, SupplyRoute $route = new SupplyRoute): TaxQuery
+{
+    return new TaxQuery(
+        amount: Money::of('100.00', 'EUR'),
+        pricing: Pricing::Exclusive,
+        place: borderPlace('GB'),
+        customer: $vat === null ? CustomerType::Consumer : CustomerType::Business,
+        seller: new SellerRegistrations(new CountryCode('NL'), [new SellerRegistration(new CountryCode('NL'))], $oss),
+        category: $class,
+        customerTaxIdValidated: $vat !== null,
+        suppliedAt: new DateTimeImmutable('2026-09-22'),
+        route: $route,
+        postalCode: $postcode,
+        customerTaxId: $vat,
+    );
+}
+
+it('charges UK VAT as an EU distance sale on goods into Northern Ireland, not an export', function (string $postcode): void {
+    $a = app(TaxCalculator::class)->assess(ulsterQuery($postcode));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $a->rate?->percentage)->toBe('20')
+        ->and((string) $a->tax->getAmount())->toBe('20.00')
+        ->and($a->placeOfSupply->subdivision?->value)->toBe('GB-NIR')
+        ->and($a->reason)->toContain('Windsor Framework')
+        ->and(array_map(static fn (InvoiceMention $m): string => $m->code, $a->mentions))->not->toContain('export');
+})->with(['BT1 1AA', 'bt11aa']);
+
+it('charges the shop\'s own VAT on goods into Northern Ireland below the EU threshold', function (): void {
+    $a = app(TaxCalculator::class)->assess(ulsterQuery('BT9 5AB', new OssStatus(registered: false, thresholdExceeded: false)));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and($a->placeOfSupply->country->value)->toBe('NL')
+        ->and((string) $a->rate?->percentage)->toBe('21');
+});
+
+it('answers goods to a business with an XI number as an intra-Community supply, and a GB number as not', function (): void {
+    $xi = app(TaxCalculator::class)->assess(ulsterQuery('BT1 1AA', vat: 'XI123456789'));
+    $gb = app(TaxCalculator::class)->assess(ulsterQuery('BT1 1AA', vat: 'GB123456789'));
+
+    expect($xi->treatment)->toBe(TaxTreatment::IntraCommunitySupply)
+        ->and((string) $xi->tax->getAmount())->toBe('0.00')
+        ->and(array_map(static fn (InvoiceMention $m): string => $m->code, $xi->mentions))->toBe(['intra_community_supply'])
+        ->and($gb->treatment)->toBe(TaxTreatment::Standard)
+        ->and((string) $gb->tax->getAmount())->toBe('20.00');
+});
+
+it('keeps Great Britain, services and goods shipped from outside the Union off the Windsor Framework', function (TaxQuery $query, TaxTreatment $treatment): void {
+    $a = app(TaxCalculator::class)->assess($query);
+
+    expect($a->treatment)->toBe($treatment)
+        ->and($a->reason)->not->toContain('Windsor');
+})->with([
+    'a London postcode' => fn (): array => [ulsterQuery('SW1A 1AA'), TaxTreatment::ZeroRated],
+    'a digital service' => fn (): array => [ulsterQuery('BT1 1AA', class: TaxClass::DigitalService), TaxTreatment::NotRegistered],
+    'shipped from Great Britain' => fn (): array => [ulsterQuery('BT1 1AA', route: new SupplyRoute(shipFrom: borderPlace('GB'))), TaxTreatment::NotRegistered],
+]);
 
 // --- IOSS and the EUR 150 consignment ------------------------------------------------
 

@@ -7,6 +7,19 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Goods into Northern Ireland are no longer an export.** Under Article 8 of the
+  Windsor Framework the EU's VAT rules on goods apply there, so goods from a seller
+  established in a member state, dispatched from inside the Union, to a `GB` address
+  with a `BT` postcode (or the subdivision `GB-NIR`) are now assessed as an
+  intra-Community supply at the UK's rates: destination VAT (20% standard) or, below
+  the EUR 10,000 threshold, the seller's own VAT; to a business with a validated
+  `XI` number, an exempt intra-Community supply (Art. 138). A `GB` number does not
+  make it one. They were zero-rated as an export from the Union. Services, Great
+  Britain and goods shipped from outside the Union are unchanged.
+- `ViesValidator` checks `XI` numbers.
+
 ## [0.22.4] - 2026-11-18
 
 ### Changed
