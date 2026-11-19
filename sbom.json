@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:62ec6162-067d-40b6-917e-890101cbb533",
+    "serialNumber": "urn:uuid:252b1be7-b44d-4b4b-a4f5-fdd2c2c3ba95",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-geo@v0.6.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-geo@v0.6.3",
             "group": "cboxdk",
             "name": "laravel-geo",
-            "version": "v0.6.1",
-            "purl": "pkg:composer/cboxdk/laravel-geo@v0.6.1",
+            "version": "v0.6.3",
+            "purl": "pkg:composer/cboxdk/laravel-geo@v0.6.3",
             "description": "Cbox Geo \u2014 a canonical ISO 3166 country/subdivision and ISO 4217 currency reference for Laravel: data-driven jurisdiction lookups and structured addresses bound to stable codes, carrying the tax-relevant attributes downstream billing and tax engines need.",
             "licenses": [
                 {
@@ -101,11 +101,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/commerceguys/addressing@v2.3.2",
+            "bom-ref": "pkg:composer/commerceguys/addressing@v2.3.3",
             "group": "commerceguys",
             "name": "addressing",
-            "version": "v2.3.2",
-            "purl": "pkg:composer/commerceguys/addressing@v2.3.2",
+            "version": "v2.3.3",
+            "purl": "pkg:composer/commerceguys/addressing@v2.3.3",
             "description": "Addressing library powered by CLDR and Google's address data.",
             "licenses": [
                 {
@@ -261,11 +261,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.5.1",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.5.2",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "8.5.1",
-            "purl": "pkg:composer/guzzlehttp/guzzle@8.5.1",
+            "version": "8.5.2",
+            "purl": "pkg:composer/guzzlehttp/guzzle@8.5.2",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -293,11 +293,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/psr7@3.4.0",
+            "bom-ref": "pkg:composer/guzzlehttp/psr7@3.5.0",
             "group": "guzzlehttp",
             "name": "psr7",
-            "version": "3.4.0",
-            "purl": "pkg:composer/guzzlehttp/psr7@3.4.0",
+            "version": "3.5.0",
+            "purl": "pkg:composer/guzzlehttp/psr7@3.5.0",
             "description": "PSR-7 message implementation that also provides common utility methods",
             "licenses": [
                 {
@@ -325,11 +325,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/laravel/framework@v13.42.0",
+            "bom-ref": "pkg:composer/laravel/framework@v13.43.0",
             "group": "laravel",
             "name": "framework",
-            "version": "v13.42.0",
-            "purl": "pkg:composer/laravel/framework@v13.42.0",
+            "version": "v13.43.0",
+            "purl": "pkg:composer/laravel/framework@v13.43.0",
             "description": "The Laravel Framework.",
             "licenses": [
                 {

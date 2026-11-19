@@ -8,7 +8,10 @@ use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Cbox\Geo\Contracts\JurisdictionRepository;
+use Cbox\Geo\Enums\TaxRegime as GeoTaxRegime;
 use Cbox\Geo\ValueObjects\Jurisdiction;
+use Cbox\Geo\ValueObjects\SubdivisionCode;
+use Cbox\Geo\ValueObjects\TaxProfile;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
 use Cbox\Tax\Concerns\AssessesOrders;
 use Cbox\Tax\Contracts\ExchangeRates;
@@ -188,6 +191,63 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      * document — so this is the part the two paths genuinely share.
      */
     private function assessSupply(TaxQuery $query): TaxAssessment
+    {
+        $northernIreland = $this->northernIrelandGoods($query);
+
+        if ($northernIreland === null) {
+            return $this->assessUnderRegime($query);
+        }
+
+        $assessment = $this->assessUnderRegime($northernIreland);
+
+        return $assessment->with(reason: $assessment->reason.' Northern Ireland follows the EU\'s VAT rules for goods '
+            .'(Article 8 of the Windsor Framework), at the UK\'s rates; only an XI VAT number makes the customer a business '
+            .'there.');
+    }
+
+    /**
+     * GOODS INTO NORTHERN IRELAND ARE NOT AN EXPORT FROM THE UNION. Under Article 8 of
+     * the Windsor Framework the EU's VAT rules on goods apply there: from a seller
+     * established in a member state, dispatched from inside the Union, they are an
+     * intra-Community distance sale (Art. 33) or, to a buyer with an XI number, an
+     * exempt intra-Community supply (Art. 138), and the destination's rate is the UK's.
+     * Answered from the GB country code alone, they were zero-rated as an export.
+     *
+     * The query comes back placed in Northern Ireland as a member state; null for every
+     * other supply, which keeps its own place. Services stay outside: the Framework
+     * does not reach them.
+     */
+    private function northernIrelandGoods(TaxQuery $query): ?TaxQuery
+    {
+        $place = $query->place;
+        $postcode = strtoupper(trim($query->postalCode ?? ''));
+
+        if ($place->country->value !== 'GB'
+            || ($place->subdivision?->value !== 'GB-NIR' && preg_match('/^BT\d/', $postcode) !== 1)
+            || ! CategoryMap::isGoods($this->categoryKey($query))) {
+            return null;
+        }
+
+        $from = $query->route->shipFrom;
+        $home = $this->jurisdictions?->find($query->seller->establishment);
+
+        if ($home === null || ! $home->taxProfile->isEuMember || ($from !== null && ! $from->taxProfile->isEuMember)) {
+            return null;
+        }
+
+        $member = new Jurisdiction(
+            $place->country,
+            $place->countryName,
+            $place->currency,
+            new TaxProfile(GeoTaxRegime::Vat, 'eu-vat', isEuMember: true, isSubFederal: false, requiresRooftop: false),
+            new SubdivisionCode('GB-NIR'),
+            'Northern Ireland',
+        );
+
+        return $query->placedIn($member, $query->customerTaxIdValidated && str_starts_with(strtoupper(trim($query->customerTaxId ?? '')), 'XI'));
+    }
+
+    private function assessUnderRegime(TaxQuery $query): TaxAssessment
     {
         $module = $query->place->taxProfile->regimeModule;
 

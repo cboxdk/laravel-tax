@@ -311,6 +311,43 @@ readonly class TaxQuery
     }
 
     /**
+     * The same query placed somewhere else, with the customer's number counted or not.
+     * Northern Ireland's goods are assessed under the EU's rules this way, and only an
+     * XI number makes the buyer a business there. Narrow for the reason
+     * {@see classifiedAs()} is.
+     */
+    public function placedIn(Jurisdiction $place, bool $customerTaxIdValidated): self
+    {
+        return new self(
+            $this->amount,
+            $this->pricing,
+            $place,
+            $this->customer,
+            $this->seller,
+            $this->categoryStated ? $this->category : TaxClass::GeneralGoods,
+            $customerTaxIdValidated,
+            $this->exemption,
+            $this->commodityCode,
+            $this->suppliedAt,
+            $this->reportedOn,
+            $this->route,
+            $this->postalCode,
+            $this->marketplaceFacilitated,
+            $this->itemCode,
+            $this->roundingScope,
+            $this->delivery,
+            $this->categoryKey,
+            $this->performedAt,
+            $this->quantity,
+            $this->facts,
+            $this->saleAmount,
+            $this->customerTaxId,
+            $this->purchaser,
+            $this->consignmentValue,
+        );
+    }
+
+    /**
      * The date the assessment resolves against — the supply date, else today.
      *
      * TREATED AS A CALENDAR DATE IN THE JURISDICTION, not as an instant to be
