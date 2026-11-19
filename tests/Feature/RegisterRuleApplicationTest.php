@@ -661,3 +661,16 @@ it('reads a conditional exemption\'s conditions rather than exempting the whole 
         ->and($met->treatment)->toBe(TaxTreatment::Exempt)
         ->and($met->rate?->limitedBy)->toBeNull();
 });
+
+it('carries no tax on freight where the state levies no sales tax', function (): void {
+    $this->rules->rate('us:OR', '0', 'exempt', from: '1990-01-01')->install();
+
+    $order = app(OrderTaxCalculator::class)->assessOrder(ruleOrder('OR', [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true),
+    ]));
+
+    // Refused before: 0% goods made it "delivery of exempt goods", a rule Oregon has no reason to publish.
+    expect($order->forLine('freight')?->treatment)->toBe(TaxTreatment::Exempt)
+        ->and((string) $order->tax()->getAmount())->toBe('0.00');
+});

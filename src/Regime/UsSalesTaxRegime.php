@@ -213,6 +213,29 @@ readonly class UsSalesTaxRegime implements TaxRegime
             ->withDefault('delivery.isHandlingCharge', $delivery->component === DeliveryComponent::Handling));
     }
 
+    /**
+     * NO SALES TAX, SO NO TAX ON FREIGHT. Oregon, Delaware, Montana and New Hampshire
+     * levy none, and publish no delivery rule because there is nothing to rule on. The
+     * goods came back at 0%, which made the freight "delivery of exempt goods", and
+     * every order with shipping there refused. The general rate where the order lands
+     * is asked, not the goods' own, so groceries exempt in a taxing state still need
+     * the state's rule; and a place with a local rate (Juneau, Alaska) is not this.
+     */
+    private function levelsNoSalesTax(TaxQuery $query, TaxRateSource $rates): bool
+    {
+        $general = $this->resolveRate($rates, new TaxQuery(
+            amount: $query->amount,
+            pricing: $query->pricing,
+            place: $query->place,
+            customer: $query->customer,
+            seller: $query->seller,
+            suppliedAt: $query->suppliedAt,
+            postalCode: $query->postalCode,
+        ));
+
+        return $general !== null && $general->kind->isNil() && $general->percentage->isZero();
+    }
+
     private function deliveryExcluded(TaxQuery $query, SubdivisionCode $state): bool
     {
         $delivery = $query->delivery;
@@ -296,6 +319,18 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
             if ($own !== null) {
                 return $this->assess($own, $rates);
+            }
+
+            if ($this->levelsNoSalesTax($query, $rates)) {
+                return new TaxAssessment(
+                    treatment: TaxTreatment::Exempt,
+                    net: $query->amount,
+                    tax: $this->zero($query),
+                    gross: $query->amount,
+                    placeOfSupply: $query->place,
+                    rate: null,
+                    reason: sprintf('US sales tax: %s levies no sales tax here, so the delivery charge carries none.', $subdivision->value),
+                );
             }
 
             if ($this->deliveryExcluded($query, $subdivision)) {
