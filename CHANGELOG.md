@@ -7,6 +7,17 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.7] - 2026-11-19
+
+### Fixed
+
+- **Freight in a US state with no sales tax is no longer refused.** In Oregon,
+  Delaware, Montana, New Hampshire and Alaska (where no local rate applies) the
+  goods are at 0%, which made a shipping line "delivery of exempt goods", a rule
+  those states have no reason to publish, so every order with shipping refused. It
+  now carries no tax. Freight on exempt goods in a state that does tax still needs
+  the state's rule.
+
 ## [0.22.6] - 2026-11-19
 
 ### Fixed
