@@ -19,6 +19,7 @@ use Cbox\Tax\Enums\DeliveryComponent;
 use Cbox\Tax\Enums\ExemptionType;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\Pricing;
+use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RefusalReason;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
@@ -31,6 +32,7 @@ use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\SupplyRoute;
+use Cbox\Tax\ValueObjects\TaxAssessment;
 use Cbox\Tax\ValueObjects\TaxExemption;
 use Cbox\Tax\ValueObjects\TaxOrder;
 use Cbox\Tax\ValueObjects\TaxQuery;
@@ -594,4 +596,68 @@ it('prices a resale order with freight, the certificate covering both', function
 
     expect((string) $a->tax()->getAmount())->toBe('0.00')
         ->and($a->forLine('delivery')->treatment)->toBe(TaxTreatment::Exempt);
+});
+
+it('prices freight under a state\'s delivery category where no Streamlined delivery rule is published', function (): void {
+    $only = fn (string $kind, array $predicate): array => ['conditions' => [['kind' => $kind, 'says' => 'Arizona TPT on delivery.', 'predicate' => $predicate]]];
+    $exemptWhen = ['all' => [
+        ['fact' => 'delivery.fromSellerToBuyer', 'op' => 'eq', 'value' => true],
+        ['fact' => 'delivery.separatelyStated', 'op' => 'eq', 'value' => true],
+    ]];
+    $this->rules->category('services.delivery', 'services')
+        ->rate('us:AZ', '0', 'exempt', 'services.delivery', from: '1990-01-01', extra: $only('applies_only_to', $exemptWhen))
+        ->rate('us:AZ', '5.6', 'standard', 'services.delivery', from: '1990-01-01', extra: $only('excludes', ['not' => $exemptWhen]))
+        ->install();
+
+    $freight = fn (DecisionFacts $facts): TaxOrder => ruleOrder('AZ', [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(facts: $facts)),
+    ]);
+
+    // Refused before: Arizona publishes no transport_on_taxable_goods component. The
+    // exempt row also needs `separatelyStated`, which only the order itself supplies.
+    $open = app(OrderTaxCalculator::class)->assessOrder($freight(new DecisionFacts))->forLine('freight');
+    $stated = app(OrderTaxCalculator::class)->assessOrder($freight(new DecisionFacts(['delivery.fromSellerToBuyer' => true])))->forLine('freight');
+
+    expect((string) $open->tax->getAmount())->toBe('0.56')
+        ->and($stated->treatment)->toBe(TaxTreatment::Exempt)
+        ->and((string) $stated->tax->getAmount())->toBe('0.00');
+});
+
+it('still refuses freight on exempt goods where only a delivery category is published', function (): void {
+    $this->rules->category('services.delivery', 'services')
+        ->rate('us:AZ', '5.6', 'standard', 'services.delivery', from: '1990-01-01')
+        ->rate('us:AZ', '0', 'exempt', 'goods.food.basic', from: '1990-01-01')
+        ->install();
+
+    app(OrderTaxCalculator::class)->assessOrder(ruleOrder('AZ', [
+        new SupplyLine('food', Money::of('100.00', 'USD'), TaxClass::Groceries),
+        new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true),
+    ]));
+})->throws(UnresolvedTaxRule::class, 'No applicable delivery rule');
+
+it('reads a conditional exemption\'s conditions rather than exempting the whole category', function (): void {
+    $this->rules->category('services.delivery', 'services')
+        ->rate('us:CA', '0', 'exempt', 'services.delivery', from: '1990-01-01', extra: ['conditions' => [
+            ['kind' => 'separately_stated', 'says' => 'Separately stated.', 'predicate' => ['fact' => 'delivery.separatelyStated', 'op' => 'eq', 'value' => true]],
+            ['kind' => 'applies_only_to', 'says' => 'No more than the cost.', 'predicate' => ['fact' => 'delivery.exceedsActualShippingCost', 'op' => 'eq', 'value' => false]],
+        ]])
+        ->install();
+
+    $freight = fn (array $facts): TaxAssessment => app(OrderTaxCalculator::class)->assessOrder(ruleOrder('CA', [
+        new SupplyLine('goods', Money::of('100.00', 'USD')),
+        new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(facts: new DecisionFacts($facts))),
+    ]))->forLine('freight');
+
+    // Read as a blanket exemption, all three came back exempt and authoritative.
+    $notStated = $freight(['delivery.separatelyStated' => false]);
+    $open = $freight([]);
+    $met = $freight(['delivery.exceedsActualShippingCost' => false]);
+
+    expect((string) $notStated->tax->getAmount())->toBe('0.73')
+        ->and($open->treatment)->toBe(TaxTreatment::Exempt)
+        ->and($open->rate?->limitedBy)->toBe(RateLimit::ConditionsUnevaluated)
+        ->and(array_merge($open->openFacts, ...array_map(fn (TaxAssessment $portion): array => $portion->openFacts, $open->portions)))->toBe(['delivery.exceedsActualShippingCost'])
+        ->and($met->treatment)->toBe(TaxTreatment::Exempt)
+        ->and($met->rate?->limitedBy)->toBeNull();
 });

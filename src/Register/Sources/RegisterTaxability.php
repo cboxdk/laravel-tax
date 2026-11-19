@@ -172,7 +172,14 @@ readonly class RegisterTaxability implements CategoryKeyedTaxability
             // charges something, the supply is taxable — an exemption sitting beside
             // a rate is a scope the register expresses through classification, and
             // reading it as a blanket exemption would zero-rate the whole category.
-            return array_all($atRung, fn ($rate): bool => in_array($rate['kind'] ?? null, ['zero', 'exempt'], true)) && ! $levied;
+            //
+            // A CONDITIONAL EXEMPTION IS NOT A BLANKET ONE either. California exempts
+            // freight only when it is separately stated and no more than the cost of
+            // shipping; read here as exempt, freight a caller said was NOT separately
+            // stated came back exempt and confident. Such a record leaves the answer to
+            // the rate, which reads its conditions against the facts and says which
+            // are still open.
+            return array_all($atRung, fn ($rate): bool => in_array($rate['kind'] ?? null, ['zero', 'exempt'], true) && empty($rate['conditions'])) && ! $levied;
         }
 
         return null;

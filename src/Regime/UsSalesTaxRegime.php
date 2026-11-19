@@ -18,6 +18,7 @@ use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Contracts\UsTaxFacts;
 use Cbox\Tax\Enums\Confidence;
+use Cbox\Tax\Enums\DeliveryComponent;
 use Cbox\Tax\Enums\JurisdictionLevel;
 use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
@@ -27,6 +28,7 @@ use Cbox\Tax\Enums\SourcingMode;
 use Cbox\Tax\Enums\TaxabilityTreatment;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
+use Cbox\Tax\Exceptions\UnknownCategory;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\RateSource\ResolvesRates;
@@ -77,6 +79,8 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
     /** Distinct from plain 'us-tax-data' so an audit trail shows the election. */
     private const string ELECTION_SOURCE = 'us-tax-data:election';
+
+    private const string DELIVERY_CATEGORY = 'services.delivery';
 
     public function __construct(
         private ProductTaxability $taxability,
@@ -164,6 +168,51 @@ readonly class UsSalesTaxRegime implements TaxRegime
             : $price->isLessThan($cap);
     }
 
+    /**
+     * FREIGHT A STATE RULES ON AS A CATEGORY. About half the states publish the
+     * Streamlined delivery components that {@see deliveryExcluded()} reads; most of
+     * the rest publish a rate for `services.delivery` instead, with its conditions —
+     * Texas taxes delivery charged by the seller at 6.25 %, California exempts it
+     * when it is separately stated. Refusing every order with a shipping line in
+     * those states ignored a rule that was there.
+     *
+     * Only for the delivery of taxable goods, and only where no Streamlined rule
+     * exists and the register states the category (an assumed taxable answer is not
+     * a rule). The facts the order itself establishes are filled in beneath the
+     * caller's: the seller charges it, on a line of its own, for these taxable
+     * goods. The rest stay open, and the rate says so. Public so the calculator can
+     * name the open facts of the question that was really asked.
+     */
+    public function deliveryAsOwnSupply(TaxQuery $query): ?TaxQuery
+    {
+        $delivery = $query->delivery;
+        $state = $query->place->subdivision;
+
+        if ($delivery === null || $state === null || $delivery->goodsTaxable !== true
+            || $query->exemption?->appliesTo($query->place, $query->on())
+            || ! $this->taxability instanceof CategoryKeyedTaxability
+            || $this->delivery?->treatment($state, $delivery, $query->on()) !== null) {
+            return null;
+        }
+
+        try {
+            $determination = $this->taxability->determineKey($query->place, self::DELIVERY_CATEGORY, $query->amount, $query->on());
+        } catch (UnknownCategory) {
+            return null;
+        }
+
+        if ($determination->assumed) {
+            return null;
+        }
+
+        return $query->asDeliverySupply(self::DELIVERY_CATEGORY, $delivery->facts
+            ->withDefault('delivery.chargedBySeller', true)
+            ->withDefault('delivery.separatelyStated', true)
+            ->withDefault('delivery.containsTaxableGoods', true)
+            ->withDefault('delivery.shareAllocatedToExemptItems', false)
+            ->withDefault('delivery.isHandlingCharge', $delivery->component === DeliveryComponent::Handling));
+    }
+
     private function deliveryExcluded(TaxQuery $query, SubdivisionCode $state): bool
     {
         $delivery = $query->delivery;
@@ -243,6 +292,12 @@ readonly class UsSalesTaxRegime implements TaxRegime
             && $this->marketplaceLawInForce($subdivision->value, $query->on());
 
         if ($query->delivery !== null && ! $query->amount->isZero() && ($facilitated || $query->seller->isRegisteredInSubdivision($subdivision, $query->on()))) {
+            $own = $this->deliveryAsOwnSupply($query);
+
+            if ($own !== null) {
+                return $this->assess($own, $rates);
+            }
+
             if ($this->deliveryExcluded($query, $subdivision)) {
                 return new TaxAssessment(
                     treatment: TaxTreatment::Exempt,

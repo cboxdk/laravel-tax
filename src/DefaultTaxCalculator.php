@@ -32,6 +32,7 @@ use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnsupportedJurisdiction;
+use Cbox\Tax\Regime\UsSalesTaxRegime;
 use Cbox\Tax\Register\Reader\CategoryMap;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\ValueObjects\FlatCharge;
@@ -261,7 +262,11 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
             throw UnsupportedJurisdiction::for($query->place->country);
         }
 
-        return $this->withOpenConditions($query, $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->exportFromUnion($query, $this->gateCollection($query, $regime->assess($query, $this->rates))))))));
+        // Freight priced under the state's delivery category waits on THAT category's
+        // facts, not on the goods it was delivered with.
+        $asked = $regime instanceof UsSalesTaxRegime ? ($regime->deliveryAsOwnSupply($query) ?? $query) : $query;
+
+        return $this->withOpenConditions($asked, $this->withExchangeRate($query, $this->applyExemption($query, $this->applyPurchaser($query, $this->stampTaxPoint($query, $this->exportFromUnion($query, $this->gateCollection($query, $regime->assess($query, $this->rates))))))));
     }
 
     /**

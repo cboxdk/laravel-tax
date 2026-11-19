@@ -311,6 +311,49 @@ readonly class TaxQuery
     }
 
     /**
+     * The delivery charge as a supply of its own, classified under `$categoryKey`:
+     * no longer the delivered goods' share, so their commodity and item codes go,
+     * and `$facts` sit beneath the query's own. Narrow for the reason
+     * {@see classifiedAs()} is.
+     */
+    public function asDeliverySupply(string $categoryKey, DecisionFacts $facts): self
+    {
+        $merged = $this->facts;
+
+        foreach ($facts->values as $name => $value) {
+            $merged = $merged->withDefault($name, $value);
+        }
+
+        return new self(
+            $this->amount,
+            $this->pricing,
+            $this->place,
+            $this->customer,
+            $this->seller,
+            TaxClass::GeneralGoods,
+            $this->customerTaxIdValidated,
+            $this->exemption,
+            null,
+            $this->suppliedAt,
+            $this->reportedOn,
+            $this->route,
+            $this->postalCode,
+            $this->marketplaceFacilitated,
+            null,
+            $this->roundingScope,
+            null,
+            $categoryKey,
+            $this->performedAt,
+            $this->quantity,
+            $merged,
+            $this->saleAmount,
+            $this->customerTaxId,
+            $this->purchaser,
+            $this->consignmentValue,
+        );
+    }
+
+    /**
      * The same query placed somewhere else, with the customer's number counted or not.
      * Northern Ireland's goods are assessed under the EU's rules this way, and only an
      * XI number makes the buyer a business there. Narrow for the reason
