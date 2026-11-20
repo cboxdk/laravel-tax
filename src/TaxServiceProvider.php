@@ -16,6 +16,7 @@ use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\ExchangeRates;
 use Cbox\Tax\Contracts\FlatChargeSource;
 use Cbox\Tax\Contracts\LocalAuthorityResolver;
+use Cbox\Tax\Contracts\MarginSchemes;
 use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\NexusThresholds;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
@@ -27,6 +28,7 @@ use Cbox\Tax\Contracts\RegimeRegistry;
 use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\ReturnAggregator;
 use Cbox\Tax\Contracts\RoundingRules;
+use Cbox\Tax\Contracts\SmallBusinessRules;
 use Cbox\Tax\Contracts\SourcingRules;
 use Cbox\Tax\Contracts\TaxCalculator;
 use Cbox\Tax\Contracts\TaxRateSource;
@@ -51,11 +53,13 @@ use Cbox\Tax\Register\Sources\InstalledRegister;
 use Cbox\Tax\Register\Sources\RegisterAttribution;
 use Cbox\Tax\Register\Sources\RegisterBoundaries;
 use Cbox\Tax\Register\Sources\RegisterDelivery;
+use Cbox\Tax\Register\Sources\RegisterMarginSchemes;
 use Cbox\Tax\Register\Sources\RegisterMarketplaceRules;
 use Cbox\Tax\Register\Sources\RegisterNexus;
 use Cbox\Tax\Register\Sources\RegisterPurchaserExemptions;
 use Cbox\Tax\Register\Sources\RegisterRateSource;
 use Cbox\Tax\Register\Sources\RegisterRounding;
+use Cbox\Tax\Register\Sources\RegisterSmallBusiness;
 use Cbox\Tax\Register\Sources\RegisterSourcing;
 use Cbox\Tax\Register\Sources\RegisterTaxability;
 use Cbox\Tax\Register\Sources\RegisterUnstatedReadings;
@@ -206,7 +210,13 @@ class TaxServiceProvider extends ServiceProvider
             $app->make(JurisdictionRepository::class),
             $app->make(ExchangeRates::class),
             $app->make(PurchaserExemptions::class),
+            $app->make(MarginSchemes::class),
+            $app->make(SmallBusinessRules::class),
+            $app->make(EuTerritories::class),
         ));
+
+        $this->app->singleton(MarginSchemes::class, static fn (Application $app): MarginSchemes => new RegisterMarginSchemes($app->make(RegisterData::class)));
+        $this->app->singleton(SmallBusinessRules::class, static fn (Application $app): SmallBusinessRules => new RegisterSmallBusiness($app->make(RegisterData::class)));
 
         $this->app->singleton(MarketplaceRules::class, static fn (Application $app): MarketplaceRules => new RegisterMarketplaceRules($app->make(RegisterData::class)));
 

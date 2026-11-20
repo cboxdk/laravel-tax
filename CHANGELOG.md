@@ -7,6 +7,31 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+### Added
+
+- **Margin scheme.** `TaxQuery::$margin` and `SupplyLine::$margin` take a `MarginSale`
+  (purchase price, class of goods, method): the supply is taxed where the dispatch
+  begins, on the margin with the tax inside it, at the rate the state's published rule
+  names. It is outside the distance-selling rule and the intra-Community exemption,
+  exempt on export from the Union and taxed on export from the United Kingdom. The new
+  `TaxTreatment::MarginScheme` says the tax is owed and not stated on the invoice;
+  `TaxAssessment::$margin` carries the purchase price and the margin. The per-period
+  method returns no tax for one sale (`RateLimit::MarginPerPeriod`).
+- **Small-business exemption.** `SellerRegistrations::$smallBusiness` takes the member
+  states the seller holds the exemption in, with its turnover there. A supply taxed
+  there is exempt, goods to a business in another member state included (Art. 139(1)),
+  until the supply that passes the state's threshold.
+- Contracts `MarginSchemes` and `SmallBusinessRules`, read from the register's
+  `margin_scheme` rules (with `rate`, `export`, `invoice`, schema 2.8.3) and the new
+  `small_business_exemption` kind (schema 2.9, now reviewed).
+- Refusal reasons `MarginSchemeUnavailable`, `MarginSchemeIneligible` and
+  `SmallBusinessExemptionUnavailable`.
+
+### Changed
+
+- `margin_scheme` moved from reviewed to applied in `RuleKinds`.
+- `TaxTreatment` has a new case. A `match` over it without a default needs the arm.
+
 ## [0.22.7] - 2026-11-19
 
 ### Fixed

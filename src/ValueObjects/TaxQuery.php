@@ -226,9 +226,19 @@ readonly class TaxQuery
          * measured on its own amount.
          */
         public ?Money $consignmentValue = null,
+        /**
+         * The seller's election to tax this supply under the margin scheme, with what
+         * it paid for the item. `amount` is then the selling price, tax included,
+         * whatever `pricing` says. Null: the normal rules. See {@see MarginSale}.
+         */
+        public ?MarginSale $margin = null,
     ) {
         if ($quantity < 1) {
             throw new InvalidArgumentException('A quantity is a count of items, at least 1. A refund is a negative amount, not a negative quantity.');
+        }
+
+        if ($margin !== null && $margin->purchasePrice->getCurrency()->getCurrencyCode() !== $amount->getCurrency()->getCurrencyCode()) {
+            throw new InvalidArgumentException('A margin sale states its purchase price in the currency of the sale: the margin is one subtracted from the other.');
         }
 
         $this->categoryStated = $categoryKey === null || $category !== TaxClass::GeneralGoods;
@@ -307,6 +317,7 @@ readonly class TaxQuery
             $this->customerTaxId,
             $this->purchaser,
             $this->consignmentValue,
+            $this->margin,
         );
     }
 
@@ -387,6 +398,7 @@ readonly class TaxQuery
             $this->customerTaxId,
             $this->purchaser,
             $this->consignmentValue,
+            $this->margin,
         );
     }
 

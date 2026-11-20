@@ -59,6 +59,10 @@ it('separates what the caller can fix from what they cannot', function (): void 
         RefusalReason::TaxabilityConditional,
         RefusalReason::ThresholdCurrencyUnknown,
         RefusalReason::DeliveryFactsRequired,
+        // Closed by taking the election or the claim off, or by stating what it lacks.
+        RefusalReason::MarginSchemeUnavailable,
+        RefusalReason::MarginSchemeIneligible,
+        RefusalReason::SmallBusinessExemptionUnavailable,
     ]);
 });
 

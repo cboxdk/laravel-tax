@@ -71,7 +71,7 @@ the facts you send**, and every fact has somewhere to go.
 
 | | |
 | --- | --- |
-| `treatment` | `Standard`, `ReverseCharge`, `IntraCommunitySupply`, `ZeroRated`, `Exempt`, `NotRegistered`, `MarketplaceFacilitated` — six different zeros that mean different things on a return |
+| `treatment` | `Standard`, `ReverseCharge`, `IntraCommunitySupply`, `ZeroRated`, `Exempt`, `NotRegistered`, `MarketplaceFacilitated` — six different zeros that mean different things on a return — and `MarginScheme`, where tax is owed on the dealer's margin and not stated on the invoice |
 | `tax`, `net`, `gross` | exact `brick/money`, rounded by the jurisdiction's own published policy |
 | `rate->provenance` | which release, which dataset, effective from when, and a hash of the section it was read from |
 | `rate->confidence`, `rate->limitedBy` | whether this is exact, and if not, the one step that would close the gap |

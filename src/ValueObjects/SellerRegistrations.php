@@ -31,7 +31,21 @@ readonly class SellerRegistrations
         public CountryCode $establishment,
         public array $registrations = [],
         public ?OssStatus $oss = null,
+        /**
+         * The member states where the seller applies the small-business exemption,
+         * with its turnover there. Empty: it claims none. See
+         * {@see SmallBusinessExemption}.
+         *
+         * @var list<SmallBusinessExemption>
+         */
+        public array $smallBusiness = [],
     ) {}
+
+    /** The exemption the seller claims in a state on a date, if it claims one. */
+    public function smallBusinessIn(CountryCode $country, DateTimeInterface $on): ?SmallBusinessExemption
+    {
+        return array_find($this->smallBusiness, static fn (SmallBusinessExemption $claim): bool => $claim->country->equals($country) && $claim->coversDate($on));
+    }
 
     public function isEstablishedIn(CountryCode $country): bool
     {

@@ -221,10 +221,11 @@ it('refuses a share rule it cannot read as a share', function (array $payload, s
     'unknown local base' => [['proportion' => '50', 'localTaxes' => 'proportional'], 'which this reader does not know'],
 ]);
 
-it('reads schema 2.8 and still refuses 2.9', function (): void {
+it('reads schema 2.8 and 2.9, which names the small-business exemption, and still refuses 2.10', function (): void {
     expect(RegisterCompatibility::reads('2.8.0'))->toBeTrue()
         ->and(RegisterCompatibility::reads('2.8.3'))->toBeTrue()
-        ->and(RegisterCompatibility::reads('2.9.0'))->toBeFalse();
+        ->and(RegisterCompatibility::reads('2.9.0'))->toBeTrue()
+        ->and(RegisterCompatibility::reads('2.10.0'))->toBeFalse();
 });
 
 it('still refuses an unknown field on a taxable_base rule', function (): void {
