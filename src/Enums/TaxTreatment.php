@@ -64,7 +64,21 @@ enum TaxTreatment: string
      */
     case IntraCommunitySupply = 'intra_community_supply';
 
-    /** Whether the seller charges tax on the invoice for this treatment. */
+    /**
+     * Taxed on the dealer's MARGIN, not on the price (Arts. 311–325; VATA 1994 s. 50A).
+     *
+     * The seller owes tax and the invoice shows none: Art. 325 forbids stating it
+     * separately, and the buyer can deduct nothing. That is why it is not
+     * {@see self::Standard} — a host that prints "VAT 21%: 3.47" from a standard line
+     * issues an invoice the law forbids, and a return files the margin, not the price,
+     * as the taxable amount.
+     */
+    case MarginScheme = 'margin_scheme';
+
+    /**
+     * Whether the seller STATES tax on the invoice for this treatment. A margin sale
+     * bears tax and states none.
+     */
     public function chargesTax(): bool
     {
         return $this === self::Standard;
@@ -80,7 +94,7 @@ enum TaxTreatment: string
     public function taxWasDue(): bool
     {
         return match ($this) {
-            self::Standard, self::MarketplaceFacilitated, self::ReverseCharge, self::IntraCommunitySupply => true,
+            self::Standard, self::MarginScheme, self::MarketplaceFacilitated, self::ReverseCharge, self::IntraCommunitySupply => true,
             self::ZeroRated, self::Exempt, self::NotRegistered => false,
         };
     }

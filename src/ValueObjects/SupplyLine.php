@@ -82,5 +82,7 @@ readonly class SupplyLine
         public int $quantity = 1,
         /** The register-named facts of this product, as on {@see TaxQuery::$facts}. */
         public DecisionFacts $facts = new DecisionFacts,
+        /** The margin-scheme election for this line, as on {@see TaxQuery::$margin}. */
+        public ?MarginSale $margin = null,
     ) {}
 }

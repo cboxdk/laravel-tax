@@ -26,12 +26,14 @@ class RuleKinds
         'attribution',
         'declined_rate',
         'holiday',
+        'margin_scheme',
         'marketplace_facilitator',
         'minimum_taxable_sale',
         'price_exemption',
         'purchaser_exemption',
         'remote_seller_election',
         'rounding',
+        'small_business_exemption',
         'sourcing',
         'taxable_base',
         'threshold',
@@ -39,9 +41,6 @@ class RuleKinds
 
     /** Kinds reviewed and deliberately not applied, and why. */
     public const array REVIEWED = [
-        'margin_scheme' => 'VAT on the margin for second-hand goods, art and antiques. It needs the purchase '
-            .'price and the seller\'s election, which a supply does not carry; a host that uses the scheme '
-            .'computes it before the engine.',
         'read_unstated' => 'A source was read for a category and its law does not answer it (schema 2.8). '
             .'Not a rate and never an answer: a lookup falls back exactly as without it. A host can show '
             .'it through UnstatedReadings, to tell "read, and the law is silent" from "not yet covered".',

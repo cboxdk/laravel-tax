@@ -226,6 +226,15 @@ enum RateLimit: string
      */
     case SeparateLevyUnpriced = 'separate_levy_unpriced';
 
+    /**
+     * A margin-scheme sale under the per-period method (the Dutch
+     * globalisatieregeling, the German Gesamtdifferenz, UK global accounting): the tax
+     * is the period's sales less the period's purchases, so ONE SALE HAS NONE OF ITS
+     * OWN. The line's tax is zero because no figure exists for it, not because none is
+     * due, and the seller works it out on the return.
+     */
+    case MarginPerPeriod = 'margin_per_period';
+
     /** The one step that turns this into an exact answer. */
     public function remedy(): string
     {
@@ -287,6 +296,9 @@ enum RateLimit: string
             self::SeparateLevyUnpriced => 'Charge the levy yourself, outside this rate: the register files it beside '
                 .'the jurisdiction\'s own tax as a per-unit amount (a `taxType` such as `excise` on '
                 .'TaxRegister::rateRecords()), which is owed per account or unit, not per sale.',
+            self::MarginPerPeriod => 'Nothing to send: under the per-period method the tax is computed on the '
+                .'return, from the period\'s sales and purchases. For a figure per sale, elect the individual method '
+                .'for the item, where the state lets the dealer choose.',
             self::BracketSchedule => 'Price tax-exclusive where you can: the published table is then applied to '
                 .'the sale exactly. A tax-inclusive price, or a local share stacked on the state\'s table, is '
                 .'priced at the table\'s per-dollar rate — right for a price, within a cent for a return.',

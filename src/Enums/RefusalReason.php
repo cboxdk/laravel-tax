@@ -73,6 +73,27 @@ enum RefusalReason: string
     /** The host has not established the facts required for a delivery exclusion. */
     case DeliveryFactsRequired = 'delivery_facts_required';
 
+    /**
+     * The margin scheme was elected where the register publishes no scheme that can be
+     * computed: no rule for the state, the class of goods or the method, or a rule from
+     * a release that does not yet say which rate the margin bears.
+     */
+    case MarginSchemeUnavailable = 'margin_scheme_unavailable';
+
+    /**
+     * The margin scheme was elected for a supply it cannot reach: a service, goods the
+     * state shuts out of it, or a purchase above the state's cap for the method.
+     */
+    case MarginSchemeIneligible = 'margin_scheme_ineligible';
+
+    /**
+     * The seller claims the small-business exemption in a state where it cannot have
+     * it: established outside the Union, in another member state without the
+     * cross-border identification number, over the Union turnover cap, or in a state
+     * whose scheme the register does not publish.
+     */
+    case SmallBusinessExemptionUnavailable = 'small_business_exemption_unavailable';
+
     /** The one step that turns this refusal into an answer. */
     public function remedy(): string
     {
@@ -92,6 +113,15 @@ enum RefusalReason: string
                 .'converted at a rate nobody chose.',
             self::TaxRuleUnsupported => 'Inspect the rule and its effective window in the installed release. '
                 .'Correct the data or bind an implementation that supports the rule; repeating the same request will not resolve it.',
+            self::MarginSchemeUnavailable => 'Sell this item under the normal rules (leave the margin election '
+                .'out), or sync a register release that publishes the state\'s margin scheme with its rate. The '
+                .'engine will not pick a rate or a method the state did not state.',
+            self::MarginSchemeIneligible => 'Leave the margin election off this line: the scheme covers second-hand '
+                .'goods, works of art, collectors\' items and antiques bought without deductible VAT, within the '
+                .'limits the state sets.',
+            self::SmallBusinessExemptionUnavailable => 'Remove the small-business exemption from the seller for this '
+                .'state, or state what is missing: an establishment in the Union, the EX identification number for '
+                .'a state other than its own, and a Union turnover within the cap.',
             self::DeliveryFactsRequired => 'State whether the delivered goods are taxable and confirm whether '
                 .'the published delivery exclusion conditions are met. Leave the charge unassessed until those facts are known.',
         };
@@ -108,7 +138,7 @@ enum RefusalReason: string
     public function callerCanClose(): bool
     {
         return match ($this) {
-            self::TaxabilityConditional, self::ThresholdCurrencyUnknown, self::DeliveryFactsRequired => true,
+            self::TaxabilityConditional, self::ThresholdCurrencyUnknown, self::DeliveryFactsRequired, self::MarginSchemeIneligible, self::MarginSchemeUnavailable, self::SmallBusinessExemptionUnavailable => true,
             self::RateUnavailable, self::TaxabilityUndetermined, self::JurisdictionUnsupported, self::TaxRuleUnsupported => false,
         };
     }

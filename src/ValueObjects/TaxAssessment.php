@@ -110,6 +110,13 @@ readonly class TaxAssessment
          * @var list<string>
          */
         public array $openFacts = [],
+        /**
+         * Set where the supply was taxed under the margin scheme: the purchase price,
+         * the margin the tax was computed on, and whether a figure for this one sale
+         * exists at all. `tax` is then INSIDE `gross`, never added to it, and must not
+         * be stated on the invoice (Art. 325).
+         */
+        public ?MarginResult $margin = null,
     ) {}
 
     /**
@@ -166,6 +173,7 @@ readonly class TaxAssessment
         ?array $openFacts = null,
         /** Replaces the exact tax, for a caller that replaced the rate it came from. */
         ?RationalMoney $unroundedTax = null,
+        ?MarginResult $margin = null,
     ): self {
         return new self(
             treatment: $treatment ?? $this->treatment,
@@ -188,6 +196,7 @@ readonly class TaxAssessment
             exchangeRate: $exchangeRate ?? $this->exchangeRate,
             limitedBy: $limitedBy ?? $this->limitedBy,
             openFacts: $openFacts ?? $this->openFacts,
+            margin: $margin ?? $this->margin,
         );
     }
 
@@ -259,6 +268,12 @@ readonly class TaxAssessment
     public function isIntraCommunitySupply(): bool
     {
         return $this->treatment === TaxTreatment::IntraCommunitySupply;
+    }
+
+    /** Taxed on the dealer's margin: tax is owed and none is stated on the invoice. */
+    public function isMarginScheme(): bool
+    {
+        return $this->treatment === TaxTreatment::MarginScheme;
     }
 
     public function isExempt(): bool
