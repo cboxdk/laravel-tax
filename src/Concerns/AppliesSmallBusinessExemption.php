@@ -139,8 +139,14 @@ trait AppliesSmallBusinessExemption
      */
     private function stateTaxedIn(TaxQuery $query, TaxAssessment $assessment): ?Jurisdiction
     {
-        if ($assessment->treatment === TaxTreatment::IntraCommunitySupply) {
-            // Art. 138 would exempt the dispatch in the state it begins in.
+        // Goods that leave the state they are dispatched from untaxed are supplied
+        // there: Art. 138 would exempt the dispatch where it begins, and so does an
+        // export, to a third country or to a territory outside the VAT area (the
+        // Canary Islands), which a regime answers in the destination's name.
+        $leavesUntaxed = $assessment->treatment === TaxTreatment::IntraCommunitySupply
+            || ($assessment->treatment === TaxTreatment::ZeroRated && $assessment->rate === null);
+
+        if ($leavesUntaxed) {
             $from = $query->route->shipFrom;
 
             return $from !== null && $from->taxProfile->isEuMember ? $from : $this->jurisdictions?->find($query->seller->establishment);

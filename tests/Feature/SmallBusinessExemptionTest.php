@@ -32,7 +32,7 @@ use Cbox\Tax\ValueObjects\TaxQuery;
 beforeEach(function (): void {
     $register = FakeRegister::at(config('tax.register.store'), '2026.02.01-1');
 
-    foreach (['NL' => '21', 'DE' => '19', 'FR' => '20'] as $code => $rate) {
+    foreach (['NL' => '21', 'DE' => '19', 'FR' => '20', 'ES' => '21'] as $code => $rate) {
         $register->rate('eu:'.$code, $rate, from: '1990-01-01');
     }
 
@@ -152,8 +152,14 @@ it('exempts an export and a margin sale alike: the seller charges no VAT at home
     $export = $this->tax->assess(smallSale('NL', 'US', [kor('5000.00')], ['place' => $this->geo->find(new CountryCode('US'), new SubdivisionCode('US-TX'))]));
     $margin = $this->tax->assess(smallSale('NL', 'NL', [kor('5000.00')], ['margin' => new MarginSale(Money::of('10.00', 'EUR'))]));
 
+    $canaries = $this->tax->assess(smallSale('NL', 'ES', [kor('5000.00')], ['postalCode' => '38001'], new OssStatus(registered: true)));
+
     expect($export->treatment)->toBe(TaxTreatment::Exempt)
         ->and($export->placeOfSupply->country->value)->toBe('NL')
+        // Outside the VAT area: an export from the Netherlands, not a sale in Spain.
+        ->and($canaries->treatment)->toBe(TaxTreatment::Exempt)
+        ->and($canaries->placeOfSupply->country->value)->toBe('NL')
+        ->and($canaries->mentions[0]->code)->toBe('small_business_exemption')
         ->and($margin->treatment)->toBe(TaxTreatment::Exempt)
         ->and($margin->margin)->toBeNull();
 });
