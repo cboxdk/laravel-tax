@@ -17,6 +17,9 @@ description: The engine's architecture and the regimes it ships.
   market can settle them.
 - [Exemptions](exemptions.md) — express a buyer certificate natively and get a
   native `Exempt` assessment, applied deny-by-default over the regime's verdict.
+- [Margin scheme and small-business exemption](margin-scheme-and-small-business.md) —
+  taxing a second-hand sale on the dealer's margin, and exempting a seller under a
+  member state's turnover threshold.
 - [Rate breakdown](rate-breakdown.md) — splitting an assessment's tax across the
   state/county/city authorities that levy it, with the parts summing exactly to
   the whole.
