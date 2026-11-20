@@ -22,5 +22,7 @@ readonly class SmallBusinessRule
         public ?InvoiceMention $mention = null,
         public ?string $citation = null,
         public ?string $source = null,
+        /** Whether passing the threshold also shuts the seller out for the following calendar year. */
+        public bool $excludesFollowingYear = false,
     ) {}
 }

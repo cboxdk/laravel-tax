@@ -48,6 +48,9 @@ trait AssessesMarginSales
 {
     use ResolvesRates;
 
+    /** The fact a caller states where it wants the acquisition on record: bought without deductible VAT. */
+    public const string ACQUIRED_WITHOUT_DEDUCTIBLE_VAT = 'margin.acquiredWithoutDeductibleVat';
+
     private function assessMarginSale(TaxQuery $query, MarginSale $sale): TaxAssessment
     {
         $key = $query->categoryKey ?? CategoryMap::keyFor($query->category);
@@ -57,6 +60,15 @@ trait AssessesMarginSales
                 'The margin scheme covers goods: second-hand goods, works of art, collectors\' items and antiques. "%s" is a service, so it cannot be sold under it.',
                 $key,
             ), RefusalReason::MarginSchemeIneligible);
+        }
+
+        // The one condition only the seller can know, where it says so itself: the
+        // scheme is open to goods bought without VAT it could deduct (Art. 314).
+        if ($query->facts->has(self::ACQUIRED_WITHOUT_DEDUCTIBLE_VAT) && $query->facts->get(self::ACQUIRED_WITHOUT_DEDUCTIBLE_VAT) === false) {
+            throw new UnresolvedTaxRule(
+                'The margin scheme is open only to goods the dealer bought without VAT it can deduct: from a private person, an exempt seller or another dealer under the scheme (Art. 314 of Council Directive 2006/112/EC). This item was bought with deductible VAT, so it is sold under the normal rules.',
+                RefusalReason::MarginSchemeIneligible,
+            );
         }
 
         $origin = $this->marginOrigin($query);

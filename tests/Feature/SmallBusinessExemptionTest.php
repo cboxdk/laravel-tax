@@ -41,7 +41,7 @@ beforeEach(function (): void {
 
     $register->rule('eu:NL', 'small_business_exemption', [
         'threshold' => ['amount' => '20000.00', 'currency' => 'EUR', 'measuredOver' => 'calendar_year'],
-        'crossing' => ['endsWith' => 'crossing_supply'],
+        'crossing' => ['endsWith' => 'crossing_supply', 'excludes' => 'rest_of_year_and_following_year'],
         'crossBorder' => ['unionTurnover' => ['amount' => '100000.00', 'currency' => 'EUR'], 'identification' => 'EX'],
         'invoice' => ['mention' => 'Vrijgesteld van omzetbelasting: kleineondernemersregeling', 'reference' => 'Artikel 25a Wet op de omzetbelasting 1968'],
         'citation' => 'artikel 25a Wet op de omzetbelasting 1968',
@@ -205,4 +205,13 @@ it('honours the window the seller holds the exemption for', function (): void {
 
     expect($inside->treatment)->toBe(TaxTreatment::Exempt)
         ->and($outside->treatment)->toBe(TaxTreatment::Standard);
+});
+
+it('keeps a seller out for the year after it passed the threshold, where the state says so', function (): void {
+    $claim = new SmallBusinessExemption(new CountryCode('NL'), Money::of('100.00', 'EUR'), previousYearTurnover: Money::of('20500.00', 'EUR'));
+
+    $a = $this->tax->assess(smallSale('NL', 'NL', [$claim]));
+
+    expect($a->treatment)->toBe(TaxTreatment::Standard)
+        ->and($a->reason)->toContain('previous calendar year');
 });

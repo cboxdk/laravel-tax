@@ -95,6 +95,7 @@ readonly class RegisterSmallBusiness implements SmallBusinessRules
             mention: $mention === null ? null : new InvoiceMention('small_business_exemption', $mention, Shape::text($invoice['reference'] ?? null) ?? $citation),
             citation: $citation,
             source: Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null),
+            excludesFollowingYear: Shape::text(Shape::map($payload['crossing'] ?? null)['excludes'] ?? null) === 'rest_of_year_and_following_year',
         );
     }
 }

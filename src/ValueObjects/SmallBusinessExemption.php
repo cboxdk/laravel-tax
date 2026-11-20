@@ -35,6 +35,13 @@ readonly class SmallBusinessExemption
         public ?string $identificationNumber = null,
         public ?DateTimeImmutable $validFrom = null,
         public ?DateTimeImmutable $validUntil = null,
+        /**
+         * The seller's turnover in this state in the PREVIOUS calendar year, where
+         * the host knows it. A state that shuts a seller out for the year after it
+         * passed the threshold (the Netherlands does) is asked with it; null says
+         * nothing, and the claim stands on the current year alone.
+         */
+        public ?Money $previousYearTurnover = null,
     ) {}
 
     public function coversDate(DateTimeInterface $at): bool

@@ -19,6 +19,7 @@ use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
 use Cbox\Tax\Testing\FakeRegister;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\MarginSale;
 use Cbox\Tax\ValueObjects\OssStatus;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
@@ -225,6 +226,7 @@ it('refuses what it would have to guess', function (callable $query, RefusalReas
     }
 })->with([
     'a service' => [fn (): TaxQuery => marginSale('NL', 'NL', '30.00', '10.00', ['category' => TaxClass::DigitalService]), RefusalReason::MarginSchemeIneligible, 'is a service'],
+    'an item bought with deductible VAT' => [fn (): TaxQuery => marginSale('NL', 'NL', '30.00', '10.00', ['facts' => new DecisionFacts(['margin.acquiredWithoutDeductibleVat' => false])]), RefusalReason::MarginSchemeIneligible, 'without VAT it can deduct'],
     'a state with no published scheme' => [fn (): TaxQuery => marginSale('FR', 'FR', '30.00', '10.00'), RefusalReason::MarginSchemeUnavailable, 'publishes no margin scheme'],
     'a class of goods the state does not publish' => [fn (): TaxQuery => marginSale('NL', 'NL', '30.00', '10.00', ['margin' => new MarginSale(Money::of('10.00', 'EUR'), MarginGoods::Antiques)]), RefusalReason::MarginSchemeUnavailable, 'antiques'],
     'a rule that does not say its rate' => [fn (): TaxQuery => marginSale('ES', 'ES', '30.00', '10.00'), RefusalReason::MarginSchemeUnavailable, 'which rate the margin bears'],

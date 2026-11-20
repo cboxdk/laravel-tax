@@ -76,6 +76,19 @@ trait AppliesSmallBusinessExemption
             throw ThresholdCurrencyMismatch::between($rule->currency, $before->getCurrency()->getCurrencyCode());
         }
 
+        $previous = $claim->previousYearTurnover;
+
+        if ($rule->excludesFollowingYear && $previous !== null && $previous->getCurrency()->getCurrencyCode() === $rule->currency && $previous->isGreaterThan($threshold)) {
+            return $assessment->with(reason: $assessment->reason.sprintf(
+                ' The seller\'s small-business exemption in %1$s does not cover this supply: its turnover there in the previous calendar year, %2$s %3$s, passed the threshold of %2$s %4$s, which also shuts it out for the year after%5$s.',
+                $country,
+                $rule->currency,
+                $previous->getAmount(),
+                $threshold->getAmount(),
+                $cited,
+            ));
+        }
+
         // The whole sale, where this is one line of it: the exemption ends with the
         // sale that passes the threshold, and a refund pushes nothing over it.
         $sale = $this->inThresholdCurrency($query, ($query->saleAmount ?? $query->amount), $rule);
