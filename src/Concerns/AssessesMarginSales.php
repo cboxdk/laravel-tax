@@ -95,10 +95,13 @@ trait AssessesMarginSales
         $mentions = $rule->mention === null ? [] : [$rule->mention];
 
         if (! $this->insideMarginTerritory($origin, $query)) {
-            if ($rule->export === null) {
+            // A treatment the publisher dates says nothing about the days before it:
+            // the United Kingdom zero-rated a margin export until 1 May 2023.
+            if ($rule->export === null || ($rule->exportFrom !== null && $query->on()->format('Y-m-d') < $rule->exportFrom)) {
                 throw new UnresolvedTaxRule(sprintf(
-                    'The installed register does not say what %s does with a margin sale that leaves its tax territory. Sync a newer release, or sell the item under the normal rules.',
+                    'The installed register does not say what %s does with a margin sale that leaves its tax territory on %s. Sync a newer release, or sell the item under the normal rules.',
                     $country,
+                    $query->on()->format('Y-m-d'),
                 ), RefusalReason::MarginSchemeUnavailable);
             }
 

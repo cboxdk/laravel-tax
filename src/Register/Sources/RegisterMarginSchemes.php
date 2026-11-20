@@ -124,6 +124,7 @@ readonly class RegisterMarginSchemes implements MarginSchemes
             purchasePriceLimit: $limit,
             purchasePriceLimitCurrency: $limitCurrency,
             source: Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null),
+            exportFrom: Shape::text($export['from'] ?? null),
         );
     }
 }

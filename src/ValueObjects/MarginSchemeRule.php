@@ -31,5 +31,7 @@ readonly class MarginSchemeRule
         public ?string $purchasePriceLimit = null,
         public ?string $purchasePriceLimitCurrency = null,
         public ?string $source = null,
+        /** The day the export treatment holds from, where the publisher dates it; before it the rule states none. */
+        public ?string $exportFrom = null,
     ) {}
 }

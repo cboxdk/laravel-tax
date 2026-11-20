@@ -70,7 +70,7 @@ beforeEach(function (): void {
     ]), '2020-01-01');
     $register->rule('europe:GB', 'margin_scheme', $scheme('margin', [
         'rate' => ['applies' => 'goods'],
-        'export' => ['treatment' => 'taxed'],
+        'export' => ['treatment' => 'taxed', 'from' => '2023-05-01'],
     ]), '2020-01-01');
     // As the register published the scheme before it stated a rate.
     $register->rule('eu:ES', 'margin_scheme', $scheme('margin'), '2020-01-01');
@@ -276,4 +276,13 @@ it('taxes margin and ordinary lines of one order each under its own rules, and d
     // Delivery is part of the selling price: all of it margin, at the Dutch rate.
     expect((string) $delivered->lines[1]->assessment->tax->getAmount())->toBe('2.10')
         ->and($delivered->lines[1]->assessment->portions[0]->placeOfSupply->country->value)->toBe('NL');
+});
+
+it('refuses a British margin export from before the day the register dates its treatment', function (): void {
+    try {
+        $this->tax->assess(marginSale('GB', 'US', '50.00', '30.00', ['suppliedAt' => new DateTimeImmutable('2023-04-30')], 'GBP'));
+        $this->fail('Expected a refusal.');
+    } catch (UnresolvedTaxRule $e) {
+        expect($e->reason())->toBe(RefusalReason::MarginSchemeUnavailable)->and($e->getMessage())->toContain('2023-04-30');
+    }
 });
