@@ -11,6 +11,7 @@ use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Enums\NexusCombinator;
 use Cbox\Tax\Enums\ThresholdOperator;
 use Cbox\Tax\Exceptions\UnresolvedTaxRule;
+use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\NexusThreshold;
 use Cbox\Tax\ValueObjects\ThresholdMeasurement;
@@ -87,6 +88,8 @@ readonly class RegisterNexus implements NexusThresholds
             if (Shape::text($payload['binds'] ?? null) !== 'remote_seller') {
                 continue;
             }
+
+            RegisterCompatibility::applicable($rule);
 
             if (array_key_exists('conditions', $payload) || array_key_exists('conditionsCombinator', $payload)) {
                 throw new UnresolvedTaxRule('Unsupported compound remote-seller threshold for '.$state->value.'.');

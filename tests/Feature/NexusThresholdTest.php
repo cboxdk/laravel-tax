@@ -130,6 +130,30 @@ it('still refuses a threshold qualified by something it does not model', functio
         ->toThrow(UnresolvedTaxRule::class, 'unresolvedQualifications');
 });
 
+it('answers a state whose qualified threshold binds somebody else', function (): void {
+    // Oklahoma, as the register publishes it: the marketplace facilitator's threshold
+    // triggers an election the register has not modelled. That is no reason to refuse
+    // the remote seller's threshold beside it, which is the one this reader answers.
+    $root = config('tax.register.store').'/qualified-facilitator-threshold';
+
+    FakeRegister::at($root)
+        ->rate('us:OK', '4.5', from: '1990-01-01')
+        ->rule('us:OK', 'threshold', [
+            'amount' => '10000.00', 'currency' => 'USD', 'binds' => 'marketplace_facilitator',
+            'unresolvedQualifications' => [['says' => 'shall file an election with the Tax Commission']],
+        ], from: '2023-01-01')
+        ->rule('us:OK', 'threshold', [
+            'amount' => '100000.00', 'currency' => 'USD', 'binds' => 'remote_seller',
+        ], from: '2023-01-01')
+        ->install();
+
+    $layout = new StoreLayout($root);
+    $threshold = new RegisterNexus(new RegisterDataset($layout, new StorePointer($layout)))
+        ->for(new SubdivisionCode('US-OK'), new DateTimeImmutable('2026-11-20'));
+
+    expect($threshold?->salesDollars)->toBe(100000);
+});
+
 it('carries a fixed date whole, not only its kind', function (): void {
     // `next_calendar_date` names a month and a day — North Macedonia's "by 15
     // January" — and only a count was read, so a host got the kind with no date.

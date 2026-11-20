@@ -11,6 +11,7 @@ use Cbox\Tax\Contracts\RegisterData;
 use Cbox\Tax\Contracts\TaxRegister;
 use Cbox\Tax\Enums\LocalResolution;
 use Cbox\Tax\Enums\ThresholdOperator;
+use Cbox\Tax\Register\Reader\RegisterCompatibility;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\DistanceSalesThreshold;
 use Cbox\Tax\ValueObjects\RateRecord;
@@ -88,6 +89,11 @@ readonly class InstalledRegister implements TaxRegister
     public function distanceSalesThreshold(?DateTimeImmutable $at = null): ?DistanceSalesThreshold
     {
         $rule = $this->dataset->rulesOn('eu', 'threshold', $at ?? new DateTimeImmutable('today'))[0] ?? null;
+
+        if ($rule !== null) {
+            RegisterCompatibility::applicable($rule);
+        }
+
         $payload = Shape::map(Shape::map($rule)['payload'] ?? null);
         $amount = null;
         $operator = null;
