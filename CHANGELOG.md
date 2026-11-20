@@ -7,6 +7,17 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.8] - 2026-11-20
+
+### Fixed
+
+- **US nexus answers again in states that qualify another party's threshold.** Every
+  threshold rule for a state was checked for unmodelled qualifications before the
+  reader picked the remote seller's, so Oklahoma's marketplace-facilitator threshold
+  (an election the register has not modelled) refused the whole state's nexus answer.
+  The refusal now applies only to the rule a reader answers from: a qualified
+  remote-seller threshold, or the EU distance-sales threshold, still refuses.
+
 ## [0.22.7] - 2026-11-19
 
 ### Fixed
