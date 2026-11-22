@@ -170,7 +170,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
 
     /**
      * FREIGHT A STATE RULES ON AS A CATEGORY. About half the states publish the
-     * Streamlined delivery components that {@see deliveryExcluded()} reads; most of
+     * Streamlined delivery components that {@see deliveryUntaxed()} reads; most of
      * the rest publish a rate for `services.delivery` instead, with its conditions —
      * Texas taxes delivery charged by the seller at 6.25 %, California exempts it
      * when it is separately stated. Refusing every order with a shipping line in
@@ -236,7 +236,11 @@ readonly class UsSalesTaxRegime implements TaxRegime
         return $general !== null && $general->kind->isNil() && $general->percentage->isZero();
     }
 
-    private function deliveryExcluded(TaxQuery $query, SubdivisionCode $state): bool
+    /**
+     * Why the delivery charge carries no tax, or null when it is taxed at the rate of
+     * the goods it delivers.
+     */
+    private function deliveryUntaxed(TaxQuery $query, SubdivisionCode $state): ?string
     {
         $delivery = $query->delivery;
 
@@ -246,11 +250,23 @@ readonly class UsSalesTaxRegime implements TaxRegime
         // publish, so an ordinary wholesale order with shipping refused outright. With
         // a certificate that applies here the delivery rule has nothing to decide.
         if ($query->exemption?->appliesTo($query->place, $query->on())) {
-            return false;
+            return null;
         }
 
         if ($delivery === null || $delivery->goodsTaxable === null) {
             throw new UnresolvedTaxRule('Delivery requires the taxability of the delivered goods.', RefusalReason::DeliveryFactsRequired);
+        }
+
+        // FREIGHT FOLLOWS THE GOODS. A delivery charge is part of the sales price of
+        // what it delivers, and the sales price of exempt goods is exempt: Streamlined
+        // has the seller allocate a shared charge between taxable and exempt goods and
+        // tax only the taxable share (SSUTA § 316), and Arkansas, Texas and New York say
+        // it of freight in so many words. Included or excluded, the share delivering
+        // exempt goods carries nothing. Refusing it — "taxable delivery of exempt
+        // goods", or no Streamlined rule at all — failed every order of groceries or
+        // children's clothing with shipping in 40 states.
+        if (! $delivery->goodsTaxable) {
+            return 'the delivery charge follows the exempt goods it delivers.';
         }
 
         $treatment = $this->delivery?->treatment($state, $delivery, $query->on());
@@ -259,27 +275,27 @@ readonly class UsSalesTaxRegime implements TaxRegime
             throw new UnresolvedTaxRule('No applicable delivery rule for '.$state->value.' on '.$query->on()->format('Y-m-d').'.');
         }
 
-        if (! $treatment->included) {
-            // A published decision has already tested the exclusion's conditions
-            // against the facts supplied; a bare flag has not.
-            if ($treatment->conditionsVerified) {
-                return true;
-            }
-
-            if ($delivery->exclusionConditionsMet === null) {
-                throw new UnresolvedTaxRule('Confirm delivery exclusionConditionsMet after checking the published conditions for '.$state->value.'.', RefusalReason::DeliveryFactsRequired);
-            }
-
-            if ($delivery->exclusionConditionsMet) {
-                return true;
-            }
+        if ($treatment->included) {
+            return null;
         }
 
-        if (! $delivery->goodsTaxable) {
-            throw new UnresolvedTaxRule('Taxable delivery of exempt goods needs an independently classified delivery rate.');
+        // A published decision has already tested the exclusion's conditions
+        // against the facts supplied.
+        if ($treatment->conditionsVerified) {
+            return 'delivery excluded from the taxable base; its published exclusion conditions were met.';
         }
 
-        return false;
+        // A BARE STREAMLINED FLAG HAS ONE CONDITION, and the matrix states it above its
+        // own answers: a delivery charge is excluded "only if [it is] separately stated
+        // on the invoice, bill of sale or similar document given to the purchaser". A
+        // delivery line is separately stated unless the host says otherwise. Asking for
+        // a confirmation no API field could carry refused every order with shipping in
+        // Iowa, Michigan, Nevada, Oklahoma, Utah and Wyoming.
+        $met = $delivery->exclusionConditionsMet ?? $delivery->facts->get('delivery.separatelyStated') ?? true;
+
+        return $met === true
+            ? 'delivery excluded from the taxable base, being separately stated.'
+            : null;
     }
 
     private function determination(TaxQuery $query): TaxDetermination
@@ -333,7 +349,9 @@ readonly class UsSalesTaxRegime implements TaxRegime
                 );
             }
 
-            if ($this->deliveryExcluded($query, $subdivision)) {
+            $untaxed = $this->deliveryUntaxed($query, $subdivision);
+
+            if ($untaxed !== null) {
                 return new TaxAssessment(
                     treatment: TaxTreatment::Exempt,
                     net: $query->amount,
@@ -341,7 +359,7 @@ readonly class UsSalesTaxRegime implements TaxRegime
                     gross: $query->amount,
                     placeOfSupply: $query->place,
                     rate: null,
-                    reason: 'US sales tax: delivery excluded from the taxable base; its published exclusion conditions were met.',
+                    reason: 'US sales tax: '.$untaxed,
                 );
             }
         }

@@ -7,6 +7,24 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.9] - 2026-11-22
+
+### Fixed
+
+- **Freight on exempt goods follows the goods in every US state.** An order of
+  groceries or children's clothing with a shipping line refused in 40 states,
+  either as "taxable delivery of exempt goods" (Streamlined states publishing the
+  charge as included) or "no applicable delivery rule" (states publishing only a
+  delivery category, Florida among them). The share delivering exempt goods now
+  carries no tax; the share delivering taxable goods is assessed as before.
+- **A bare Streamlined delivery exclusion reads its condition.** Iowa, Michigan,
+  Nevada, Oklahoma, Utah and Wyoming refused every order with shipping, asking the
+  host to confirm `exclusionConditionsMet`, which no API field carried. The matrix
+  states the condition itself: the charge is separately stated. A delivery line is,
+  unless `delivery.separatelyStated` says otherwise. Kansas's decision takes the
+  same default and now asks only for `delivery.label` and
+  `delivery.costIsTrueAndReasonable`.
+
 ## [0.22.8] - 2026-11-20
 
 ### Fixed

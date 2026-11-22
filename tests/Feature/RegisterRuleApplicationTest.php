@@ -244,12 +244,17 @@ it('uses the delivery exclusion only when its conditions are confirmed', functio
         ->and($a->net()->plus($a->tax())->isEqualTo($a->gross()))->toBeTrue();
 })->with([[true, '0.00'], [false, '0.65']]);
 
-it('refuses a delivery exclusion with unknown conditions', function (): void {
-    app(OrderTaxCalculator::class)->assessOrder(ruleOrder('KS', [
+it('reads a bare delivery exclusion\'s one condition, separate statement', function (): void {
+    // Refused before, asking for a confirmation no API field carried: every order
+    // with shipping in Iowa, Utah or Wyoming failed.
+    $freight = fn (array $facts): TaxAssessment => app(OrderTaxCalculator::class)->assessOrder(ruleOrder('KS', [
         new SupplyLine('goods', Money::of('100.00', 'USD')),
-        new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true),
-    ]));
-})->throws(UnresolvedTaxRule::class, 'exclusionConditionsMet');
+        new SupplyLine('delivery', Money::of('10.00', 'USD'), isDeliveryCharge: true, delivery: new DeliveryCharge(facts: new DecisionFacts($facts))),
+    ]))->forLine('delivery');
+
+    expect($freight([])->treatment)->toBe(TaxTreatment::Exempt)
+        ->and((string) $freight(['delivery.separatelyStated' => false])->tax->getAmount())->toBe('0.65');
+});
 
 it('keeps handling separate from transport and does not let a host invent an exclusion', function (): void {
     $a = app(OrderTaxCalculator::class)->assessOrder(ruleOrder('KS', [
@@ -501,7 +506,9 @@ it('lets neither a missing fact nor a host confirmation stand in for the publish
     } catch (UnresolvedTaxRule $e) {
         expect($e->reason())->toBe(RefusalReason::DeliveryFactsRequired)
             // ...and it names every fact it needs, not one per attempt.
-            ->and($e->getMessage())->toContain('delivery.separatelyStated')->toContain('delivery.label')
+            ->and($e->getMessage())->toContain('delivery.label')->toContain('delivery.costIsTrueAndReasonable')
+            // A delivery line is separately stated by being a line of its own.
+            ->and($e->getMessage())->not->toContain('delivery.separatelyStated')
             // containsExemptGoods is inferred from the goods, and purpose and direct
             // mail from the shape of the sale, so none of them is ever asked for.
             ->and($e->getMessage())->not->toContain('delivery.containsExemptGoods')
@@ -624,17 +631,31 @@ it('prices freight under a state\'s delivery category where no Streamlined deliv
         ->and((string) $stated->tax->getAmount())->toBe('0.00');
 });
 
-it('still refuses freight on exempt goods where only a delivery category is published', function (): void {
+it('lets freight on exempt goods follow the goods', function (): void {
+    // A state publishing only a delivery category that taxes freight, Arizona here.
     $this->rules->category('services.delivery', 'services')
         ->rate('us:AZ', '5.6', 'standard', 'services.delivery', from: '1990-01-01')
         ->rate('us:AZ', '0', 'exempt', 'goods.food.basic', from: '1990-01-01')
         ->install();
 
-    app(OrderTaxCalculator::class)->assessOrder(ruleOrder('AZ', [
-        new SupplyLine('food', Money::of('100.00', 'USD'), TaxClass::Groceries),
+    $order = fn (array $lines): TaxAssessment => app(OrderTaxCalculator::class)->assessOrder(ruleOrder('AZ', [
+        ...$lines,
         new SupplyLine('freight', Money::of('10.00', 'USD'), isDeliveryCharge: true),
-    ]));
-})->throws(UnresolvedTaxRule::class, 'No applicable delivery rule');
+    ]))->forLine('freight');
+
+    // Refused before: "no applicable delivery rule", so every order of groceries or
+    // children's clothing with shipping failed, a taxable line beside them or not.
+    $food = $order([new SupplyLine('food', Money::of('100.00', 'USD'), TaxClass::Groceries)]);
+    $mixed = $order([
+        new SupplyLine('food', Money::of('100.00', 'USD'), TaxClass::Groceries),
+        new SupplyLine('goods', Money::of('300.00', 'USD')),
+    ]);
+
+    // The share delivering the food carries nothing; the 7.50 delivering the goods is taxed.
+    expect($food->treatment)->toBe(TaxTreatment::Exempt)
+        ->and((string) $food->tax->getAmount())->toBe('0.00')
+        ->and((string) $mixed->tax->getAmount())->toBe('0.42');
+});
 
 it('reads a conditional exemption\'s conditions rather than exempting the whole category', function (): void {
     $this->rules->category('services.delivery', 'services')
