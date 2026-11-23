@@ -26,6 +26,16 @@ minor bumps may carry additive features; patches are fixes and docs).
 - `sbom.json` regenerated from the lock file (it still listed
   egulias/email-validator 4.0.4).
 
+### Fixed
+
+- **Territory reasons read as one sentence.** A territory outside the EU VAT area
+  with no tax of its own (Heligoland, Livigno, Mount Athos) said "no VAT is levied
+  applies there and is not computed by this engine". It now says "No VAT is levied
+  there.", and French Guiana and Mayotte name the article that leaves them untaxed.
+  Territories with their own tax name it: "Swiss VAT applies there and is not
+  computed by this engine." Åland now names Finnish VAT, which applies there; it
+  was described as VAT-free.
+
 ## [0.22.9] - 2026-11-22
 
 ### Fixed
