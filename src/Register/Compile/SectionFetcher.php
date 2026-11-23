@@ -24,8 +24,9 @@ use Throwable;
  * engine reads a compiled store on local disk and makes no network call at all, which
  * is the point of compiling one.
  *
- * Reads require an explicit server-side integration token. Artifact URLs are pinned
- * to the configured origin, and the token goes to that origin and nowhere else.
+ * Reads require a server-side key (TAX_REGISTER_TOKEN): a secret API key with the
+ * `register:read` scope. Artifact URLs are pinned to the configured origin, and the
+ * token goes to that origin and nowhere else.
  *
  * ONE REDIRECT, TO A TRUSTED ORIGIN, FOR A FILE WITH A PUBLISHED HASH. The register
  * may hand a large file over to object storage — a short-lived signed URL — instead
@@ -522,7 +523,7 @@ readonly class SectionFetcher
     private function request(): PendingRequest
     {
         if ($this->token === null || trim($this->token) === '') {
-            throw RateSourceUnavailable::transport(self::SOURCE, 'Register integration token is not configured.');
+            throw RateSourceUnavailable::transport(self::SOURCE, 'TAX_REGISTER_TOKEN is not set. Create a secret API key with the register:read scope at https://app.cboxtax.com under Developers → API keys.');
         }
 
         return $this->http->withToken($this->token)->withoutRedirecting();

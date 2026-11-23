@@ -545,8 +545,8 @@ readonly class Compiler
             'licence' => array_intersect_key(Shape::map($release['license'] ?? null), array_flip(['id', 'url', 'permits', 'forbids'])) ?: [
                 'id' => 'LicenseRef-Cbox-Tax-Register',
                 'url' => 'https://app.cboxtax.com/legal/terms',
-                'permits' => 'Use under an agreement with Cbox, for your own business and the companies in its group, including commercial use.',
-                'forbids' => 'Redistribution, resale or republishing of the data, and using it to serve other businesses through a marketplace, a SaaS or another platform, without a licence from Cbox for that purpose.',
+                'permits' => 'Any lawful use under an agreement with Cbox, including a platform or marketplace that calculates tax for other businesses, for as many sellers as the plan covers. Sellers are reported to Cbox every month.',
+                'forbids' => 'Giving, selling or otherwise making the data available to others, shipping it inside software others install, or offering its rates, rules or thresholds to others as a data service, without a separate agreement with Cbox. Removing or altering the markings that identify the key a copy was downloaded with.',
             ],
             'files' => $files,
         ]);

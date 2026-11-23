@@ -74,6 +74,21 @@ it('authenticates every register read and refuses missing credentials', function
     $http->assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer secret-register-token'));
 });
 
+it('says where a key comes from when the register refuses one, and only then', function (): void {
+    $http = app(Factory::class);
+    $http->preventStrayRequests();
+    $http->fakeSequence('data.cboxtax.com/*')
+        ->push(['error' => ['type' => 'unauthorized']], 401)
+        ->push([], 404);
+    $fetcher = new SectionFetcher($http, token: 'sk_live_revoked');
+
+    expect(fn (): array => $fetcher->json('/api/v1/releases/x/sections/rates'))
+        ->toThrow(RateSourceUnavailable::class, 'HTTP 401. Set TAX_REGISTER_TOKEN to a secret API key with the register:read scope');
+
+    expect(fn (): array => $fetcher->json('/api/v1/releases/x/sections/rates'))
+        ->toThrow(fn (RateSourceUnavailable $e) => expect($e->getMessage())->toEndWith('HTTP 404'));
+});
+
 it('does not send register credentials to a foreign artifact URL or follow redirects', function (): void {
     $http = app(Factory::class);
     $http->fake(['data.cboxtax.com/*' => $http->response('', 302, ['Location' => 'https://untrusted.example/artifact'])]);
