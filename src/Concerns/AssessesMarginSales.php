@@ -105,7 +105,9 @@ trait AssessesMarginSales
                 ), RefusalReason::MarginSchemeUnavailable);
             }
 
-            if ($rule->export === 'exempt') {
+            // `zero_rated` is the same answer under the state's own word for it (Estonia,
+            // Poland, Ireland reach no tax on the export through a nil rate).
+            if ($rule->export === 'exempt' || $rule->export === 'zero_rated') {
                 return new TaxAssessment(
                     treatment: TaxTreatment::ZeroRated,
                     net: $selling,
@@ -114,11 +116,12 @@ trait AssessesMarginSales
                     placeOfSupply: $origin,
                     rate: null,
                     reason: sprintf(
-                        'Margin scheme (%1$s): goods dispatched from %1$s to a customer in %2$s, outside the European Union, are an exempt export even when sold under the margin scheme (Art. 321 with Art. 146(1) of Council Directive 2006/112/EC). No VAT is due on the margin; keep proof that the goods left the Union.',
+                        'Margin scheme (%1$s): goods dispatched from %1$s to a customer in %2$s, outside the European Union, are %3$s export even when sold under the margin scheme (Art. 321 with Art. 146(1) of Council Directive 2006/112/EC). No VAT is due on the margin; keep proof that the goods left the Union.',
                         $country,
                         $query->place->country->value,
+                        $rule->export === 'zero_rated' ? 'a zero-rated' : 'an exempt',
                     ),
-                    mentions: [new InvoiceMention('export', 'Exempt export of goods', 'Article 146(1) of Council Directive 2006/112/EC')],
+                    mentions: [new InvoiceMention('export', $rule->export === 'zero_rated' ? 'Zero-rated export of goods' : 'Exempt export of goods', 'Article 146(1) of Council Directive 2006/112/EC')],
                 );
             }
         }

@@ -40,15 +40,16 @@ beforeEach(function (): void {
     $register->rate('us:TX', '6.25');
 
     $register->rule('eu:NL', 'small_business_exemption', [
-        'threshold' => ['amount' => '20000.00', 'currency' => 'EUR', 'measuredOver' => 'calendar_year'],
-        'crossing' => ['endsWith' => 'crossing_supply', 'excludes' => 'rest_of_year_and_following_year'],
+        'thresholds' => [['amount' => '20000.00', 'currency' => 'EUR', 'measuredOver' => 'calendar_year', 'appliesTo' => 'all']],
+        'crossing' => ['endsWith' => 'crossing_supply', 'excludesFollowingYears' => 1],
         'crossBorder' => ['unionTurnover' => ['amount' => '100000.00', 'currency' => 'EUR'], 'identification' => 'EX'],
         'invoice' => ['mention' => 'Vrijgesteld van omzetbelasting: kleineondernemersregeling', 'reference' => 'Artikel 25a Wet op de omzetbelasting 1968'],
         'citation' => 'artikel 25a Wet op de omzetbelasting 1968',
         'optional' => true,
     ], '2025-01-01');
     $register->rule('eu:DE', 'small_business_exemption', [
-        'threshold' => ['amount' => '25000.00', 'currency' => 'EUR', 'measuredOver' => 'previous_calendar_year'],
+        'thresholds' => [['amount' => '25000.00', 'currency' => 'EUR', 'measuredOver' => 'previous_calendar_year', 'appliesTo' => 'all']],
+        'crossing' => ['endsWith' => 'crossing_supply', 'excludesFollowingYears' => 0],
         'citation' => '§ 19 UStG',
     ], '2025-01-01');
     $register->rule('eu:NL', 'margin_scheme', [

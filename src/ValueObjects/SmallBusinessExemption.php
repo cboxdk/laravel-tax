@@ -42,6 +42,28 @@ readonly class SmallBusinessExemption
          * nothing, and the claim stands on the current year alone.
          */
         public ?Money $previousYearTurnover = null,
+        /** The turnover two calendar years back, for a state that shuts a seller out for two years (Sweden, Hungary). */
+        public ?Money $twoYearsAgoTurnover = null,
+        /**
+         * The part of `turnover` (and of `previousYearTurnover`) that is services, for a
+         * state with a separate limit for services or one that depends on the share of
+         * goods (France, Ireland). Null says nothing, and such a state refuses.
+         */
+        public ?Money $servicesTurnover = null,
+        public ?Money $previousYearServicesTurnover = null,
+        /**
+         * The part of the services turnover that is food served on the premises or
+         * lodging, which France leaves out of its services limit. Null says nothing,
+         * and such a state refuses.
+         */
+        public ?Money $foodAndLodgingTurnover = null,
+        public ?Money $previousYearFoodAndLodgingTurnover = null,
+        /** The turnover over the twelve months before the supply, for a state that measures that way (Cyprus). */
+        public ?Money $rollingTwelveMonthsTurnover = null,
+        /** The seller started its activity in this calendar year (Germany's EUR 25,000 in the first year). */
+        public bool $firstYearOfActivity = false,
+        /** A sector the state sets its own limit for, as the register keys it; null for none. */
+        public ?string $sector = null,
     ) {}
 
     public function coversDate(DateTimeInterface $at): bool

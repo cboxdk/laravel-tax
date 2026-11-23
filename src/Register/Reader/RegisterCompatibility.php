@@ -53,7 +53,7 @@ class RegisterCompatibility
         'declined_rate' => ['reason', 'names', 'category', 'rate', 'says'],
         'read_unstated' => ['category', 'finding', 'sections', 'readOn', 'readOnIsCeiling'],
         'margin_scheme' => ['appliesTo', 'basis', 'optional', 'conditions', 'portionOfMargin', 'marginIncludesTax', 'rate', 'export', 'invoice'],
-        'small_business_exemption' => ['optional', 'threshold', 'crossing', 'crossBorder', 'invoice', 'citation'],
+        'small_business_exemption' => ['available', 'says', 'source', 'optional', 'thresholds', 'crossing', 'crossBorder', 'invoice', 'exclusions', 'citation'],
         'purchaser_exemption' => ['purchaser', 'effect', 'rate', 'accountedForBy', 'route', 'certificate', 'conditions', 'citation', 'says'],
     ];
 

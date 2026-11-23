@@ -10,6 +10,7 @@ use Cbox\Tax\Contracts\SmallBusinessRules;
 use Cbox\Tax\Register\Reader\Shape;
 use Cbox\Tax\ValueObjects\InvoiceMention;
 use Cbox\Tax\ValueObjects\SmallBusinessRule;
+use Cbox\Tax\ValueObjects\SmallBusinessThreshold;
 use DateTimeImmutable;
 
 /**
@@ -72,30 +73,71 @@ readonly class RegisterSmallBusiness implements SmallBusinessRules
     private function read(string $code, array $rule): ?SmallBusinessRule
     {
         $payload = Shape::map($rule['payload'] ?? null);
-        $threshold = Shape::map($payload['threshold'] ?? null);
-        $amount = Shape::text($threshold['amount'] ?? null);
-        $currency = Shape::text($threshold['currency'] ?? null);
+        $citation = Shape::text($payload['citation'] ?? null);
+        $source = Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null);
 
-        // A rule without its figure is not a threshold of zero.
-        if ($amount === null || $currency === null) {
+        if (($payload['available'] ?? true) === false) {
+            return new SmallBusinessRule(
+                jurisdiction: $code,
+                currency: 'EUR',
+                citation: $citation,
+                source: $source,
+                available: false,
+                unavailableBecause: Shape::text($payload['says'] ?? null),
+            );
+        }
+
+        $thresholds = [];
+        $currency = null;
+
+        foreach (Shape::records($payload['thresholds'] ?? null) as $threshold) {
+            $amount = Shape::text($threshold['amount'] ?? null);
+            $measuredOver = Shape::text($threshold['measuredOver'] ?? null);
+            $currency ??= Shape::text($threshold['currency'] ?? null);
+
+            // A limit without its figure is not a limit of zero: the rule is not read.
+            if ($amount === null || $measuredOver === null || Shape::text($threshold['currency'] ?? null) !== $currency) {
+                return null;
+            }
+
+            $share = Shape::map($threshold['whenGoodsShare'] ?? null);
+
+            $thresholds[] = new SmallBusinessThreshold(
+                amount: $amount,
+                measuredOver: $measuredOver,
+                appliesTo: Shape::text($threshold['appliesTo'] ?? null) ?? 'all',
+                firstYearOfActivity: ($threshold['firstYearOfActivity'] ?? false) === true,
+                tolerance: Shape::text(Shape::map($threshold['tolerance'] ?? null)['amount'] ?? null),
+                goodsShareAtLeast: Shape::text($share['atLeast'] ?? null),
+                goodsShareBelow: Shape::text($share['below'] ?? null),
+            );
+        }
+
+        if ($thresholds === [] || $currency === null) {
             return null;
         }
 
+        $crossing = Shape::map($payload['crossing'] ?? null);
+        $following = $crossing['excludesFollowingYears'] ?? 0;
         $union = Shape::map(Shape::map($payload['crossBorder'] ?? null)['unionTurnover'] ?? null);
         $invoice = Shape::map($payload['invoice'] ?? null);
         $mention = Shape::text($invoice['mention'] ?? null);
-        $citation = Shape::text($payload['citation'] ?? null);
 
         return new SmallBusinessRule(
             jurisdiction: $code,
-            threshold: $amount,
             currency: $currency,
+            thresholds: $thresholds,
             unionThreshold: Shape::text($union['amount'] ?? null),
             unionCurrency: Shape::text($union['currency'] ?? null),
             mention: $mention === null ? null : new InvoiceMention('small_business_exemption', $mention, Shape::text($invoice['reference'] ?? null) ?? $citation),
             citation: $citation,
-            source: Shape::text(Shape::map($rule['provenance'] ?? null)['source'] ?? null),
-            excludesFollowingYear: Shape::text(Shape::map($payload['crossing'] ?? null)['excludes'] ?? null) === 'rest_of_year_and_following_year',
+            source: $source,
+            crossing: Shape::text($crossing['endsWith'] ?? null) ?? SmallBusinessRule::CROSSING_SUPPLY,
+            excludesFollowingYears: is_int($following) ? $following : 0,
+            exclusions: array_values(array_filter(array_map(
+                static fn (array $exclusion): ?string => Shape::text($exclusion['names'] ?? null),
+                Shape::records($payload['exclusions'] ?? null),
+            ))),
         );
     }
 }
