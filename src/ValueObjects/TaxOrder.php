@@ -186,6 +186,7 @@ readonly class TaxOrder
             customerTaxId: $this->customerTaxId,
             purchaser: $this->purchaser,
             consignmentValue: $this->consignmentValue(),
+            margin: $line->margin,
         );
     }
 

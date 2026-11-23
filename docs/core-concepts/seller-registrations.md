@@ -193,4 +193,12 @@ $seller->isRegisteredInSubdivision(new SubdivisionCode('CA-BC'), $date);  // boo
 $seller->holdsSubdivisionScheme(new SubdivisionCode('US-TX'), 'remote-election', $date);
 $seller->holdsUnionScheme($date);                                         // OSS or IOSS
 $seller->hasScheme('ioss', $date);                                        // any one scheme
+$seller->smallBusinessIn(new CountryCode('NL'), $date);                   // ?SmallBusinessExemption
 ```
+
+## Small-business exemption
+
+`smallBusiness` lists the member states the seller holds the EU small-business exemption
+in, with its turnover there. It is not a registration to collect: a seller exempt in the
+Netherlands charges no VAT there, and what that does to a supply is described under
+[Margin scheme and small-business exemption](margin-scheme-and-small-business.md#small-business-exemption).

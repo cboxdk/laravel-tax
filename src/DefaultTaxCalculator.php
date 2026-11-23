@@ -13,15 +13,20 @@ use Cbox\Geo\ValueObjects\Jurisdiction;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Geo\ValueObjects\TaxProfile;
 use Cbox\Tax\Catalogue\EmptyProductCatalogue;
+use Cbox\Tax\Concerns\AppliesSmallBusinessExemption;
+use Cbox\Tax\Concerns\AssessesMarginSales;
 use Cbox\Tax\Concerns\AssessesOrders;
+use Cbox\Tax\Contracts\EuTerritories;
 use Cbox\Tax\Contracts\ExchangeRates;
 use Cbox\Tax\Contracts\FlatChargeSource;
+use Cbox\Tax\Contracts\MarginSchemes;
 use Cbox\Tax\Contracts\MarketplaceRules;
 use Cbox\Tax\Contracts\OrderFlatChargeSource;
 use Cbox\Tax\Contracts\OrderTaxCalculator;
 use Cbox\Tax\Contracts\ProductCatalogue;
 use Cbox\Tax\Contracts\PurchaserExemptions;
 use Cbox\Tax\Contracts\RegimeRegistry;
+use Cbox\Tax\Contracts\SmallBusinessRules;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Enums\MarketplaceLiability;
 use Cbox\Tax\Enums\Pricing;
@@ -59,6 +64,8 @@ use Cbox\Tax\ValueObjects\TaxRate;
  */
 readonly class DefaultTaxCalculator implements OrderTaxCalculator
 {
+    use AppliesSmallBusinessExemption;
+    use AssessesMarginSales;
     use AssessesOrders;
 
     public function __construct(
@@ -79,6 +86,12 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
         private ?ExchangeRates $exchangeRates = null,
         /** What a place's rule does for a stated purchaser; null answers every purchaser as anyone. */
         private ?PurchaserExemptions $purchasers = null,
+        /** Each state's margin scheme; null refuses every margin election. */
+        private ?MarginSchemes $margins = null,
+        /** Each member state's small-business exemption; null refuses every claim. */
+        private ?SmallBusinessRules $smallBusiness = null,
+        /** Tells a territory outside the VAT area from its member state, for a margin sale's export. */
+        private ?EuTerritories $territories = null,
     ) {}
 
     public function assess(TaxQuery $query): TaxAssessment
@@ -193,6 +206,16 @@ readonly class DefaultTaxCalculator implements OrderTaxCalculator
      */
     private function assessSupply(TaxQuery $query): TaxAssessment
     {
+        return $this->applySmallBusinessExemption($query, $this->assessOrdinarily($query));
+    }
+
+    /** The supply under the margin scheme where the seller elected it, else under its regime. */
+    private function assessOrdinarily(TaxQuery $query): TaxAssessment
+    {
+        if ($query->margin !== null) {
+            return $this->withExchangeRate($query, $this->stampTaxPoint($query, $this->assessMarginSale($query, $query->margin)));
+        }
+
         $northernIreland = $this->northernIrelandGoods($query);
 
         if ($northernIreland === null) {

@@ -34,7 +34,7 @@ class RegisterCompatibility
      *
      * @var array<int, int>
      */
-    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 8];
+    private const array LAST_REVIEWED_MINOR = [1 => 34, 2 => 9];
 
     /**
      * Payload fields this reader interprets, per rule kind it consumes.
@@ -52,6 +52,8 @@ class RegisterCompatibility
         'taxable_base' => ['component', 'included', 'category', 'proportion', 'decision', 'localTaxes'],
         'declined_rate' => ['reason', 'names', 'category', 'rate', 'says'],
         'read_unstated' => ['category', 'finding', 'sections', 'readOn', 'readOnIsCeiling'],
+        'margin_scheme' => ['appliesTo', 'basis', 'optional', 'conditions', 'portionOfMargin', 'marginIncludesTax', 'rate', 'export', 'invoice'],
+        'small_business_exemption' => ['available', 'says', 'source', 'optional', 'thresholds', 'crossing', 'crossBorder', 'invoice', 'exclusions', 'citation'],
         'purchaser_exemption' => ['purchaser', 'effect', 'rate', 'accountedForBy', 'route', 'certificate', 'conditions', 'citation', 'says'],
     ];
 

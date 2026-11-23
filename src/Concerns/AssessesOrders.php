@@ -128,6 +128,9 @@ trait AssessesOrders
                 delivery: ($charge->delivery ?? new DeliveryCharge)->forGoods($assessed->treatment->taxWasDue()),
                 categoryKey: $line->categoryKey,
                 performedAt: $line->performedAt,
+                // Delivery billed with a margin sale is part of its selling price
+                // (Art. 312), so it is taxed where and how the item is, all of it margin.
+                margin: $line->margin?->forAccompanyingCharge($share),
             ));
 
             // Goods taxed on a share of their price are partially exempt in the same

@@ -49,9 +49,13 @@ class. A commodity code refines the mapped category; `TaxQuery` and
   implemented by this policy path. A bracket table is applied exactly to a
   tax-exclusive sale; a tax-inclusive price, or a local share stacked on a state's
   table, falls back to the table's per-dollar rate, flagged.
-- The EU margin scheme for second-hand goods, art and antiques is not modelled: it
-  needs the purchase price and the seller's election. A host that uses it computes it
-  before the engine.
+- The margin scheme is applied where the register publishes a state's scheme with the
+  rate its margin bears and what an export does; elsewhere an election refuses. The
+  per-period method (globalisatieregeling, Gesamtdifferenz, global accounting) returns
+  no tax for one sale: the period's arithmetic is the host's. See
+  [Margin scheme and small-business exemption](../core-concepts/margin-scheme-and-small-business.md).
+- The small-business exemption is applied per member state the register publishes it
+  for. What counts as turnover (Art. 288) is the host's to measure.
 - Who accounts for a domestic supply by a supplier not established in the member
   state (Art. 194) is only as settled as the facts the supply states. A rule that
   turns on whether the customer is registered there, or whether goods are a work
