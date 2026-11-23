@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:252b1be7-b44d-4b4b-a4f5-fdd2c2c3ba95",
+    "serialNumber": "urn:uuid:6c65d81b-57ae-478e-a18c-b5e3fa4c16b7",
     "version": 1,
     "metadata": {
         "tools": [
@@ -213,11 +213,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/egulias/email-validator@4.0.4",
+            "bom-ref": "pkg:composer/egulias/email-validator@4.0.5",
             "group": "egulias",
             "name": "email-validator",
-            "version": "4.0.4",
-            "purl": "pkg:composer/egulias/email-validator@4.0.4",
+            "version": "4.0.5",
+            "purl": "pkg:composer/egulias/email-validator@4.0.5",
             "description": "A library for validating emails against several RFCs",
             "licenses": [
                 {
@@ -261,11 +261,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.5.2",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.6.0",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "8.5.2",
-            "purl": "pkg:composer/guzzlehttp/guzzle@8.5.2",
+            "version": "8.6.0",
+            "purl": "pkg:composer/guzzlehttp/guzzle@8.6.0",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -277,11 +277,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/promises@3.1.0",
+            "bom-ref": "pkg:composer/guzzlehttp/promises@3.2.0",
             "group": "guzzlehttp",
             "name": "promises",
-            "version": "3.1.0",
-            "purl": "pkg:composer/guzzlehttp/promises@3.1.0",
+            "version": "3.2.0",
+            "purl": "pkg:composer/guzzlehttp/promises@3.2.0",
             "description": "Guzzle promises library",
             "licenses": [
                 {
@@ -293,11 +293,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/psr7@3.5.0",
+            "bom-ref": "pkg:composer/guzzlehttp/psr7@3.6.0",
             "group": "guzzlehttp",
             "name": "psr7",
-            "version": "3.5.0",
-            "purl": "pkg:composer/guzzlehttp/psr7@3.5.0",
+            "version": "3.6.0",
+            "purl": "pkg:composer/guzzlehttp/psr7@3.6.0",
             "description": "PSR-7 message implementation that also provides common utility methods",
             "licenses": [
                 {
@@ -1265,11 +1265,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/vlucas/phpdotenv@v5.8.0",
+            "bom-ref": "pkg:composer/vlucas/phpdotenv@v5.8.1",
             "group": "vlucas",
             "name": "phpdotenv",
-            "version": "v5.8.0",
-            "purl": "pkg:composer/vlucas/phpdotenv@v5.8.0",
+            "version": "v5.8.1",
+            "purl": "pkg:composer/vlucas/phpdotenv@v5.8.1",
             "description": "Loads environment variables from `.env` to `$_ENV` and `$_SERVER` automagically, and optionally to `getenv()`.",
             "licenses": [
                 {

@@ -47,7 +47,12 @@ class RateSourceUnavailable extends RuntimeException implements Transient
 
     public static function badResponse(string $source, int $status): self
     {
-        return new self($source, sprintf('the endpoint answered HTTP %d', $status));
+        // Register downloads need a key since 2026-11-23; say where one comes from.
+        $hint = in_array($status, [401, 403], true)
+            ? '. Set TAX_REGISTER_TOKEN to a secret API key with the register:read scope, created at https://app.cboxtax.com under Developers → API keys'
+            : '';
+
+        return new self($source, sprintf('the endpoint answered HTTP %d', $status).$hint);
     }
 
     /**

@@ -29,7 +29,7 @@ composer require cboxdk/laravel-tax
 
 **2 — Install the data** (once, and on every deploy — like `php artisan migrate`)
 
-Configure `TAX_REGISTER_TOKEN` with the private register integration credential before syncing. Keep it server-side; an absent or refused credential stops the sync.
+Set `TAX_REGISTER_TOKEN` to a secret API key with the `register:read` scope, created in [Cbox Tax](https://app.cboxtax.com) under Developers → API keys. Keep it server-side; without it, or with a refused key, the sync stops.
 
 ```bash
 php artisan tax:data:sync
@@ -155,9 +155,11 @@ php artisan tax:data:status                          # what is live, what is ins
 ```
 
 The package is MIT. **The register's data is licensed separately** and commercially by
-Cbox: computing tax for your own business and its group is covered; running a
-marketplace, a SaaS or another platform for other businesses needs a licence for that
-purpose, and redistributing the data or reselling lookups from it is not allowed. → [The register](docs/getting-started/the-register.md)
+Cbox. The licence is counted in sellers, the businesses you calculate tax for: any lawful
+use is allowed, a platform or marketplace included, within the number of sellers your
+plan covers. You report that number monthly in the app or the API. Each download is
+marked with the key it was made with. Passing the data itself on to others needs its own
+agreement. → [The register](docs/getting-started/the-register.md)
 
 ## The data is in beta
 

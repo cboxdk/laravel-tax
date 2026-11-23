@@ -7,6 +7,25 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.22.10] - 2026-11-23
+
+### Changed
+
+- **Register downloads need a Cbox Tax key.** `TAX_REGISTER_TOKEN` is now a secret
+  API key with the `register:read` scope, created in Cbox Tax under Developers → API
+  keys. The register refuses its bulk documents without one. Each key gets its own
+  marked copy, and the release document read with that key lists the hashes of
+  that copy, so `tax:data:sync` and `tax:data:verify` check it as before. A refused
+  or missing key now says where to create one.
+- **The licence is counted in sellers.** The README, `config/tax.php` and the
+  register guide describe the Cbox Tax terms 2.0: any lawful use, a platform or
+  marketplace included, within the sellers the plan covers, reported monthly.
+  `tax:data:sync` says the same, and a release that states no licence is
+  recorded under that wording. Register schema 2.8.3 carries it in the data;
+  2.8.3 is a patch, so this package reads it as it reads 2.8.2.
+- `sbom.json` regenerated from the lock file (it still listed
+  egulias/email-validator 4.0.4).
+
 ## [0.22.9] - 2026-11-22
 
 ### Fixed

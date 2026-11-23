@@ -47,14 +47,18 @@ return [
     | Texas wants `states => ['TX']`.
     |
     | LICENCE — read this before you build a product on it. This package is MIT;
-    | the register it compiles is NOT. It is a commercial product, used under an
-    | agreement with Cbox, and each release states its terms in its own `license`
-    | block. The licence covers your own business and the companies in your group,
-    | including commercially — pricing your own sales is exactly the intended use.
-    | Running a marketplace, a SaaS or another platform where other businesses are
-    | the sellers needs a licence for that purpose, and so does passing the data
-    | on: redistributing it, bundling it into something you ship, or offering a
-    | rate lookup or an API that gives others the rates themselves.
+    | the register it compiles is NOT. It is a commercial product, used under the
+    | Cbox Tax terms, and each release states its terms in its own `license` block.
+    | The licence is counted in sellers: any lawful use is allowed, including a
+    | platform or marketplace that calculates for other businesses, for as many
+    | sellers as your register plan covers. You report that number in the app or
+    | the API every month. Passing the data itself on to others needs its own
+    | agreement.
+    |
+    | `token` is a secret API key from app.cboxtax.com with the `register:read`
+    | scope. Downloads without one are refused. Each key gets its own copy: the
+    | documents that hold rates carry a few marker rows that identify the key and
+    | change no calculation, and the release document lists the hashes of that copy.
     |
     */
 
