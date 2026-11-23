@@ -88,9 +88,11 @@ class EuVatRegime extends DestinationTaxRegime
                 placeOfSupply: $query->place,
                 rate: null,
                 reason: sprintf(
-                    'EU VAT: %s lies outside the EU VAT area, so this is an export and no EU VAT is due. %s applies there and is not computed by this engine.',
+                    'EU VAT: %s lies outside the EU VAT area, so this is an export and no EU VAT is due. %s',
                     $territory->name,
-                    $territory->ownTaxName ?? 'A local tax',
+                    $territory->ownTaxName === null
+                        ? 'No VAT is levied there'.($territory->untaxedUnder === null ? '.' : sprintf(' (%s).', $territory->untaxedUnder))
+                        : sprintf('%s applies there and is not computed by this engine.', ucfirst($territory->ownTaxName)),
                 ),
             );
         }

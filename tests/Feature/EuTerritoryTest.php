@@ -101,6 +101,16 @@ it('recognises the single-municipality territories', function (): void {
         ->and($this->tax->assess(delivery('IT', '22061'))->treatment)->toBe(TaxTreatment::ZeroRated);
 });
 
+it('says in one sentence what applies in a territory outside the VAT area', function (string $country, string $postalCode, string $sentence): void {
+    expect($this->tax->assess(delivery($country, $postalCode))->reason)->toEndWith('so this is an export and no EU VAT is due. '.$sentence);
+})->with([
+    'a tax of its own' => ['ES', '35001', 'IGIC (Impuesto General Indirecto Canario) applies there and is not computed by this engine.'],
+    'a neighbour\'s VAT' => ['DE', '78266', 'Swiss VAT applies there and is not computed by this engine.'],
+    'no VAT' => ['DE', '27498', 'No VAT is levied there.'],
+    'no VAT, by law' => ['FR', '97600', 'No VAT is levied there (for now, CGI art. 294-1).'],
+    'a collectivity' => ['FR', '98800', 'The territory’s own tax system applies there and is not computed by this engine.'],
+]);
+
 it('charges no French VAT on a delivery to the overseas territories sent as FR', function (string $postalCode, string $territory): void {
     // Guadeloupe, Martinique, French Guiana, Réunion, Mayotte and Saint-Martin are
     // outside the EU VAT area (Art. 6(1)(c)); the collectivities are outside the EU.

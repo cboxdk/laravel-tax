@@ -36,8 +36,10 @@ readonly class EuTerritory
         /** The territory's own standard rate, as a percentage string. */
         public ?string $standardRate = null,
         /**
-         * The tax that applies there instead, named for a human. We do not model
-         * it, and saying which one it is beats an unexplained refusal.
+         * The tax that applies there instead, named for a human: `Swiss VAT`, `IGIC
+         * (…)`. A NAME, because the reason reads "<name> applies there". We do not
+         * model it, and saying which one it is beats an unexplained refusal. Null
+         * outside the VAT area means no VAT is levied there at all.
          */
         public ?string $ownTaxName = null,
         /**
@@ -76,6 +78,11 @@ readonly class EuTerritory
          * @var array<string, string>
          */
         public array $bands = [],
+        /**
+         * Where no VAT is levied there, the law that says so, as a reference:
+         * `CGI art. 294-1`. Null where there is a tax, or no reference is held.
+         */
+        public ?string $untaxedUnder = null,
     ) {}
 
     /**
@@ -97,9 +104,16 @@ readonly class EuTerritory
         );
     }
 
+    /** Outside the EU VAT area, where `$ownTaxName` applies instead. */
     public static function outsideVatArea(string $code, string $name, string $ownTaxName): self
     {
         return new self($code, $name, true, null, $ownTaxName);
+    }
+
+    /** Outside the EU VAT area, and no VAT is levied there; `$under` is the law that says so. */
+    public static function outsideVatAreaUntaxed(string $code, string $name, ?string $under = null): self
+    {
+        return new self($code, $name, true, untaxedUnder: $under);
     }
 
     public static function withOwnRate(string $code, string $name, string $standardRate): self

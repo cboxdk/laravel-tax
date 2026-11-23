@@ -98,20 +98,20 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             'FR' => $this->france($digits, $at),
             'PT' => $this->portugal($digits, $at),
             'FI' => str_starts_with($digits, '22')
-                ? EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession')
+                ? EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Finnish VAT')
                 : null,
             'DE' => match (substr($digits, 0, 5)) {
-                '78266' => EuTerritory::outsideVatArea('DE-BUS', 'Büsingen am Hochrhein', 'Swiss VAT applies'),
-                '27498' => EuTerritory::outsideVatArea('DE-HEL', 'Heligoland', 'no VAT is levied'),
+                '78266' => EuTerritory::outsideVatArea('DE-BUS', 'Büsingen am Hochrhein', 'Swiss VAT'),
+                '27498' => EuTerritory::outsideVatAreaUntaxed('DE-HEL', 'Heligoland'),
                 default => null,
             },
             'IT' => match (substr($digits, 0, 5)) {
-                '23041' => EuTerritory::outsideVatArea('IT-LIV', 'Livigno', 'no VAT is levied'),
-                '22061' => EuTerritory::outsideVatArea('IT-CAM', "Campione d'Italia", 'Swiss VAT applies'),
+                '23041' => EuTerritory::outsideVatAreaUntaxed('IT-LIV', 'Livigno'),
+                '22061' => EuTerritory::outsideVatArea('IT-CAM', "Campione d'Italia", 'Swiss VAT'),
                 default => null,
             },
             'GR' => str_starts_with($digits, '63086')
-                ? EuTerritory::outsideVatArea('GR-ATH', 'Mount Athos', 'the Autonomous Monastic State is outside the VAT area')
+                ? EuTerritory::outsideVatAreaUntaxed('GR-ATH', 'Mount Athos')
                 : null,
             default => null,
         };
@@ -145,7 +145,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
 
     private function france(string $digits, ?DateTimeImmutable $at = null): ?EuTerritory
     {
-        $local = 'the local taxes of the territory';
+        $local = 'the territory’s own tax system';
 
         return match (substr($digits, 0, 5)) {
             '97133' => EuTerritory::outsideVatArea('BL', 'Saint-Barthélemy', $local),
@@ -153,10 +153,10 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             default => match (substr($digits, 0, 3)) {
                 '971' => $this->department('GP', 'Guadeloupe', 'eu:FR:GUADELOUPE', $at),
                 '972' => $this->department('MQ', 'Martinique', 'eu:FR:MARTINIQUE', $at),
-                '973' => EuTerritory::outsideVatArea('GF', 'French Guiana', 'no VAT is levied for now (CGI art. 294-1)'),
+                '973' => EuTerritory::outsideVatAreaUntaxed('GF', 'French Guiana', 'for now, CGI art. 294-1'),
                 '974' => $this->department('RE', 'Réunion', 'eu:FR:REUNION', $at),
                 '975' => EuTerritory::outsideVatArea('PM', 'Saint-Pierre-et-Miquelon', $local),
-                '976' => EuTerritory::outsideVatArea('YT', 'Mayotte', 'no VAT is levied for now (CGI art. 294-1)'),
+                '976' => EuTerritory::outsideVatAreaUntaxed('YT', 'Mayotte', 'for now, CGI art. 294-1'),
                 '984' => EuTerritory::outsideVatArea('TF', 'French Southern and Antarctic Lands', $local),
                 '986' => EuTerritory::outsideVatArea('WF', 'Wallis and Futuna', $local),
                 '987' => EuTerritory::outsideVatArea('PF', 'French Polynesia', $local),
@@ -180,7 +180,7 @@ readonly class StaticEuTerritories implements EuTerritoriesBySubdivision
             'ES-CN', 'ES-GC', 'ES-TF' => EuTerritory::outsideVatArea('ES-CN', 'Canary Islands', 'IGIC (Impuesto General Indirecto Canario)'),
             'ES-CE' => EuTerritory::outsideVatArea('ES-CE', 'Ceuta', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
             'ES-ML' => EuTerritory::outsideVatArea('ES-ML', 'Melilla', 'IPSI (Impuesto sobre la Producción, los Servicios y la Importación)'),
-            'FI-01' => EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Åland has its own VAT-free status under the Act of Accession'),
+            'FI-01' => EuTerritory::outsideVatArea('AX', 'Åland Islands', 'Finnish VAT'),
             'PT-20', 'PT-30' => $this->ownRates($subdivision->value, 'eu:PT', $at),
             // laravel-geo denies these (each is its own country), but a host's own
             // repository may not: placed by a postcode of the territory.
