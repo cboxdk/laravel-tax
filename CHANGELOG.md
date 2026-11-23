@@ -7,6 +7,8 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-23
+
 ### Added
 
 - **Margin scheme.** `TaxQuery::$margin` and `SupplyLine::$margin` take a `MarginSale`
