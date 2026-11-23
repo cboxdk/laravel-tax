@@ -46,10 +46,11 @@ the policy's precision.
 
 ## Delivery facts
 
-Flag a delivery line and, where an exclusion applies, confirm its conditions:
+Flag a delivery line. The engine reads the state's published rule for it:
 
 ```php
 use Brick\Money\Money;
+use Cbox\Tax\ValueObjects\DecisionFacts;
 use Cbox\Tax\ValueObjects\DeliveryCharge;
 use Cbox\Tax\ValueObjects\SupplyLine;
 
@@ -57,20 +58,23 @@ $delivery = new SupplyLine(
     id: 'delivery',
     amount: Money::of('10.00', 'USD'),
     isDeliveryCharge: true,
-    delivery: new DeliveryCharge(exclusionConditionsMet: true),
+    delivery: new DeliveryCharge(facts: new DecisionFacts(['delivery.separatelyStated' => true])),
 );
 ```
 
-`exclusionConditionsMet` is a host assertion that **all applicable published
-conditions have been checked**. It is not an unconditional exemption switch:
-
-- With a published exclusion, `true` applies it; `false` assesses taxable delivery
-  of taxable goods; `null` refuses because the facts are unknown.
-- With a published inclusion, the host assertion cannot override the rule.
-- No applicable US delivery record means a refusal, including dates before a
-  capture floor. A host can bind `Contracts\DeliveryRules` for coverage it maintains.
-- Taxable delivery of exempt goods requires an independent classification/rate
-  that the current delivery model cannot resolve, and refuses explicitly.
+- **Freight follows the goods.** The share of a delivery charge that delivers exempt
+  goods carries no tax, whatever the state publishes about delivery: the sales price
+  of exempt goods is exempt (SSUTA § 316 allocates a shared charge the same way).
+- A bare Streamlined exclusion has one condition, that the charge is separately
+  stated. A delivery line is, unless `delivery.separatelyStated` is `false`;
+  `exclusionConditionsMet` overrides that reading where the host has checked it.
+- A published decision (Kansas) is evaluated against the line's facts, and a fact it
+  reaches that nobody supplied refuses and is named.
+- Where no Streamlined rule exists, freight on taxable goods is priced under the
+  state's `services.delivery` category, with its conditions.
+- No applicable rule for freight on taxable goods means a refusal, including dates
+  before a capture floor. A host can bind `Contracts\DeliveryRules` for coverage it
+  maintains.
 - Taxable delivery of partially exempt goods needs an allocation rule for its taxable
   base and also refuses until that rule is modelled.
 

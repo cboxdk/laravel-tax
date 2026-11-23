@@ -81,7 +81,7 @@ Publish `config/tax.php` with `php artisan vendor:publish --tag=tax-config`.
 | Config under `tax.register` | Environment | Default |
 | --- | --- | --- |
 | `url` | `TAX_REGISTER_URL` | `https://data.cboxtax.com` |
-| `token` | `TAX_REGISTER_TOKEN` | Required private integration credential |
+| `token` | `TAX_REGISTER_TOKEN` | Required: a secret API key with `register:read` |
 | `store` | `TAX_REGISTER_STORE` | `storage/app/cbox-tax/register` |
 | `version` | `TAX_REGISTER_VERSION` | Active release; sync selects latest |
 | `regions` | `TAX_REGISTER_REGIONS` | All published regions |
@@ -163,23 +163,29 @@ release states its terms in its own `license` block, and `tax:data:sync` copies 
 the installed release's `manifest.json`. Releases published before schema 2.8.1 state the
 PolyForm Internal Use Licence 1.0.0, which they were published under.
 
-**You may** use it for your own business and the companies in its group, including
-commercially. Pricing your own sales is exactly the intended use. You may keep copies, read every
-byte, and check any figure against your own reading of the same statute.
+**The licence is counted in sellers.** A seller is a business with its own tax identity
+that you calculate tax for: your own company, each company in your group, each merchant
+on a platform you run. Any lawful use is allowed, a marketplace, a SaaS or an agency
+included, for as many sellers as your register plan covers. You may keep copies, read
+every byte, and check any figure against your own reading of the same statute.
 
-**You need a licence for that purpose** to run a marketplace, a SaaS or another
-platform where other businesses are the sellers, such as a webshop platform that
-calculates tax for its merchants.
+**You report what you use.** Cbox cannot see your servers, so every month, by the 10th,
+you report the number of sellers across all your installations: in the app under
+Settings → Register licence, or with `POST /v1/register/licence/reports`. Cbox may also
+ask for a report in between.
 
-**You may not** pass the data on: redistribute it, bundle it into something you ship,
-or offer a rate lookup, an API or a product feature that gives others the rates
-themselves.
+**Passing the data on needs its own agreement:** giving or selling the releases to
+others, shipping them inside software others install, or offering the rates, rules or
+thresholds themselves as a data service. Showing the rate on a checkout or an invoice
+is fine; that is a result of a calculation.
 
-The line is *charging your customers tax you computed with it* (fine) against *telling
-your customers what the rates are* (not covered). The second needs a licence from Cbox
-— something you buy when you cross the line, not a gate on getting started. There is no
-key, no signup, and nothing about the register you cannot evaluate before deciding to
-depend on it.
+**Each download is marked.** `TAX_REGISTER_TOKEN` is a secret API key with the
+`register:read` scope, and each key gets its own copy of the documents that hold rates.
+The copy has a few extra rate rows in categories no release publishes. They identify
+the key, the engine refuses to price those categories, and no real calculation
+changes. The release document fetched with your key lists the hashes of your copy, so
+`tax:data:sync` and `tax:data:verify` check it like any other. The full terms are
+section 5 of the [Cbox Tax terms](https://app.cboxtax.com/legal/terms).
 
 ## When the register moves to a schema this package cannot read
 
@@ -190,14 +196,14 @@ upgrade. `tax:data:sync --check` compares against the same release. A release as
 for by name (`--release=`, or pinned with `TAX_REGISTER_VERSION`) still refuses: you
 asked for that one. Nothing is downloaded or replaced for a release that is refused.
 
-Register downloads authenticate every request. Absolute artifact URLs must match the configured scheme, host and port. Redirects are refused unless you allow one, as described below. Pin `TAX_REGISTER_VERSION` for reproducible compilation. Browser code must never receive the integration token.
+Register downloads authenticate every request. Absolute artifact URLs must match the configured scheme, host and port. Redirects are refused unless you allow one, as described below. Pin `TAX_REGISTER_VERSION` for reproducible compilation. Browser code must never receive the key.
 
 ## Where the register lives
 
 `TAX_REGISTER_URL` sets the register's address. It defaults to
 `https://data.cboxtax.com`. To read from another address (a mirror, or the
 register's new home once it is announced), set the variable and run
-`tax:data:sync`. The integration token is sent only to this origin.
+`tax:data:sync`. The key is sent only to this origin.
 
 ## Downloads handed to object storage
 
@@ -239,7 +245,7 @@ Releases published before schema 2.7.9 carry no `sha256`. Their regions and sect
 are fetched as before when the register serves them itself. A redirect for one of them
 is refused.
 
-The redirected request is a new request without the integration token. A signed
+The redirected request is a new request without the key. A signed
 URL authorises itself, and the token never reaches the storage provider.
 
 Files served by the register itself are handled as before: they are not checked

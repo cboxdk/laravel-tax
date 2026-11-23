@@ -86,11 +86,13 @@ readonly class RegisterDelivery implements DeliveryRules
         // delivered to ONE place, where direct mail is by definition sent to the
         // addressees on a mailing list. Kansas asks both from release 280, and without
         // them every Kansas order with shipping refused. A host that knows otherwise —
-        // a printer mailing a client's list — says so and is believed.
+        // a printer mailing a client's list — says so and is believed. And a delivery
+        // line is separately stated, being a line of its own, unless the host says not.
         $facts = $delivery->facts
             ->withDefault('delivery.containsExemptGoods', ! $delivery->goodsTaxable)
             ->withDefault('delivery.purpose', 'customer_delivery')
-            ->withDefault('delivery.isDirectMail', false);
+            ->withDefault('delivery.isDirectMail', false)
+            ->withDefault('delivery.separatelyStated', true);
         $outcome = Decision::evaluate($decision, $facts, $where);
 
         if (! $outcome->resolved()) {

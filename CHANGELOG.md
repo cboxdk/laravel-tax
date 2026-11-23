@@ -22,7 +22,7 @@ minor bumps may carry additive features; patches are fixes and docs).
   there is exempt, goods to a business in another member state included (Art. 139(1)),
   until the supply that passes the state's threshold.
 - Contracts `MarginSchemes` and `SmallBusinessRules`, read from the register's
-  `margin_scheme` rules (with `rate`, `export`, `invoice`, schema 2.8.3) and the new
+  `margin_scheme` rules (with `rate`, `export`, `invoice`, schema 2.8.4) and the new
   `small_business_exemption` kind (schema 2.9, now reviewed).
 - Refusal reasons `MarginSchemeUnavailable`, `MarginSchemeIneligible` and
   `SmallBusinessExemptionUnavailable`.
@@ -31,6 +31,64 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 - `margin_scheme` moved from reviewed to applied in `RuleKinds`.
 - `TaxTreatment` has a new case. A `match` over it without a default needs the arm.
+
+## [0.22.10] - 2026-11-23
+
+### Changed
+
+- **Register downloads need a Cbox Tax key.** `TAX_REGISTER_TOKEN` is now a secret
+  API key with the `register:read` scope, created in Cbox Tax under Developers → API
+  keys. The register refuses its bulk documents without one. Each key gets its own
+  marked copy, and the release document read with that key lists the hashes of
+  that copy, so `tax:data:sync` and `tax:data:verify` check it as before. A refused
+  or missing key now says where to create one.
+- **The licence is counted in sellers.** The README, `config/tax.php` and the
+  register guide describe the Cbox Tax terms 2.0: any lawful use, a platform or
+  marketplace included, within the sellers the plan covers, reported monthly.
+  `tax:data:sync` says the same, and a release that states no licence is
+  recorded under that wording. Register schema 2.8.3 carries it in the data;
+  2.8.3 is a patch, so this package reads it as it reads 2.8.2.
+- `sbom.json` regenerated from the lock file (it still listed
+  egulias/email-validator 4.0.4).
+
+### Fixed
+
+- **Territory reasons read as one sentence.** A territory outside the EU VAT area
+  with no tax of its own (Heligoland, Livigno, Mount Athos) said "no VAT is levied
+  applies there and is not computed by this engine". It now says "No VAT is levied
+  there.", and French Guiana and Mayotte name the article that leaves them untaxed.
+  Territories with their own tax name it: "Swiss VAT applies there and is not
+  computed by this engine." Åland now names Finnish VAT, which applies there; it
+  was described as VAT-free.
+
+## [0.22.9] - 2026-11-22
+
+### Fixed
+
+- **Freight on exempt goods follows the goods in every US state.** An order of
+  groceries or children's clothing with a shipping line refused in 40 states,
+  either as "taxable delivery of exempt goods" (Streamlined states publishing the
+  charge as included) or "no applicable delivery rule" (states publishing only a
+  delivery category, Florida among them). The share delivering exempt goods now
+  carries no tax; the share delivering taxable goods is assessed as before.
+- **A bare Streamlined delivery exclusion reads its condition.** Iowa, Michigan,
+  Nevada, Oklahoma, Utah and Wyoming refused every order with shipping, asking the
+  host to confirm `exclusionConditionsMet`, which no API field carried. The matrix
+  states the condition itself: the charge is separately stated. A delivery line is,
+  unless `delivery.separatelyStated` says otherwise. Kansas's decision takes the
+  same default and now asks only for `delivery.label` and
+  `delivery.costIsTrueAndReasonable`.
+
+## [0.22.8] - 2026-11-20
+
+### Fixed
+
+- **US nexus answers again in states that qualify another party's threshold.** Every
+  threshold rule for a state was checked for unmodelled qualifications before the
+  reader picked the remote seller's, so Oklahoma's marketplace-facilitator threshold
+  (an election the register has not modelled) refused the whole state's nexus answer.
+  The refusal now applies only to the rule a reader answers from: a qualified
+  remote-seller threshold, or the EU distance-sales threshold, still refuses.
 
 ## [0.22.7] - 2026-11-19
 

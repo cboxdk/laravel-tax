@@ -131,7 +131,7 @@ it('installs a release with the licence the release states, and the Cbox terms w
 
     $this->artisan('tax:data:sync', ['--release' => '2026.09.17-99', '--no-boundaries' => true])->assertSuccessful();
     $this->artisan('tax:data:sync', ['--release' => '2026.09.17-100', '--no-boundaries' => true])
-        ->expectsOutputToContain('marketplace, a SaaS or another platform')
+        ->expectsOutputToContain('counted in sellers')
         ->assertSuccessful();
 
     expect(operationManifest('2026.09.17-99')['licence'])->toBe(['id' => 'PolyForm-Internal-Use-1.0.0', 'url' => 'https://polyformproject.org/licenses/internal-use/1.0.0/', 'permits' => 'p', 'forbids' => 'f'])

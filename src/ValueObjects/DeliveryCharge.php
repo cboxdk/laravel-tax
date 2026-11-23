@@ -11,7 +11,7 @@ readonly class DeliveryCharge
 {
     public function __construct(
         public DeliveryComponent $component = DeliveryComponent::Transport,
-        /** Host confirmation of all conditions on a published exclusion; null is unknown. */
+        /** Host confirmation of a bare published exclusion's condition; null reads `delivery.separatelyStated`, which a delivery line is unless stated otherwise. */
         public ?bool $exclusionConditionsMet = null,
         /** Filled from the delivered assessment for orders; required for standalone delivery queries. */
         public ?bool $goodsTaxable = null,

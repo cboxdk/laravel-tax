@@ -207,8 +207,12 @@ abstract class DocumentDataset implements RegisterData
             $rules = array_values(array_filter($rules, static fn (array $rule): bool => ($rule['kind'] ?? null) === $kind));
         }
 
+        // Fields this reader does not know refuse here. A field it knows but does not
+        // apply (`unresolvedQualifications`) refuses in the reader that uses the rule:
+        // Oklahoma qualifies its marketplace-facilitator threshold, and checking it here
+        // took away the remote-seller answer the nexus reader never reads it for.
         foreach ($rules as $rule) {
-            RegisterCompatibility::applicable($rule);
+            RegisterCompatibility::rule($rule);
         }
 
         return $rules;
