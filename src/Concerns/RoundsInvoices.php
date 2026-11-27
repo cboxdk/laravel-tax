@@ -12,8 +12,10 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateLimit;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\LineAssessment;
 use Cbox\Tax\ValueObjects\RateComponent;
+use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxOrder;
 
 /** Round exact invoice tax once, then distribute minor units to its lines. */
@@ -160,11 +162,25 @@ trait RoundsInvoices
     private function roundTaxGroups(array $lines, array $pricing): array
     {
         $groups = [];
+        $componentTaxes = [];
 
         foreach ($lines as $index => $line) {
             $a = $line->assessment;
 
             if (! $a->isTaxable() || $a->rounding?->scope !== RoundingScope::Invoice || $a->unroundedTax === null || $a->rate?->schedule !== null) {
+                continue;
+            }
+
+            // Canada's GST and PST/QST round separately. Group by the levy, not
+            // the combined rate: GST on PST-exempt goods joins the same GST total.
+            // HST is carried as one rate and is never decomposed here.
+            if ($a->placeOfSupply->country->value === 'CA' && $a->rate !== null && $a->rate->hasComponents() && ! $a->rate->isZero()) {
+                foreach ($a->rate->components as $offset => $component) {
+                    $key = 'component:'.$a->placeOfSupply->subdivision?->value.':'.$a->rounding->key()
+                        .':'.$component->level->value.':'.$component->code.':'.$component->taxType.':'.$component->percentage->strippedOfTrailingZeros();
+                    $groups[$key][$index] = $offset;
+                }
+
                 continue;
             }
 
@@ -177,10 +193,11 @@ trait RoundsInvoices
             $key = $a->placeOfSupply->country->value.':'.$a->placeOfSupply->subdivision?->value
                 .':'.$a->rate?->percentage->strippedOfTrailingZeros().':'.$a->rate?->taxableShare?->strippedOfTrailingZeros()
                 .':'.$a->rounding->key().':'.implode('|', $components);
-            $groups[$key][] = $index;
+            $groups[$key][$index] = null;
         }
 
-        foreach ($groups as $indices) {
+        foreach ($groups as $members) {
+            $indices = array_keys($members);
             $first = $lines[$indices[0]]->assessment;
             $policy = $first->rounding;
 
@@ -199,6 +216,12 @@ trait RoundsInvoices
 
                 if ($unrounded === null) {
                     continue;
+                }
+
+                $rate = $lines[$index]->assessment->rate;
+                $offset = $members[$index];
+                if ($offset !== null && $rate !== null) {
+                    $unrounded = $unrounded->multipliedBy($rate->components[$offset]->percentage)->dividedBy($rate->percentage);
                 }
 
                 $exact = $exact->plus($unrounded);
@@ -220,6 +243,12 @@ trait RoundsInvoices
                 $amount = $units[$index]->plus($position < abs($difference) ? $direction : 0)
                     ->dividedBy($factor, $policy->places);
                 $tax = Money::of($amount, $a->tax->getCurrency(), $a->tax->getContext());
+                if ($members[$index] !== null) {
+                    $componentTaxes[$index][$members[$index]] = $tax;
+
+                    continue;
+                }
+
                 $inclusive = $pricing[$lines[$index]->id] === Pricing::Inclusive;
                 $net = $inclusive ? $a->gross->minus($tax) : $a->net;
                 $base = $a->taxableBase ?? $a->breakdown?->lines[0]->taxableAmount ?? $a->net;
@@ -233,6 +262,30 @@ trait RoundsInvoices
                     taxableBase: $base,
                 ));
             }
+        }
+
+        foreach ($componentTaxes as $index => $shares) {
+            $a = $lines[$index]->assessment;
+            $tax = Money::zero($a->tax->getCurrency(), $a->tax->getContext());
+            foreach ($shares as $share) {
+                $tax = $tax->plus($share);
+            }
+
+            $inclusive = $pricing[$lines[$index]->id] === Pricing::Inclusive;
+            $net = $inclusive ? $a->gross->minus($tax) : $a->net;
+            $base = $a->rate?->taxablePartOf($net) ?? $net;
+            $parts = [];
+            foreach ($a->rate->components ?? [] as $offset => $component) {
+                $parts[] = new BreakdownLine($component->level, $component->percentage, $base, $shares[$offset], $component->code, $component->name, $component->taxType);
+            }
+
+            $lines[$index] = new LineAssessment($lines[$index]->id, $a->with(
+                net: $net,
+                tax: $tax,
+                gross: $inclusive ? $a->gross : $net->plus($tax),
+                breakdown: new TaxBreakdown($parts),
+                taxableBase: $base,
+            ));
         }
 
         return array_values($lines);

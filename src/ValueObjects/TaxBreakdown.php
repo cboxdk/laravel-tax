@@ -12,10 +12,10 @@ use Cbox\Tax\Enums\JurisdictionLevel;
  * share, each county/city/special-district share — with the parts summing EXACTLY
  * to the assessment's tax.
  *
- * That exactness is the whole point, and it is why the split is allocated from the
- * total rather than recomputed per authority: a remittance filed per jurisdiction
- * must add back up to what was charged on the invoice, and applying each rate to
- * the net independently leaves a rounding remainder that does not.
+ * A remittance filed per jurisdiction must add back up to what was charged.
+ * Combined taxes allocate their rounded total across authorities. Independent
+ * levies (Canadian GST and PST/QST) instead round each levy first and sum those
+ * amounts into the invoice tax; neither path reallocates an independent levy.
  *
  * Present only when the rate source decomposed the rate ({@see TaxRate::$components}).
  * A null breakdown on an assessment means "not decomposable", never "all of it goes

@@ -163,6 +163,30 @@ it('breaks a PST province into its federal and provincial shares', function (): 
         ->toBe([['ca:CA', '5'], ['ca:BC', '7']]);
 });
 
+it('rounds Canadian independent levies before summing the tax', function (string $province, Pricing $pricing, string $amount, string $net, string $tax, array $shares): void {
+    $a = $this->tax->assess(new TaxQuery(
+        amount: Money::of($amount, 'CAD'),
+        pricing: $pricing,
+        place: $this->geo->find(new CountryCode('CA'), new SubdivisionCode($province)),
+        customer: CustomerType::Consumer,
+        seller: caSeller($province),
+    ));
+
+    expect((string) $a->net->getAmount())->toBe($net)
+        ->and((string) $a->tax->getAmount())->toBe($tax)
+        ->and($a->net->plus($a->tax)->isEqualTo($a->gross))->toBeTrue()
+        ->and(array_map(fn ($line): string => (string) $line->tax->getAmount(), $a->breakdown?->lines ?? []))->toBe($shares);
+})->with([
+    'BC cent lost in combined rounding' => ['CA-BC', Pricing::Exclusive, '123.47', '123.47', '14.81', ['6.17', '8.64']],
+    'BC half-cent rounds up independently' => ['CA-BC', Pricing::Exclusive, '0.10', '0.10', '0.02', ['0.01', '0.01']],
+    'BC credit reverses both taxes' => ['CA-BC', Pricing::Exclusive, '-123.47', '-123.47', '-14.81', ['-6.17', '-8.64']],
+    'BC inclusive' => ['CA-BC', Pricing::Inclusive, '138.28', '123.47', '14.81', ['6.17', '8.64']],
+    'BC inclusive below both half-cents' => ['CA-BC', Pricing::Inclusive, '0.05', '0.05', '0.00', ['0.00', '0.00']],
+    'BC inclusive credit' => ['CA-BC', Pricing::Inclusive, '-138.28', '-123.47', '-14.81', ['-6.17', '-8.64']],
+    'QC separate QST' => ['CA-QC', Pricing::Exclusive, '0.10', '0.10', '0.02', ['0.01', '0.01']],
+    'HST is one levy, not rounded federal and provincial halves' => ['CA-ON', Pricing::Exclusive, '0.05', '0.05', '0.01', []],
+]);
+
 it('charges only the federal share when the seller is not registered for the province\'s PST', function (string $province, string $tax): void {
     $a = $this->tax->assess(new TaxQuery(
         amount: Money::of('100.00', 'CAD'),
