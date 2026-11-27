@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Cbox\Tax\Regime;
 
+use Brick\Math\RoundingMode;
 use Cbox\Geo\ValueObjects\SubdivisionCode;
 use Cbox\Tax\Contracts\TaxRateSource;
 use Cbox\Tax\Contracts\TaxRegime;
 use Cbox\Tax\Enums\JurisdictionLevel;
+use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RateKind;
 use Cbox\Tax\Enums\TaxTreatment;
 use Cbox\Tax\Exceptions\JurisdictionNotResolved;
 use Cbox\Tax\Exceptions\UnresolvedTaxRate;
 use Cbox\Tax\RateSource\ResolvesRates;
 use Cbox\Tax\Regime\Concerns\AppliesTaxRate;
+use Cbox\Tax\ValueObjects\BreakdownLine;
 use Cbox\Tax\ValueObjects\TaxAssessment;
+use Cbox\Tax\ValueObjects\TaxBreakdown;
 use Cbox\Tax\ValueObjects\TaxQuery;
 use Cbox\Tax\ValueObjects\TaxRate;
 
@@ -60,6 +64,33 @@ readonly class CaGstRegime implements TaxRegime
 
         $rounding = $this->requestedRounding($query, $rate);
         [$net, $tax, $gross] = $this->split($query, $rate, rounding: $rounding);
+        $breakdown = $this->breakdown($rate, $net, $tax);
+
+        // GST and PST/QST are independent levies, not shares of a rounded total.
+        // HST is one rate (not a federal/provincial split). For inclusive prices,
+        // extract each levy from the exact base before rounding, keeping gross fixed.
+        if ($rate->hasComponents() && ! $rate->isZero()) {
+            $exact = $this->unroundedTax($query, $rate);
+            $tax = $this->zero($query);
+            $shares = [];
+
+            foreach ($rate->components as $component) {
+                $part = $exact->multipliedBy($component->percentage)->dividedBy($rate->percentage);
+                $shares[] = $share = $rounding?->round($part, $query->amount->getContext())
+                    ?? $part->toContext($query->amount->getContext(), RoundingMode::HalfUp);
+                $tax = $tax->plus($share);
+            }
+
+            $net = $query->pricing === Pricing::Inclusive ? $gross->minus($tax) : $net;
+            $gross = $query->pricing === Pricing::Exclusive ? $net->plus($tax) : $gross;
+            $parts = [];
+
+            foreach ($rate->components as $index => $component) {
+                $parts[] = new BreakdownLine($component->level, $component->percentage, $rate->taxablePartOf($net), $shares[$index], $component->code, $component->name, $component->taxType);
+            }
+
+            $breakdown = new TaxBreakdown($parts);
+        }
 
         return new TaxAssessment(
             treatment: $this->treatmentFor($rate),
@@ -69,7 +100,7 @@ readonly class CaGstRegime implements TaxRegime
             placeOfSupply: $query->place,
             rate: $rate,
             reason: sprintf('Canadian sales tax: %s%% in %s.', $rate->percentage, $subdivision->value),
-            breakdown: $this->breakdown($rate, $net, $tax),
+            breakdown: $breakdown,
             rounding: $rounding,
             unroundedTax: $rounding === null ? null : $this->unroundedTax($query, $rate),
         );

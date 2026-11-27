@@ -14,6 +14,7 @@ use Cbox\Tax\Enums\Pricing;
 use Cbox\Tax\Enums\RoundingScope;
 use Cbox\Tax\Enums\TaxClass;
 use Cbox\Tax\ValueObjects\OrderAssessment;
+use Cbox\Tax\ValueObjects\SellerRegistration;
 use Cbox\Tax\ValueObjects\SellerRegistrations;
 use Cbox\Tax\ValueObjects\SupplyLine;
 use Cbox\Tax\ValueObjects\TaxOrder;
@@ -33,6 +34,7 @@ function basket(
     Pricing $pricing = Pricing::Exclusive,
     ?string $subdivision = null,
     ?string $postalCode = null,
+    ?SellerRegistrations $seller = null,
 ): OrderAssessment {
     $code = new CountryCode($country);
     $place = app(JurisdictionRepository::class)->find($code, $subdivision === null ? null : new SubdivisionCode($subdivision));
@@ -40,7 +42,7 @@ function basket(
     return app(OrderTaxCalculator::class)->assessOrder(new TaxOrder(
         place: $place,
         customer: CustomerType::Consumer,
-        seller: new SellerRegistrations($code),
+        seller: $seller ?? new SellerRegistrations($code),
         pricing: $pricing,
         lines: $lines,
         suppliedAt: new DateTimeImmutable('2026-09-22'),
@@ -225,3 +227,35 @@ it('rounds a delivery charge with the goods it accompanies', function (): void {
 
     expect((string) $order->tax()->getAmount())->toBe('0.25');
 });
+
+it('rounds each Canadian levy across its own taxable invoice lines', function (array $amounts, Pricing $pricing, string $gst, string $pst, bool $food): void {
+    $lines = array_map(fn (string $amount, int $i): SupplyLine => new SupplyLine(
+        (string) $i, Money::of($amount, 'CAD'), categoryKey: $food && $i === 1 ? 'goods.food' : null,
+    ), $amounts, array_keys($amounts));
+    $order = basket('CA', $lines, pricing: $pricing, subdivision: 'CA-BC', seller: new SellerRegistrations(
+        new CountryCode('CA'), [new SellerRegistration(new CountryCode('CA'), new SubdivisionCode('CA-BC'))],
+    ));
+    $totals = ['ca:CA' => Money::zero('CAD'), 'ca:BC' => Money::zero('CAD')];
+
+    foreach ($order->lines as $index => $line) {
+        $a = $line->assessment;
+        expect($a->breakdown?->total()?->isEqualTo($a->tax))->toBeTrue()
+            ->and($a->net->plus($a->tax)->isEqualTo($a->gross))->toBeTrue()
+            ->and(($pricing === Pricing::Inclusive ? $a->gross : $a->net)->isEqualTo($lines[$index]->amount))->toBeTrue();
+        foreach ($a->breakdown?->lines ?? [] as $part) {
+            $totals[$part->code] = $totals[$part->code]->plus($part->tax);
+        }
+    }
+
+    expect((string) $totals['ca:CA']->getAmount())->toBe($gst)
+        ->and((string) $totals['ca:BC']->getAmount())->toBe($pst)
+        ->and($order->tax()->isEqualTo(Money::of($gst, 'CAD')->plus(Money::of($pst, 'CAD'))))->toBeTrue();
+})->with([
+    'single line' => [['123.47'], Pricing::Exclusive, '6.17', '8.64', false],
+    'separate rounding of small totals' => [['0.03', '0.07', '0.11'], Pricing::Exclusive, '0.01', '0.01', false],
+    'do not sum rounded line components' => [['0.10', '0.10'], Pricing::Exclusive, '0.01', '0.01', false],
+    'GST combines PST-taxable and PST-exempt bases' => [['0.10', '0.10'], Pricing::Exclusive, '0.01', '0.01', true],
+    'inclusive uses exact extracted bases' => [['0.05', '0.05', '0.05'], Pricing::Inclusive, '0.01', '0.01', false],
+    'credit reverses components' => [['-0.03', '-0.07', '-0.11'], Pricing::Exclusive, '-0.01', '-0.01', false],
+    'discount to nothing' => [['49.00', '-4.90', '-44.10'], Pricing::Exclusive, '0.00', '0.00', false],
+]);

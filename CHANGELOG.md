@@ -7,6 +7,15 @@ minor bumps may carry additive features; patches are fixes and docs).
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-11-27
+
+### Fixed
+
+- Canadian GST and provincial PST/QST are rounded independently before summing
+  the tax, including tax-inclusive prices and credits. Invoice rounding groups
+  each levy across its own taxable lines instead of rounding a combined rate.
+  HST remains one levy; other countries retain their existing allocation rules.
+
 ## [0.23.0] - 2026-11-23
 
 ### Added
